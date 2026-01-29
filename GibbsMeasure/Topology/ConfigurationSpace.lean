@@ -77,7 +77,6 @@ lemma sub {F : Type*} [AddGroup F] {f g : (S → E) → F}
     (hf : IsCylinderFunction (S := S) (E := E) f)
     (hg : IsCylinderFunction (S := S) (E := E) g) :
     IsCylinderFunction (S := S) (E := E) (fun σ ↦ f σ - g σ) := by
-  -- `sub` is just `add` + `neg`, but we keep a dedicated lemma for convenience.
   simpa [sub_eq_add_neg] using (add (S := S) (E := E) hf (neg (S := S) (E := E) hg))
 
 end IsCylinderFunction
@@ -91,7 +90,6 @@ variable (S E)
 lemma measurableSpace_pi_eq_borel
     [Countable S] [TopologicalSpace E] [MeasurableSpace E] [SecondCountableTopology E] [BorelSpace E] :
     (inferInstance : MeasurableSpace (S → E)) = borel (S → E) := by
-  -- This is exactly `BorelSpace.measurable_eq` for the Mathlib instance `Pi.borelSpace`.
   simpa using (BorelSpace.measurable_eq (α := S → E))
 
 end ConfigurationSpace

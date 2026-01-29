@@ -6,7 +6,7 @@ import GibbsMeasure.Mathlib.MeasureTheory.MeasurableSpace.Basic
 import Mathlib.MeasureTheory.Integral.Bochner.Set
 import Mathlib.MeasureTheory.Integral.DominatedConvergence
 import Mathlib.Probability.Kernel.Proper
-import Riemann.MeasureTheory.ParametricDominatedConvergence
+import SpinGlass.Mathlib.MeasureTheory.ParametricDominatedConvergence
 --import Mathlib
 
 /-!
