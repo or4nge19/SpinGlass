@@ -1,4 +1,4 @@
-import Riemann.PhysLean.SpinGlass.ComplexIBP
+import SpinGlass.ComplexIBP
 import Mathlib.Analysis.Calculus.ParametricIntegral
 import Mathlib.Analysis.Calculus.MeanValue
 import Mathlib.MeasureTheory.Measure.WithDensity

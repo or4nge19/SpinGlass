@@ -7,7 +7,7 @@ namespace SpinGlass.Algebra
 /-!
 # Algebraic identities for the finite‑`N` SK model
 
-This file packages the *purely algebraic* steps used in Guerra's interpolation:
+These are the *purely algebraic* steps used in Guerra's interpolation:
 
 - trace identities for the SK and simple covariance kernels (proved in `Defs.lean`);
 - the “square completion” identity which turns a difference of traces into a
