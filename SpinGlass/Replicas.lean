@@ -19,7 +19,7 @@ namespace SpinGlass
 To prove concentration, we must manage functions of `n` replicas.
 Differentiation increases the number of replicas by 2.
 
-**Terminology:** this file implements the **interpolation / smart path** machinery
+**Terminology:** this file implements the **interpolation / smart path** method
 (Talagrand Vol. I, §§1.3–1.4). It is *not* the cavity method (Talagrand Vol. I, §1.6),
 which is an induction on `N`.
 -/
@@ -83,10 +83,8 @@ noncomputable def isGaussianHilbert_UV
     (hIndep : ProbabilityTheory.IndepFun sk.U sim.V (ℙ : Measure Ω)) :
     IsGaussianHilbert (UV (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)) := by
   classical
-  -- abbreviate the two coordinate models
   let hU := sk.hU
   let hV := sim.hV
-  -- Build the combined coordinate family on a sigma index (Bool chooses which process).
   let κ : Bool → Type* := fun
     | true => hU.ι
     | false => hV.ι
@@ -103,14 +101,11 @@ noncomputable def isGaussianHilbert_UV
     intro b
     cases b <;> simpa [X] using (by
       first | exact hV.c_indep | exact hU.c_indep)
-  -- Independence across `b : Bool` of the *tuples* `(X b ·)`.
   have h1 : ProbabilityTheory.iIndepFun (fun b ω => (X b · ω)) (ℙ : Measure Ω) := by
-    -- For `Bool`, mutual independence reduces to the 2-variable case.
     -- We derive independence of the coordinate-tuples from independence of `(U,V)` by composition.
     have hφ : Measurable (fun u : EnergySpace N => fun i : hU.ι => inner ℝ u (hU.w i)) := by
       refine measurable_pi_lambda _ ?_
       intro i
-      -- `u ↦ ⟪u, w i⟫` is continuous, hence measurable.
       have hcont : Continuous (fun u : EnergySpace N => inner ℝ u (hU.w i)) := by
         have hpair : Continuous (fun u : EnergySpace N => (u, hU.w i)) :=
           (continuous_id.prodMk continuous_const)
@@ -1088,7 +1083,6 @@ lemma norm_fderiv_gibbs_average_n_det_le (H : EnergySpace N) (f : ReplicaFun N n
                     norm_num
             simpa [mul_assoc] using this
       _ = ((2 * (n : ℝ)) * ‖v‖) * (∑ σs : ReplicaSpace N n, ‖f σs‖) := by
-            classctor out the constant `(2*n*‖v‖)` from the finset sum
             rw [Finset.mul_sum]
             refine Finset.sum_congr rfl (fun σs _ => ?_)
             ring
