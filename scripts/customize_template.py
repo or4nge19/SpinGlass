@@ -50,10 +50,16 @@ def main(project_name):
     project_lean = 'Project.lean'
     build_project_yml = '.github/workflows/build-project.yml'
     citation_bib = 'CITATION.bib'
+    lake_manifest_json = 'lake-manifest.json'
 
     # Replace 'Project' with the actual project name in the necessary files
     replace_text_in_file(lakefile_toml, 'Project', project_name)
     replace_text_in_file(build_project_yml, 'Project', project_name)
+
+    # Keep the Lake manifest project name in sync (without touching dependency names).
+    # This string occurs only once (the top-level manifest name).
+    if os.path.exists(lake_manifest_json):
+        replace_text_in_file(lake_manifest_json, '"name": "Project"', f'"name": "{project_name}"')
 
     # Rename 'Project' folder to match the project name
     rename_directory(project_folder, project_name)
@@ -72,12 +78,15 @@ def main(project_name):
         replace_text_in_file(new_project_lean, 'Project', project_name)
 
 if __name__ == "__main__":
-    # Check if the script is executed with the correct number of command-line arguments
-    if len(sys.argv) != 2:
+    # Allow running without args (useful when the repo name is already fixed),
+    # while preserving the original CLI behavior.
+    if len(sys.argv) == 1:
+        project_name = "SpinGlass"
+    elif len(sys.argv) == 2:
+        project_name = sys.argv[1]
+    else:
         print("Usage: python customize_template.py <ProjectName>")
         sys.exit(1)
 
-    # Get the project name from the command-line arguments
-    project_name = sys.argv[1]
     # Call the main function to perform the customization
     main(project_name)
