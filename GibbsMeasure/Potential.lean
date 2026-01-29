@@ -66,7 +66,6 @@ lemma IsPotential.eq_of_eqOn [IsPotential Φ] {Δ : Finset S} {η ζ : S → E}
   have hf :
       Measurable[cylinderEvents (X := fun _ : S ↦ E) (Δ : Set S)] (Φ Δ) :=
     IsPotential.measurable (Φ := Φ) Δ
-  -- Use the preimage of the singleton `{Φ Δ η}` and the fact that `cylinderEvents Δ` is a comap.
   have hA :
       MeasurableSet[cylinderEvents (X := fun _ : S ↦ E) (Δ : Set S)]
         ((Φ Δ) ⁻¹' {Φ Δ η}) := by
@@ -79,7 +78,6 @@ lemma IsPotential.eq_of_eqOn [IsPotential Φ] {Δ : Finset S} {η ζ : S → E}
     simpa [cylinderEvents_eq_comap_restrict (S := S) (E := E) (Δ := (Δ : Set S))] using hA
   rcases hA' with ⟨B, hB, hpreim⟩
   have hη_mem : η ∈ (Set.restrict (π := fun _ : S ↦ E) (Δ : Set S)) ⁻¹' B := by
-    -- `η ∈ (Φ Δ) ⁻¹' {Φ Δ η}` is trivial, then rewrite by `hpreim`.
     have : η ∈ ((Φ Δ) ⁻¹' {Φ Δ η}) := by simp
     simp [hpreim]
   have hre : Set.restrict (π := fun _ : S ↦ E) (Δ : Set S) η =
@@ -87,14 +85,11 @@ lemma IsPotential.eq_of_eqOn [IsPotential Φ] {Δ : Finset S} {η ζ : S → E}
     funext x
     exact h x x.2
   have hζ_mem : ζ ∈ (Set.restrict (π := fun _ : S ↦ E) (Δ : Set S)) ⁻¹' B := by
-    -- transport membership along `hre`
-    -- (unfold membership in a preimage)
     simpa [Set.mem_preimage, hre] using (show Set.restrict (π := fun _ : S ↦ E) (Δ : Set S) η ∈ B by
       simpa [Set.mem_preimage] using hη_mem)
   have : ζ ∈ ((Φ Δ) ⁻¹' {Φ Δ η}) := by
     simpa [hpreim] using hζ_mem
   exact (by
-    -- Membership in the singleton preimage gives `Φ Δ ζ = Φ Δ η`; flip it to match the statement.
     simpa [Set.mem_preimage] using this : Φ Δ ζ = Φ Δ η).symm
 
 end Locality
@@ -116,14 +111,9 @@ noncomputable def interactingHamiltonian [IsFinitary Φ] (Λ : Finset S) (η : S
 lemma measurable_interactingHamiltonian [IsFinitary Φ] [IsPotential Φ] (Λ : Finset S) :
     Measurable (interactingHamiltonian (Φ := Φ) Λ) := by
   classical
-  -- Finite sum of measurable functions (prove by `Finset` induction; `Measurable.sum` is not
-  -- available in this Mathlib version).
-  --simp [interactingHamiltonian]
   set t : Finset (Finset S) :=
       ((IsFinitary.finite_support (Φ := Φ)).toFinset).filter (fun Δ => Δ ∩ Λ ≠ ∅) with ht
-  -- Reduce to the explicit finite sum over `t`.
   change Measurable (fun η : S → E => Finset.sum t (fun Δ => Φ Δ η))
-  -- Induction on `t`.
   refine Finset.induction_on t ?_ ?_
   · simp
   · intro a s ha hs_meas
@@ -140,11 +130,8 @@ noncomputable def boltzmannWeight [IsFinitary Φ] (β : ℝ) (Λ : Finset S) (η
 
 lemma measurable_boltzmannWeight [IsFinitary Φ] [IsPotential Φ] (β : ℝ) (Λ : Finset S) :
     Measurable (boltzmannWeight (Φ := Φ) β Λ) := by
-  -- Build measurability from `measurable_interactingHamiltonian`.
   have hH : Measurable fun η : S → E => interactingHamiltonian (Φ := Φ) Λ η :=
     measurable_interactingHamiltonian (Φ := Φ) Λ
-  -- `η ↦ Real.exp (-β * H η)` is measurable, then map through `ENNReal.ofReal`.
-  -- (`Real.exp` is measurable; multiplication by a constant is measurable.)
   simpa [boltzmannWeight] using
     (((measurable_const.mul hH).exp).ennreal_ofReal)
 
@@ -157,35 +144,25 @@ lemma isPremodifier_boltzmannWeight (β : ℝ) [IsFinitary Φ] [IsPotential Φ] 
   · intro Λ
     exact measurable_boltzmannWeight (Φ := Φ) β Λ
   · intro Λ₁ Λ₂ ζ η hΛ hrestrict
-    -- Shorthand.
     let supp : Finset (Finset S) := (IsFinitary.finite_support (Φ := Φ)).toFinset
     let F (Λ : Finset S) : Finset (Finset S) := supp.filter fun Δ => Δ ∩ Λ ≠ ∅
     let H (Λ : Finset S) (σ : S → E) : ℝ := interactingHamiltonian (Φ := Φ) Λ σ
-
     have hHdiff (Λ : Finset S) :
         H Λ η - H Λ ζ = Finset.sum (F Λ) (fun Δ => Φ Δ η - Φ Δ ζ) := by
-      -- distribute subtraction over the finite sum.
-      -- `sum_sub_distrib` is stated in the opposite direction.
       simp [H, interactingHamiltonian, F, supp]
-
     have hFsubset : F Λ₁ ⊆ F Λ₂ := by
       intro Δ hΔ
       have hΔ' := Finset.mem_filter.1 hΔ
       refine Finset.mem_filter.2 ?_
       refine ⟨hΔ'.1, ?_⟩
-      -- `Δ ∩ Λ₁ ≠ ∅` implies `Δ ∩ Λ₂ ≠ ∅` since `Λ₁ ⊆ Λ₂`.
       rcases (Finset.nonempty_iff_ne_empty.2 hΔ'.2) with ⟨x, hx⟩
       have hxΔ : x ∈ Δ := (Finset.mem_inter.1 hx).1
       have hxΛ₁ : x ∈ Λ₁ := (Finset.mem_inter.1 hx).2
       have hxΛ₂ : x ∈ Λ₂ := hΛ hxΛ₁
-      -- Provide a witness in `Δ ∩ Λ₂`.
       exact (Finset.nonempty_iff_ne_empty).1 ⟨x, Finset.mem_inter.2 ⟨hxΔ, hxΛ₂⟩⟩
-
     have hsum :
         Finset.sum (F Λ₁) (fun Δ => Φ Δ η - Φ Δ ζ) =
           Finset.sum (F Λ₂) (fun Δ => Φ Δ η - Φ Δ ζ) := by
-      -- Terms in `F Λ₂ \ F Λ₁` correspond to interactions disjoint from `Λ₁`, hence supported in `Λ₁ᶜ`,
-      -- so they cancel because `η` and `ζ` agree outside `Λ₁`.
       refine Finset.sum_subset hFsubset ?_
       intro Δ hΔ_F₂ hΔ_not_F₁
       have hΔ_supp : Δ ∈ supp := (Finset.mem_filter.1 hΔ_F₂).1
@@ -199,36 +176,25 @@ lemma isPremodifier_boltzmannWeight (β : ℝ) [IsFinitary Φ] [IsPotential Φ] 
         have : x ∈ Δ ∩ Λ₁ := Finset.mem_inter.2 ⟨hxΔ, hxΛ₁⟩
         simp [hΔ_inter1_empty] at this
       have hΦΔ : Φ Δ η = Φ Δ ζ := by
-        -- `Φ Δ` depends only on the coordinates in `Δ`.
         apply IsPotential.eq_of_eqOn (Φ := Φ) (Δ := Δ) (η := η) (ζ := ζ)
         intro x hxΔ
         have hx_not : x ∉ Λ₁ := hΔ_out x hxΔ
-        -- `hrestrict` gives `ζ x = η x` outside `Λ₁`.
         simpa using (hrestrict x hx_not).symm
-      -- Hence the difference term vanishes.
       simp [hΦΔ]
-
     have hdiff : H Λ₁ η - H Λ₁ ζ = H Λ₂ η - H Λ₂ ζ := by
       simp [hHdiff, hsum]
-
     have hsumH : H Λ₂ ζ + H Λ₁ η = H Λ₁ ζ + H Λ₂ η := by
-      -- `a - b = c - d` implies `d + a = b + c`.
       have : H Λ₁ η + H Λ₂ ζ = H Λ₂ η + H Λ₁ ζ :=
         (sub_eq_sub_iff_add_eq_add).1 hdiff
-      -- Commute the additions to match the desired order.
       calc
         H Λ₂ ζ + H Λ₁ η = H Λ₁ η + H Λ₂ ζ := by simp [add_comm]
         _ = H Λ₂ η + H Λ₁ ζ := this
         _ = H Λ₁ ζ + H Λ₂ η := by simp [add_comm]
-
-    -- Turn the Hamiltonian identity into an identity of Boltzmann weights.
-    -- We use `exp_add` and `ENNReal.ofReal_mul`.
     have h_exp :
         Real.exp (-β * H Λ₂ ζ) * Real.exp (-β * H Λ₁ η) =
           Real.exp (-β * H Λ₁ ζ) * Real.exp (-β * H Λ₂ η) := by
       have hexpArg :
           (-β * H Λ₂ ζ) + (-β * H Λ₁ η) = (-β * H Λ₁ ζ) + (-β * H Λ₂ η) := by
-        -- Multiply `hsumH` by `(-β)` and expand with `mul_add`.
         have hmul : (-β) * (H Λ₂ ζ + H Λ₁ η) = (-β) * (H Λ₁ ζ + H Λ₂ η) :=
           congrArg (fun x => (-β) * x) hsumH
         simpa [mul_add, add_comm, add_left_comm, add_assoc, mul_assoc] using hmul
@@ -240,8 +206,6 @@ lemma isPremodifier_boltzmannWeight (β : ℝ) [IsFinitary Φ] [IsPotential Φ] 
               exact congrArg Real.exp hexpArg
         _ = Real.exp (-β * H Λ₁ ζ) * Real.exp (-β * H Λ₂ η) := by
               simpa using (Real.exp_add (-β * H Λ₁ ζ) (-β * H Λ₂ η))
-
-    -- Now lift `h_exp` through `ENNReal.ofReal` and rewrite products.
     dsimp [boltzmannWeight]
     calc
       ENNReal.ofReal (Real.exp (-β * H Λ₂ ζ)) * ENNReal.ofReal (Real.exp (-β * H Λ₁ η))
@@ -273,7 +237,6 @@ lemma measurable_partitionFunction (Φ : Potential S E) [IsFinitary Φ] [IsPoten
     (β : ℝ) (ν : Measure E) [IsProbabilityMeasure ν] (Λ : Finset S) :
     Measurable[cylinderEvents (X := fun _ : S ↦ E) (Λ : Set S)ᶜ]
       (partitionFunction (S := S) (E := E) Φ β ν Λ) := by
-  -- Kernel-measurability of `isssd` gives boundary-measurability of the lintegral.
   simpa [partitionFunction, Specification.premodifierZ] using
     (Measurable.lintegral_kernel
       (κ := (Specification.isssd (S := S) (E := E) ν Λ))
@@ -290,7 +253,6 @@ noncomputable def gibbsModifier (Φ : Potential S E) [IsFinitary Φ]
 lemma measurable_gibbsModifier (Φ : Potential S E) [IsFinitary Φ] [IsPotential Φ]
     (β : ℝ) (ν : Measure E) [IsProbabilityMeasure ν] (Λ : Finset S) :
     Measurable (gibbsModifier (S := S) (E := E) Φ β ν Λ) := by
-  -- Use the general lemma `Specification.IsPremodifier.measurable_div_isssd`.
   have hpre : Specification.IsPremodifier (S := S) (E := E) (boltzmannWeight (Φ := Φ) β) :=
     isPremodifier_boltzmannWeight (Φ := Φ) β
   simpa [gibbsModifier, partitionFunction, Specification.premodifierZ, div_eq_mul_inv] using
@@ -311,7 +273,6 @@ lemma premodifierZ_boltzmannWeight_ne_zero (Φ : Potential S E) [IsFinitary Φ] 
     (β : ℝ) (ν : Measure E) [IsProbabilityMeasure ν] (Λ : Finset S) (η : S → E) :
     Specification.premodifierZ (S := S) (E := E) ν (boltzmannWeight (Φ := Φ) β) Λ η ≠ 0 := by
   classical
-  -- Let `μ` be the resampling measure in volume `Λ`.
   let μ : Measure (S → E) := Specification.isssd (S := S) (E := E) ν Λ η
   have hμ_univ : μ Set.univ = 1 := by
     simpa [μ] using (IsProbabilityMeasure.measure_univ (μ := Specification.isssd (S := S) (E := E) ν Λ η))
@@ -320,14 +281,11 @@ lemma premodifierZ_boltzmannWeight_ne_zero (Φ : Potential S E) [IsFinitary Φ] 
   have hsupport : Function.support (boltzmannWeight (Φ := Φ) β Λ) = Set.univ := by
     ext x
     simp [boltzmannWeight, Real.exp_pos]
-  -- `0 < ∫ f` since `μ(support f) = 1`.
   have hpos :
       (0 : ℝ≥0∞) < ∫⁻ x, boltzmannWeight (Φ := Φ) β Λ x ∂μ := by
     have : (0 : ℝ≥0∞) < μ (Function.support (boltzmannWeight (Φ := Φ) β Λ)) := by
-      -- support is `univ`
       simp [hsupport, hμ_univ]
     exact (MeasureTheory.lintegral_pos_iff_support hf_meas).2 this
-  -- Conclude.
   simpa [Specification.premodifierZ, μ] using (ne_of_gt hpos)
 
 /-- The partition function for Boltzmann weights is never `0`. -/
@@ -360,7 +318,6 @@ lemma isModifier_gibbsModifier (Φ : Potential S E) [IsFinitary Φ] [IsPotential
       (Specification.isssd (S := S) (E := E) ν).IsModifier
         (Specification.premodifierNorm (S := S) (E := E) ν ρ) :=
     Specification.IsPremodifier.isModifier_premodifierNorm (S := S) (E := E) (ν := ν) (ρ := ρ) hpre hZ'
-  -- Rewrite `premodifierNorm` as `gibbsModifier`.
   simpa [gibbsModifier_eq_premodifierNorm (S := S) (E := E) (Φ := Φ) β ν, ρ] using hmod'
 
 /-- The Gibbs specification associated to a potential: the modification of the independent

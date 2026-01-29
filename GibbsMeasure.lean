@@ -1,3 +1,4 @@
+import GibbsMeasure.Examples.Arithmetic
 import GibbsMeasure.KolmogorovExtension4.ProductMeasure
 import GibbsMeasure.Mathlib.Data.ENNReal.Basic
 import GibbsMeasure.Mathlib.MeasureTheory.Function.ConditionalExpectation.Basic
@@ -9,21 +10,22 @@ import GibbsMeasure.Mathlib.MeasureTheory.MeasurableSpace.Basic
 import GibbsMeasure.Mathlib.MeasureTheory.Measure.GiryMonad
 import GibbsMeasure.Mathlib.MeasureTheory.Measure.Prod
 import GibbsMeasure.Mathlib.Probability.Kernel.Condexp
-
+import GibbsMeasure.Potential
+import GibbsMeasure.Prereqs.CylinderEvents
 import GibbsMeasure.Prereqs.Filtration.Consistent
 import GibbsMeasure.Prereqs.Juxt
 import GibbsMeasure.Prereqs.Kernel.CondExp
+import GibbsMeasure.Prereqs.Kernel.CondExp'
 import GibbsMeasure.Prereqs.Kernel.Feller
 import GibbsMeasure.Prereqs.Kernel.Proper
-import GibbsMeasure.Prereqs.CylinderEvents
 import GibbsMeasure.Prereqs.LebesgueCondExp
 import GibbsMeasure.Specification
-import GibbsMeasure.Potential
+import GibbsMeasure.Specification.ErgodicDecomposition
+import GibbsMeasure.Specification.Existence
+import GibbsMeasure.Specification.Extremal
 import GibbsMeasure.Specification.Quasilocal
 import GibbsMeasure.Specification.QuasilocalSpecification
 import GibbsMeasure.Specification.Structure
-import GibbsMeasure.Specification.Existence
-import GibbsMeasure.Specification.Extremal
-import GibbsMeasure.Specification.ErgodicDecomposition
+import GibbsMeasure.SpinGlass
 import GibbsMeasure.Topology.ConfigurationSpace
 import GibbsMeasure.Topology.LocalConvergence
