@@ -1431,8 +1431,9 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
         (sk := sk) (sim := sim) (n := n) (t := x) (ht := hxIoo) (f := f) w
   have hMain :=
     (hasDerivAt_integral_of_dominated_loc_of_deriv_le
-      (μ := (ℙ : Measure Ω)) (F := F) (F' := F') (x₀ := t) (bound := bound) (ε := ε)
-      hε_pos hF_meas hF_int hF'_meas h_bound hbound_int h_diff).2
+      (μ := (ℙ : Measure Ω)) (F := F) (F' := F') (x₀ := t) (bound := bound)
+      (s := Metric.ball t ε) (hs := Metric.ball_mem_nhds t hε_pos)
+      hF_meas hF_int hF'_meas h_bound hbound_int h_diff).2
   simpa [nu, F, F'] using hMain
 
 end ReplicaCalculus
