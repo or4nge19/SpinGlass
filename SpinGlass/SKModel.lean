@@ -52,10 +52,8 @@ structure SKDisorder (β h : ℝ) where
   /-- Centered Gaussian structure in the Hilbert space `EnergySpace N`. -/
   hU : IsGaussianHilbert U
   /-- Covariance on the canonical basis. -/
-  cov_eq :
-      ∀ σ τ,
-        inner ℝ ((covOp (g := U) hU) (std_basis N σ)) (std_basis N τ) =
-          sk_cov_kernel N β σ τ
+  cov_eq : ∀ σ τ, inner ℝ ((covOp (g := U) hU)
+    (std_basis N σ)) (std_basis N τ) =  sk_cov_kernel N β σ τ
 
 /--
 Simple (reference) disorder: a centered Gaussian Hamiltonian with covariance kernel
@@ -69,9 +67,7 @@ structure SimpleDisorder (β q : ℝ) where
   /-- Centered Gaussian structure in the Hilbert space `EnergySpace N`. -/
   hV : IsGaussianHilbert V
   /-- Covariance on the canonical basis. -/
-  cov_eq :
-      ∀ σ τ,
-        inner ℝ ((covOp (g := V) hV) (std_basis N σ)) (std_basis N τ) =
-          simple_cov_kernel N β (fun x => q * x) σ τ
+  cov_eq : ∀ σ τ, inner ℝ ((covOp (g := V) hV) (std_basis N σ))
+    (std_basis N τ) = simple_cov_kernel N β (fun x => q * x) σ τ
 
 end SpinGlass
