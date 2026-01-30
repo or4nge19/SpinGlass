@@ -52,7 +52,6 @@ variable [Countable S] [StandardBorelSpace E]
 
 -- The configuration space is standard Borel as a countable product of standard Borel spaces.
 instance : StandardBorelSpace (S → E) := by
-  -- `StandardBorelSpace.pi_countable` is in `Mathlib.MeasureTheory.Constructions.Polish.Basic`.
   infer_instance
 
 /-- The **tail conditional kernel**: a regular conditional distribution of the identity given the
@@ -61,7 +60,6 @@ noncomputable def tailKernel : Kernel[@tailSigmaAlgebra S E _] (S → E) (S → 
   ProbabilityTheory.condExpKernel (mΩ := MeasurableSpace.pi) μ (@tailSigmaAlgebra S E _)
 
 instance : IsMarkovKernel (tailKernel (S := S) (E := E) μ) := by
-  -- Inherited from `condExpKernel`.
   simpa [tailKernel] using (by infer_instance : IsMarkovKernel (ProbabilityTheory.condExpKernel (mΩ := MeasurableSpace.pi)
     μ (@tailSigmaAlgebra S E _)))
 
@@ -126,7 +124,6 @@ lemma measurable_tailKernel_pi :
 lemma lintegral_eval_tailKernelLaw (A : Set (S → E)) (hA : MeasurableSet A) :
     (∫⁻ ν : Measure (S → E), ν A ∂(tailKernelLaw (S := S) (E := E) μ))
       = μ A := by
-  classical
   have hm : (@tailSigmaAlgebra S E _ : MeasurableSpace (S → E)) ≤ MeasurableSpace.pi :=
     tailSigmaAlgebra_le_pi (S := S) (E := E)
   have hκ_pi : Measurable (tailKernel (S := S) (E := E) μ) :=
@@ -196,7 +193,6 @@ lemma tailKernelTail_ae_eq_id
     ∀ᵐ ω ∂μ.trim (tailSigmaAlgebra_le_pi (S := S) (E := E)),
       tailKernelTail (S := S) (E := E) μ ω
         = (@ProbabilityTheory.Kernel.id (S → E) (@tailSigmaAlgebra S E _)) ω := by
-  classical
   have hm : (@tailSigmaAlgebra S E _ : MeasurableSpace (S → E)) ≤ MeasurableSpace.pi :=
     tailSigmaAlgebra_le_pi (S := S) (E := E)
   let μT : Measure[@tailSigmaAlgebra S E _] (S → E) := μ.trim hm

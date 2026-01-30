@@ -99,10 +99,8 @@ def IsQuasilocal' : Prop :=
 
 lemma IsQuasilocal.of_IsQuasilocal' (h : IsQuasilocal' (γ := γ)) : IsQuasilocal (γ := γ) := by
   intro Λ f hf
-  -- `f` is in the closure of the cylinder observables.
   have hf' : f ∈ closure (cylinderFunctions (S := S) (E := E) (F := ℝ) : Set Obs) := by
     simpa [quasilocalFunctions, Submodule.topologicalClosure_coe] using hf
-  -- Apply continuity of the action map to move from `closure` to `closure`.
   have h_cont : Continuous (continuousAction (γ := γ) Λ : Obs → Obs) :=
     continuous_continuousAction (γ := γ) Λ
   have himage :
@@ -113,18 +111,15 @@ lemma IsQuasilocal.of_IsQuasilocal' (h : IsQuasilocal' (γ := γ)) : IsQuasiloca
       have hx : continuousAction (γ := γ) Λ f ∈ (continuousAction (γ := γ) Λ) '' closure s :=
         ⟨f, hf', rfl⟩
       exact (image_closure_subset_closure_image h_cont (s := s)) hx
-  -- The image of cylinder observables is contained in quasilocal observables by `h`.
   have hsubset :
       (continuousAction (γ := γ) Λ) '' (cylinderFunctions (S := S) (E := E) (F := ℝ) : Set Obs) ⊆
         (quasilocalFunctions (S := S) (E := E) (F := ℝ) : Set Obs) := by
     intro g hg
     rcases hg with ⟨f0, hf0, rfl⟩
     exact h Λ f0 hf0
-  -- `quasilocalFunctions` is closed (it's a topological closure).
   have hclosed :
       IsClosed (quasilocalFunctions (S := S) (E := E) (F := ℝ) : Set Obs) :=
     Submodule.isClosed_topologicalClosure _
-  -- Conclude using `closure_mono` and `hclosed.closure_eq`.
   have :
       continuousAction (γ := γ) Λ f ∈
         closure (quasilocalFunctions (S := S) (E := E) (F := ℝ) : Set Obs) :=

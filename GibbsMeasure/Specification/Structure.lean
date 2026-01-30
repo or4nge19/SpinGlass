@@ -73,14 +73,12 @@ lemma convexCombo_mem_GP (γ : Specification S E) (hγ : γ.IsProper) [γ.IsMark
   -- Use the fixed-point characterization `μ.bind (γ Λ) = μ`.
   have hμ' :
       ∀ Λ : Finset S, (μ : Measure (S → E)).bind (γ Λ) = (μ : Measure (S → E)) := by
-    -- `μ` is finite (probability), and `γ` is Markov by hypothesis.
     have : γ.IsGibbsMeasure (μ : Measure (S → E)) := hμ
     simpa [Specification.isGibbsMeasure_iff_forall_bind_eq (S := S) (E := E) (γ := γ) hγ] using this
   have hν' :
       ∀ Λ : Finset S, (ν : Measure (S → E)).bind (γ Λ) = (ν : Measure (S → E)) := by
     have : γ.IsGibbsMeasure (ν : Measure (S → E)) := hν
     simpa [Specification.isGibbsMeasure_iff_forall_bind_eq (S := S) (E := E) (γ := γ) hγ] using this
-  -- Show the convex combination is also a fixed point.
   have hfix :
       ∀ Λ : Finset S,
         ((ProbabilityMeasure.convexCombo (Ω := (S → E)) (p := p) μ ν :
@@ -91,14 +89,11 @@ lemma convexCombo_mem_GP (γ : Specification S E) (hγ : γ.IsProper) [γ.IsMark
               ProbabilityMeasure (S → E)) :
               Measure (S → E)) := by
     intro Λ
-    -- Expand the convex combination and use linearity of `bind` in the first argument.
     have hmeas : Measurable (γ Λ) :=
       (ProbabilityTheory.Kernel.measurable (γ Λ)).mono
         (MeasureTheory.cylinderEvents_le_pi (X := fun _ : S ↦ E) (Δ := ((Λ : Set S)ᶜ)))
         le_rfl
-    -- Unfold the convex combination into a linear combination of measures.
     simp [ProbabilityMeasure.coe_convexCombo]
-    -- Now use additivity and homogeneity of `bind` in its first argument.
     rw [Measure.bind_add (μ := unitInterval.toNNReal p • (μ : Measure (S → E)))
       (ν := unitInterval.toNNReal (unitInterval.symm p) • (ν : Measure (S → E)))
       (f := γ Λ) hmeas]
@@ -106,15 +101,11 @@ lemma convexCombo_mem_GP (γ : Specification S E) (hγ : γ.IsProper) [γ.IsMark
       (f := γ Λ) hmeas]
     rw [Measure.bind_smul (c := unitInterval.toNNReal (unitInterval.symm p))
       (μ := (ν : Measure (S → E))) (f := γ Λ) hmeas]
-    -- Finally, use the fixed-point property for `μ` and `ν`.
     simp [hμ' Λ, hν' Λ]
-  -- Convert the fixed-point property back to `IsGibbsMeasure`.
-  -- The convex combination is a probability measure, hence finite.
   have : γ.IsGibbsMeasure
       ((ProbabilityMeasure.convexCombo (Ω := (S → E)) (p := p) μ ν :
           ProbabilityMeasure (S → E)) :
         Measure (S → E)) := by
-    -- Use the reverse direction of `isGibbsMeasure_iff_forall_bind_eq`.
     haveI : IsFiniteMeasure
         ((ProbabilityMeasure.convexCombo (Ω := (S → E)) (p := p) μ ν :
             ProbabilityMeasure (S → E)) :
@@ -149,9 +140,6 @@ theorem ae_eq_const_of_measurable {X : Type*} [MeasurableSpace X] [MeasurableSpa
     (hμ : IsTailTrivial (S := S) (E := E) μ) {f : (S → E) → X}
     (hf : Measurable[@tailSigmaAlgebra S E _] f) :
     ∃ c : X, f =ᵐ[(μ : Measure (S → E))] fun _ => c := by
-  classical
-  -- For each measurable `U`, the tail event `{ω | f ω ∈ U}` has probability `0` or `1`,
-  -- hence `f` is eventually in `U` or eventually out of `U` along `ae μ`.
   have hDich :
       ∀ U : Set X, MeasurableSet U →
         (∀ᵐ ω ∂(μ : Measure (S → E)), f ω ∈ U) ∨
@@ -160,7 +148,6 @@ theorem ae_eq_const_of_measurable {X : Type*} [MeasurableSpace X] [MeasurableSpa
     have hpre_tail : MeasurableSet[@tailSigmaAlgebra S E _] (f ⁻¹' U) := hf hU
     have hpre_pi :
         MeasurableSet (f ⁻¹' U) := by
-      -- `tailSigmaAlgebra ≤ MeasurableSpace.pi`.
       have hle_tail_pi :
           (@tailSigmaAlgebra S E _ : MeasurableSpace (S → E)) ≤ MeasurableSpace.pi := by
         refine le_trans
@@ -172,24 +159,19 @@ theorem ae_eq_const_of_measurable {X : Type*} [MeasurableSpace X] [MeasurableSpa
       hμ (f ⁻¹' U) hpre_tail
     rcases hprob with h0 | h1
     · right
-      -- If `μ (f ⁻¹' U) = 0`, then `f ω ∉ U` a.e.
       have : (∀ᵐ ω ∂(μ : Measure (S → E)), ¬ f ω ∈ U) := by
-        -- `μ {ω | ¬ (¬ f ω ∈ U)} = μ (f ⁻¹' U) = 0`.
         have : (μ : Measure (S → E)) {ω | ¬ (¬ f ω ∈ U)} = 0 := by
           simpa using h0
         simpa [ae_iff] using this
       exact this
     · left
-      -- If `μ (f ⁻¹' U) = 1`, then `f ω ∈ U` a.e.
       have hcompl0 : (μ : Measure (S → E)) (f ⁻¹' U)ᶜ = 0 :=
         (prob_compl_eq_zero_iff (μ := (μ : Measure (S → E))) hpre_pi).2 h1
       have : (∀ᵐ ω ∂(μ : Measure (S → E)), f ω ∈ U) := by
-        -- `μ {ω | ¬ f ω ∈ U} = μ (f ⁻¹' U)ᶜ = 0`.
         have : (μ : Measure (S → E)) {ω | ¬ f ω ∈ U} = 0 := by
           simpa [Set.preimage, Set.compl_def] using hcompl0
         simpa [ae_iff] using this
       exact this
-  -- Use the countable separating family of measurable sets in `X`.
   have : ∃ c : X, f =ᶠ[ae (μ : Measure (S → E))] fun _ => c :=
     Filter.exists_eventuallyEq_const_of_forall_separating (l := ae (μ : Measure (S → E)))
       (f := f) (p := MeasurableSet) (β := X) (fun U hU => by
@@ -211,7 +193,6 @@ theorem ae_eq_const_of_ae_eq_measurable {X : Type*} [MeasurableSpace X]
     (hf : ∃ g : (S → E) → X, Measurable[@tailSigmaAlgebra S E _] g ∧
       f =ᵐ[(μ : Measure (S → E))] g) :
     ∃ c : X, f =ᵐ[(μ : Measure (S → E))] fun _ => c := by
-  classical
   rcases hf with ⟨g, hg, hfg⟩
   rcases ae_eq_const_of_measurable (S := S) (E := E) (μ := μ) hμ (f := g) hg with ⟨c, hgc⟩
   refine ⟨c, hfg.trans ?_⟩
