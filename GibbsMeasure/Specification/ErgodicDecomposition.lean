@@ -39,7 +39,6 @@ variable {S E : Type*} [MeasurableSpace E]
 
 lemma tailSigmaAlgebra_le_pi :
     (@tailSigmaAlgebra S E _ : MeasurableSpace (S → E)) ≤ MeasurableSpace.pi := by
-  -- Use the `Λ = ∅` term in the infimum defining `tailSigmaAlgebra`.
   refine le_trans
     (iInf_le (fun Λ : Finset S =>
       cylinderEvents (X := fun _ : S ↦ E) ((Λ : Set S)ᶜ)) (∅ : Finset S)) ?_
@@ -170,6 +169,26 @@ lemma lintegral_eval_tailKernelLaw (A : Set (S → E)) (hA : MeasurableSet A) :
         = ∫⁻ ω : S → E, (tailKernel (S := S) (E := E) μ ω) A ∂μ := hmap
     _ = ∫⁻ ω : S → E, (tailKernel (S := S) (E := E) μ ω) A ∂(μ.trim hm) := htrim
     _ = μ A := hdis
+
+lemma join_tailKernelLaw :
+    MeasureTheory.Measure.join (tailKernelLaw (S := S) (E := E) μ) = μ := by
+  ext A hA
+  simpa [MeasureTheory.Measure.join_apply (m := tailKernelLaw (S := S) (E := E) μ) hA] using
+    (lintegral_eval_tailKernelLaw (S := S) (E := E) (μ := μ) A hA)
+
+lemma isProbabilityMeasure_tailKernelLaw [IsProbabilityMeasure μ] :
+    IsProbabilityMeasure (tailKernelLaw (S := S) (E := E) μ) := by
+  have hmeas : Measurable (tailKernel (S := S) (E := E) μ) :=
+    measurable_tailKernel_pi (S := S) (E := E) (μ := μ)
+  simpa [tailKernelLaw] using (MeasureTheory.Measure.isProbabilityMeasure_map (μ := μ) hmeas.aemeasurable)
+
+/-! ### A `ProbabilityMeasure` version of `tailKernelLaw` -/
+
+/-- `tailKernelLaw` packaged as a probability measure (when `μ` is a probability measure). -/
+noncomputable def tailKernelLawPM (μ : ProbabilityMeasure (S → E)) : ProbabilityMeasure (Measure (S → E)) :=
+  ⟨tailKernelLaw (S := S) (E := E) (μ := (μ : Measure (S → E))), by
+    simpa using
+      (isProbabilityMeasure_tailKernelLaw (S := S) (E := E) (μ := (μ : Measure (S → E))))⟩
 
 /-! ## Tail-determinism of the tail kernel (hence tail-triviality of its conditional measures) -/
 
@@ -348,7 +367,6 @@ lemma ae_tailKernel_apply_eq_indicator
       ∀ A : Set (S → E), MeasurableSet[@tailSigmaAlgebra S E _] A →
         (tailKernel (S := S) (E := E) μ ω) A
           = A.indicator (fun _ : (S → E) => (1 : ℝ≥0∞)) ω := by
-  classical
   have h := tailKernelTail_ae_eq_id (S := S) (E := E) (μ := μ)
   filter_upwards [h] with ω hω A hA
   have h_eval :
@@ -366,7 +384,6 @@ lemma ae_tailKernel_apply_eq_indicator
   have hR :
       (@ProbabilityTheory.Kernel.id (S → E) (@tailSigmaAlgebra    S E _)) ω A
         = A.indicator (fun _ : (S → E) => (1 : ℝ≥0∞)) ω := by
-    classical
     letI : MeasurableSpace (S → E) := @tailSigmaAlgebra S E _
     have hdirac : (MeasureTheory.Measure.dirac ω) A = A.indicator (fun _ : (S → E) => (1 : ℝ≥0∞)) ω :=
       by simpa using (MeasureTheory.Measure.dirac_apply' (a := ω) (s := A) hA)
@@ -382,7 +399,6 @@ lemma ae_lintegral_tailKernel_eq
     (f : (S → E) → ℝ≥0∞) (hf : @Measurable (S → E) ℝ≥0∞ (@tailSigmaAlgebra S E _) _ f) :
     ∀ᵐ ω ∂μ.trim (tailSigmaAlgebra_le_pi (S := S) (E := E)),
       (∫⁻ x, f x ∂(tailKernel (S := S) (E := E) μ ω)) = f ω := by
-  classical
   have h := tailKernelTail_ae_eq_id (S := S) (E := E) (μ := μ)
   filter_upwards [h] with ω hω
   have hid :
@@ -422,7 +438,6 @@ lemma ae_tailKernel_inter_eq_indicator_mul
       (tailKernel (S := S) (E := E) μ ω) (A ∩ B)
         =
       (B.indicator (fun _ : (S → E) => (1 : ℝ≥0∞)) ω) * (tailKernel (S := S) (E := E) μ ω) A := by
-  classical
   have h := ae_tailKernel_apply_eq_indicator (S := S) (E := E) (μ := μ)
   filter_upwards [h] with ω hω
   have hB_pi : MeasurableSet B :=
@@ -457,7 +472,6 @@ theorem ae_isTailTrivial_tailKernel
         (μ := (⟨tailKernel (S := S) (E := E) μ ω, by
           -- each fiber of a Markov kernel is a probability measure
           infer_instance⟩ : ProbabilityMeasure (S → E))) := by
-  classical
   filter_upwards [ae_tailKernel_apply_eq_indicator (S := S) (E := E) (μ := μ)] with ω hω
   intro A hA
   have hA' := hω A hA
@@ -540,7 +554,6 @@ private lemma ae_lintegral_indicator_eq_indicator_lintegral
       (∫⁻ x, B.indicator g x ∂(tailKernel (S := S) (E := E) μ ω))
         =
       B.indicator (fun ω => ∫⁻ x, g x ∂(tailKernel (S := S) (E := E) μ ω)) ω := by
-  classical
   have htail := ae_tailKernel_apply_eq_indicator (S := S) (E := E) (μ := μ)
   have hB_pi : MeasurableSet B :=
     (tailSigmaAlgebra_le_pi (S := S) (E := E)) B hB
@@ -587,7 +600,6 @@ lemma ae_comp_comap_tailKernel_eq_tailKernel
     ∀ᵐ ω ∂μ.trim (tailSigmaAlgebra_le_pi (S := S) (E := E)),
       ((γ Λ).comap id cylinderEvents_le_pi ∘ₖ tailKernel (S := S) (E := E) μ) ω
         = tailKernel (S := S) (E := E) μ ω := by
-  classical
   let hm : (@tailSigmaAlgebra S E _ : MeasurableSpace (S → E)) ≤ MeasurableSpace.pi :=
     tailSigmaAlgebra_le_pi (S := S) (E := E)
   let μT : Measure[@tailSigmaAlgebra S E _] (S → E) := μ.trim hm
@@ -597,7 +609,6 @@ lemma ae_comp_comap_tailKernel_eq_tailKernel
   let κ₂ : Kernel[@tailSigmaAlgebra S E _] (S → E) (S → E) :=
     tailKernel (S := S) (E := E) μ
   have hcompProd : μT ⊗ₘ κ₁ = μT ⊗ₘ κ₂ := by
-    classical
     let C : Set (Set ((S → E) × (S → E))) :=
       Set.image2 (fun s t => s ×ˢ t)
         ({s : Set (S → E) | MeasurableSet[@tailSigmaAlgebra S E _] s})
@@ -623,9 +634,7 @@ lemma ae_comp_comap_tailKernel_eq_tailKernel
       have hB' : MeasurableSet[@tailSigmaAlgebra S E _] B := hB
       have hA' : MeasurableSet A := hA
       have hB_pi : MeasurableSet B := hm _ hB'
-      -- Expand both sides on rectangles.
       simp [MeasureTheory.Measure.compProd_apply_prod hB' hA']
-      -- RHS integral equals `μ (A ∩ B)` by tail disintegration.
       have h_rhs :
           (∫⁻ ω in B, κ₂ ω A ∂μT) = μ (A ∩ B) := by
         have hcomp : κ₂ ∘ₘ μT = μ := by
@@ -633,7 +642,6 @@ lemma ae_comp_comap_tailKernel_eq_tailKernel
         have hAB_pi : MeasurableSet (A ∩ B) := hA'.inter hB_pi
         have hbind :
             (κ₂ ∘ₘ μT) (A ∩ B) = ∫⁻ ω, κ₂ ω (A ∩ B) ∂μT := by
-          -- `κ₂` is a kernel measurable w.r.t. the tail σ-algebra.
           have hκ₂_tail : Measurable[@tailSigmaAlgebra S E _] κ₂ := by
             simpa [κ₂] using (κ₂.measurable : Measurable[@tailSigmaAlgebra S E _] κ₂)
           simp [Measure.bind_apply hAB_pi hκ₂_tail.aemeasurable]
@@ -658,13 +666,11 @@ lemma ae_comp_comap_tailKernel_eq_tailKernel
             _ = ∫⁻ ω in B, κ₂ ω A ∂μT := by
                   simpa using (_root_.MeasureTheory.lintegral_indicator
                     (μ := μT) (s := B) (f := fun ω => κ₂ ω A) hB')
-        -- Conclude using `κ₂ ∘ₘ μT = μ`.
         calc
           (∫⁻ ω in B, κ₂ ω A ∂μT)
               = (∫⁻ ω, κ₂ ω (A ∩ B) ∂μT) := by simpa using hI.symm
           _ = (κ₂ ∘ₘ μT) (A ∩ B) := by simp [hbind]
           _ = μ (A ∩ B) := by simp [hcomp]
-      -- LHS integral equals `μ (A ∩ B)` by disintegration + the DLR identity.
       have h_lhs :
           (∫⁻ ω in B, κ₁ ω A ∂μT) = μ (A ∩ B) := by
         have hgA : Measurable fun x : S → E => (γ Λ x) A :=
@@ -685,7 +691,6 @@ lemma ae_comp_comap_tailKernel_eq_tailKernel
               B.indicator (fun ω => ∫⁻ x, (γ Λ x) A ∂(κ₂ ω)) ω
                 = B.indicator (fun ω => κ₁ ω A) ω := by
             simp [hκ₁_apply]
-          -- `hω` already identifies the inner integral on the LHS with the indicator of the inner integral.
           simpa [κ₂, hrew] using hω
         have hμ_eq : (κ₂ ∘ₘ μT) = μ := by
           simpa [κ₂, μT, hm] using tailKernel_comp_trim (S := S) (E := E) (μ := μ)
@@ -705,7 +710,6 @@ lemma ae_comp_comap_tailKernel_eq_tailKernel
                     simpa using (MeasureTheory.lintegral_congr_ae hswap.symm)
             _ = ∫⁻ x, B.indicator (fun x => (γ Λ x) A) x ∂(κ₂ ∘ₘ μT) := by
                   symm
-                  -- `bind μT κ₂` is definitionaly `κ₂ ∘ₘ μT`.
                   simpa using (_root_.MeasureTheory.Measure.lintegral_bind (m := μT) (μ := κ₂)
                     (f := fun x => B.indicator (fun x => (γ Λ x) A) x) hμfun (by
                       simpa using hf_ae_bind))
@@ -723,7 +727,6 @@ lemma ae_comp_comap_tailKernel_eq_tailKernel
           _ = ∫⁻ x, B.indicator (fun x => (γ Λ x) A) x ∂μ := by
                 simpa [hκ₁_apply] using hμB
           _ = μ (A ∩ B) := hDLR
-      -- conclude equality of rectangle integrals
       simp [h_lhs, h_rhs]
     · simp
   haveI : MeasurableSpace.CountablyGenerated (S → E) := countablyGenerated_of_standardBorel
@@ -738,8 +741,6 @@ lemma ae_forall_bind_eq_tailKernel
     (hγ : γ.IsProper) (hμ : γ.IsGibbsMeasure μ) :
     ∀ᵐ ω ∂μ.trim (tailSigmaAlgebra_le_pi (S := S) (E := E)),
       ∀ Λ : Finset S, (tailKernel (S := S) (E := E) μ ω).bind (γ Λ) = tailKernel (S := S) (E := E) μ ω := by
-  classical
-  -- First, for each fixed `Λ`, get the fixed-point for `((γ Λ).comap id)`.
   have hΛ :
       ∀ Λ : Finset S,
         ∀ᵐ ω ∂μ.trim (tailSigmaAlgebra_le_pi (S := S) (E := E)),
@@ -749,16 +750,13 @@ lemma ae_forall_bind_eq_tailKernel
     have hcomp :=
       ae_comp_comap_tailKernel_eq_tailKernel (S := S) (E := E) (μ := μ) (γ := γ) (Λ := Λ) hγ hμ
     filter_upwards [hcomp] with ω hω
-    -- Unfold kernel composition at `ω`.
     simpa [ProbabilityTheory.Kernel.comp_apply] using hω
-  -- Upgrade from `comap id` to `γ Λ` (same pointwise measures), and swap quantifiers using countability.
   have hΛ' :
       ∀ Λ : Finset S,
         ∀ᵐ ω ∂μ.trim (tailSigmaAlgebra_le_pi (S := S) (E := E)),
           (tailKernel (S := S) (E := E) μ ω).bind (γ Λ) = tailKernel (S := S) (E := E) μ ω := by
     intro Λ
     filter_upwards [hΛ Λ] with ω hω
-    -- `comap id` does not change the pointwise measures, hence does not change `bind`.
     have hsame :
         (tailKernel (S := S) (E := E) μ ω).bind (γ Λ)
           = (tailKernel (S := S) (E := E) μ ω).bind ((γ Λ).comap id cylinderEvents_le_pi) := by
@@ -771,11 +769,10 @@ lemma ae_forall_bind_eq_tailKernel
           AEMeasurable ((γ Λ).comap id cylinderEvents_le_pi : (S → E) → Measure (S → E))
             (tailKernel (S := S) (E := E) μ ω) :=
         (ProbabilityTheory.Kernel.measurable ((γ Λ).comap id cylinderEvents_le_pi)).aemeasurable
-      simp [Measure.bind_apply hA hAEM, Measure.bind_apply hA hAEM', ProbabilityTheory.Kernel.comap_apply]
+      rw [Measure.bind_apply hA hAEM, Measure.bind_apply hA hAEM']
+      simp [ProbabilityTheory.Kernel.comap_apply]
     simpa [hsame] using hω
-  -- `Finset S` is countable under `[Countable S]`, so we can swap `∀ Λ` with `∀ᵐ ω`.
   haveI : Countable (Finset S) := by infer_instance
-  -- `ae_all_iff` gives the swap.
   simpa [MeasureTheory.ae_all_iff] using (MeasureTheory.ae_all_iff.2 hΛ')
 
 /-- **Georgii step:** if `μ` is Gibbs, then its tail conditional measures are Gibbs `μ.trim 𝓣`-a.e. -/
@@ -784,16 +781,47 @@ theorem ae_isGibbsMeasure_tailKernel
     (hγ : γ.IsProper) (hμ : γ.IsGibbsMeasure μ) :
     ∀ᵐ ω ∂μ.trim (tailSigmaAlgebra_le_pi (S := S) (E := E)),
       γ.IsGibbsMeasure (tailKernel (S := S) (E := E) μ ω) := by
-  classical
   filter_upwards [ae_forall_bind_eq_tailKernel (S := S) (E := E) (μ := μ) (γ := γ) hγ hμ] with ω hω
-  -- Use the fixed-point characterization of Gibbs measures.
   haveI : IsFiniteMeasure (tailKernel (S := S) (E := E) μ ω) := by
     haveI : IsProbabilityMeasure (tailKernel (S := S) (E := E) μ ω) :=
       ProbabilityTheory.IsMarkovKernel.isProbabilityMeasure
         (κ := tailKernel (S := S) (E := E) μ) ω
     infer_instance
-  -- `isGibbsMeasure_iff_forall_bind_eq`
   exact (Specification.isGibbsMeasure_iff_forall_bind_eq (γ := γ) hγ).2 hω
+
+/-!
+### Extremal (ergodic) components (Georgii Thm 7.7 + tail disintegration)
+
+Using:
+- `ae_isGibbsMeasure_tailKernel` (DLR fixed point transported to components),
+- `ae_isTailTrivial_tailKernel` (tail determinism ⇒ tail triviality of components),
+- `ExtremePoints.mem_extremePoints_G_of_isTailTrivial` (Georgii Thm 7.7, direction `tail-trivial → extreme`),
+we conclude that the tail conditional measures are **extreme points** of `G(γ)` almost surely.
+-/
+
+open scoped Convex
+
+theorem ae_mem_extremePoints_G_tailKernel
+    [@MeasurableSpace.CountableOrCountablyGenerated (S → E) (S → E) (@tailSigmaAlgebra S E _)]
+    (hγ : γ.IsProper) (hμ : γ.IsGibbsMeasure μ) :
+    ∀ᵐ ω ∂μ.trim (tailSigmaAlgebra_le_pi (S := S) (E := E)),
+      (tailKernel (S := S) (E := E) μ ω) ∈ (G (γ := γ)).extremePoints ENNReal := by
+  classical
+  have hGibbs :=
+    ae_isGibbsMeasure_tailKernel (S := S) (E := E) (μ := μ) (γ := γ) hγ hμ
+  have hTail :=
+    ae_isTailTrivial_tailKernel (S := S) (E := E) (μ := μ)
+  filter_upwards [hGibbs, hTail] with ω hωGibbs hωTail
+  have hμG : (tailKernel (S := S) (E := E) μ ω) ∈ G (γ := γ) := by
+    refine ⟨?_, hωGibbs⟩
+    infer_instance
+  have htail' :
+      IsTailTrivial (S := S) (E := E)
+        (⟨tailKernel (S := S) (E := E) μ ω, by
+          infer_instance⟩ : ProbabilityMeasure (S → E)) := hωTail
+  exact
+    mem_extremePoints_G_of_isTailTrivial (S := S) (E := E) (γ := γ)
+      (hγ := hγ) (μ := tailKernel (S := S) (E := E) μ ω) hμG htail'
 
 omit [Countable S] [StandardBorelSpace E] in
 /-- A Gibbs measure is a fixed point for `((γ Λ).comap id cylinderEvents_le_pi) ∘ₘ ·`. -/
