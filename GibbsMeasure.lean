@@ -15,7 +15,6 @@ import GibbsMeasure.Prereqs.CylinderEvents
 import GibbsMeasure.Prereqs.Filtration.Consistent
 import GibbsMeasure.Prereqs.Juxt
 import GibbsMeasure.Prereqs.Kernel.CondExp
-import GibbsMeasure.Prereqs.Kernel.CondExp'
 import GibbsMeasure.Prereqs.Kernel.Feller
 import GibbsMeasure.Prereqs.Kernel.Proper
 import GibbsMeasure.Prereqs.LebesgueCondExp
