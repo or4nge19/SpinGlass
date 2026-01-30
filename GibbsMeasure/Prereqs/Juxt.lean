@@ -13,7 +13,6 @@ lemma juxt_apply_of_not_mem (h : x ∉ Λ) (ζ : Λ → E) : juxt Λ η ζ x = �
 
 
 lemma Measurable.juxt : Measurable (juxt Λ η) := by
-  classical
   letI : MeasurableSpace E := 𝓔
   refine (measurable_pi_iff).2 (fun x => ?_)
   by_cases hx : x ∈ Λ
@@ -30,7 +29,6 @@ lemma Measurable.juxt : Measurable (juxt Λ η) := by
 /-- The juxtaposition function is jointly measurable in (η, ζ). -/
 lemma measurable_juxt_joint (Λ : Set S) :
     Measurable (fun (p : (S → E) × (Λ → E)) => juxt Λ p.1 p.2) := by
-  classical
   letI : MeasurableSpace E := 𝓔
   rw [measurable_pi_iff]
   intro x
@@ -50,7 +48,6 @@ lemma measurable_juxt_joint_restricted {Λ : Finset S} :
       (cylinderEvents ((Λ : Set S)ᶜ)).prod inferInstance
     ]
       (fun (p : (S → E) × (↥(Λ : Set S) → E)) => juxt (Λ : Set S) p.1 p.2) := by
-  classical
   letI : MeasurableSpace E := 𝓔
   simp_rw [measurable_pi_iff]
   intro x
