@@ -1,7 +1,7 @@
 # SpinGlass
 
-Lean 4 development of finite‑volume mean‑field spin glass calculus, organized as a `lean_lib`
-`SpinGlass` (with an additional `GibbsMeasure` library developing https://github.com/james18lpc/GibbsMeasure and relevant for the formalziation vol 2 of Talagrand "Mean Field Models for Spin Glasses").
+Lean 4 development of finite‑volume mean‑field spin glass calculus following vol 1 of Talagrand "Mean Field Models for Spin Glasses" 
+(with an additional `GibbsMeasure` library developing https://github.com/james18lpc/GibbsMeasure and relevant for the formalziation vol. 2).
 
 
 ## Main definitions (core finite‑`N` objects)
