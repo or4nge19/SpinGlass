@@ -83,7 +83,7 @@ In `SpinGlass/ComplexIBP.lean`:
 - `approx_integral_by_parts_complex` (approximate complex integration by parts under a Lipschitz
   derivative hypothesis).
 
-In `SpinGlass/ArguinTaiFp.lean`: arithmeitc ddetour
+In `SpinGlass/ArguinTaiFp.lean`: arithmetic detour
 
 - interval measure `μ01`, oscillatory factor `omega_p`,
 - Arguin–Tai weight `arguinTaiWeight` and linear map `L_p`,
