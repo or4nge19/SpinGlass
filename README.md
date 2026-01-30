@@ -1,7 +1,7 @@
 # SpinGlass
 
-Lean 4 development of finite‑volume mean‑field spin glass calculus, organized as a `lean_lib`
-`SpinGlass` (with an additional `GibbsMeasure` library developing https://github.com/james18lpc/GibbsMeasure and relevant for the formalziation vol 2 of Talagrand "Mean Field Models for Spin Glasses").
+Lean 4 development of finite‑volume mean‑field spin glass calculus following vol 1 of Talagrand "Mean Field Models for Spin Glasses" 
+(with an additional `GibbsMeasure` library developing https://github.com/james18lpc/GibbsMeasure and relevant for the formalziation vol. 2).
 
 
 ## Main definitions (core finite‑`N` objects)
@@ -83,7 +83,7 @@ In `SpinGlass/ComplexIBP.lean`:
 - `approx_integral_by_parts_complex` (approximate complex integration by parts under a Lipschitz
   derivative hypothesis).
 
-In `SpinGlass/ArguinTaiFp.lean`: arithmeitc ddetour
+In `SpinGlass/ArguinTaiFp.lean`: arithmetic detour
 
 - interval measure `μ01`, oscillatory factor `omega_p`,
 - Arguin–Tai weight `arguinTaiWeight` and linear map `L_p`,

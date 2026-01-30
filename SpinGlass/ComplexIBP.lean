@@ -47,13 +47,11 @@ noncomputable def deriv_zbar (F : ℂ → ℂ) (z : ℂ) : ℂ :=
 
 lemma deriv_z_add_deriv_zbar (F : ℂ → ℂ) (z : ℂ) :
     deriv_z F z + deriv_zbar F z = (fderiv ℝ F z) 1 := by
-  -- `1/2*(A-B) + 1/2*(A+B) = A`
   simp [deriv_z, deriv_zbar, add_comm, add_left_comm, add_assoc, mul_add, sub_eq_add_neg]
   ring
 
 lemma deriv_z_sub_deriv_zbar (F : ℂ → ℂ) (z : ℂ) :
     deriv_z F z - deriv_zbar F z = -I * (fderiv ℝ F z) I := by
-  -- `1/2*(A-B) - 1/2*(A+B) = -B`
   simp [deriv_z, deriv_zbar, sub_eq_add_neg, add_comm, add_left_comm, mul_add]
   ring
 
