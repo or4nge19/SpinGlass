@@ -72,11 +72,10 @@ variable {γ}
 variable [γ.IsMarkov]
 
 omit [TopologicalSpace E] [OpensMeasurableSpace (S → E)] [γ.IsMarkov] in
--- A helper: kernels of a specification are measurable as functions into measures for the *full*
+-- kernels of a specification are measurable as functions into measures for the *full*
 -- product σ-algebra (even though they are defined with `cylinderEvents (Λᶜ)` as source σ-algebra).
 lemma measurable_kernel_toMeasure (Λ : Finset S) :
     @Measurable (S → E) (Measure (S → E)) MeasurableSpace.pi Measure.instMeasurableSpace (γ Λ) := by
-  -- Start from kernel-measurability on `cylinderEvents (Λᶜ)` and widen the source measurable space.
   exact (Kernel.measurable (γ Λ)).mono
     (MeasureTheory.cylinderEvents_le_pi (X := fun _ : S ↦ E) (Δ := ((Λ : Set S)ᶜ))) le_rfl
 
@@ -84,14 +83,11 @@ lemma measurable_kernel_toMeasure (Λ : Finset S) :
 noncomputable def bindPM (Λ : Finset S) (μ : ProbabilityMeasure (S → E)) :
     ProbabilityMeasure (S → E) :=
   ⟨(μ : Measure (S → E)).bind (γ Λ), by
-    -- `μ.bind (γ Λ)` is a probability measure because `γ Λ` is Markov.
     have hAEM : AEMeasurable (γ Λ) (μ : Measure (S → E)) :=
       (measurable_kernel_toMeasure (γ := γ) Λ).aemeasurable
     haveI : IsProbabilityMeasure (μ : Measure (S → E)) := by infer_instance
     constructor
-    -- compute mass on `univ`
     rw [Measure.bind_apply MeasurableSet.univ hAEM]
-    -- integrand is constantly `1`
     simp⟩
 
 omit [TopologicalSpace E] [OpensMeasurableSpace (S → E)] in
@@ -108,19 +104,15 @@ variable [γ.IsFeller]
 theorem continuous_bindPM (Λ : Finset S) :
     Continuous (bindPM (γ := γ) Λ :
       ProbabilityMeasure (S → E) → ProbabilityMeasure (S → E)) := by
-  -- Use the characterization of continuity in the weak topology by testing against bounded continuous functions.
   refine (MeasureTheory.ProbabilityMeasure.continuous_iff_forall_continuous_integral
     (μs := (bindPM (γ := γ) Λ))).2 ?_
   intro f
-  -- Let `g x := ∫ y, f y ∂(γ Λ x)`; this is bounded continuous by the Feller property.
   let g : BoundedContinuousFunction (S → E) ℝ :=
     ProbabilityTheory.Kernel.continuousAction (κ := γ Λ) f
   have hg : Continuous fun μ : ProbabilityMeasure (S → E) => ∫ x, g x ∂(μ : Measure (S → E)) := by
-    -- This is exactly `continuous_integral_boundedContinuousFunction`, just with a minor coercion.
     simpa using
       (MeasureTheory.ProbabilityMeasure.continuous_integral_boundedContinuousFunction (f := g)
         (X := (S → E)))
-  -- Rewrite the integral against the bound measure as an integral of `g` against `μ`.
   have hEq :
       (fun μ : ProbabilityMeasure (S → E) =>
           ∫ x, f x ∂((μ : Measure (S → E)).bind (γ Λ)))
