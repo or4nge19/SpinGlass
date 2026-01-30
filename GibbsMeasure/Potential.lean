@@ -62,7 +62,6 @@ coordinates in `Δ`. -/
 lemma IsPotential.eq_of_eqOn [IsPotential Φ] {Δ : Finset S} {η ζ : S → E}
     (h : ∀ x ∈ Δ, η x = ζ x) :
     Φ Δ η = Φ Δ ζ := by
-  classical
   have hf :
       Measurable[cylinderEvents (X := fun _ : S ↦ E) (Δ : Set S)] (Φ Δ) :=
     IsPotential.measurable (Φ := Φ) Δ
@@ -110,7 +109,6 @@ noncomputable def interactingHamiltonian [IsFinitary Φ] (Λ : Finset S) (η : S
 
 lemma measurable_interactingHamiltonian [IsFinitary Φ] [IsPotential Φ] (Λ : Finset S) :
     Measurable (interactingHamiltonian (Φ := Φ) Λ) := by
-  classical
   set t : Finset (Finset S) :=
       ((IsFinitary.finite_support (Φ := Φ)).toFinset).filter (fun Δ => Δ ∩ Λ ≠ ∅) with ht
   change Measurable (fun η : S → E => Finset.sum t (fun Δ => Φ Δ η))
@@ -139,7 +137,6 @@ lemma measurable_boltzmannWeight [IsFinitary Φ] [IsPotential Φ] (β : ℝ) (Λ
 `Specification.IsPremodifier`. -/
 lemma isPremodifier_boltzmannWeight (β : ℝ) [IsFinitary Φ] [IsPotential Φ] :
     Specification.IsPremodifier (S := S) (E := E) (boltzmannWeight (Φ := Φ) β) := by
-  classical
   refine ⟨?_, ?_⟩
   · intro Λ
     exact measurable_boltzmannWeight (Φ := Φ) β Λ
@@ -272,7 +269,6 @@ positive everywhere and `isssd` is a probability measure). -/
 lemma premodifierZ_boltzmannWeight_ne_zero (Φ : Potential S E) [IsFinitary Φ] [IsPotential Φ]
     (β : ℝ) (ν : Measure E) [IsProbabilityMeasure ν] (Λ : Finset S) (η : S → E) :
     Specification.premodifierZ (S := S) (E := E) ν (boltzmannWeight (Φ := Φ) β) Λ η ≠ 0 := by
-  classical
   let μ : Measure (S → E) := Specification.isssd (S := S) (E := E) ν Λ η
   have hμ_univ : μ Set.univ = 1 := by
     simpa [μ] using (IsProbabilityMeasure.measure_univ (μ := Specification.isssd (S := S) (E := E) ν Λ η))
@@ -302,7 +298,6 @@ lemma isModifier_gibbsModifier (Φ : Potential S E) [IsFinitary Φ] [IsPotential
     (hZ : ∀ (Λ : Finset S) (η : S → E),
       Specification.premodifierZ (S := S) (E := E) ν (boltzmannWeight (Φ := Φ) β) Λ η ≠ ⊤) :
     (Specification.isssd (S := S) (E := E) ν).IsModifier (gibbsModifier (S := S) (E := E) Φ β ν) := by
-  classical
   let ρ : Finset S → (S → E) → ℝ≥0∞ := boltzmannWeight (Φ := Φ) β
   have hpre : Specification.IsPremodifier (S := S) (E := E) ρ :=
     isPremodifier_boltzmannWeight (Φ := Φ) β
