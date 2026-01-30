@@ -98,6 +98,521 @@ lemma generateFrom_piNatGenSet :
 
 end CorePiSystem
 
+/-! ## Measurable cores for tail-triviality and the Gibbs fixed-point property -/
+
+section TailTrivialCore
+
+variable [Countable S] [StandardBorelSpace E]
+variable
+    [@MeasurableSpace.CountableOrCountablyGenerated (S → E) (S → E) (@tailSigmaAlgebra S E _)]
+
+local notation3 (prettyPrint := false) "Ω" => (S → E)
+
+-- Build the countable π-system inside the tail σ-algebra without changing the ambient `pi`-structure
+-- on `Ω` (since our measures live on `MeasurableSpace.pi`).
+noncomputable def tailPiNatGen (t : Finset ℕ) : Set Ω := by
+  letI : MeasurableSpace Ω := (@tailSigmaAlgebra S E _)
+  haveI : MeasurableSpace.CountablyGenerated Ω := by
+    rcases ( (inferInstance :
+        MeasurableSpace.CountableOrCountablyGenerated Ω Ω).countableOrCountablyGenerated ) with hΩ | hcg
+    · haveI : Countable Ω := hΩ
+      infer_instance
+    · exact hcg
+  exact piNatGen (t := t)
+
+omit [Countable S] [StandardBorelSpace E] in
+lemma measurableSet_tailPiNatGen_tail (t : Finset ℕ) :
+    MeasurableSet[@tailSigmaAlgebra S E _] (tailPiNatGen (S := S) (E := E) t) := by
+  -- unfold the definition in the tail measurable space
+  letI : MeasurableSpace Ω := (@tailSigmaAlgebra S E _)
+  haveI : MeasurableSpace.CountablyGenerated Ω := by
+    rcases ( (inferInstance :
+        MeasurableSpace.CountableOrCountablyGenerated Ω Ω).countableOrCountablyGenerated ) with hΩ | hcg
+    · haveI : Countable Ω := hΩ
+      infer_instance
+    · exact hcg
+  simpa [tailPiNatGen] using (@measurableSet_piNatGen (S → E) _ _ t)
+
+omit [Countable S] [StandardBorelSpace E] in
+lemma measurableSet_tailPiNatGen_pi (t : Finset ℕ) :
+    MeasurableSet (tailPiNatGen (S := S) (E := E) t) := by
+  -- tail sets are `pi`-measurable
+  have hm : (@tailSigmaAlgebra S E _ : MeasurableSpace Ω) ≤ MeasurableSpace.pi :=
+    tailSigmaAlgebra_le_pi (S := S) (E := E)
+  exact hm _ (measurableSet_tailPiNatGen_tail (S := S) (E := E) t)
+
+/-- A *countable* core formulation of tail-triviality (0–1 law checked on a countable π-system
+generating the tail σ-algebra). -/
+def IsTailTrivialCore (ν : Measure Ω) : Prop :=
+  ν Set.univ = 1 ∧
+    ∀ t : Finset ℕ,
+      ν (tailPiNatGen (S := S) (E := E) t) = 0 ∨ ν (tailPiNatGen (S := S) (E := E) t) = 1
+
+omit [Countable S] [StandardBorelSpace E] in
+lemma measurableSet_isTailTrivialCore :
+    MeasurableSet {ν : Measure Ω | IsTailTrivialCore (S := S) (E := E) ν} := by
+  have h_univ : MeasurableSet {ν : Measure Ω | ν Set.univ = (1 : ℝ≥0∞)} :=
+    (MeasurableSet.singleton (1 : ℝ≥0∞)).preimage (Measure.measurable_coe MeasurableSet.univ)
+  have hT (t : Finset ℕ) :
+      MeasurableSet {ν : Measure Ω |
+        ν (tailPiNatGen (S := S) (E := E) t) = (0 : ℝ≥0∞) ∨
+          ν (tailPiNatGen (S := S) (E := E) t) = (1 : ℝ≥0∞)} := by
+    have h_eval :
+        Measurable fun ν : Measure Ω => ν (tailPiNatGen (S := S) (E := E) t) :=
+      Measure.measurable_coe (measurableSet_tailPiNatGen_pi (S := S) (E := E) t)
+    have h0 :
+        MeasurableSet {ν : Measure Ω | ν (tailPiNatGen (S := S) (E := E) t) = (0 : ℝ≥0∞)} :=
+      (MeasurableSet.singleton (0 : ℝ≥0∞)).preimage h_eval
+    have h1 :
+        MeasurableSet {ν : Measure Ω | ν (tailPiNatGen (S := S) (E := E) t) = (1 : ℝ≥0∞)} :=
+      (MeasurableSet.singleton (1 : ℝ≥0∞)).preimage h_eval
+    simpa [Set.setOf_or] using h0.union h1
+  have hAll :
+      MeasurableSet {ν : Measure Ω | ∀ t : Finset ℕ,
+        ν (tailPiNatGen (S := S) (E := E) t) = (0 : ℝ≥0∞) ∨
+          ν (tailPiNatGen (S := S) (E := E) t) = (1 : ℝ≥0∞)} := by
+    simpa [Set.setOf_forall] using (MeasurableSet.iInter (fun t => hT t))
+  simpa [IsTailTrivialCore, Set.setOf_and, Set.setOf_forall] using h_univ.inter hAll
+
+omit [Countable S] [StandardBorelSpace E] in
+lemma isTailTrivial_of_isTailTrivialCore {ν : Measure Ω}
+    (hcore : IsTailTrivialCore (S := S) (E := E) ν) :
+    IsTailTrivial (S := S) (E := E) (⟨ν, ⟨hcore.1⟩⟩ : ProbabilityMeasure Ω) := by
+  -- Work with the trimmed measure on the tail σ-algebra and apply Dynkin π-λ induction.
+  let hm : (@tailSigmaAlgebra S E _ : MeasurableSpace Ω) ≤ MeasurableSpace.pi :=
+    tailSigmaAlgebra_le_pi (S := S) (E := E)
+  let νt : Measure[@tailSigmaAlgebra S E _] Ω := (ν.trim hm)
+  have hνt_univ : νt Set.univ = (1 : ℝ≥0∞) := by
+    have : (ν.trim hm) (Set.univ : Set Ω) = ν (Set.univ : Set Ω) :=
+      MeasureTheory.trim_measurableSet_eq (μ := ν) hm (MeasurableSet.univ :
+        MeasurableSet[@tailSigmaAlgebra S E _] (Set.univ : Set Ω))
+    simpa [νt] using this.trans hcore.1
+  have hνt_core : ∀ t : Finset ℕ,
+      νt (tailPiNatGen (S := S) (E := E) t) = 0 ∨ νt (tailPiNatGen (S := S) (E := E) t) = 1 := by
+    intro t
+    have ht : MeasurableSet[@tailSigmaAlgebra S E _] (tailPiNatGen (S := S) (E := E) t) :=
+      measurableSet_tailPiNatGen_tail (S := S) (E := E) t
+    have : (ν.trim hm) (tailPiNatGen (S := S) (E := E) t) = ν (tailPiNatGen (S := S) (E := E) t) :=
+      MeasureTheory.trim_measurableSet_eq (μ := ν) hm ht
+    rcases hcore.2 t with ht0 | ht1
+    · left; simp [νt, this, ht0]
+    · right; simp [νt, this, ht1]
+  -- Dynkin induction on the tail σ-algebra generated by the π-system core.
+  haveI : IsProbabilityMeasure νt := ⟨hνt_univ⟩
+  -- Define the generating π-system `C` *inside* the tail σ-algebra.
+  let C : Set (Set Ω) := by
+    letI : MeasurableSpace Ω := (@tailSigmaAlgebra S E _)
+    haveI : MeasurableSpace.CountablyGenerated Ω := by
+      rcases ( (inferInstance :
+          MeasurableSpace.CountableOrCountablyGenerated Ω Ω).countableOrCountablyGenerated ) with hΩ | hcg
+      · haveI : Countable Ω := hΩ
+        infer_instance
+      · exact hcg
+    exact piNatGenSet Ω
+  have h_eq : (@tailSigmaAlgebra S E _ : MeasurableSpace Ω) =
+      MeasurableSpace.generateFrom C := by
+    letI : MeasurableSpace Ω := (@tailSigmaAlgebra S E _)
+    haveI : MeasurableSpace.CountablyGenerated Ω := by
+      rcases ( (inferInstance :
+          MeasurableSpace.CountableOrCountablyGenerated Ω Ω).countableOrCountablyGenerated ) with hΩ | hcg
+      · haveI : Countable Ω := hΩ
+        infer_instance
+      · exact hcg
+    have : MeasurableSpace.generateFrom (piNatGenSet Ω) = (‹MeasurableSpace Ω›) :=
+      (@generateFrom_piNatGenSet (S → E) _ _)
+    simpa [C] using this.symm
+  have hPi : IsPiSystem C := by
+    letI : MeasurableSpace Ω := (@tailSigmaAlgebra S E _)
+    haveI : MeasurableSpace.CountablyGenerated Ω := by
+      rcases ( (inferInstance :
+          MeasurableSpace.CountableOrCountablyGenerated Ω Ω).countableOrCountablyGenerated ) with hΩ | hcg
+      · haveI : Countable Ω := hΩ
+        infer_instance
+      · exact hcg
+    simpa [C] using (@isPiSystem_piNatGenSet (S → E) _ _)
+  intro A hA
+  have hA_pi : MeasurableSet A := hm _ hA
+  have h01_t : νt A = 0 ∨ νt A = 1 := by
+    refine MeasurableSpace.induction_on_inter
+      (m := (@tailSigmaAlgebra S E _ : MeasurableSpace Ω))
+      (s := C) h_eq hPi
+      (C := fun s _ => νt s = (0 : ℝ≥0∞) ∨ νt s = (1 : ℝ≥0∞))
+      (empty := by simp)
+      (basic := fun t ht => by
+        rcases ht with ⟨u, rfl⟩
+        -- by construction, `piNatGen` in the tail instance is `tailPiNatGen`
+        simpa [tailPiNatGen] using hνt_core u)
+      (compl := fun t htm ht01 => by
+        rcases ht01 with ht0 | ht1
+        · right
+          have : νt tᶜ = νt Set.univ - νt t := by
+            simpa using (MeasureTheory.measure_compl (μ := νt) htm (by simp))
+          simp [this, hνt_univ, ht0]
+        · left
+          have : νt tᶜ = νt Set.univ - νt t := by
+            simpa using (MeasureTheory.measure_compl (μ := νt) htm (by simp))
+          simp [this, hνt_univ, ht1])
+      (iUnion := fun f hdisj hfm hf01 => by
+        by_cases h1 : ∃ i, νt (f i) = (1 : ℝ≥0∞)
+        · rcases h1 with ⟨i, hi⟩
+          right
+          have hle : (1 : ℝ≥0∞) ≤ νt (⋃ i, f i) := by
+            have : νt (f i) ≤ νt (⋃ i, f i) :=
+              measure_mono (by intro x hx; exact mem_iUnion.2 ⟨i, hx⟩)
+            simpa [hi] using this
+          have hge : νt (⋃ i, f i) ≤ (1 : ℝ≥0∞) := by
+            have : νt (⋃ i, f i) ≤ νt Set.univ :=
+              measure_mono (subset_univ (⋃ i, f i))
+            simpa [hνt_univ] using this
+          exact le_antisymm hge hle
+        · left
+          have h0 : ∀ i, νt (f i) = (0 : ℝ≥0∞) := by
+            intro i
+            rcases hf01 i with hi0 | hi1
+            · exact hi0
+            · exact (False.elim (h1 ⟨i, hi1⟩))
+          have hle : νt (⋃ i, f i) ≤ (0 : ℝ≥0∞) := by
+            have : νt (⋃ i, f i) ≤ ∑' i, νt (f i) := by
+              simpa using (measure_iUnion_le (μ := νt) (s := f))
+            simp [h0]
+          exact (le_antisymm hle (zero_le _)))
+      A hA
+  simpa [νt, MeasureTheory.trim_measurableSet_eq (μ := ν) hm hA] using h01_t
+
+omit [Countable S] [StandardBorelSpace E] in
+lemma isTailTrivialCore_of_isTailTrivial {ν : Measure Ω} [IsProbabilityMeasure ν]
+    (h : IsTailTrivial (S := S) (E := E) (⟨ν, inferInstance⟩ : ProbabilityMeasure Ω)) :
+    IsTailTrivialCore (S := S) (E := E) ν := by
+  refine ⟨by simp, ?_⟩
+  intro t
+  -- `tailPiNatGen t` is a tail event
+  have ht : MeasurableSet[@tailSigmaAlgebra S E _] (tailPiNatGen (S := S) (E := E) t) :=
+    measurableSet_tailPiNatGen_tail (S := S) (E := E) t
+  simpa using h (tailPiNatGen (S := S) (E := E) t) ht
+
+end TailTrivialCore
+
+section GibbsCore
+
+open ProbabilityTheory
+
+variable [Countable S] [StandardBorelSpace E]
+local notation3 (prettyPrint := false) "Ω" => (S → E)
+
+variable (γ : Specification S E) [γ.IsMarkov]
+
+-- `Ω` is countably generated (needed for `natGeneratingSequence` on the product σ-algebra).
+local instance : MeasurableSpace.CountablyGenerated Ω := by infer_instance
+
+/-- A *countable* core formulation of the DLR fixed-point property:
+check `μ.bind (γ Λ) = μ` on a countable π-system generating the full σ-algebra. -/
+def IsGibbsCore (γ : Specification S E) (μ : Measure Ω) : Prop :=
+  μ Set.univ = 1 ∧
+    ∀ (Λ : Finset S) (t : Finset ℕ),
+      (μ.bind (γ Λ)) (piNatGen (t := t)) = μ (piNatGen (t := t))
+
+omit [γ.IsMarkov] in
+lemma measurableSet_isGibbsCore :
+    MeasurableSet {μ : Measure Ω | IsGibbsCore (γ := γ) μ} := by
+  have h_univ : MeasurableSet {μ : Measure Ω | μ Set.univ = (1 : ℝ≥0∞)} :=
+    (MeasurableSet.singleton (1 : ℝ≥0∞)).preimage (Measure.measurable_coe MeasurableSet.univ)
+  have hEq' (Λ : Finset S) (t : Finset ℕ) :
+      MeasurableSet {μ : Measure Ω |
+        (μ.bind (γ Λ)) (piNatGen (t := t)) = μ (piNatGen (t := t))} := by
+    have hγmeas : Measurable fun ω : Ω => (γ Λ ω : Measure Ω) := by
+      exact (Kernel.measurable (γ Λ)).mono
+        (MeasureTheory.cylinderEvents_le_pi (X := fun _ : S ↦ E) (Δ := ((Λ : Set S)ᶜ))) le_rfl
+    have hbind : Measurable fun μ : Measure Ω => μ.bind (fun ω => (γ Λ ω : Measure Ω)) :=
+      _root_.MeasureTheory.Measure.measurable_bind' hγmeas
+    have h_eval : Measurable fun μ : Measure Ω => μ (piNatGen (t := t)) :=
+      Measure.measurable_coe (measurableSet_piNatGen (t := t))
+    have hL : Measurable fun μ : Measure Ω => (μ.bind (fun ω => (γ Λ ω : Measure Ω))) (piNatGen (t := t)) :=
+      h_eval.comp hbind
+    exact measurableSet_eq_fun hL h_eval
+  have hAll :
+      MeasurableSet {μ : Measure Ω | ∀ Λ : Finset S, ∀ t : Finset ℕ,
+        (μ.bind (γ Λ)) (piNatGen (t := t)) = μ (piNatGen (t := t))} := by
+    simpa [Set.setOf_forall] using
+      (MeasurableSet.iInter (fun (Λ : Finset S) =>
+        (MeasurableSet.iInter (fun (t : Finset ℕ) => hEq' (Λ := Λ) (t := t)))))
+  simpa [IsGibbsCore, Set.setOf_and, Set.setOf_forall] using h_univ.inter hAll
+
+theorem isGibbsMeasure_of_isGibbsCore (hγ : γ.IsProper) {μ : Measure Ω}
+    (hcore : IsGibbsCore (γ := γ) μ) :
+    _root_.Specification.IsGibbsMeasure (S := S) (E := E) γ μ := by
+  have hμ_univ : μ Set.univ = 1 := hcore.1
+  haveI : IsProbabilityMeasure μ := ⟨hμ_univ⟩
+  -- show the fixed-point identity for every finite volume
+  have hfix : ∀ Λ : Finset S, μ.bind (γ Λ) = μ := by
+    intro Λ
+    -- equality of finite measures from equality on a generating π-system
+    let C : Set (Set Ω) := piNatGenSet Ω
+    have hA : (MeasurableSpace.pi : MeasurableSpace Ω) = MeasurableSpace.generateFrom C := by
+      -- `generateFrom C = pi`
+      simpa [C] using (@generateFrom_piNatGenSet Ω _ _).symm
+    have hC : IsPiSystem C := by
+      simpa [C] using (@isPiSystem_piNatGenSet Ω _ _)
+    have hμν : ∀ s ∈ C, (μ.bind (γ Λ)) s = μ s := by
+      intro s hs
+      rcases hs with ⟨t, rfl⟩
+      simpa using hcore.2 Λ t
+    have hγmeas : Measurable fun ω : Ω => (γ Λ ω : Measure Ω) := by
+      exact (Kernel.measurable (γ Λ)).mono
+        (MeasureTheory.cylinderEvents_le_pi (X := fun _ : S ↦ E) (Δ := ((Λ : Set S)ᶜ))) le_rfl
+    have huniv : (μ.bind (γ Λ)) Set.univ = μ Set.univ := by
+      -- `bind_apply` + Markov property of `γ Λ`
+      simp [MeasureTheory.Measure.bind_apply (m := μ) (f := fun ω : Ω => (γ Λ ω : Measure Ω))
+        (s := (Set.univ : Set Ω)) MeasurableSet.univ hγmeas.aemeasurable]
+    haveI : IsFiniteMeasure (μ.bind (γ Λ)) := by
+      refine ⟨?_⟩
+      -- `μ.bind (γ Λ)` is a probability measure since `μ` is and `γ Λ` is Markov
+      have : (μ.bind (γ Λ)) Set.univ = 1 := by simpa [hμ_univ] using huniv
+      simpa [this] using (ENNReal.one_lt_top)
+    -- `ext_of_generate_finite` (finite measures, π-system)
+    exact MeasureTheory.ext_of_generate_finite C hA hC (μ := (μ.bind (γ Λ))) (ν := μ) hμν huniv
+  -- use the fixed-point characterization
+  exact (Specification.isGibbsMeasure_iff_forall_bind_eq (S := S) (E := E) (γ := γ) hγ).2 hfix
+
+theorem isGibbsCore_of_isGibbsMeasure (hγ : γ.IsProper) {μ : Measure Ω} [IsProbabilityMeasure μ]
+    (hμ : _root_.Specification.IsGibbsMeasure (S := S) (E := E) γ μ) :
+    IsGibbsCore (γ := γ) μ := by
+  refine ⟨by simp, ?_⟩
+  have hfix :
+      ∀ Λ : Finset S, μ.bind (γ Λ) = μ := by
+    exact (Specification.isGibbsMeasure_iff_forall_bind_eq (S := S) (E := E) (γ := γ) hγ).1 hμ
+  intro Λ t
+  simpa using congrArg (fun m : Measure Ω => m (piNatGen (t := t))) (hfix Λ)
+
+end GibbsCore
+
+/-! ## From ω-a.e. extremality to law-level extremality -/
+
+section LawLevelExtremal
+
+open ProbabilityTheory
+
+variable [Countable S] [StandardBorelSpace E]
+
+variable {γ : Specification S E} [γ.IsMarkov]
+variable (μ : Measure (S → E)) [IsProbabilityMeasure μ]
+
+-- The tail disintegration (and `tailKernelLaw`) is built under these standard assumptions.
+local instance : IsFiniteMeasure μ := by infer_instance
+
+variable
+    [@MeasurableSpace.CountableOrCountablyGenerated (S → E) (S → E) (@tailSigmaAlgebra S E _)]
+
+/-- A measurable “good” set of measures: those satisfying the *countable* Gibbs fixed-point core
+and the *countable* tail-triviality core. This is the measurable surrogate for “supported on
+extremal Gibbs measures”. -/
+def goodSet (γ : Specification S E) : Set (Measure (S → E)) :=
+  {ν | IsGibbsCore (S := S) (E := E) (γ := γ) ν ∧ IsTailTrivialCore (S := S) (E := E) ν}
+
+lemma measurableSet_goodSet (γ : Specification S E) [γ.IsMarkov] :
+    MeasurableSet (goodSet (S := S) (E := E) γ) := by
+  have hg : MeasurableSet {ν : Measure (S → E) | IsGibbsCore (S := S) (E := E) (γ := γ) ν} :=
+    measurableSet_isGibbsCore (S := S) (E := E) (γ := γ)
+  have ht : MeasurableSet {ν : Measure (S → E) | IsTailTrivialCore (S := S) (E := E) ν} :=
+    measurableSet_isTailTrivialCore (S := S) (E := E)
+  simpa [goodSet, Set.setOf_and] using hg.inter ht
+
+/-- The law of tail-conditionals is concentrated on extremal Gibbs measures. -/
+theorem ae_mem_extremePoints_G_tailKernelLaw
+    (hγ : γ.IsProper) (hμ : γ.IsGibbsMeasure μ) :
+    ∀ᵐ ν ∂tailKernelLaw (S := S) (E := E) (μ := μ),
+      ν ∈ (G (γ := γ)).extremePoints ENNReal := by
+  have hgood_meas : MeasurableSet (goodSet (S := S) (E := E) γ) :=
+    measurableSet_goodSet (S := S) (E := E) (γ := γ)
+  -- First: show `tailKernel μ ω ∈ good` for `μ.trim 𝓣`-a.e. `ω`.
+  have hae_trim :
+      ∀ᵐ ω ∂μ.trim (tailSigmaAlgebra_le_pi (S := S) (E := E)),
+        goodSet (S := S) (E := E) γ (tailKernel (S := S) (E := E) (μ := μ) ω) := by
+    have haeG := ae_isGibbsMeasure_tailKernel (S := S) (E := E) (γ := γ) (μ := μ)
+      (hγ := hγ) (hμ := hμ)
+    have haeT := ae_isTailTrivial_tailKernel (S := S) (E := E) (μ := μ)
+    filter_upwards [haeG, haeT] with ω hG hT
+    -- translate to the countable cores (for measurability)
+    have hGcore :
+        IsGibbsCore (S := S) (E := E) (γ := γ) (tailKernel (S := S) (E := E) (μ := μ) ω) := by
+      haveI : IsProbabilityMeasure (tailKernel (S := S) (E := E) (μ := μ) ω) := by infer_instance
+      exact isGibbsCore_of_isGibbsMeasure (S := S) (E := E) (γ := γ) (hγ := hγ)
+        (μ := tailKernel (S := S) (E := E) (μ := μ) ω) hG
+    have hTcore :
+        IsTailTrivialCore (S := S) (E := E) (tailKernel (S := S) (E := E) (μ := μ) ω) := by
+      haveI : IsProbabilityMeasure (tailKernel (S := S) (E := E) (μ := μ) ω) := by infer_instance
+      exact isTailTrivialCore_of_isTailTrivial (S := S) (E := E)
+        (ν := tailKernel (S := S) (E := E) (μ := μ) ω) hT
+    exact ⟨hGcore, hTcore⟩
+  -- Lift from `μ.trim 𝓣` to `μ` (so we can use `map`).
+  have hae :
+      ∀ᵐ ω ∂μ, goodSet (S := S) (E := E) γ (tailKernel (S := S) (E := E) (μ := μ) ω) := by
+    exact MeasureTheory.ae_of_ae_trim (hm := tailSigmaAlgebra_le_pi (S := S) (E := E)) (μ := μ) hae_trim
+  -- Push forward along `tailKernel` to the law `tailKernelLaw μ = μ.map (tailKernel μ)`.
+  have hker_meas : AEMeasurable (tailKernel (S := S) (E := E) (μ := μ)) μ := by
+    exact (measurable_tailKernel_pi (S := S) (E := E) (μ := μ)).aemeasurable
+  have hae_law :
+      ∀ᵐ ν ∂μ.map (tailKernel (S := S) (E := E) (μ := μ)),
+        goodSet (S := S) (E := E) γ ν := by
+    -- specify the predicate explicitly to avoid unwanted `and`-splitting
+    exact (MeasureTheory.ae_map_iff (μ := μ)
+      (f := tailKernel (S := S) (E := E) (μ := μ)) hker_meas
+      (p := fun ν => goodSet (S := S) (E := E) γ ν) (hp := hgood_meas)).2 hae
+  -- Finally, on `good` we can upgrade to `ν ∈ extremePoints G(γ)`.
+  have hae_ext :
+      ∀ᵐ ν ∂μ.map (tailKernel (S := S) (E := E) (μ := μ)),
+        ν ∈ (G (γ := γ)).extremePoints ENNReal := by
+    filter_upwards [hae_law] with ν hν
+    have hνGibbs : _root_.Specification.IsGibbsMeasure (S := S) (E := E) γ ν :=
+      isGibbsMeasure_of_isGibbsCore (S := S) (E := E) (γ := γ) (hγ := hγ) hν.1
+    haveI : IsProbabilityMeasure ν := ⟨hν.1.1⟩
+    have hν_memG : ν ∈ G (γ := γ) := by
+      exact ⟨by infer_instance, hνGibbs⟩
+    have hν_tail : IsTailTrivial (S := S) (E := E) (⟨ν, inferInstance⟩ : ProbabilityMeasure (S → E)) :=
+      isTailTrivial_of_isTailTrivialCore (S := S) (E := E) (ν := ν) hν.2
+    exact mem_extremePoints_G_of_isTailTrivial (S := S) (E := E) (γ := γ) (hγ := hγ)
+      (hμG := hν_memG) (hμtail := hν_tail)
+  -- Rewrite `tailKernelLaw` and conclude.
+  simpa [tailKernelLaw] using hae_ext
+
+/-! ### A measurable “support = 1” corollary -/
+
+/-- The representing law gives full mass to the measurable `goodSet γ`. -/
+theorem tailKernelLaw_goodSet_eq_one
+    (hγ : γ.IsProper) (hμ : γ.IsGibbsMeasure μ) :
+    tailKernelLaw (S := S) (E := E) (μ := μ) (goodSet (S := S) (E := E) γ) = 1 := by
+  have hgood_meas : MeasurableSet (goodSet (S := S) (E := E) γ) :=
+    measurableSet_goodSet (S := S) (E := E) (γ := γ)
+  -- Re-run the map-pushforward step but with predicate `ν ∈ goodSet γ`.
+  have hae_trim :
+      ∀ᵐ ω ∂μ.trim (tailSigmaAlgebra_le_pi (S := S) (E := E)),
+        goodSet (S := S) (E := E) γ (tailKernel (S := S) (E := E) (μ := μ) ω) := by
+    have haeG := ae_isGibbsMeasure_tailKernel (S := S) (E := E) (γ := γ) (μ := μ)
+      (hγ := hγ) (hμ := hμ)
+    have haeT := ae_isTailTrivial_tailKernel (S := S) (E := E) (μ := μ)
+    filter_upwards [haeG, haeT] with ω hG hT
+    have hGcore :
+        IsGibbsCore (S := S) (E := E) (γ := γ) (tailKernel (S := S) (E := E) (μ := μ) ω) := by
+      haveI : IsProbabilityMeasure (tailKernel (S := S) (E := E) (μ := μ) ω) := by infer_instance
+      exact isGibbsCore_of_isGibbsMeasure (S := S) (E := E) (γ := γ) (hγ := hγ)
+        (μ := tailKernel (S := S) (E := E) (μ := μ) ω) hG
+    have hTcore :
+        IsTailTrivialCore (S := S) (E := E) (tailKernel (S := S) (E := E) (μ := μ) ω) := by
+      haveI : IsProbabilityMeasure (tailKernel (S := S) (E := E) (μ := μ) ω) := by infer_instance
+      exact isTailTrivialCore_of_isTailTrivial (S := S) (E := E)
+        (ν := tailKernel (S := S) (E := E) (μ := μ) ω) hT
+    exact ⟨hGcore, hTcore⟩
+  have hae :
+      ∀ᵐ ω ∂μ, goodSet (S := S) (E := E) γ (tailKernel (S := S) (E := E) (μ := μ) ω) :=
+    MeasureTheory.ae_of_ae_trim (hm := tailSigmaAlgebra_le_pi (S := S) (E := E)) (μ := μ) hae_trim
+  have hker_meas : AEMeasurable (tailKernel (S := S) (E := E) (μ := μ)) μ :=
+    (measurable_tailKernel_pi (S := S) (E := E) (μ := μ)).aemeasurable
+  have hae_law :
+      ∀ᵐ ν ∂μ.map (tailKernel (S := S) (E := E) (μ := μ)),
+        ν ∈ goodSet (S := S) (E := E) γ :=
+    (MeasureTheory.ae_map_iff (μ := μ) (f := tailKernel (S := S) (E := E) (μ := μ))
+      hker_meas (p := fun ν => ν ∈ goodSet (S := S) (E := E) γ) (hp := hgood_meas)).2 hae
+  haveI : IsProbabilityMeasure (tailKernelLaw (S := S) (E := E) (μ := μ)) :=
+    isProbabilityMeasure_tailKernelLaw (S := S) (E := E) (μ := μ)
+  have hcompl0 : tailKernelLaw (S := S) (E := E) (μ := μ) (goodSet (S := S) (E := E) γ)ᶜ = 0 := by
+    have : tailKernelLaw (S := S) (E := E) (μ := μ) {ν | ¬ ν ∈ goodSet (S := S) (E := E) γ} = 0 :=
+      (MeasureTheory.ae_iff).1 (by simpa [tailKernelLaw] using hae_law)
+    simpa using this
+  exact (prob_compl_eq_zero_iff (μ := tailKernelLaw (S := S) (E := E) (μ := μ)) hgood_meas).1 hcompl0
+
+end LawLevelExtremal
+
+/-! ## Georgii-style Choquet decomposition package -/
+
+section ChoquetDecomposition
+
+open ProbabilityTheory
+
+variable {S E : Type*} [MeasurableSpace E]
+variable [Countable S] [StandardBorelSpace E]
+variable {γ : Specification S E} [γ.IsMarkov]
+
+variable (μ : Measure (S → E)) [IsProbabilityMeasure μ]
+variable
+    [@MeasurableSpace.CountableOrCountablyGenerated (S → E) (S → E) (@tailSigmaAlgebra S E _)]
+
+/-- **Choquet/ergodic decomposition (tail disintegration form)**:
+
+If `μ` is Gibbs, then the law `tailKernelLaw μ` has barycenter `μ` and is concentrated on the
+measurable `goodSet γ` (hence, in particular, yields `tailKernelLaw μ`-a.e. extremality).
+
+This is the Mathlib-idiomatic package corresponding to Georgii Ch. 7 (extremal decomposition via
+tail disintegration).
+-/
+theorem choquetDecomposition_tailKernelLaw
+    (hγ : γ.IsProper) (hμ : γ.IsGibbsMeasure μ) :
+    MeasureTheory.Measure.join (tailKernelLaw (S := S) (E := E) (μ := μ)) = μ
+      ∧
+    tailKernelLaw (S := S) (E := E) (μ := μ) (goodSet (S := S) (E := E) (γ := γ)) = 1 := by
+  haveI : IsFiniteMeasure μ := by infer_instance
+  refine ⟨?_, ?_⟩
+  · simpa using (join_tailKernelLaw (S := S) (E := E) (μ := μ))
+  · exact tailKernelLaw_goodSet_eq_one (S := S) (E := E) (γ := γ) (μ := μ) hγ hμ
+
+/-- Corollary of `choquetDecomposition_tailKernelLaw`: the representing law is a.e. supported on
+extreme points of `G(γ)`. -/
+theorem choquetDecomposition_tailKernelLaw_ae_extremePoints
+    (hγ : γ.IsProper) (hμ : γ.IsGibbsMeasure μ) :
+    ∀ᵐ ν ∂tailKernelLaw (S := S) (E := E) (μ := μ),
+      ν ∈ (G (γ := γ)).extremePoints ENNReal :=
+  ae_mem_extremePoints_G_tailKernelLaw (S := S) (E := E) (γ := γ) (μ := μ) hγ hμ
+
+end ChoquetDecomposition
+
+section ChoquetDecompositionPM
+
+open ProbabilityTheory
+
+variable {S E : Type*} [MeasurableSpace E]
+variable [Countable S] [StandardBorelSpace E]
+variable {γ : Specification S E} [γ.IsMarkov]
+
+variable (μ : ProbabilityMeasure (S → E))
+variable
+    [@MeasurableSpace.CountableOrCountablyGenerated (S → E) (S → E) (@tailSigmaAlgebra S E _)]
+
+/-- `ProbabilityMeasure`-packaged version of `ae_mem_extremePoints_G_tailKernelLaw`. -/
+theorem ae_mem_extremePoints_G_tailKernelLawPM
+    (hγ : γ.IsProper) (hμ : γ.IsGibbsMeasure (μ : Measure (S → E))) :
+    ∀ᵐ ν ∂(tailKernelLawPM (S := S) (E := E) μ : Measure (Measure (S → E))),
+      ν ∈ (G (γ := γ)).extremePoints ENNReal := by
+  simpa [tailKernelLawPM] using
+    (ae_mem_extremePoints_G_tailKernelLaw (S := S) (E := E) (γ := γ)
+      (μ := (μ : Measure (S → E))) hγ hμ)
+
+/-- `ProbabilityMeasure`-packaged version of `choquetDecomposition_tailKernelLaw`. -/
+theorem choquetDecomposition_tailKernelLawPM
+    (hγ : γ.IsProper) (hμ : γ.IsGibbsMeasure (μ : Measure (S → E))) :
+    MeasureTheory.Measure.join (tailKernelLaw (S := S) (E := E) (μ := (μ : Measure (S → E))))
+        = (μ : Measure (S → E))
+      ∧
+    (∀ᵐ ν ∂(tailKernelLawPM (S := S) (E := E) μ : Measure (Measure (S → E))),
+      ν ∈ (G (γ := γ)).extremePoints ENNReal) := by
+  haveI : IsFiniteMeasure (μ : Measure (S → E)) := by infer_instance
+  refine ⟨?_, ?_⟩
+  · simpa using (join_tailKernelLaw (S := S) (E := E) (μ := (μ : Measure (S → E))))
+  · exact ae_mem_extremePoints_G_tailKernelLawPM (S := S) (E := E) (γ := γ) (μ := μ) hγ hμ
+
+/-- `ProbabilityMeasure`-bundled `goodSet` concentration statement. -/
+theorem choquetDecomposition_tailKernelLawPM_goodSet
+    (hγ : γ.IsProper) (hμ : γ.IsGibbsMeasure (μ : Measure (S → E))) :
+    MeasureTheory.Measure.join (tailKernelLaw (S := S) (E := E) (μ := (μ : Measure (S → E))))
+        = (μ : Measure (S → E))
+      ∧
+    tailKernelLaw (S := S) (E := E) (μ := (μ : Measure (S → E)))
+        (goodSet (S := S) (E := E) (γ := γ)) = 1 := by
+  haveI : IsProbabilityMeasure (μ : Measure (S → E)) := by infer_instance
+  haveI : IsFiniteMeasure (μ : Measure (S → E)) := by infer_instance
+  refine ⟨?_, ?_⟩
+  · simpa using (join_tailKernelLaw (S := S) (E := E) (μ := (μ : Measure (S → E))))
+  · exact tailKernelLaw_goodSet_eq_one (S := S) (E := E) (γ := γ) (μ := (μ : Measure (S → E))) hγ hμ
+
+end ChoquetDecompositionPM
+
 end GibbsMeasure
 
 end MeasureTheory
