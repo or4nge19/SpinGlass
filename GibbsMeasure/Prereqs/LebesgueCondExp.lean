@@ -43,12 +43,9 @@ instance sFinite_trim {α : Type*} {m m₀ : MeasurableSpace α} {μ : Measure[m
   refine ⟨?_⟩
   refine ⟨fun n => (μn n).trim hm, ?_, ?_⟩
   · intro n
-    -- Each summand is finite, and finiteness is preserved by `trim`.
     haveI : IsFiniteMeasure (μn n) := (hμn_fin n)
     infer_instance
-  · -- `trim` commutes with `Measure.sum` on measurable sets.
-    refine @Measure.ext _ m _ _ (fun s hs => ?_)
-    -- `hs : MeasurableSet[m] s`, so it is also measurable for `m₀`.
+  · refine @Measure.ext _ m _ _ (fun s hs => ?_)
     have hs₀ : MeasurableSet[m₀] s := hm s hs
     simp [Measure.sum_apply, trim_measurableSet_eq, hs, hs₀]
 
@@ -68,14 +65,11 @@ omit [SigmaFinite μ] in
 lemma lcondExp_of_measurable (hm : m ≤ m₀) [hμm : SigmaFinite (μ.trim hm)] {f : α → ℝ≥0∞}
     (hf : Measurable[m] f) : μ⁻[f|m] =ᵐ[μ] f := by
   classical
-  -- If `f` is `m`-measurable, then `(μ.withDensity f).trim hm = (μ.trim hm).withDensity f`.
   have hμf :
       (μ.withDensity f).trim hm = (μ.trim hm).withDensity f := by
     refine @Measure.ext _ m _ _ (fun s hs => ?_)
     have hs₀ : MeasurableSet[m₀] s := hm s hs
     have h_ind : Measurable[m] (s.indicator f) := (Measurable.indicator hf hs)
-    -- Expand both sides using `withDensity_apply` and `lintegral_trim`.
-    -- Reduce to the equality of set-lintegrals under `μ` and `μ.trim hm`.
     calc
       ((μ.withDensity f).trim hm) s
           = (μ.withDensity f) s := by simp [trim_measurableSet_eq hm hs]
@@ -89,15 +83,12 @@ lemma lcondExp_of_measurable (hm : m ≤ m₀) [hμm : SigmaFinite (μ.trim hm)]
             simpa [MeasureTheory.lintegral_indicator] using
               (MeasureTheory.lintegral_indicator (μ := μ.trim hm) (s := s) (hs := hs) (f := f))
       _ = ((μ.trim hm).withDensity f) s := by simp [MeasureTheory.withDensity_apply _ hs]
-  -- Now `lcondExp` is an RN derivative of a `withDensity` measure, hence equals `f` a.e.
   have h_ae_trim :
       (μ⁻[f|m] : α → ℝ≥0∞) =ᵐ[μ.trim hm] f := by
-    -- Unfold `lcondExp` under the σ-finiteness assumptions and rewrite with `hμf`.
     have :
         (μ⁻[f|m] : α → ℝ≥0∞) =
           ((μ.trim hm).withDensity f).rnDeriv (μ.trim hm) := by
       simp [lcondExp, dif_pos hm, hμm, hμf]
-    -- Apply `rnDeriv_withDensity` on the σ-finite trimmed measure.
     simpa [this] using (Measure.rnDeriv_withDensity (ν := μ.trim hm) (hf := hf))
   exact ae_eq_of_ae_eq_trim (hm := hm) h_ae_trim
 
@@ -128,7 +119,6 @@ lemma measurable_lcondExp : Measurable[m] (μ⁻[f|m]) := by
     simp [lcondExp_of_not_sigmaFinite (m := m) (μ := μ) (f := f) hm hμm]
     exact measurable_const
   haveI : SigmaFinite (μ.trim hm) := hμm
-  -- `rnDeriv` is measurable.
   simpa [lcondExp, dif_pos hm, hμm] using (Measure.measurable_rnDeriv ((μ.withDensity f).trim hm) (μ.trim hm))
 
 lemma lcondExp_congr_ae (h : f =ᵐ[μ] g) : μ⁻[f|m] =ᵐ[μ] μ⁻[g|m] := by
@@ -139,7 +129,6 @@ lemma lcondExp_congr_ae (h : f =ᵐ[μ] g) : μ⁻[f|m] =ᵐ[μ] μ⁻[g|m] := b
   swap; · simp [lcondExp_of_not_sigmaFinite (m := m) (μ := μ) (f := f) hm hμm,
       lcondExp_of_not_sigmaFinite (m := m) (μ := μ) (f := g) hm hμm]
   haveI : SigmaFinite (μ.trim hm) := hμm
-  -- Work in the trimmed measure `ν := μ.trim hm` on the smaller σ-algebra `m`.
   let ν : Measure[m] α := μ.trim hm
   let μf : Measure[m] α := (μ.withDensity f).trim hm
   let μg : Measure[m] α := (μ.withDensity g).trim hm
@@ -150,7 +139,6 @@ lemma lcondExp_congr_ae (h : f =ᵐ[μ] g) : μ⁻[f|m] =ᵐ[μ] μ⁻[g|m] := b
     (withDensity_absolutelyContinuous (μ := μ) (f := f)).trim hm
   have hμg_ac : μg ≪ ν :=
     (withDensity_absolutelyContinuous (μ := μ) (f := g)).trim hm
-  -- Set up Lebesgue decompositions so that `withDensity_rnDeriv_eq` applies.
   haveI : SFinite μf := by infer_instance
   haveI : SFinite μg := by infer_instance
   haveI : μf.HaveLebesgueDecomposition ν := Measure.haveLebesgueDecomposition_of_sigmaFinite μf ν
@@ -159,26 +147,21 @@ lemma lcondExp_congr_ae (h : f =ᵐ[μ] g) : μ⁻[f|m] =ᵐ[μ] μ⁻[g|m] := b
   have hμg_eq : ν.withDensity (μg.rnDeriv ν) = μg := Measure.withDensity_rnDeriv_eq μg ν hμg_ac
   have h_ae_trim :
       (μf.rnDeriv ν : α → ℝ≥0∞) =ᵐ[ν] (μg.rnDeriv ν : α → ℝ≥0∞) := by
-    -- Equality of `withDensity` measures implies equality of densities a.e. on a σ-finite measure.
     have haemeas_f : AEMeasurable (μf.rnDeriv ν) ν :=
       (Measure.measurable_rnDeriv μf ν).aemeasurable
     have haemeas_g : AEMeasurable (μg.rnDeriv ν) ν :=
       (Measure.measurable_rnDeriv μg ν).aemeasurable
     have hwith :
         ν.withDensity (μf.rnDeriv ν) = ν.withDensity (μg.rnDeriv ν) := by
-      -- Both sides are equal to `μf = μg`.
       simp [hμfg]
     exact (withDensity_eq_iff_of_sigmaFinite (μ := ν) haemeas_f haemeas_g).1 hwith
-  -- Lift the a.e. equality from `μ.trim hm` back to `μ`.
   refine ae_eq_of_ae_eq_trim (hm := hm) ?_
   simpa [lcondExp, dif_pos hm, hμm, ν, μf, μg] using h_ae_trim
 
 lemma lcondExp_of_aemeasurable (hm : m ≤ m₀) [hμm : SigmaFinite (μ.trim hm)] {f : α → ℝ≥0∞}
     (hf : AEMeasurable f (μ.trim hm)) : μ⁻[f|m] =ᵐ[μ] f := by
-  -- Replace `f` by an `m`-measurable representative.
   have hfg : f =ᵐ[μ] hf.mk f := ae_eq_of_ae_eq_trim (hm := hm) hf.ae_eq_mk
   refine (lcondExp_congr_ae (m := m) (μ := μ) (f := f) (g := hf.mk f) hfg).trans ?_
-  -- Now `hf.mk f` is `m`-measurable, so `lcondExp` is a fixed point.
   exact (lcondExp_of_measurable (μ := μ) (m := m) (m₀ := m₀) (f := hf.mk f) hm hf.measurable_mk).trans
     hfg.symm
 
@@ -186,8 +169,6 @@ lemma lcondExp_of_aemeasurable (hm : m ≤ m₀) [hμm : SigmaFinite (μ.trim hm
 the lintegral of `f` on that set. -/
 lemma setLIntegral_lcondExp (hm : m ≤ m₀) [SigmaFinite (μ.trim hm)] (hs : MeasurableSet[m] s) :
     ∫⁻ x in s, (μ⁻[f|m]) x ∂μ = ∫⁻ x in s, f x ∂μ := by
-  classical
-  -- Work on the trimmed measure space.
   let ν : Measure[m] α := μ.trim hm
   let μf : Measure[m] α := (μ.withDensity f).trim hm
   have hμf_ac : μf ≪ ν :=
@@ -196,14 +177,11 @@ lemma setLIntegral_lcondExp (hm : m ≤ m₀) [SigmaFinite (μ.trim hm)] (hs : M
   haveI : μf.HaveLebesgueDecomposition ν := Measure.haveLebesgueDecomposition_of_sigmaFinite μf ν
   have hμf : ν.withDensity (μf.rnDeriv ν) = μf := Measure.withDensity_rnDeriv_eq μf ν hμf_ac
   have hs₀ : MeasurableSet[m₀] s := hm s hs
-  -- Rewrite the left-hand side as an integral w.r.t. `ν = μ.trim hm`.
   have hmeas_ce : Measurable[m] (μ⁻[f|m]) := measurable_lcondExp (μ := μ) (m := m) (m₀ := m₀) (f := f)
   have htrim :
       (∫⁻ x in s, (μ⁻[f|m]) x ∂ν) = ∫⁻ x in s, (μ⁻[f|m]) x ∂μ := by
-    -- Use `lintegral_trim` for the measurable function `s.indicator (μ⁻[f|m])`.
     have h_ind : Measurable[m] (s.indicator fun x ↦ (μ⁻[f|m]) x) :=
       (hmeas_ce.indicator hs)
-    -- Convert both set integrals to integrals of indicators, then use `lintegral_trim`.
     have hs₀ : MeasurableSet[m₀] s := hm s hs
     calc
       (∫⁻ x in s, (μ⁻[f|m]) x ∂ν)
@@ -217,18 +195,13 @@ lemma setLIntegral_lcondExp (hm : m ≤ m₀) [SigmaFinite (μ.trim hm)] (hs : M
             simpa [MeasureTheory.lintegral_indicator] using
               (MeasureTheory.lintegral_indicator (μ := μ) (s := s) (hs := hs₀)
                 (f := fun x ↦ (μ⁻[f|m]) x))
-  -- Evaluate `ν.withDensity (μf.rnDeriv ν) = μf` on `s`.
   have h_eval :
       ∫⁻ x in s, (μf.rnDeriv ν) x ∂ν = μf s := by
-    -- This is exactly `withDensity_apply` on `s`.
     simpa [MeasureTheory.withDensity_apply _ hs] using congrArg (fun m' : Measure[m] α => m' s) hμf
-  -- Now compute.
   calc
     ∫⁻ x in s, (μ⁻[f|m]) x ∂μ
         = ∫⁻ x in s, (μ⁻[f|m]) x ∂ν := by symm; exact htrim
     _ = ∫⁻ x in s, (μf.rnDeriv ν) x ∂ν := by
-          -- unfold `lcondExp` in the σ-finite case
-          -- use `lcondExp_of_sigmaFinite` to avoid `simp` getting stuck on the `if`.
           simp [lcondExp_of_sigmaFinite (μ := μ) (m := m) (m₀ := m₀) (f := f) hm, ν, μf]
     _ = μf s := h_eval
     _ = (μ.withDensity f) s := by simp [μf, trim_measurableSet_eq hm hs]
@@ -267,13 +240,9 @@ lemma lcondExp_bot' [hμ : NeZero μ] (f : α → ℝ≥0∞) :
     rw [lcondExp_of_not_sigmaFinite bot_le h]
     simp only [hμ_finite, ENNReal.toNNReal_top, GroupWithZero.inv_zero, zero_smul]
     rfl
-  classical
   haveI : IsFiniteMeasure μ := hμ_finite
-  -- On the bottom σ-algebra, measurable functions are constant; compute the constant using
-  -- the identity `∫ lcondExp = ∫ f`.
   haveI : SigmaFinite (μ.trim (bot_le : (⊥ : MeasurableSpace α) ≤ m₀)) :=
     (sigmaFinite_trim_bot_iff (μ := μ)).2 (by infer_instance)
-  -- First show that `μ⁻[f|⊥]` is a constant function.
   have h_meas : Measurable[⊥] (μ⁻[f|⊥]) :=
     measurable_lcondExp (μ := μ) (m := (⊥ : MeasurableSpace α)) (m₀ := m₀) (f := f)
   obtain ⟨c, hc⟩ : ∃ c : ℝ≥0∞, μ⁻[f|⊥] = fun _ => c := by
@@ -303,7 +272,6 @@ lemma lcondExp_bot' [hμ : NeZero μ] (f : α → ℝ≥0∞) :
           · exact huniv
         have hx : x ∈ (μ⁻[f|⊥]) ⁻¹' ({c} : Set ℝ≥0∞) := by simp [huniv]
         simpa [Set.mem_preimage, Set.mem_singleton_iff] using hx
-  -- Use the identity on `univ` to compute `c`.
   have h_int :
       ∫⁻ x, (μ⁻[f|⊥]) x ∂μ = ∫⁻ x, f x ∂μ :=
     lintegral_lcondExp (μ := μ) (m := (⊥ : MeasurableSpace α)) (m₀ := m₀) (f := f) bot_le
@@ -320,7 +288,6 @@ lemma lcondExp_bot' [hμ : NeZero μ] (f : α → ℝ≥0∞) :
       simp [hc, lintegral_const]
     have hcmul : c * μ Set.univ = ∫⁻ x, f x ∂μ := by
       simpa [hconst] using h_int
-    -- Multiply by the inverse of `μ univ` on the right.
     have : c = (c * μ Set.univ) * (μ Set.univ)⁻¹ := by
       symm
       calc
@@ -330,7 +297,6 @@ lemma lcondExp_bot' [hμ : NeZero μ] (f : α → ℝ≥0∞) :
     calc
       c = (c * μ Set.univ) * (μ Set.univ)⁻¹ := this
       _ = (∫⁻ x, f x ∂μ) * (μ Set.univ)⁻¹ := by simp [hcmul]
-  -- Rewrite the inverse via `toNNReal` and conclude.
   have h_toNN : ((μ Set.univ).toNNReal : ℝ≥0∞) = μ Set.univ := by
     simp [hμuniv_ne_top]
   have h_toNN_ne_zero : (μ Set.univ).toNNReal ≠ 0 := by
@@ -341,14 +307,10 @@ lemma lcondExp_bot' [hμ : NeZero μ] (f : α → ℝ≥0∞) :
           = ((μ Set.univ).toNNReal : ℝ≥0∞)⁻¹ := by
               simp
       _ = (μ Set.univ)⁻¹ := by simp [h_toNN]
-  -- `•` on `ℝ≥0∞` is multiplication by the scalar.
   have hc_final :
       c = (μ Set.univ).toNNReal⁻¹ • ∫⁻ x, f x ∂μ := by
-    -- Rewrite scalar multiplication via `ENNReal` and use commutativity.
     rw [hc_eq]
-    -- Convert the `ℝ≥0`-smul into multiplication in `ℝ≥0∞`.
     rw [ENNReal.smul_def, smul_eq_mul]
-    -- Now close by rewriting the scalar as `(μ univ)⁻¹` and commuting multiplication.
     calc
       (∫⁻ x, f x ∂μ) * (μ Set.univ)⁻¹ = (μ Set.univ)⁻¹ * ∫⁻ x, f x ∂μ := by
         simp [mul_comm]
@@ -357,16 +319,7 @@ lemma lcondExp_bot' [hμ : NeZero μ] (f : α → ℝ≥0∞) :
     subst hc_eq
     simp_all only [measurable_const, lintegral_const, ne_eq, measure_ne_top, not_false_eq_true,
       Measure.measure_univ_eq_zero, coe_toNNReal, coe_inv]
-  -- Finish.
   simp [hc, hc_final]
-  -- have h_meas : Measurable[⊥] (μ⁻[f|⊥]) := measurable_lcondExp
-  -- obtain ⟨c, h_eq⟩ := measurable_bot_iff.mp h_meas
-  -- rw [h_eq]
-  -- have h_lintegral : ∫⁻ x, (μ⁻[f|⊥]) x ∂μ = ∫⁻ x, f x ∂μ := lintegral_lcondExp bot_le
-  -- simp_rw [h_eq, lintegral_const] at h_lintegral
-  -- rw [← h_lintegral, ← smul_assoc, smul_eq_mul, inv_mul_cancel, one_smul]
-  -- rw [Ne, ENNReal.toReal_eq_zero_iff, not_or]
-  -- exact ⟨NeZero.ne _, measure_ne_top μ Set.univ⟩
 
 lemma lcondExp_bot_ae_eq (f : α → ℝ≥0∞) :
     μ⁻[f|⊥] =ᵐ[μ] fun _ => (μ Set.univ).toNNReal⁻¹ • ∫⁻ x, f x ∂μ := by
@@ -384,7 +337,6 @@ lemma lcondExp_add (hf : AEMeasurable f μ) (_ : AEMeasurable g μ) :
   by_cases hμm : SigmaFinite (μ.trim hm)
   swap; · simp_rw [lcondExp_of_not_sigmaFinite hm hμm]; simp
   haveI : SigmaFinite (μ.trim hm) := hμm
-  classical
   have hmeas_f : Measurable[m] (μ⁻[f|m]) := measurable_lcondExp
   have hmeas_g : Measurable[m] (μ⁻[g|m]) := measurable_lcondExp
   let hfgFun : α → ℝ≥0∞ := fun x => (μ⁻[f|m]) x + (μ⁻[g|m]) x
@@ -455,15 +407,8 @@ lemma lcondExp_add (hf : AEMeasurable f μ) (_ : AEMeasurable g μ) :
       _ = ∫⁻ x in s, f x ∂μ + ∫⁻ x in s, g x ∂μ := by
           simp [setLIntegral_lcondExp (μ := μ) (m := m) (m₀ := m₀) (hm := hm) hs]
       _ = ∫⁻ x in s, (f + g) x ∂μ := h_int_fg.symm
-  · -- `hfgFun` is definitionally `μ⁻[f|m] + μ⁻[g|m]`
-    -- (but with our `scoped notation`, we need parentheses for application)
-    show (∀ᵐ x ∂μ, (hfgFun x) = (μ⁻[f|m] + μ⁻[g|m]) x)
-    -- unfold `hfgFun` using `hfgFun_def`, then it's pointwise `rfl`
+  · show (∀ᵐ x ∂μ, (hfgFun x) = (μ⁻[f|m] + μ⁻[g|m]) x)
     simp [hfgFun_def]
-  -- refine (lcondExp_ae_eq_lcondExpL1 hm _).trans ?_
-  -- rw [lcondExpL1_add hf hg]
-  -- exact (coeFn_add _ _).trans
-  --   ((lcondExp_ae_eq_lcondExpL1 hm _).symm.add (lcondExp_ae_eq_lcondExpL1 hm _).symm)
 
 lemma lcondExp_finset_sum {ι : Type*} {s : Finset ι} {f : ι → α → ℝ≥0∞}
     (hf : ∀ i ∈ s, AEMeasurable (f i) μ) :
@@ -492,7 +437,6 @@ lemma lcondExp_smul (c : ℝ≥0) (_ : AEMeasurable f μ) :
   by_cases hμm : SigmaFinite (μ.trim hm)
   swap; · simp_rw [lcondExp_of_not_sigmaFinite hm hμm]; simp
   haveI : SigmaFinite (μ.trim hm) := hμm
-  classical
   have hmeas : Measurable[m] (μ⁻[f|m]) := measurable_lcondExp
   have h_smul_meas : Measurable[m] (c • μ⁻[f|m]) := hmeas.const_smul _
   have h_smul_aestr : AEStronglyMeasurable[m] (c • μ⁻[f|m]) μ :=
@@ -559,11 +503,6 @@ lemma lcondExp_smul (c : ℝ≥0) (_ : AEMeasurable f μ) :
             (setLIntegral_lcondExp (μ := μ) (m := m) (m₀ := m₀) (f := f) (hm := hm) (hs := hs))
     _ = ∫⁻ x in s, (c • f) x ∂μ := by
           simpa using h_fg.symm
-  -- refine (lcondExp_ae_eq_lcondExpL1 hm _).trans ?_
-  -- rw [lcondExpL1_smul c f]
-  -- refine (@lcondExp_ae_eq_lcondExpL1 _ _ _ _ _ m _ _ hm _ f).mp ?_
-  -- refine (coeFn_smul c (lcondExpL1 hm μ f)).mono fun x hx1 hx2 => ?_
-  -- simp only [hx1, hx2, Pi.smul_apply]
 
 lemma lcondExp_mono (_ : AEMeasurable f μ) (_ : AEMeasurable g μ)
     (hfg : f ≤ᵐ[μ] g) :
@@ -581,7 +520,6 @@ lemma lcondExp_mono (_ : AEMeasurable f μ) (_ : AEMeasurable g μ)
     show (∀ᵐ x ∂μ, (0 : ℝ≥0∞) ≤ 0)
     exact Filter.Eventually.of_forall (fun _ => le_rfl)
   haveI : SigmaFinite (μ.trim hm) := hμm
-  classical
   have hmeas_f : Measurable[m] (μ⁻[f|m]) := measurable_lcondExp
   have hmeas_g : Measurable[m] (μ⁻[g|m]) := measurable_lcondExp
   have h_trim :
@@ -678,17 +616,7 @@ lemma lcondExp_lcondExp_of_le {m₁ m₂ m₀ : MeasurableSpace α} {μ : Measur
     _ = ∫⁻ x in s, f x ∂μ :=
         setLIntegral_lcondExp (μ := μ) (m := m₂) (m₀ := m₀)
           (f := f) (hm := hm₂) (hs := hs₂)
-  -- refine ae_eq_of_forall_setLIntegral_eq_of_sigmaFinite' (hm₁₂.trans hm₂)
-  --   (fun s _ _ => integrable_lcondExp.integrableOn)
-  --   (fun s _ _ => integrable_lcondExp.integrableOn) ?_
-  --   (Measurable.aemeasurable' measurable_lcondExp)
-  --   (Measurable.aemeasurable' measurable_lcondExp)
-  -- intro s hs _
-  -- rw [setLIntegral_lcondExp (hm₁₂.trans hm₂) integrable_lcondExp hs]
-  -- rw [setLIntegral_lcondExp (hm₁₂.trans hm₂) hf hs, setLIntegral_lcondExp hm₂ hf (hm₁₂ s hs)]
 
-  -- exact (lcondExp_ae_eq_lcondExpL1 hm _).trans_le
-  --   ((lcondExpL1_mono hf hg hfg).trans_eq (lcondExp_ae_eq_lcondExpL1 hm _).symm)
 
 -- TODO: We don't have L1 convergence in `ℝ≥0∞`
 -- /-- If two sequences of functions have a.e. equal conditional expectations at each step,
