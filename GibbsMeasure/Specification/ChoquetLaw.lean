@@ -4,12 +4,12 @@ import Mathlib.MeasureTheory.Measure.Map
 import Mathlib.MeasureTheory.PiSystem
 
 /-!
-# Choquet-style law statements for tail disintegration (Georgii, Ch. 7 — representing measure)
+# Choquet law statements for tail disintegration (Georgii, Ch. 7 — representing measure)
 
 This file turns ω-a.e. statements about tail conditional measures `tailKernel μ ω` into statements
 about their **law** `tailKernelLaw μ = μ.map (tailKernel μ)`.
 
-The key technical point is to work with **countable cores** (built from `natGeneratingSequence`):
+We work with **countable cores** (built from `natGeneratingSequence`):
 this lets us express Gibbs fixed-point properties and tail-triviality by countably many measurable
 constraints on `Measure (S → E)`, so that we can push `∀ᵐ` through `Measure.map` without adding any
 unmotivated topological assumptions.
@@ -641,6 +641,129 @@ theorem mem_extremePoints_G_iff_isTailTrivial
       (hμG := hμG) (hμtail := htail')
 
 end ExtremeIffTailTrivial
+
+/-! ## Dirac representing law for extremal/tail-trivial measures -/
+
+section DiracLaw
+
+open ProbabilityTheory
+
+variable {S E : Type*} [MeasurableSpace E]
+variable [Countable S] [StandardBorelSpace E]
+local notation3 (prettyPrint := false) "Ω" => (S → E)
+
+variable (μ : Measure (S → E)) [IsProbabilityMeasure μ]
+
+-- Tail kernel requires standard Borel setup (already assumed).
+
+theorem ae_tailKernel_eq_of_isTailTrivial
+    (hμtail : IsTailTrivial (S := S) (E := E)
+      (μ := (⟨μ, inferInstance⟩ : ProbabilityMeasure (S → E)))) :
+    ∀ᵐ ω ∂μ, tailKernel (S := S) (E := E) (μ := μ) ω = μ := by
+  classical
+  -- Work with the trimmed measure on the tail σ-algebra.
+  let hm : (@tailSigmaAlgebra S E _ : MeasurableSpace Ω) ≤ MeasurableSpace.pi :=
+    tailSigmaAlgebra_le_pi (S := S) (E := E)
+  let μt : Measure[@tailSigmaAlgebra S E _] Ω := μ.trim hm
+  have hμt_univ : μt Set.univ = 1 := by
+    simpa [μt] using (MeasureTheory.trim_measurableSet_eq (μ := μ) hm
+      (MeasurableSet.univ : MeasurableSet[@tailSigmaAlgebra S E _] (Set.univ : Set Ω)))
+  have hA_eq (A : Set Ω) (hA : MeasurableSet A) :
+      ∀ᵐ ω ∂μt, (tailKernel (S := S) (E := E) (μ := μ) ω) A = μ A := by
+    let g : Ω → ℝ≥0∞ := fun ω => (tailKernel (S := S) (E := E) (μ := μ) ω) A
+    have hg_tail : Measurable[@tailSigmaAlgebra S E _] g := by
+      simpa [g] using (Kernel.measurable_coe (tailKernel (S := S) (E := E) (μ := μ)) hA)
+    have hgc_const : ∃ c : ℝ≥0∞, g =ᵐ[μt] fun _ => c := by
+      haveI : IsProbabilityMeasure μt := ⟨hμt_univ⟩
+      have hDich :
+          ∀ U : Set ℝ≥0∞, MeasurableSet U →
+            (∀ᵐ ω ∂μt, g ω ∈ U) ∨ (∀ᵐ ω ∂μt, g ω ∉ U) := by
+        intro U hU
+        let B : Set Ω := g ⁻¹' U
+        have hB_tail : MeasurableSet[@tailSigmaAlgebra S E _] B := hg_tail hU
+        have htrim : μt B = μ B := MeasureTheory.trim_measurableSet_eq (μ := μ) hm hB_tail
+        have h01 : μt B = 0 ∨ μt B = 1 := by
+          simpa [htrim] using hμtail B hB_tail
+        rcases h01 with h0 | h1
+        · right
+          have : ∀ᵐ ω ∂μt, ω ∉ B := by
+            have : μt B = 0 := h0
+            simpa [B, MeasureTheory.ae_iff] using this
+          simpa [B] using this
+        · left
+          have hcompl0 : μt Bᶜ = 0 := (prob_compl_eq_zero_iff (μ := μt) (hs := hB_tail)).2 h1
+          have : ∀ᵐ ω ∂μt, ω ∈ B := by
+            simpa [MeasureTheory.ae_iff, B, Set.preimage, Set.mem_preimage] using hcompl0
+          simpa [B] using this
+      have : ∃ c : ℝ≥0∞, g =ᶠ[ae μt] fun _ => c :=
+        Filter.exists_eventuallyEq_const_of_forall_separating (l := ae μt)
+          (f := g) (p := MeasurableSet) (β := ℝ≥0∞) (fun U hU => by
+            simpa using hDich U hU)
+      rcases this with ⟨c, hc⟩
+      exact ⟨c, hc⟩
+    rcases hgc_const with ⟨c, hgc⟩
+    have hcomp := congrArg (fun m' : Measure Ω => m' A)
+      (tailKernel_comp_trim (S := S) (E := E) (μ := μ))
+    have hμA :
+        μ A = ∫⁻ ω, g ω ∂μt := by
+      have : (tailKernel (S := S) (E := E) (μ := μ) ∘ₘ μt) A = μ A := by
+        simpa [μt, hm] using hcomp
+      simpa [g, MeasureTheory.Measure.bind_apply hA
+        (tailKernel (S := S) (E := E) (μ := μ)).aemeasurable] using this.symm
+    have hc : c = μ A := by
+      have : (∫⁻ ω, g ω ∂μt) = c := by
+        calc
+          (∫⁻ ω, g ω ∂μt) = ∫⁻ _ω, c ∂μt := lintegral_congr_ae hgc
+          _ = c := by simp [hμt_univ, lintegral_const]
+      simpa [hμA] using this.symm
+    filter_upwards [hgc] with ω hω
+    simpa [g, hc] using hω
+  let C : Set (Set Ω) := piNatGenSet Ω
+  have hgen : (MeasurableSpace.pi : MeasurableSpace Ω) = MeasurableSpace.generateFrom C := by
+    simpa [C] using (@generateFrom_piNatGenSet Ω _ _).symm
+  have hPi : IsPiSystem C := by
+    simpa [C] using (@isPiSystem_piNatGenSet Ω _ _)
+  have h_all :
+      ∀ᵐ ω ∂μt, ∀ t : Finset ℕ,
+        (tailKernel (S := S) (E := E) (μ := μ) ω) (piNatGen (t := t))
+          = μ (piNatGen (t := t)) := by
+    have ht : ∀ t : Finset ℕ,
+        ∀ᵐ ω ∂μt,
+          (tailKernel (S := S) (E := E) (μ := μ) ω) (piNatGen (t := t)) =
+            μ (piNatGen (t := t)) := by
+      intro t
+      exact hA_eq (A := piNatGen (t := t)) (measurableSet_piNatGen (t := t))
+    exact (ae_all_iff).2 ht
+  have hae_eq :
+      ∀ᵐ ω ∂μt, tailKernel (S := S) (E := E) (μ := μ) ω = μ := by
+    filter_upwards [h_all] with ω hω
+    haveI : IsFiniteMeasure (tailKernel (S := S) (E := E) (μ := μ) ω) := by infer_instance
+    haveI : IsFiniteMeasure μ := by infer_instance
+    have hμν : ∀ s ∈ C,
+        (tailKernel (S := S) (E := E) (μ := μ) ω) s = μ s := by
+      intro s hs
+      rcases hs with ⟨t, rfl⟩
+      simpa using hω t
+    have huniv : (tailKernel (S := S) (E := E) (μ := μ) ω) Set.univ = μ Set.univ := by simp
+    exact MeasureTheory.ext_of_generate_finite C hgen hPi
+      (μ := tailKernel (S := S) (E := E) (μ := μ) ω) (ν := μ) hμν huniv
+  exact MeasureTheory.ae_of_ae_trim (hm := hm) (μ := μ) hae_eq
+
+/-- Tail-triviality implies the representing law is a Dirac measure. -/
+theorem tailKernelLaw_eq_dirac_of_isTailTrivial
+    (hμtail : IsTailTrivial (S := S) (E := E)
+      (μ := (⟨μ, inferInstance⟩ : ProbabilityMeasure (S → E)))) :
+    tailKernelLaw (S := S) (E := E) (μ := μ) = Measure.dirac μ := by
+  have hae : (tailKernel (S := S) (E := E) (μ := μ)) =ᵐ[μ] fun _ => μ :=
+    (ae_tailKernel_eq_of_isTailTrivial (S := S) (E := E) (μ := μ) hμtail)
+  calc
+    tailKernelLaw (S := S) (E := E) (μ := μ)
+        = μ.map (tailKernel (S := S) (E := E) (μ := μ)) := by rfl
+    _ = μ.map (fun _ : (S → E) => μ) := Measure.map_congr hae
+    _ = (μ Set.univ) • Measure.dirac μ := Measure.map_const μ μ
+    _ = Measure.dirac μ := by simp [IsProbabilityMeasure.measure_univ (μ := μ)]
+
+end DiracLaw
 
 end GibbsMeasure
 

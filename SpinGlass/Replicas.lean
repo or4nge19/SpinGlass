@@ -7,9 +7,11 @@ import Mathlib.Analysis.Calculus.FDeriv.Mul
 import Mathlib.Data.Fintype.Pi
 import Mathlib.Probability.Independence.InfinitePi
 import Mathlib.MeasureTheory.Integral.IntegrableOn
+import Mathlib.MeasureTheory.Function.L1Space.Integrable
 
 open MeasureTheory ProbabilityTheory Real BigOperators SpinGlass SpinGlass.Algebra
 open PhysLean.Probability.GaussianIBP
+open scoped ENNReal NNReal
 
 namespace SpinGlass
 
@@ -335,6 +337,21 @@ noncomputable def gibbs_average_n (t : ℝ) (f : ReplicaFun N n) : Ω → ℝ :=
     let H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w
     gibbs_average_n_det (N := N) (n := n) H f
 
+/-! ### Replica Gibbs measure (finite-volume, atomic) -/
+
+/-- The `n`-replica Gibbs weight (as `ℝ≥0`): \(\prod_{l=1}^n \mathrm{gibbs\_pmf}(H,\sigma^l)\). -/
+noncomputable def replicaGibbsWeightNNReal (H : EnergySpace N) (σs : ReplicaSpace N n) : ℝ≥0 :=
+  ⟨∏ l, gibbs_pmf N H (σs l), by
+    classical
+    refine Finset.prod_nonneg ?_
+    intro l _hl
+    exact gibbs_pmf_nonneg (N := N) (H := H) (σ := σs l)⟩
+
+/-- The `n`-replica Gibbs measure as an explicit finite atomic measure on `ReplicaSpace N n`. -/
+noncomputable def replicaGibbsMeasure (H : EnergySpace N) : Measure (ReplicaSpace N n) :=
+  (Finset.univ : Finset (ReplicaSpace N n)).sum fun σs =>
+    ((replicaGibbsWeightNNReal (N := N) (n := n) H σs : ℝ≥0∞) • Measure.dirac σs)
+
 /-!
 ### Basic bounds for `gibbs_average_n_det`
 
@@ -444,6 +461,56 @@ lemma sum_prod_gibbs_pmf_eq_one (H : EnergySpace N) :
               simpa [p] using congrArg (fun r => ∑ σ₀ : Config N, p σ₀ * r) ih
         _ = ∑ σ₀ : Config N, p σ₀ := by simp
         _ = 1 := hs1
+
+lemma replicaGibbsMeasure_univ (H : EnergySpace N) :
+    replicaGibbsMeasure (N := N) (n := n) H Set.univ = 1 := by
+  classical
+  have h_univ :
+      replicaGibbsMeasure (N := N) (n := n) H Set.univ
+        =
+        ∑ σs : ReplicaSpace N n, (replicaGibbsWeightNNReal (N := N) (n := n) H σs : ℝ≥0∞) := by
+    simp [replicaGibbsMeasure, replicaGibbsWeightNNReal]
+  have hsumNNReal :
+      (∑ σs : ReplicaSpace N n, replicaGibbsWeightNNReal (N := N) (n := n) H σs) = (1 : ℝ≥0) := by
+    apply NNReal.coe_injective
+    simpa [replicaGibbsWeightNNReal] using (sum_prod_gibbs_pmf_eq_one (N := N) (n := n) (H := H))
+  have hsumENNReal :
+      (∑ σs : ReplicaSpace N n,
+          (replicaGibbsWeightNNReal (N := N) (n := n) H σs : ℝ≥0∞)) = (1 : ℝ≥0∞) := by
+    simpa using congrArg (fun x : ℝ≥0 => (x : ℝ≥0∞)) hsumNNReal
+  simpa [h_univ] using hsumENNReal
+
+instance (H : EnergySpace N) : IsProbabilityMeasure (replicaGibbsMeasure (N := N) (n := n) H) :=
+  ⟨replicaGibbsMeasure_univ (N := N) (n := n) (H := H)⟩
+
+/-- `gibbs_average_n_det` is the expectation of `f` under the `n`-replica Gibbs measure. -/
+lemma integral_replicaGibbsMeasure_eq_gibbs_average_n_det (H : EnergySpace N) (f : ReplicaFun N n) :
+    (∫ σs, f σs ∂(replicaGibbsMeasure (N := N) (n := n) H)) =
+      gibbs_average_n_det (N := N) (n := n) H f := by
+  classical
+  -- Decompose the atomic measure and integrate term-by-term.
+  let μatom : ReplicaSpace N n → Measure (ReplicaSpace N n) :=
+    fun σs =>
+      ((replicaGibbsWeightNNReal (N := N) (n := n) H σs : ℝ≥0∞) • Measure.dirac σs)
+  have h_integrable :
+      ∀ σs ∈ (Finset.univ : Finset (ReplicaSpace N n)), Integrable f (μatom σs) := by
+    intro σs _hσs
+    haveI : MeasurableSingletonClass (ReplicaSpace N n) := by infer_instance
+    have hdirac : Integrable f (Measure.dirac σs) :=
+      MeasureTheory.integrable_dirac (a := σs) (f := f) (by simp)
+    -- the weight is an `ℝ≥0∞` coming from `ℝ≥0`, hence finite
+    exact hdirac.smul_measure (by simp)
+  have hsum :
+      (∫ x, f x ∂((Finset.univ : Finset (ReplicaSpace N n)).sum μatom)) =
+        (Finset.univ : Finset (ReplicaSpace N n)).sum fun σs => ∫ x, f x ∂(μatom σs) := by
+    -- `integral_finset_sum_measure` is stated with the `∑ i ∈ s` binder; `simp` turns it into `Finset.sum`.
+    simpa using
+      (MeasureTheory.integral_finset_sum_measure
+        (f := f) (μ := μatom) (s := (Finset.univ : Finset (ReplicaSpace N n))) h_integrable)
+  -- Rewrite the left as `replicaGibbsMeasure` and simplify each atomic integral.
+  -- `integral_smul_measure` turns the scalar into `toReal`, and `integral_dirac` evaluates `f`.
+  simpa [replicaGibbsMeasure, μatom, gibbs_average_n_det, replicaGibbsWeightNNReal, mul_comm, mul_left_comm,
+    mul_assoc] using hsum
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 /--
