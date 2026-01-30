@@ -177,7 +177,6 @@ lemma withDensity_bind_eq_bind_withDensity (Λ : Finset S) (hγ : γ.IsProper)
     (μ : Measure[cylinderEvents (X := fun _ : S ↦ E) ((Λ : Set S)ᶜ)] Ω)
     (f : Ω → ℝ≥0∞) (hf : Measurable[cylinderEvents (X := fun _ : S ↦ E) ((Λ : Set S)ᶜ)] f) :
     (μ.bind (γ Λ)).withDensity f = (μ.withDensity f).bind (γ Λ) := by
-  classical
   ext A hA
   have hf_pi : Measurable f :=
     (hf.mono (MeasureTheory.cylinderEvents_le_pi (X := fun _ : S ↦ E) (Δ := ((Λ : Set S)ᶜ))) le_rfl)
@@ -242,18 +241,14 @@ lemma normRestrict_apply (μ : Measure Ω) (A s : Set Ω) :
 lemma isProbabilityMeasure_normRestrict
     (μ : Measure Ω) [IsProbabilityMeasure μ] {A : Set Ω} (hA0 : μ A ≠ 0) :
     IsProbabilityMeasure (normRestrict (μ := μ) A) := by
-  -- Use the standard normalization instance `isProbabilityMeasureSMul` on `μ.restrict A`.
   haveI : IsFiniteMeasure (μ.restrict A) := by infer_instance
   have hne : μ.restrict A ≠ 0 := by
     intro h
     have : (μ.restrict A) Set.univ = 0 := by simp [h]
-    -- `(μ.restrict A) univ = μ A`
     have : μ A = 0 := by simpa [Measure.restrict_apply] using this
     exact hA0 this
   haveI : NeZero (μ.restrict A) := ⟨hne⟩
-  -- Now the generic instance gives probability measure after scaling by `(μ.restrict A univ)⁻¹`.
   haveI : IsProbabilityMeasure (((μ.restrict A) Set.univ)⁻¹ • (μ.restrict A)) := by infer_instance
-  -- Rewrite `((μ.restrict A) univ)` as `μ A`.
   simpa [normRestrict, Measure.restrict_apply, smul_smul, smul_eq_mul] using
     (inferInstance : IsProbabilityMeasure (((μ.restrict A) Set.univ)⁻¹ • (μ.restrict A)))
 
@@ -266,7 +261,6 @@ lemma isGibbsMeasure_normRestrict_of_tail (hγ : γ.IsProper)
   have hfix : ∀ Λ : Finset S, μ.bind (γ Λ) = μ := by
     haveI : IsFiniteMeasure μ := by infer_instance
     exact (_root_.Specification.isGibbsMeasure_iff_forall_bind_eq (γ := γ) hγ).1 hμ
-  -- First show the restricted measure is also a fixed point for every `Λ`.
   have hfix_restrict : ∀ Λ : Finset S, (μ.restrict A).bind (γ Λ) = μ.restrict A := by
     intro Λ
     calc
@@ -336,7 +330,6 @@ theorem not_mem_extremePoints_G_of_tail_prob
     {A : Set Ω} (hA_tail : MeasurableSet[@tailSigmaAlgebra S E _] A)
     (hA0 : 0 < μ A) (hA1 : μ A < 1) :
     μ ∉ (G (γ := γ)).extremePoints ENNReal := by
-  classical
   let μA : Measure Ω := normRestrict (μ := μ) A
   let μAc : Measure Ω := normRestrict (μ := μ) Aᶜ
   have hA0' : μ A ≠ 0 := ne_of_gt hA0
@@ -534,21 +527,17 @@ lemma exhaustionVolumes_monotone :
     Monotone (exhaustionVolumes (S := S) : ℕ → Finset S) := by
   classical
   by_cases hS : Nonempty S
-  · -- unfold the definition in the nonempty case
-    simp [exhaustionVolumes, hS]
+  · simp [exhaustionVolumes, hS]
     intro a b hab
-    -- `range a ⊆ range b` when `a ≤ b`.
     exact Finset.image_subset_image (Finset.range_mono hab)
-  ·
-    -- empty `S`: the exhaustion is constantly `∅`
-    intro a b hab
+  · intro a b hab
     simp [exhaustionVolumes, hS]
 
 lemma exhaustionVolumes_cofinal (Λ : Finset S) :
     ∃ n : ℕ, Λ ⊆ exhaustionVolumes (S := S) n := by
-  classical
   by_cases hS : Nonempty S
   · let f : ℕ → S := Classical.choose (exists_surjective_nat S)
+    classical
     have hf : Function.Surjective f := Classical.choose_spec (exists_surjective_nat S)
     have hexh : (exhaustionVolumes (S := S) : ℕ → Finset S) = fun n => (Finset.range n).image f := by
       simp [exhaustionVolumes, hS, f]
@@ -556,7 +545,6 @@ lemma exhaustionVolumes_cofinal (Λ : Finset S) :
     have : ∀ x : S, x ∈ Λ → ∃ n, f n = x := by
       intro x hx
       exact ⟨Classical.choose (hf x), Classical.choose_spec (hf x)⟩
-    classical
     let ns : Finset ℕ := Λ.attach.image fun x => Classical.choose (hf x.1)
     have hns : ∀ x : S, x ∈ Λ → Classical.choose (hf x) ∈ ns := by
       intro x hx
@@ -591,7 +579,6 @@ lemma tailSigmaAlgebra_eq_iInf_exhaustion :
       =
       ⨅ n : ℕ,
         cylinderEvents (X := fun _ : S ↦ E) (((exhaustionVolumes (S := S) n : Finset S) : Set S)ᶜ) := by
-  classical
   let m : Finset S → MeasurableSpace Ω :=
     fun Λ => cylinderEvents (X := fun _ : S ↦ E) ((Λ : Set S)ᶜ)
   have hle :
@@ -644,7 +631,6 @@ lemma exists_withDensity_of_absolutelyContinuous_gibbs
     ∃ g : Ω → ℝ≥0∞,
       Measurable[cylinderEvents (X := fun _ : S ↦ E) ((Λ : Set S)ᶜ)] g ∧
       μ.withDensity g = ν := by
-  classical
   let hm := MeasureTheory.cylinderEvents_le_pi (X := fun _ : S ↦ E) (Δ := ((Λ : Set S)ᶜ))
   let μb : Measure[cylinderEvents (X := fun _ : S ↦ E) ((Λ : Set S)ᶜ)] Ω := μ.trim hm
   let νb : Measure[cylinderEvents (X := fun _ : S ↦ E) ((Λ : Set S)ᶜ)] Ω := ν.trim hm
@@ -693,7 +679,6 @@ lemma ae_eq_tailMeasurable_of_forall_boundary
     ∃ g : Ω → ℝ≥0∞,
       Measurable[@tailSigmaAlgebra S E _] g ∧
       (ν.rnDeriv μ) =ᵐ[μ] g := by
-  classical
   let Λn : ℕ → Finset S := exhaustionVolumes (S := S)
   have hmonoΛ : Monotone Λn := exhaustionVolumes_monotone (S := S)
   let m : ℕ → MeasurableSpace Ω :=
@@ -756,7 +741,6 @@ theorem eq_of_absolutelyContinuous_of_isTailTrivial
     (hμtail : IsTailTrivial (S := S) (E := E) (⟨μ, ‹IsProbabilityMeasure μ›⟩ : ProbabilityMeasure Ω))
     (hνμ : ν ≪ μ) :
     ν = μ := by
-  classical
   obtain ⟨g, hg_tail, hfg⟩ :=
     ae_eq_tailMeasurable_of_forall_boundary (S := S) (E := E) (γ := γ) hγ hμG hνG hνμ
   haveI : MeasurableSpace.CountablySeparated ℝ≥0∞ := by infer_instance
