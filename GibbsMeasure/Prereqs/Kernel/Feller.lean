@@ -45,11 +45,9 @@ lemma integrable_boundedContinuousFunction (f : β →ᵇ ℝ) (a : α) :
     Integrable (fun b : β => f b) (κ a) := by
   -- For a Markov kernel, `κ a` is a probability measure.
   haveI : IsProbabilityMeasure (κ a) := (IsMarkovKernel.isProbabilityMeasure (κ := κ) a)
-  -- A bounded continuous function is measurable on an `OpensMeasurableSpace`.
   have hf_meas : Measurable (fun b : β => f b) := f.continuous.measurable
   have hf_ae : AEStronglyMeasurable (fun b : β => f b) (κ a) :=
     hf_meas.aestronglyMeasurable
-  -- Dominate by the constant `‖f‖`.
   have hconst : Integrable (fun _ : β => (‖f‖ : ℝ)) (κ a) := by
     simp
   have hbound : ∀ᵐ b ∂(κ a), ‖f b‖ ≤ (‖f‖ : ℝ) := by
@@ -64,7 +62,6 @@ lemma norm_integral_le_norm (f : β →ᵇ ℝ) (a : α) :
   have hbound : ∀ᵐ b ∂(κ a), ‖f b‖ ≤ (‖f‖ : ℝ) := by
     filter_upwards with b
     exact f.norm_coe_le_norm b
-  -- `‖∫ f‖ ≤ ‖f‖ * μ.real univ = ‖f‖`.
   have h :=
     MeasureTheory.norm_integral_le_of_norm_le_const (μ := κ a) (f := fun b : β => f b)
       (C := ‖f‖) hbound
@@ -87,7 +84,6 @@ omit [OpensMeasurableSpace β] in
 omit [OpensMeasurableSpace β] in
 lemma norm_continuousAction_le (f : β →ᵇ ℝ) :
     ‖continuousAction (κ := κ) f‖ ≤ ‖f‖ := by
-  -- This is built into `ofNormedAddCommGroup`.
   simpa [continuousAction] using
     (BoundedContinuousFunction.norm_ofNormedAddCommGroup_le
       (f := fun a => ∫ b, f b ∂(κ a))
@@ -98,7 +94,6 @@ lemma norm_continuousAction_le (f : β →ᵇ ℝ) :
 /-- The action operator as a continuous linear map on `β →ᵇ ℝ`, valued in `α →ᵇ ℝ`. -/
 noncomputable def continuousActionCLM (κ : Kernel[mα] α β) [IsMarkovKernel κ] [IsFeller κ] :
     (β →ᵇ ℝ) →L[ℝ] (α →ᵇ ℝ) :=
-  -- First build a linear map, then use the contraction estimate to get continuity.
   let T : (β →ᵇ ℝ) →ₗ[ℝ] (α →ᵇ ℝ) :=
     { toFun := fun f => continuousAction (κ := κ) f
       map_add' := by
@@ -111,11 +106,9 @@ noncomputable def continuousActionCLM (κ : Kernel[mα] α β) [IsMarkovKernel �
         intro c f
         ext a
         have hf : Integrable (fun b : β => f b) (κ a) := integrable_boundedContinuousFunction (κ := κ) f a
-        -- `integral_smul` works for Bochner integrals.
         simpa [continuousAction] using (integral_smul c (fun b : β => f b) (μ := κ a)) }
   (T.mkContinuous 1 (by
     intro f
-    -- `‖T f‖ ≤ ‖f‖` is the contraction estimate.
     simpa [one_mul] using (norm_continuousAction_le (κ := κ) f)))
 
 @[simp] lemma continuousActionCLM_apply (f : β →ᵇ ℝ) :
