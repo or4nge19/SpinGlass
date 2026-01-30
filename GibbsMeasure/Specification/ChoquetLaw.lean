@@ -486,6 +486,35 @@ theorem tailKernelLaw_goodSet_eq_one
     simpa using this
   exact (prob_compl_eq_zero_iff (μ := tailKernelLaw (S := S) (E := E) (μ := μ)) hgood_meas).1 hcompl0
 
+/-- Any measure in `goodSet γ` is an extreme point of `G(γ)`. -/
+theorem mem_extremePoints_G_of_mem_goodSet
+    (hγ : γ.IsProper) {ν : Measure (S → E)}
+    (hν : ν ∈ goodSet (S := S) (E := E) (γ := γ)) :
+    ν ∈ (G (γ := γ)).extremePoints ENNReal := by
+  have hνGibbs : _root_.Specification.IsGibbsMeasure (S := S) (E := E) γ ν :=
+    isGibbsMeasure_of_isGibbsCore (S := S) (E := E) (γ := γ) (hγ := hγ) hν.1
+  haveI : IsProbabilityMeasure ν := ⟨hν.1.1⟩
+  have hν_memG : ν ∈ G (γ := γ) := ⟨by infer_instance, hνGibbs⟩
+  have hν_tail : IsTailTrivial (S := S) (E := E) (⟨ν, inferInstance⟩ : ProbabilityMeasure (S → E)) :=
+    isTailTrivial_of_isTailTrivialCore (S := S) (E := E) (ν := ν) hν.2
+  exact mem_extremePoints_G_of_isTailTrivial (S := S) (E := E) (γ := γ) (hγ := hγ)
+    (hμG := hν_memG) (hμtail := hν_tail)
+
+/-- Existence of an extreme Gibbs measure from any Gibbs measure, via tail disintegration
+(Georgii: extremal decomposition implies existence of extremal states). -/
+theorem exists_mem_extremePoints_G_of_isGibbsMeasure
+    (hγ : γ.IsProper) (hμ : γ.IsGibbsMeasure μ) :
+    ∃ ν : Measure (S → E), ν ∈ (G (γ := γ)).extremePoints ENNReal := by
+  let m : Measure (Measure (S → E)) := tailKernelLaw (S := S) (E := E) (μ := μ)
+  have hm1 : m (goodSet (S := S) (E := E) (γ := γ)) = 1 :=
+    tailKernelLaw_goodSet_eq_one (S := S) (E := E) (γ := γ) (μ := μ) (hγ := hγ) hμ
+  have hm_ne0 : m (goodSet (S := S) (E := E) (γ := γ)) ≠ 0 := by
+    simp [hm1]
+  rcases MeasureTheory.Measure.exists_mem_of_measure_ne_zero_of_ae
+      (μ := m) (s := goodSet (S := S) (E := E) (γ := γ)) hm_ne0
+      (p := fun _ => True) (by simp) with ⟨ν, hν, _⟩
+  exact ⟨ν, mem_extremePoints_G_of_mem_goodSet (S := S) (E := E) (γ := γ) (hγ := hγ) hν⟩
+
 end LawLevelExtremal
 
 /-! ## Georgii-style Choquet decomposition package -/
