@@ -41,6 +41,30 @@ noncomputable def gibbs_average (H : EnergySpace N) (f : Config N → ℝ) : ℝ
 /-! ### Gaussian disorder specifications -/
 
 /--
+An abstract (finite-volume) **centered Gaussian Hamiltonian** specified by its covariance kernel.
+
+This is the “Vol. II / covariance-first” abstraction: the randomness is carried by a centered
+Gaussian random vector `U : Ω → EnergySpace N`, and the model is characterized by an explicit
+covariance kernel `cov : Config N → Config N → ℝ` on the canonical basis `std_basis`.
+
+Concretely, `cov σ τ` represents the value of
+\[
+  \mathbb{E}[U(\sigma)\,U(\tau)].
+\]
+in the Hilbert-space Gaussian IBP package, expressed via the covariance operator `covOp`.
+-/
+structure GaussianDisorder where
+  /-- The covariance kernel on configurations. -/
+  cov : Config N → Config N → ℝ
+  /-- The (random) Hamiltonian. -/
+  U : Ω → EnergySpace N
+  /-- Centered Gaussian structure in the Hilbert space `EnergySpace N`. -/
+  hU : IsGaussianHilbert U
+  /-- Covariance kernel agreement on the canonical basis. -/
+  cov_eq : ∀ σ τ,
+    inner ℝ ((covOp (g := U) hU) (std_basis N σ)) (std_basis N τ) = cov σ τ
+
+/--
 SK disorder: a centered Gaussian Hamiltonian with covariance kernel `sk_cov_kernel`.
 
 This corresponds (up to the usual normalizations) to the classical SK Hamiltonian
@@ -69,5 +93,27 @@ structure SimpleDisorder (β q : ℝ) where
   /-- Covariance on the canonical basis. -/
   cov_eq : ∀ σ τ, inner ℝ ((covOp (g := V) hV) (std_basis N σ))
     (std_basis N τ) = simple_cov_kernel N β (fun x => q * x) σ τ
+
+/-- View an `SKDisorder` as an abstract covariance-specified `GaussianDisorder`. -/
+@[simp] noncomputable
+def SKDisorder.toGaussianDisorder {β h : ℝ} (sk : SKDisorder (Ω := Ω) (N := N) β h) :
+    GaussianDisorder (Ω := Ω) (N := N) :=
+  { cov := sk_cov_kernel N β
+    U := sk.U
+    hU := sk.hU
+    cov_eq := by
+      intro σ τ
+      simpa using sk.cov_eq σ τ }
+
+/-- View a `SimpleDisorder` as an abstract covariance-specified `GaussianDisorder`. -/
+@[simp] noncomputable
+def SimpleDisorder.toGaussianDisorder {β q : ℝ} (sim : SimpleDisorder (Ω := Ω) (N := N) β q) :
+    GaussianDisorder (Ω := Ω) (N := N) :=
+  { cov := simple_cov_kernel N β (fun x => q * x)
+    U := sim.V
+    hU := sim.hV
+    cov_eq := by
+      intro σ τ
+      simpa using sim.cov_eq σ τ }
 
 end SpinGlass
