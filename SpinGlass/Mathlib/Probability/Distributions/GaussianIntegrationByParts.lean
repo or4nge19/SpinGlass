@@ -8,12 +8,46 @@ import Mathlib.Algebra.Lie.OfAssociative
 import Mathlib.Data.Real.StarOrdered
 import Mathlib.Order.CompletePartialOrder
 import Mathlib.Probability.Distributions.Gaussian.Real
+import Mathlib.Probability.Distributions.Gaussian.Fernique
+import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinTilt
+import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
 import Mathlib.Topology.Algebra.Module.ModuleTopology
 import Mathlib.Topology.EMetricSpace.Paracompact
 import Mathlib.Topology.Separation.CompletelyRegular
 
 open MeasureTheory Filter Set Real
 open scoped ProbabilityTheory NNReal ENNReal Filter Topology
+
+/-!
+## Cameron–Martin / Fernique integration layer
+
+This file is historically self-contained (it proves integrability bounds “by hand” for one
+dimension). For downstream refactors and for upstreaming to Mathlib, it is useful to also expose
+the fact that Gaussian measures have *all* polynomial moments as a direct consequence of Fernique.
+
+The lemmas below are a thin wrapper around `ProbabilityTheory.IsGaussian.memLp_id` and the
+`MemLp.integrable_norm_rpow'` API.
+-/
+
+namespace ProbabilityTheory
+
+open MeasureTheory
+
+/-- A real Gaussian has finite moments of all (natural) orders. -/
+lemma integrable_abs_pow_gaussianReal (m : ℝ) (v : ℝ≥0) (n : ℕ) :
+    Integrable (fun x : ℝ ↦ |x| ^ n) (gaussianReal m v) := by
+  -- `gaussianReal` is Gaussian, hence `id ∈ L^p` for all finite `p`.
+  have hLp : MemLp (fun x : ℝ ↦ x) (n : ℝ≥0∞) (gaussianReal m v) :=
+    ProbabilityTheory.IsGaussian.memLp_id (μ := gaussianReal m v) (p := (n : ℝ≥0∞)) (by simp)
+  have : Integrable (fun x : ℝ ↦ ‖x‖ ^ ((n : ℝ≥0∞).toReal)) (gaussianReal m v) := by
+    -- `gaussianReal m v` is a probability measure, hence finite.
+    have : IsFiniteMeasure (gaussianReal m v) := by infer_instance
+    simpa using (MeasureTheory.MemLp.integrable_norm_rpow' (μ := gaussianReal m v) hLp)
+  simpa [Real.norm_eq_abs] using (by
+    -- `toReal` of a natural exponent is that natural.
+    simpa using this)
+
+end ProbabilityTheory
 
 /-!
 # Gaussian integration by parts via exponential tilt (Stein’s identity)
@@ -1667,7 +1701,56 @@ lemma gaussianReal_integrable_one_add_abs_pow_centered
   classical
   by_cases hv : v = 0
   · simpa [hv] using gaussianReal_integrable_one_add_abs_pow_deg k
-  · exact gaussianReal_integrable_one_add_abs_pow_pos (v := v) hv k
+  -- Prefer the Fernique/MemLp-based Gaussian moment API over the explicit density computation.
+  cases k with
+  | zero =>
+      simp
+  | succ m =>
+      set n : ℕ := Nat.succ m
+      have hdom :
+          ∀ x : ℝ, (1 + |x|) ^ n ≤ (2 : ℝ) ^ n * (1 + |x| ^ n) := by
+        intro x
+        -- Use the pre-proved coarse domination lemmas from the polynomial×Gaussian section.
+        have h1 :
+            (|x| + (1 : ℝ)) ^ n ≤ (2 : ℝ) ^ n * (max (1 : ℝ) |x|) ^ n := by
+          -- `B = 1 ≥ 0`
+          simpa [add_comm] using
+            (Real.pow_abs_add_const_le_two_pow_mul_max_of_nonneg (B := (1 : ℝ)) (x := x) n (by norm_num))
+        have h2 :
+            (max (1 : ℝ) |x|) ^ n ≤ (max (1 : ℝ) (1 : ℝ)) ^ n * (1 + |x| ^ n) := by
+          simpa using (Real.max_pow_le_max1_pow_mul_one_add_abs_pow (B := (1 : ℝ)) (x := x) (k := n))
+        have hmul :
+            (2 : ℝ) ^ n * (max (1 : ℝ) |x|) ^ n
+              ≤ (2 : ℝ) ^ n * ((max (1 : ℝ) (1 : ℝ)) ^ n * (1 + |x| ^ n)) :=
+          mul_le_mul_of_nonneg_left h2 (by positivity)
+        have h3 :
+            (|x| + (1 : ℝ)) ^ n ≤ (2 : ℝ) ^ n * ((max (1 : ℝ) (1 : ℝ)) ^ n * (1 + |x| ^ n)) :=
+          le_trans h1 hmul
+        -- Simplify `max 1 1 = 1`.
+        simpa [n, add_comm, mul_assoc, mul_left_comm, mul_comm] using h3
+      have h_meas :
+          AEStronglyMeasurable (fun x : ℝ => (1 + |x|) ^ n) (gaussianReal 0 v) := by
+        have hcont : Continuous (fun x : ℝ => (1 + |x|) ^ n) :=
+          (continuous_const.add continuous_abs).pow _
+        simpa using hcont.measurable.aestronglyMeasurable
+      have h_rhs_int :
+          Integrable (fun x : ℝ => (2 : ℝ) ^ n * (1 + |x| ^ n)) (gaussianReal 0 v) := by
+        have h1 : Integrable (fun _ : ℝ => (2 : ℝ) ^ n) (gaussianReal 0 v) := by
+          simp
+        have h2 : Integrable (fun x : ℝ => |x| ^ n) (gaussianReal 0 v) := by
+          simpa using ProbabilityTheory.integrable_abs_pow_gaussianReal (m := (0 : ℝ)) (v := v) (n := n)
+        have : Integrable
+            (fun x : ℝ =>
+              (2 : ℝ) ^ n + (2 : ℝ) ^ n * |x| ^ n) (gaussianReal 0 v) :=
+          h1.add (h2.const_mul _)
+        simpa [mul_add, mul_one, add_comm, add_left_comm, add_assoc] using this
+      refine h_rhs_int.mono' h_meas (ae_of_all _ (fun x => ?_))
+      have hL : 0 ≤ (1 + |x|) ^ n :=
+        pow_nonneg (by nlinarith [abs_nonneg x]) _
+      calc
+        ‖(1 + |x|) ^ n‖
+            = (1 + |x|) ^ n := by rw [Real.norm_of_nonneg hL]
+        _ ≤ (2 : ℝ) ^ n * (1 + |x| ^ n) := hdom x
 
 /-- Shifted case: integrability of `(1 + |x - μ|)^k` under the Gaussian measure. -/
 lemma gaussianReal_integrable_one_add_abs_pow_shift

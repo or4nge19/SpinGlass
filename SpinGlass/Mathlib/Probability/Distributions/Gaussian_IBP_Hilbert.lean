@@ -8,6 +8,8 @@ import Mathlib.Algebra.Order.Ring.Star
 import Mathlib.Analysis.InnerProductSpace.Adjoint
 import Mathlib.Data.Real.CompleteField
 import SpinGlass.Mathlib.Probability.Distributions.GaussianIntegrationByParts
+import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinTilt
+import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
 
 /-!
 # Gaussian Integration by Parts on a real Hilbert space (finite-dimensional, covariant form)
@@ -174,6 +176,197 @@ lemma coord_measurable {g : Ω → H} (hg : IsGaussianHilbert g) :
     ∀ i, Measurable (coord hg.w g i) := by
   intro i
   simpa [coord_eq_c (g := g) hg] using hg.c_meas i
+
+/-! ## Gaussianity of the law (measure-level)
+
+For Mathlib-facing API, it is useful to know that the **law** of an `H`-valued Gaussian random
+variable is a Gaussian measure in the sense of `ProbabilityTheory.IsGaussian`.
+
+In the present finite-dimensional modeling setup (`IsGaussianHilbert`), this can be proved by:
+1. writing every 1D projection `L (g ω)` as a finite sum of independent 1D Gaussians;
+2. using the 1D closure of Gaussians under independent sums (`gaussianReal_add_gaussianReal_of_indepFun`);
+3. applying `ProbabilityTheory.isGaussian_of_map_eq_gaussianReal`.
+-/
+
+omit [CompleteSpace H] in
+theorem IsGaussianHilbert.isGaussian_map {g : Ω → H} (hg : IsGaussianHilbert g) :
+    ProbabilityTheory.IsGaussian ((ℙ : Measure Ω).map g) := by
+  classical
+  -- Use the characterization: `μ` is Gaussian iff every 1D projection is a real Gaussian.
+  refine ProbabilityTheory.isGaussian_of_map_eq_gaussianReal (μ := (Measure.map g (ℙ : Measure Ω))) ?_
+  intro L
+  -- Measurability of `g` from its finite coordinate representation.
+  have hg_meas : Measurable g := by
+    classical
+    let Φ : (hg.ι → ℝ) → H := fun y => ∑ i, (y i) • hg.w i
+    have hΦ_cont : Continuous Φ := by
+      have h_i : ∀ i : hg.ι, Continuous fun y : (hg.ι → ℝ) => (y i) • hg.w i := by
+        intro i
+        exact (continuous_apply i).smul continuous_const
+      simpa [Φ] using
+        (continuous_finset_sum (s := (Finset.univ : Finset hg.ι)) (fun i _ => h_i i))
+    let cvec : Ω → (hg.ι → ℝ) := fun ω i => hg.c i ω
+    have hcvec_meas : Measurable cvec := by
+      refine measurable_pi_iff.mpr ?_
+      intro i
+      simpa [cvec] using hg.c_meas i
+    have : Measurable (fun ω => Φ (cvec ω)) := hΦ_cont.measurable.comp hcvec_meas
+    simpa [hg.repr, Φ, cvec] using this
+
+  have hL_meas : Measurable (fun x : H => L x) := by
+    simpa using L.continuous.measurable
+
+  have h_map_map :
+      (Measure.map g (ℙ : Measure Ω)).map (fun x : H => L x)
+        =
+      Measure.map (fun ω : Ω => L (g ω)) (ℙ : Measure Ω) := by
+    simpa [Measure.map_map, Function.comp] using
+      (MeasureTheory.Measure.map_map (μ := (ℙ : Measure Ω)) (g := fun x : H => L x) (f := g)
+        hL_meas hg_meas)
+
+  -- Expand `L ∘ g` along the coordinate representation.
+  let a : hg.ι → ℝ := fun i => L (hg.w i)
+  let X : hg.ι → Ω → ℝ := fun i ω => (hg.c i ω) * (a i)
+  let v : hg.ι → ℝ≥0 := fun i => ((a i) ^ 2).toNNReal * hg.τ i
+
+  have hX_meas : ∀ i, Measurable (X i) := by
+    intro i
+    -- multiplication by a constant is measurable
+    simpa [X, a] using (hg.c_meas i).mul measurable_const
+
+  have hindX : ProbabilityTheory.iIndepFun X (ℙ : Measure Ω) := by
+    -- independence is stable under measurable coordinate-wise maps
+    refine hg.c_indep.comp (μ := (ℙ : Measure Ω)) (g := fun i x => x * (a i)) ?_
+    intro i
+    simpa using (measurable_id.mul measurable_const)
+
+  have hX_law : ∀ i, Measure.map (X i) (ℙ : Measure Ω) = ProbabilityTheory.gaussianReal 0 (v i) := by
+    intro i
+    -- Start from the Gaussian law of the coordinate `c i` and push it forward by multiplication.
+    have hc_law : Measure.map (hg.c i) (ℙ : Measure Ω) = ProbabilityTheory.gaussianReal 0 (hg.τ i) := by
+      simpa [ProbabilityTheory.IsCenteredGaussianRV, ProbabilityTheory.IsGaussianRV] using hg.c_gauss i
+    have hmul :
+        Measure.map (X i) (ℙ : Measure Ω)
+          =
+        (ProbabilityTheory.gaussianReal 0 (hg.τ i)).map (fun x : ℝ => x * (a i)) := by
+      have hmap :=
+        (MeasureTheory.Measure.map_map (μ := (ℙ : Measure Ω)) (g := fun x : ℝ => x * (a i)) (f := hg.c i)
+          (measurable_id.mul measurable_const) (hg.c_meas i))
+      -- `map_map` gives `((ℙ.map c).map g) = ℙ.map (g ∘ c)`; rewrite it in the direction we need.
+      have :
+          Measure.map (fun ω : Ω => (hg.c i ω) * (a i)) (ℙ : Measure Ω)
+            =
+          Measure.map (fun x : ℝ => x * (a i)) (Measure.map (hg.c i) (ℙ : Measure Ω)) := by
+        simpa [Measure.map_map, Function.comp] using hmap.symm
+      simpa [X, hc_law] using this
+    have hgauss_map :
+        (ProbabilityTheory.gaussianReal (0 : ℝ) (hg.τ i)).map (fun x : ℝ => x * (a i))
+          =
+        ProbabilityTheory.gaussianReal 0 (v i) := by
+      have h :=
+        (ProbabilityTheory.gaussianReal_map_mul_const (μ := (0 : ℝ)) (v := hg.τ i) (c := a i))
+      have hv_eq :
+          (⟨(a i) ^ 2, sq_nonneg (a i)⟩ : ℝ≥0) = ((a i) ^ 2).toNNReal := by
+        ext
+        simp [sq_nonneg (a i)]
+      -- Rewrite the variance factor.
+      simpa [v, hv_eq] using h
+    simpa [hmul] using hgauss_map
+
+  -- Law of the finite sum of independent centered Gaussians.
+  have hsum_law_finset :
+      ∀ s : Finset hg.ι,
+        Measure.map (fun ω : Ω => Finset.sum s (fun i => X i ω)) (ℙ : Measure Ω)
+          =
+        ProbabilityTheory.gaussianReal 0 (Finset.sum s v) := by
+    intro s
+    refine Finset.induction_on s ?base ?step
+    · simp [ProbabilityTheory.gaussianReal_zero_var]
+    · intro i s hi hs
+      have hind_tuples :
+          ProbabilityTheory.IndepFun
+            (fun ω (j : {x // x ∈ s}) => X j.1 ω)
+            (fun ω (k : {x // x ∈ ({i} : Finset hg.ι)}) => X k.1 ω)
+            (ℙ : Measure Ω) := by
+        have hdisj : Disjoint s ({i} : Finset hg.ι) := by
+          refine Finset.disjoint_right.2 ?_
+          intro x hxT hxS
+          have : x = i := by simpa using (Finset.mem_singleton.mp hxT)
+          exact hi (this ▸ hxS)
+        exact ProbabilityTheory.iIndepFun.indepFun_finset
+          (f := X) (μ := (ℙ : Measure Ω)) (S := s) (T := ({i} : Finset hg.ι))
+          hdisj hindX hX_meas
+      let φ : ({x // x ∈ s} → ℝ) → ℝ := fun y => Finset.sum s.attach (fun j => y j)
+      let ψ : ({x // x ∈ ({i} : Finset hg.ι)} → ℝ) → ℝ := fun y => y ⟨i, by simp⟩
+      have hφ_meas : Measurable φ := by
+        have hcont : Continuous φ := by
+          have h_j :
+              ∀ j : {x // x ∈ s}, Continuous fun y : ({x // x ∈ s} → ℝ) => y j :=
+            fun j => continuous_apply j
+          simpa [φ] using
+            (continuous_finset_sum (s := s.attach) (fun j _ => h_j j))
+        exact hcont.measurable
+      have hψ_meas : Measurable ψ := by
+        have : Continuous ψ := by
+          simpa [ψ] using (continuous_apply (⟨i, by simp⟩ : {x // x ∈ ({i} : Finset hg.ι)}))
+        exact this.measurable
+      have hind_sum :
+          ProbabilityTheory.IndepFun
+            (fun ω : Ω => Finset.sum s (fun j => X j ω))
+            (fun ω : Ω => X i ω)
+            (ℙ : Measure Ω) := by
+        have hind' := ProbabilityTheory.IndepFun.comp hind_tuples hφ_meas hψ_meas
+        have hleft :
+            (φ ∘ fun ω (j : {x // x ∈ s}) => X j.1 ω)
+              =
+            (fun ω : Ω => Finset.sum s (fun j => X j ω)) := by
+          funext ω
+          simp [φ]
+          simpa using (Finset.sum_attach s (fun j => X j ω))
+        have hright :
+            (ψ ∘ fun ω (k : {x // x ∈ ({i} : Finset hg.ι)}) => X k.1 ω)
+              =
+            (fun ω : Ω => X i ω) := by
+          funext ω
+          simp [ψ]
+        simpa [hleft, hright] using hind'
+      have hadd :=
+        ProbabilityTheory.gaussianReal_add_gaussianReal_of_indepFun
+          (hXY := hind_sum) (hX := hs) (hY := hX_law i)
+      have hsum_insert :
+          (fun ω : Ω => Finset.sum (insert i s) (fun j => X j ω))
+            =
+          (fun ω : Ω => (Finset.sum s (fun j => X j ω)) + X i ω) := by
+        funext ω
+        simp [Finset.sum_insert, hi, add_comm]
+      have hv_insert :
+          (Finset.sum (insert i s) v) = (Finset.sum s v) + v i := by
+        simp [Finset.sum_insert, hi, add_comm]
+      -- Align with the `X+Y` order of `gaussianReal_add_gaussianReal_of_indepFun`.
+      simpa [hsum_insert, hv_insert, add_comm, add_left_comm, add_assoc] using hadd
+
+  have hsum_law :
+      Measure.map (fun ω : Ω => ∑ i : hg.ι, X i ω) (ℙ : Measure Ω)
+        =
+      ProbabilityTheory.gaussianReal 0 (∑ i : hg.ι, v i) := by
+    -- `∑ i, _` is definitionally a `Finset.sum` over `Finset.univ`.
+    classical
+    simpa using (hsum_law_finset (Finset.univ : Finset hg.ι))
+
+  have hLg :
+      (fun ω : Ω => L (g ω)) = fun ω : Ω => ∑ i : hg.ι, X i ω := by
+    funext ω
+    have hrepr : g ω = ∑ i : hg.ι, (hg.c i ω) • hg.w i := by
+      simpa using congrArg (fun f => f ω) hg.repr
+    -- Expand and use linearity of `L`.
+    simp [hrepr, X, a]
+
+  refine ⟨0, (∑ i : hg.ι, v i), ?_⟩
+  calc
+    (Measure.map g (ℙ : Measure Ω)).map (fun x : H => L x)
+        = Measure.map (fun ω : Ω => L (g ω)) (ℙ : Measure Ω) := h_map_map
+    _ = ProbabilityTheory.gaussianReal 0 (∑ i : hg.ι, v i) := by
+          simpa [hLg] using hsum_law
 
 /-! ## Integrability lemmas and linearity under sums
 The following lemmas gather the integrability facts needed to justify using
@@ -465,22 +658,8 @@ namespace ProbabilityTheory
 lemma integrable_abs_pow_gaussianReal_centered_nat
     (v : ℝ≥0) (k : ℕ) :
     Integrable (fun x : ℝ => |x| ^ k) (ProbabilityTheory.gaussianReal 0 v) := by
-  have h_poly : Integrable (fun x : ℝ => (1 + |x|) ^ k)
-      (ProbabilityTheory.gaussianReal 0 v) := by
-    simpa using
-      ProbabilityTheory.gaussianReal_integrable_one_add_abs_pow_centered (v := v) (k := k)
-  have h_meas :
-      AEStronglyMeasurable (fun x : ℝ => |x| ^ k) (ProbabilityTheory.gaussianReal 0 v) := by
-    exact ((measurable_id'.abs.pow_const k)).aestronglyMeasurable
-  have h_dom :
-      ∀ᵐ x ∂(ProbabilityTheory.gaussianReal 0 v),
-        ‖|x| ^ k‖ ≤ (1 + |x|) ^ k := by
-    refine ae_of_all _ (fun x => ?_)
-    have hx : 0 ≤ |x| := abs_nonneg x
-    have hle : |x| ≤ 1 + |x| := by linarith
-    have : |x| ^ k ≤ (1 + |x|) ^ k := ProbabilityTheory.Real.pow_le_pow_of_le_left hx hle
-    simpa [Real.norm_eq_abs, abs_of_nonneg (pow_nonneg hx _)] using this
-  exact h_poly.mono' h_meas h_dom
+  -- Prefer the Fernique/MemLp-based moment API (via `IsGaussian.memLp_id`), coming from Mathlib.
+  simpa using (ProbabilityTheory.integrable_abs_pow_gaussianReal (m := (0 : ℝ)) (v := v) (n := k))
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 /-- Lift to an RV: a centered Gaussian RV has all finite absolute moments. -/
@@ -741,82 +920,6 @@ end GaussianONB_Moments
 end PolynomialMoments
 open MeasureTheory ProbabilityTheory Finset PhysLean.Probability.GaussianIBP
 
-namespace Real
-
-/-- For `a, b ≥ 0` and `p ≥ 1`, `(a + b)^p ≤ 2^(p - 1) * (a^p + b^p)` (real-exponent version). -/
-lemma add_rpow_le_mul_rpow_add_rpow {a b p : ℝ}
-    (ha : 0 ≤ a) (hb : 0 ≤ b) (hp1 : 1 ≤ p) :
-    (a + b) ^ p ≤ (2 : ℝ) ^ (p - 1) * (a ^ p + b ^ p) := by
-  lift a to NNReal using ha
-  lift b to NNReal using hb
-  simpa using NNReal.rpow_add_le_mul_rpow_add_rpow a b hp1
-
-/-- Nat-exponent version: for `a, b ≥ 0` and `n ≥ 1`,
-    `(a + b)^n ≤ 2^(n - 1) * (a^n + b^n)`. -/
-lemma add_pow_le_two_pow_mul_add_pow {a b : ℝ} {n : ℕ}
-    (ha : 0 ≤ a) (hb : 0 ≤ b) (hn : 1 ≤ n) :
-    (a + b) ^ n ≤ (2 : ℝ) ^ (n - 1) * (a ^ n + b ^ n) := by
-  classical
-  have hmean :
-      ((1 / 2 : ℝ) * a + (1 / 2 : ℝ) * b) ^ n
-        ≤ (1 / 2 : ℝ) * a ^ n + (1 / 2 : ℝ) * b ^ n := by
-    let s := (Finset.univ : Finset (Fin 2))
-    have hw_nonneg : ∀ i ∈ s, 0 ≤ (1 / 2 : ℝ) := by
-      intro _ _; norm_num
-    have hw_sum : ∑ i ∈ s, (1 / 2 : ℝ) = 1 := by
-      simpa using by
-        simp [s]
-    have hz_nonneg : ∀ i ∈ s, 0 ≤ (if (i = 0) then a else b) := by
-      intro i _; fin_cases i <;> simp [ha, hb]
-    have h :=
-      Real.pow_arith_mean_le_arith_mean_pow (s := s)
-        (w := fun _ => (1 / 2 : ℝ))
-        (z := fun i => if (i = 0) then a else b)
-        (hw := hw_nonneg) (hw' := hw_sum) (hz := hz_nonneg) (n := n)
-    have hL :
-        (∑ i ∈ s, (1 / 2 : ℝ) * (if i = 0 then a else b)) =
-          (1 / 2 : ℝ) * a + (1 / 2 : ℝ) * b := by
-      simp; exact Fin.sum_univ_two fun i => if i = 0 then 2⁻¹ * a else 2⁻¹ * b
-    clear hL
-    simpa [s, Fin.sum_univ_succ, one_div] using h
-  have h2pos : 0 ≤ (2 : ℝ) := by norm_num
-  have hmul := mul_le_mul_of_nonneg_left hmean (pow_nonneg h2pos n)
-  have hL :
-      (2 : ℝ) ^ n * (((1 / 2 : ℝ) * a + (1 / 2 : ℝ) * b) ^ n)
-        = (a + b) ^ n := by
-    have := by
-      simpa [mul_add, mul_comm, mul_left_comm, mul_assoc] using
-        congrArg (fun x => x ^ n) (by ring_nf : (1 / 2 : ℝ) * (a + b) = (1 / 2) * a + (1 / 2) * b)
-    calc
-      (2 : ℝ) ^ n * (((1 / 2 : ℝ) * a + (1 / 2 : ℝ) * b) ^ n)
-          = (2 : ℝ) ^ n * (((1 / 2 : ℝ) * (a + b)) ^ n) := by
-              simp [mul_comm]
-              exact id (Eq.symm this)
-      _ = ((2 : ℝ) * (1 / 2 : ℝ)) ^ n * (a + b) ^ n := by simp [mul_pow]
-      _ = (1 : ℝ) ^ n * (a + b) ^ n := by simp
-      _ = (a + b) ^ n := by simp
-  have hn_pos : 0 < n := Nat.succ_le_iff.mp hn
-  have hR :
-      (2 : ℝ) ^ n * ((1 / 2 : ℝ) * a ^ n + (1 / 2 : ℝ) * b ^ n)
-        = (2 : ℝ) ^ (n - 1) * (a ^ n + b ^ n) := by
-    have hn_eq : n = (n - 1) + 1 := by
-      exact (Nat.succ_pred_eq_of_pos hn_pos).symm
-    calc
-      (2 : ℝ) ^ n * ((1 / 2 : ℝ) * a ^ n + (1 / 2 : ℝ) * b ^ n)
-          = (2 : ℝ) ^ n * (1 / 2 : ℝ) * (a ^ n + b ^ n) := by ring
-      _ = ((2 : ℝ) ^ ((n - 1) + 1) * (1 / 2 : ℝ)) * (a ^ n + b ^ n) := by
-            rw [hn_eq]; rw [Nat.add_succ_sub_one]
-      _ = ((2 : ℝ) ^ (n - 1) * 2 * (1 / 2 : ℝ)) * (a ^ n + b ^ n) := by
-            simp [pow_succ, mul_comm, mul_assoc]
-      _ = ((2 : ℝ) ^ (n - 1) * 1) * (a ^ n + b ^ n) := by
-            simp
-      _ = (2 : ℝ) ^ (n - 1) * (a ^ n + b ^ n) := by
-            simp [mul_comm]
-  exact add_pow_le ha hb n
-
-end Real
-
-
 open MeasureTheory ProbabilityTheory
 
 omit [CompleteSpace H] in
@@ -825,41 +928,29 @@ lemma integrable_one_add_norm_pow
     (hg : IsGaussianHilbert g) (m : ℕ) :
     Integrable (fun ω => (1 + ‖g ω‖) ^ m) := by
   classical
-  cases m with
-  | zero => simp
-  | succ m' =>
-      let n := Nat.succ m'
-      have h_dom : ∀ ω,
-          (1 + ‖g ω‖) ^ n ≤
-            (2 : ℝ) ^ (n - 1) * (1 + (‖g ω‖) ^ n) := by
-        intro ω
-        have hn : 1 ≤ n := Nat.succ_le_succ (Nat.zero_le m')
-        have h := Real.add_pow_le_two_pow_mul_add_pow
-                    (a := (1 : ℝ)) (b := ‖g ω‖) (n := n)
-                    (ha := by norm_num) (hb := norm_nonneg _) (hn := hn)
-        simpa [one_pow, add_comm, add_left_comm, add_assoc] using h
-      have h_int_right :
-          Integrable (fun ω => 1 + (‖g ω‖) ^ n) := by
-        have h1 : Integrable (fun _ : Ω => (1 : ℝ)) := by simp
-        have h2 : Integrable (fun ω => (‖g ω‖) ^ n) :=
-          integrable_norm_pow_nat_of_gaussian (hg := hg) (m := n)
-        simpa using h1.add h2
-      have h_int_dom :
-          Integrable (fun ω => (2 : ℝ) ^ (n - 1) * (1 + (‖g ω‖) ^ n)) :=
-        h_int_right.const_mul _
-      have h_meas : AEStronglyMeasurable (fun ω => (1 + ‖g ω‖) ^ n) ℙ := by
-        have : Measurable (fun ω => 1 + ‖g ω‖) :=
-          (measurable_const).add (hg.repr_measurable.norm)
-        exact (this.pow_const n).aestronglyMeasurable
-      refine h_int_dom.mono' h_meas (Filter.Eventually.of_forall (fun ω => ?_))
-      have hR : 0 ≤ (2 : ℝ) ^ (n - 1) * (1 + (‖g ω‖) ^ n) := by
-        have h1 : 0 ≤ (2 : ℝ) ^ (n - 1) := pow_nonneg (by norm_num) _
-        have h2 : 0 ≤ (1 + (‖g ω‖) ^ n) := add_nonneg (by norm_num) (pow_nonneg (norm_nonneg _) _)
-        exact mul_nonneg h1 h2
-      have hbase : 0 ≤ 1 + ‖g ω‖ := by nlinarith [norm_nonneg (g ω)]
-      have hL : 0 ≤ (1 + ‖g ω‖) ^ n := pow_nonneg hbase _
-      have := h_dom ω
-      simpa [Real.norm_eq_abs, abs_pow, abs_of_nonneg hbase, abs_of_nonneg hR] using this
+  have h_term :
+      ∀ k ∈ Finset.range (m + 1),
+        Integrable (fun ω => (Nat.choose m k : ℝ) * (‖g ω‖) ^ k) := by
+    intro k hk
+    have hk_int : Integrable (fun ω => (‖g ω‖) ^ k) := by
+      exact integrable_norm_pow_nat_of_gaussian (g := g) (hg := hg) k
+    simpa using hk_int.const_mul (Nat.choose m k : ℝ)
+  have h_sum :
+      Integrable (fun ω =>
+        ∑ k ∈ Finset.range (m + 1), (Nat.choose m k : ℝ) * (‖g ω‖) ^ k) := by
+    simpa using
+      (integrable_finset_sum
+        (s := Finset.range (m + 1))
+        (f := fun k ω => (Nat.choose m k : ℝ) * (‖g ω‖) ^ k)
+        (by intro k hk; exact h_term k hk))
+  have :
+      (fun ω => (1 + ‖g ω‖) ^ m)
+        =
+      (fun ω =>
+        ∑ k ∈ Finset.range (m + 1), (Nat.choose m k : ℝ) * (‖g ω‖) ^ k) := by
+    funext ω
+    simp [add_pow, one_pow, add_comm, mul_comm]
+  simpa [this] using h_sum
 
 omit [CompleteSpace H] in
 /-- Parameterized integrability: if `p ≥ 0` and `p ≤ m` for some natural `m`,
@@ -2174,47 +2265,9 @@ namespace ProbabilityTheory
 lemma integrable_one_add_abs_pow_nat_gaussian
     (v : ℝ≥0) (n : ℕ) :
     Integrable (fun x : ℝ => (1 + |x|) ^ n) (ProbabilityTheory.gaussianReal 0 v) := by
-  classical
-  cases n with
-  | zero =>
-      simp
-  | succ k =>
-    have hdom :
-        ∀ x : ℝ, (1 + |x|) ^ (Nat.succ k)
-          ≤ (2 : ℝ) ^ (Nat.succ k - 1) * (1 + |x| ^ (Nat.succ k)) := by
-      intro x
-      have := Real.add_pow_le_two_pow_mul_add_pow
-        (a := 1) (b := |x|) (n := Nat.succ k)
-        (ha := by norm_num) (hb := by exact abs_nonneg x)
-        (hn := Nat.succ_le_succ (Nat.zero_le k))
-      simpa [one_pow] using this
-    have h_meas : AEStronglyMeasurable
-        (fun x : ℝ => (1 + |x|) ^ (Nat.succ k)) (ProbabilityTheory.gaussianReal 0 v) := by
-      have hcont : Continuous (fun x : ℝ => (1 + |x|) ^ (Nat.succ k)) :=
-        (continuous_const.add continuous_abs).pow _
-      simpa using hcont.measurable.aestronglyMeasurable
-    have h_rhs_int :
-        Integrable (fun x : ℝ => (2 : ℝ) ^ (Nat.succ k - 1) * (1 + |x| ^ (Nat.succ k)))
-          (ProbabilityTheory.gaussianReal 0 v) := by
-      have h1 : Integrable (fun _ : ℝ => (2 : ℝ) ^ (Nat.succ k - 1))
-            (ProbabilityTheory.gaussianReal 0 v) := by
-        simp
-      have h2 : Integrable (fun x : ℝ => |x| ^ (Nat.succ k))
-            (ProbabilityTheory.gaussianReal 0 v) :=
-        integrable_abs_pow_gaussianReal_centered_nat (v := v) (k := Nat.succ k)
-      have : Integrable
-          (fun x : ℝ =>
-            (2 : ℝ) ^ (Nat.succ k - 1) + (2 : ℝ) ^ (Nat.succ k - 1) * |x| ^ (Nat.succ k))
-          (ProbabilityTheory.gaussianReal 0 v) :=
-        h1.add (h2.const_mul _)
-      simpa [mul_add, mul_one] using this
-    refine h_rhs_int.mono' h_meas (ae_of_all _ (fun x => ?_))
-    have hL : 0 ≤ (1 + |x|) ^ (Nat.succ k) :=
-      pow_nonneg (by linarith [abs_nonneg x]) _
-    calc
-      ‖(1 + |x|) ^ (Nat.succ k)‖
-          = (1 + |x|) ^ (Nat.succ k) := by rw [Real.norm_of_nonneg hL]
-      _ ≤ (2 : ℝ) ^ (Nat.succ k - 1) * (1 + |x| ^ (Nat.succ k)) := hdom x
+  -- Delegate to the (Fernique/MemLp based) integrability lemma in the 1D IBP file.
+  simpa [pow_succ] using
+    ProbabilityTheory.gaussianReal_integrable_one_add_abs_pow_centered (v := v) n
 
 end ProbabilityTheory
 end Gauss1D_helpers

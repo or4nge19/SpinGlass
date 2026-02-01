@@ -2,6 +2,7 @@ import SpinGlass.Defs
 import Mathlib.Probability.Distributions.Gaussian.Real
 import Mathlib.Probability.Moments.Basic
 import Mathlib.Probability.Independence.InfinitePi
+import Mathlib.Analysis.Complex.Trigonometric
 
 /-!
 # Hopfield model (Talagrand, Hopfield chapter): prerequisites
@@ -44,6 +45,28 @@ noncomputable def hopfieldOverlapVec (N M : ℕ) (Ξ : Patterns N M) (σ : Confi
 /-- The pattern matrix in \(\{\pm 1\}\): `eta i k = η_{i,k}`. -/
 noncomputable def hopfieldEta (N M : ℕ) (Ξ : Patterns N M) (i : Fin N) (k : Fin M) : ℝ :=
   spin N (Ξ k) i
+
+/-! ## The “site vector” \( \eta_i \) and its dot product -/
+
+/-- Talagrand’s site vector dot-product \( \eta_i \cdot z = \sum_k \eta_{i,k} z_k \). -/
+noncomputable def hopfieldEtaDot (N M : ℕ) (Ξ : Patterns N M) (i : Fin N) (z : Fin M → ℝ) : ℝ :=
+  ∑ k : Fin M, (hopfieldEta (N := N) (M := M) Ξ i k) * (z k)
+
+/-- Squared Euclidean norm on `Fin M → ℝ`, written as a finite sum. -/
+noncomputable def finVecNormSq (M : ℕ) (z : Fin M → ℝ) : ℝ :=
+  ∑ k : Fin M, (z k) ^ 2
+
+/-!
+Talagrand’s \( \psi(z) \) (Eq. 4.34, as in `Notes/BovierGayrard.md`):
+\[
+\psi(z) = -\frac{N\beta}{2}\,\|z\|^2 + \sum_{i\le N} \log \cosh(\beta\,\eta_i\cdot z + h).
+\]
+
+We model `‖z‖^2` as `finVecNormSq M z`.
+-/
+noncomputable def hopfieldPsi (N M : ℕ) (β h : ℝ) (Ξ : Patterns N M) (z : Fin M → ℝ) : ℝ :=
+  -((N : ℝ) * β / 2) * finVecNormSq M z
+    + ∑ i : Fin N, Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))
 
 lemma hopfieldOverlap_eq_eta (N M : ℕ) (Ξ : Patterns N M) (σ : Config N) (k : Fin M) :
     hopfieldOverlapVec (N := N) (M := M) Ξ σ k
@@ -121,10 +144,8 @@ lemma sum_exp_sum_spin (N : ℕ) (a : Fin N → ℝ) :
   | zero =>
       simp
   | succ N ih =>
-      -- split `σ : Fin (N+1) → Bool` into head `σ0` and tail `σtail`
       let e : (Bool × (Fin N → Bool)) ≃ (Fin (N + 1) → Bool) :=
         Fin.consEquiv (fun _ : Fin (N + 1) => Bool)
-      -- rewrite the sum over `Config (N+1)` as a double sum over `(Bool × Config N)`
       have hsum :
           (∑ σ : Config (N + 1),
               Real.exp (∑ i : Fin (N + 1), (a i) * (spin (N + 1) σ i)))
@@ -136,15 +157,12 @@ lemma sum_exp_sum_spin (N : ℕ) (a : Fin N → ℝ) :
             (f := fun p => Real.exp (∑ i : Fin (N + 1), (a i) * (spin (N + 1) (e p) i)))
             (g := fun σ => Real.exp (∑ i : Fin (N + 1), (a i) * (spin (N + 1) σ i)))
             (h := fun _ => rfl)).symm
-      -- compute the inner expression: it splits into the `i=0` term + a sum over the tail
       have hsplit (b : Bool) (σtail : Fin N → Bool) :
           (∑ i : Fin (N + 1), (a i) * (spin (N + 1) (e (b, σtail)) i))
             =
             (a 0) * (if b then 1 else -1)
               + ∑ j : Fin N, (a (Fin.succ j)) * (spin N σtail j) := by
-        -- `Fin (N+1)` is `0` plus the `succ` indices
         simp [e, Fin.sum_univ_succ, spin]
-      -- now sum over `b : Bool` explicitly, producing an `(exp(a0)+exp(-a0))` factor
       calc
         (∑ σ : Config (N + 1),
               Real.exp (∑ i : Fin (N + 1), (a i) * (spin (N + 1) σ i)))
@@ -155,9 +173,6 @@ lemma sum_exp_sum_spin (N : ℕ) (a : Fin N → ℝ) :
             ∑ σtail : (Fin N → Bool),
               (Real.exp (a 0) + Real.exp (-a 0))
                 * Real.exp (∑ j : Fin N, (a (Fin.succ j)) * (spin N σtail j)) := by
-            -- expand the sum over `b : Bool` at fixed `σtail`
-            -- `Fintype.sum_prod_type` splits the sum over `Bool × Config N` into nested sums.
-            -- After expanding `exp (A + B)` as `exp A * exp B`, we use distributivity to collect terms.
             simp [Fintype.sum_prod_type, hsplit, Real.exp_add, add_mul, mul_comm,
               Finset.sum_add_distrib]
         _ =
@@ -168,7 +183,6 @@ lemma sum_exp_sum_spin (N : ℕ) (a : Fin N → ℝ) :
         _ =
             (Real.exp (a 0) + Real.exp (-a 0))
               * (∏ j : Fin N, (Real.exp (a (Fin.succ j)) + Real.exp (-a (Fin.succ j)))) := by
-            -- apply IH to the tail
             have ih' :
                 (∑ σtail : (Fin N → Bool),
                     Real.exp (∑ j : Fin N, (a (Fin.succ j)) * (spin N σtail j)))
@@ -177,11 +191,83 @@ lemma sum_exp_sum_spin (N : ℕ) (a : Fin N → ℝ) :
               simpa using (ih (a := fun j => a (Fin.succ j)))
             simp [ih']
         _ = ∏ i : Fin (N + 1), (Real.exp (a i) + Real.exp (-a i)) := by
-            -- finish by recognizing the product over `Fin (N+1)` as head * tail product
             simp [Fin.prod_univ_succ]
 
 -- NOTE: Talagrand writes the RHS as `∏ i, 2 * cosh (a i)`. We keep the equivalent
 -- `∏ i, (exp (a i) + exp (-a i))` form to avoid rewriting loops in the simp set around `cosh`.
+
+/-! ## Turning the spin-sum into Talagrand's `ψ` -/
+
+lemma exp_add_exp_neg_eq_two_cosh (x : ℝ) :
+    Real.exp x + Real.exp (-x) = 2 * Real.cosh x := by
+  have h := Real.cosh_eq x
+  have h2 := congrArg (fun t : ℝ => t * 2) h
+  have h2' : Real.cosh x * 2 = Real.exp x + Real.exp (-x) := by
+    simpa [mul_assoc, mul_left_comm, mul_comm, div_eq_mul_inv] using h2
+  simpa [mul_assoc, mul_left_comm, mul_comm] using h2'.symm
+
+lemma sum_exp_hopfield_linear_eq_two_pow_mul_exp_sum_log_cosh
+    (N M : ℕ) (β h : ℝ) (Ξ : Patterns N M) (z : Fin M → ℝ) :
+    (∑ σ : Config N,
+        Real.exp (∑ i : Fin N, (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h) * (spin N σ i)))
+      =
+      (2 : ℝ) ^ N
+        * Real.exp (∑ i : Fin N,
+            Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))) := by
+  classical
+  have hfac :=
+    sum_exp_sum_spin (N := N) (a := fun i : Fin N => β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)
+  have hprod :
+      (∏ i : Fin N,
+          (Real.exp (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)
+            + Real.exp (-(β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))))
+        =
+        ∏ i : Fin N, (2 * Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) := by
+    refine Finset.prod_congr rfl ?_
+    intro i hi
+    simpa [exp_add_exp_neg_eq_two_cosh, neg_add] using
+      (exp_add_exp_neg_eq_two_cosh (x := (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)))
+  have hprod' :
+      (∏ i : Fin N, (2 * Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)))
+        =
+        (2 : ℝ) ^ N * (∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) := by
+    simp [Finset.prod_mul_distrib]
+  have hcosh_pos : 0 < (∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) := by
+    refine Finset.prod_pos ?_
+    intro i hi
+    simpa using (Real.cosh_pos (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))
+  have hlog :
+      Real.log (∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))
+        =
+        ∑ i : Fin N, Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) := by
+    simpa using (Real.log_prod (s := (Finset.univ : Finset (Fin N)))
+      (f := fun i : Fin N => Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))
+      (by
+        intro i hi
+        exact (ne_of_gt (Real.cosh_pos (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)))))
+  have hexp :
+      Real.exp (∑ i : Fin N, Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)))
+        =
+        ∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h) := by
+    calc
+      Real.exp (∑ i : Fin N, Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)))
+          = Real.exp (Real.log (∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))) := by
+              simp [hlog]
+      _ = ∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h) := by
+              simpa using (Real.exp_log hcosh_pos)
+  calc
+    (∑ σ : Config N,
+        Real.exp (∑ i : Fin N, (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h) * spin N σ i))
+        = ∏ i : Fin N,
+            (Real.exp (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)
+              + Real.exp (-(β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))) := by
+            simpa [neg_mul, sub_eq_add_neg] using hfac
+    _ = ∏ i : Fin N, (2 * Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) := hprod
+    _ = (2 : ℝ) ^ N * (∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) := hprod'
+    _ = (2 : ℝ) ^ N
+          * Real.exp (∑ i : Fin N,
+              Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))) := by
+            simp [hexp]
 
 /-! ## Standard Gaussian on `ℝ^M` and Hubbard–Stratonovich -/
 
@@ -306,8 +392,8 @@ theorem hubbardStratonovich_stdGaussian (M : ℕ) (c : ℝ) (hc : 0 ≤ c) (m : 
 /--
 Hubbard–Stratonovich identity specialized to the Hopfield overlap vector `m(σ)`.
 
-This is the exact “linearization of the quadratic weight” used in Talagrand §4.2, written with the
-sign conventions of this repo (`gibbs_pmf` uses `exp (-H)`).
+“linearization of the quadratic weight” as used in Talagrand §4.2, written with our the
+sign conventions (`gibbs_pmf` uses `exp (-H)`).
 -/
 theorem hubbardStratonovich_hopfield
     (N M : ℕ) (β : ℝ) (hβ : 0 ≤ β) (Ξ : Patterns N M) (σ : Config N) :
