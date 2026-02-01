@@ -1,4 +1,4 @@
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinTilt
+import Mathlib.Probability.Distributions.Gaussian.Fernique
 
 /-!
 # Fernique consequences for Cameron–Martin usage
@@ -29,6 +29,40 @@ variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] [MeasurableSpace
 theorem exists_C_pos_integrable_rexp_norm_sq :
     ∃ C : ℝ, 0 < C ∧ Integrable (fun x : E ↦ rexp (C * ‖x‖ ^ 2)) μ := by
   simpa using (ProbabilityTheory.IsGaussian.exists_integrable_exp_sq (μ := μ))
+
+/-- A Gaussian measure has finite moments of all orders: `‖x‖^n` is integrable for all `n`. -/
+theorem integrable_norm_pow (n : ℕ) : Integrable (fun x : E => ‖x‖ ^ n) μ := by
+  have hLp : MemLp (fun x : E => x) (n : ℝ≥0∞) μ :=
+    ProbabilityTheory.IsGaussian.memLp_id (μ := μ) (p := (n : ℝ≥0∞)) (by simp)
+  have : IsFiniteMeasure μ := by infer_instance
+  simpa using (MeasureTheory.MemLp.integrable_norm_pow' (μ := μ) (f := fun x : E => x) hLp)
+
+/-- Polynomial growth domination helper: `(1 + ‖x‖)^n` is integrable for all `n`. -/
+theorem integrable_one_add_norm_pow (n : ℕ) :
+    Integrable (fun x : E => (1 + ‖x‖) ^ n) μ := by
+  have hn : Integrable (fun x : E => ‖x‖ ^ n) μ := integrable_norm_pow (μ := μ) n
+  have hconst : Integrable (fun _ : E => (1 : ℝ)) μ := integrable_const (μ := μ) (c := (1 : ℝ))
+  have hsum : Integrable (fun x : E => (1 : ℝ) + ‖x‖ ^ n) μ := hconst.add hn
+  have hsum' : Integrable (fun x : E => ((2 : ℝ) ^ (n - 1)) * ((1 : ℝ) + ‖x‖ ^ n)) μ :=
+    hsum.const_mul ((2 : ℝ) ^ (n - 1))
+  refine hsum'.mono' (by fun_prop) (ae_of_all _ (fun x => ?_))
+  have hle : (1 + ‖x‖) ^ n ≤ (2 : ℝ) ^ (n - 1) * ((1 : ℝ) ^ n + (‖x‖) ^ n) :=
+    add_pow_le (a := (1 : ℝ)) (b := ‖x‖) (by positivity) (by positivity) n
+  have hpos : 0 ≤ (1 + ‖x‖) ^ n := by positivity
+  have hnorm : ‖(1 + ‖x‖) ^ n‖ = (1 + ‖x‖) ^ n := Real.norm_of_nonneg hpos
+  have hle' : (1 + ‖x‖) ^ n ≤ (2 : ℝ) ^ (n - 1) * ((1 : ℝ) + ‖x‖ ^ n) := by
+    simpa [pow_zero, one_pow, add_assoc, add_comm, add_left_comm] using hle
+  simpa [hnorm]
+
+/-- A convenient corollary: any measurable function with polynomial growth is integrable. -/
+theorem integrable_of_abs_le_mul_one_add_norm_pow {F : E → ℝ} (hF_meas : Measurable F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C) (hF_growth : ∀ x, |F x| ≤ C * (1 + ‖x‖) ^ m) :
+    Integrable F μ := by
+  have hbase : Integrable (fun x : E => (1 + ‖x‖) ^ m) μ := integrable_one_add_norm_pow (μ := μ) m
+  have hdom : Integrable (fun x : E => C * (1 + ‖x‖) ^ m) μ := hbase.const_mul C
+  refine hdom.mono' hF_meas.aestronglyMeasurable (ae_of_all _ (fun x => ?_))
+  have hnonneg : 0 ≤ C * (1 + ‖x‖) ^ m := by positivity
+  simpa [Real.norm_eq_abs, abs_of_nonneg hnonneg] using hF_growth x
 
 /-- Any continuous linear functional is in `L^p` (all finite `p`) under a Gaussian measure. -/
 theorem memLp_strongDual (L : StrongDual ℝ E) (p : ℝ≥0∞) (hp : p ≠ ⊤) :

@@ -1,0 +1,29 @@
+import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinThm
+import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
+import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPAnalyticAPI
+
+/-!
+# Cameron–Martin toolkit: public API
+
+This file is the **public-facing** entry point for the Cameron–Martin toolkit in this repo:
+
+- Cameron–Martin theorem / laws (`hasLaw_cameronMartin`, ...)
+- Fernique consequences (`exists_C_pos_integrable_rexp_sq_dual`, ...)
+- Gaussian integration by parts in Cameron–Martin form
+  (`cameronMartin_integral_by_parts_bounded`,
+   `cameronMartin_integral_by_parts_of_integrable_bound`).
+
+Downstream developments should prefer importing this file over the implementation files.
+-/
+
+export ProbabilityTheory
+  (hasLaw_cameronMartin
+   cameronMartin_integral_by_parts_bounded
+   cameronMartin_integral_by_parts_of_integrable_bound)
+
+export ProbabilityTheory.IsGaussian
+  (exists_C_pos_integrable_rexp_norm_sq
+   memLp_strongDual
+   integrable_abs_pow_strongDual
+   exists_C_pos_integrable_rexp_sq_dual)
+

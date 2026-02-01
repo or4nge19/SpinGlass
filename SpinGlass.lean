@@ -9,8 +9,7 @@ import SpinGlass.GuerraBound
 import SpinGlass.Hopfield
 import SpinGlass.Mathlib.MeasureTheory.ParametricDominatedConvergence
 import SpinGlass.Mathlib.ParametricDominatedConvergence
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartin
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinThm
+import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinAPI
 import SpinGlass.Mathlib.Probability.Distributions.GaussianIntegrationByParts
 import SpinGlass.Mathlib.Probability.Distributions.Gaussian_IBP_Hilbert
 import SpinGlass.Replicas

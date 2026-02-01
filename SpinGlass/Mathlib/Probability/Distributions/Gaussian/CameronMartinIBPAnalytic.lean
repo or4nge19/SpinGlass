@@ -1,19 +1,32 @@
 import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPDeriv
+import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
 import SpinGlass.Mathlib.Probability.Distributions.GaussianIntegrationByParts
 import Mathlib.Analysis.Calculus.Deriv.Comp
 import Mathlib.Analysis.Calculus.Deriv.Add
 import Mathlib.Analysis.Calculus.Deriv.Mul
 
 /-!
-# Cameron–Martin IBP: analytic layer (bounded baseline)
+# Cameron–Martin IBP: analytic layer
 
-This file proves the analytic hypotheses needed to turn the Cameron–Martin “tilt = shift” identity
-into a concrete Gaussian integration-by-parts statement by differentiating at `t = 0` under the
-integral sign.
+This file provides the analytic infrastructure to differentiate the Cameron–Martin tilt functional
+`t ↦ ∫ F(y) · exp(t⟨x,y⟩ - t²‖x‖²/2) dμ(y)` at `t = 0` under the integral sign, yielding
+the Gaussian integration-by-parts identity `∫ ⟨x,y⟩ F(y) dμ(y)`.
 
-This is a **baseline** layer: it assumes boundedness of `F` and boundedness of `‖fderiv ℝ F y‖`.
-Later layers will weaken these hypotheses using Fernique/moderate-growth bounds (reusing the 1D
-domination toolkit from `GaussianIntegrationByParts.lean`).
+## Main results
+
+* `cameronMartinTiltKernel_aeEq_tiltKernel`: the Cameron–Martin tilt kernel agrees a.e. with the
+  1D `tiltKernel` applied to the coordinate `x y`.
+* `integrable_profile_cameronMartin`: the exponential profile `(|x y| + 1) * exp(δ|x y|)` is
+  integrable under `μ`, enabling dominated convergence arguments.
+* `hasDerivAt_tiltFun_at0_of_bounded`: differentiation under the integral for bounded `F`.
+* `hasDerivAt_tiltFun_at0_of_integrable_profile`: differentiation under the integral given
+  explicit integrability of the dominating profile.
+
+## Implementation notes
+
+The key technique is to reduce the infinite-dimensional differentiation problem to 1D by
+composing with the Cameron–Martin direction `x`, then applying the domination bounds from
+`GaussianIntegrationByParts.lean` (specifically `gaussianTilt_deriv_dom_bound`).
 -/
 
 open MeasureTheory Filter
@@ -106,13 +119,132 @@ theorem hasDerivAt_shiftFun_at0_bounded
       simpa [add_comm, add_left_comm, add_assoc] using (HasDerivAt.smul_const (hasDerivAt_id t) v).const_add y
     simpa [G, G'] using ((hF' (y + t • v)).comp_hasDerivAt t hline)
   have hs : Metric.ball (0 : ℝ) 1 ∈ 𝓝 (0 : ℝ) := Metric.ball_mem_nhds _ (by norm_num)
-  have h :=
-    hasDerivAt_integral_of_dominated_loc_of_deriv_le (μ := μ)
+  have h := hasDerivAt_integral_of_dominated_loc_of_deriv_le (μ := μ)
       (F := G) (F' := G') (s := Metric.ball (0 : ℝ) 1) (x₀ := (0 : ℝ))
       (bound := fun _ : E => (|M1| * ‖v‖ : ℝ)) hs hG_meas hG0_int hG'_meas0 h_bound hBound_int h_diff
   have hInt0 : (∫ y, G' 0 y ∂μ) = ∫ y, (fderiv ℝ F y) v ∂μ := by
     refine integral_congr_ae (ae_of_all _ (fun y => by simp [G', v, hfderiv y]))
   simpa [cameronMartinShiftFun, G, v, hInt0] using h.2
+
+theorem hasDerivAt_shiftFun_at0_of_integrable_bound
+    (x : cameronMartin μ) (F : E → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)
+    {δ : ℝ} (hδ : 0 < δ)
+    (hF_int : Integrable F μ)
+    (bound : E → ℝ) (hbound_int : Integrable bound μ)
+    (hbound : ∀ᵐ y ∂μ,
+        ∀ t ∈ Metric.ball (0 : ℝ) δ, ‖(fderiv ℝ F (y + t • cmCoe x)) (cmCoe x)‖ ≤ bound y) :
+    HasDerivAt (fun t => cameronMartinShiftFun (μ := μ) x F t)
+      (∫ y, (fderiv ℝ F y) (cmCoe x) ∂μ) 0 := by
+  rcases (contDiff_one_iff_hasFDerivAt.mp hF_c1) with ⟨F', hF'cont, hF'⟩
+  have hfderiv : ∀ y, fderiv ℝ F y = F' y := fun y => (hF' y).fderiv
+  let v : E := cmCoe x
+  let G : ℝ → E → ℝ := fun t y => F (y + t • v)
+  let G' : ℝ → E → ℝ := fun t y => (F' (y + t • v)) v
+  have hG_meas : ∀ᶠ t in 𝓝 (0 : ℝ), AEStronglyMeasurable (G t) μ :=
+    Filter.Eventually.of_forall (fun t => (hF_meas.comp (by fun_prop)).aestronglyMeasurable)
+  have hG0_int : Integrable (G 0) μ := by simpa [G] using hF_int
+  have hG'_meas0 : AEStronglyMeasurable (G' 0) μ := by
+    have : Measurable (fun y : E => (F' y) v) :=
+      (ContinuousLinearMap.measurable_apply v).comp hF'cont.measurable
+    simpa [G', v] using this.aestronglyMeasurable
+  have h_bound : ∀ᵐ y ∂μ, ∀ t ∈ Metric.ball (0 : ℝ) δ, ‖G' t y‖ ≤ bound y := by
+    filter_upwards [hbound] with y hy t ht
+    have : ‖(fderiv ℝ F (y + t • v)) v‖ ≤ bound y := by
+      simpa [v] using hy t ht
+    simpa [G', v, hfderiv (y + t • v)] using this
+  have h_diff : ∀ᵐ y ∂μ, ∀ t ∈ Metric.ball (0 : ℝ) δ, HasDerivAt (fun s => G s y) (G' t y) t := by
+    refine ae_of_all _ (fun y t ht => ?_)
+    have hline : HasDerivAt (fun s : ℝ => y + s • v) v t := by
+      simpa [add_comm, add_left_comm, add_assoc] using
+        (HasDerivAt.smul_const (hasDerivAt_id t) v).const_add y
+    simpa [G, G'] using ((hF' (y + t • v)).comp_hasDerivAt t hline)
+  have hs : Metric.ball (0 : ℝ) δ ∈ 𝓝 (0 : ℝ) := Metric.ball_mem_nhds _ hδ
+  have h :=
+    hasDerivAt_integral_of_dominated_loc_of_deriv_le (μ := μ)
+      (F := G) (F' := G') (s := Metric.ball (0 : ℝ) δ) (x₀ := (0 : ℝ))
+      (bound := bound) hs hG_meas hG0_int hG'_meas0 h_bound hbound_int h_diff
+  have hInt0 : (∫ y, G' 0 y ∂μ) = ∫ y, (fderiv ℝ F y) v ∂μ := by
+    refine integral_congr_ae (ae_of_all _ (fun y => by simp [G', v, hfderiv y]))
+  simpa [cameronMartinShiftFun, G, v, hInt0] using h.2
+
+theorem hasDerivAt_shiftFun_at0_polyGrowth
+    (x : cameronMartin μ) (F : E → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ y, |F y| ≤ C * (1 + ‖y‖) ^ m)
+    (hF'_growth : ∀ y, ‖fderiv ℝ F y‖ ≤ C * (1 + ‖y‖) ^ m) :
+    HasDerivAt (fun t => cameronMartinShiftFun (μ := μ) x F t)
+      (∫ y, (fderiv ℝ F y) (cmCoe x) ∂μ) 0 := by
+  rcases (contDiff_one_iff_hasFDerivAt.mp hF_c1) with ⟨F', hF'cont, hF'⟩
+  have hfderiv : ∀ y, fderiv ℝ F y = F' y := fun y => (hF' y).fderiv
+  let v : E := cmCoe x
+  let G : ℝ → E → ℝ := fun t y => F (y + t • v)
+  let G' : ℝ → E → ℝ := fun t y => (F' (y + t • v)) v
+  have hG_meas : ∀ᶠ t in 𝓝 (0 : ℝ), AEStronglyMeasurable (G t) μ :=
+    .of_forall (fun t => (hF_meas.comp (by fun_prop)).aestronglyMeasurable)
+  have hG0_int : Integrable (G 0) μ := by
+    have hbase : Integrable (fun y : E => (1 + ‖y‖) ^ m) μ :=
+      ProbabilityTheory.IsGaussian.integrable_one_add_norm_pow (μ := μ) m
+    refine (hbase.const_mul C).mono' (hG_meas.self_of_nhds) (ae_of_all _ (fun y => ?_))
+    simpa [G, Real.norm_eq_abs] using hF_growth y
+  have hG'_meas0 : AEStronglyMeasurable (G' 0) μ := by
+    have : Measurable (fun y : E => (F' y) v) :=
+      (ContinuousLinearMap.measurable_apply v).comp hF'cont.measurable
+    simpa [G', v] using this.aestronglyMeasurable
+  let bound : E → ℝ := fun y =>
+    (C * (2 : ℝ) ^ (m - 1) * ‖v‖) * ((1 + ‖v‖) ^ m + ‖y‖ ^ m)
+  have h_bound : ∀ᵐ y ∂μ, ∀ t ∈ Metric.ball (0 : ℝ) 1, ‖G' t y‖ ≤ bound y := by
+    refine ae_of_all _ (fun y t ht => ?_)
+    have ht1 : ‖t‖ ≤ (1 : ℝ) := le_of_lt (by simpa [Metric.mem_ball, Real.norm_eq_abs] using ht)
+    have hnorm : ‖y + t • v‖ ≤ ‖y‖ + ‖v‖ := by
+      have ht' : ‖t • v‖ ≤ ‖v‖ := by
+        simpa [norm_smul] using mul_le_mul_of_nonneg_right ht1 (norm_nonneg v)
+      have htmp : ‖y‖ + ‖t • v‖ ≤ ‖y‖ + ‖v‖ := by
+        simpa [add_comm] using (add_le_add_right ht' ‖y‖)
+      exact (norm_add_le _ _).trans htmp
+    have hOp : ‖(F' (y + t • v)) v‖ ≤ ‖F' (y + t • v)‖ * ‖v‖ :=
+      (F' (y + t • v)).le_opNorm v
+    have hB : ‖F' (y + t • v)‖ ≤ C * (1 + ‖y + t • v‖) ^ m := by
+      have : ‖fderiv ℝ F (y + t • v)‖ ≤ C * (1 + ‖y + t • v‖) ^ m := hF'_growth (y + t • v)
+      simpa [hfderiv (y + t • v)] using this
+    have h1 : (1 + ‖y + t • v‖) ^ m ≤ (1 + (‖y‖ + ‖v‖)) ^ m := by
+      have hbase : (1 : ℝ) + ‖y + t • v‖ ≤ 1 + (‖y‖ + ‖v‖) := by
+        simpa [add_comm, add_left_comm, add_assoc] using (add_le_add_right hnorm 1)
+      exact pow_le_pow_left₀ (by positivity) hbase m
+    have h2 : (1 + (‖y‖ + ‖v‖)) ^ m ≤ (2 : ℝ) ^ (m - 1) * ((1 + ‖v‖) ^ m + ‖y‖ ^ m) := by
+      have : (1 + (‖y‖ + ‖v‖)) ^ m = ((1 + ‖v‖) + ‖y‖) ^ m := by ring
+      simpa [this, add_comm, add_left_comm, add_assoc] using
+        (add_pow_le (a := (1 + ‖v‖ : ℝ)) (b := (‖y‖ : ℝ)) (by positivity) (by positivity) m)
+    have hmul : ‖F' (y + t • v)‖ ≤ C * (2 : ℝ) ^ (m - 1) * ((1 + ‖v‖) ^ m + ‖y‖ ^ m) := by
+      calc
+        ‖F' (y + t • v)‖ ≤ C * (1 + ‖y + t • v‖) ^ m := hB
+        _ ≤ C * (1 + (‖y‖ + ‖v‖)) ^ m := by gcongr
+        _ ≤ C * ((2 : ℝ) ^ (m - 1) * ((1 + ‖v‖) ^ m + ‖y‖ ^ m)) := by gcongr
+        _ = C * (2 : ℝ) ^ (m - 1) * ((1 + ‖v‖) ^ m + ‖y‖ ^ m) := by ring
+    have : ‖G' t y‖ ≤ bound y := by
+      have := hOp.trans (mul_le_mul_of_nonneg_right hmul (norm_nonneg _))
+      simpa [G', bound, mul_assoc, mul_left_comm, mul_comm] using this
+    exact this
+  have hBound_int : Integrable bound μ := by
+    have hpow : Integrable (fun y : E => ‖y‖ ^ m) μ :=
+      ProbabilityTheory.IsGaussian.integrable_norm_pow (μ := μ) m
+    have hsum : Integrable (fun y : E => (1 + ‖v‖) ^ m + ‖y‖ ^ m) μ :=
+      (integrable_const (μ := μ) (c := ((1 + ‖v‖) ^ m : ℝ))).add hpow
+    simpa [bound, mul_assoc, mul_left_comm, mul_comm] using
+      (hsum.const_mul (C * (2 : ℝ) ^ (m - 1) * ‖v‖))
+  have h_diff : ∀ᵐ y ∂μ, ∀ t ∈ Metric.ball (0 : ℝ) 1, HasDerivAt (fun s => G s y) (G' t y) t := by
+    refine ae_of_all _ (fun y t _ht => ?_)
+    have hline : HasDerivAt (fun s : ℝ => y + s • v) v t := by
+      simpa [add_comm, add_left_comm, add_assoc] using
+        (HasDerivAt.smul_const (hasDerivAt_id t) v).const_add y
+    simpa [G, G'] using ((hF' (y + t • v)).comp_hasDerivAt t hline)
+  have hs : Metric.ball (0 : ℝ) 1 ∈ 𝓝 (0 : ℝ) := Metric.ball_mem_nhds _ (by norm_num)
+  have h :=
+    hasDerivAt_integral_of_dominated_loc_of_deriv_le (μ := μ)
+      (F := G) (F' := G') (s := Metric.ball (0 : ℝ) 1) (x₀ := (0 : ℝ))
+      (bound := bound) hs hG_meas hG0_int hG'_meas0 h_bound hBound_int h_diff
+  have hInt0 : (∫ y, G' 0 y ∂μ) = ∫ y, (fderiv ℝ F y) v ∂μ := by
+    refine integral_congr_ae (ae_of_all _ (fun y => by simp [G', v, hfderiv y]))
+  simpa [cameronMartinShiftFun, G, v, bound, hInt0] using h.2
 
 theorem hasDerivAt_tiltFun_at0_bounded
     (x : cameronMartin μ) (F : E → ℝ) (hF_meas : Measurable F)
@@ -175,12 +307,10 @@ theorem hasDerivAt_tiltFun_at0_bounded
       hs hH_meas hH0 hH'0 hBnd hBnd_int hdiff
   have hEq : (fun t => cameronMartinTiltFun (μ := μ) x F t) =ᶠ[𝓝 (0 : ℝ)] fun t => ∫ y, H t y ∂μ :=
     Filter.Eventually.of_forall (fun t => by
-      have hk :
-          (fun y : E => cameronMartinTiltKernel (μ := μ) x t y)
+      have hk : (fun y : E => cameronMartinTiltKernel (μ := μ) x t y)
             =ᵐ[μ] fun y : E => tiltKernel (‖x‖₊ ^ 2) t (x y) :=
         cameronMartinTiltKernel_aeEq_tiltKernel (μ := μ) x t
-      have hker :
-          (fun y : E => cameronMartinTiltKernel (μ := μ) x t y * F y)
+      have hker : (fun y : E => cameronMartinTiltKernel (μ := μ) x t y * F y)
             =ᵐ[μ] fun y : E => H t y := by
         filter_upwards [hk] with y hy
         simp [H, v, hy, mul_comm]
@@ -194,10 +324,8 @@ theorem hasDerivAt_tiltFun_at0_bounded
 theorem hasDerivAt_tiltFun_at0_of_integrable_profile
     (x : cameronMartin μ) (F : E → ℝ) (hF_meas : Measurable F)
     {δ : ℝ} (hδ : 0 < δ)
-    (hInt :
-      Integrable
-        (fun y : E =>
-          |F y| * (δ * (‖x‖₊ ^ 2 : ℝ) + 1) * ((|x y| + 1) * Real.exp (δ * |x y|))) μ) :
+    (hInt : Integrable (fun y : E =>
+      |F y| * (δ * (‖x‖₊ ^ 2 : ℝ) + 1) * ((|x y| + 1) * Real.exp (δ * |x y|))) μ) :
     HasDerivAt (fun t => cameronMartinTiltFun (μ := μ) x F t)
       (∫ y, (x y) * F y ∂μ) 0 := by
   let v : ℝ≥0 := ‖x‖₊ ^ 2
@@ -300,6 +428,32 @@ theorem cameronMartin_integral_by_parts_bounded
     CameronMartinIBPAnalytic.hasDerivAt_shiftFun_at0_bounded (μ := μ) x F hF_meas hF_c1 hM0 hM1
   have hTilt :=
     CameronMartinIBPAnalytic.hasDerivAt_tiltFun_at0_bounded (μ := μ) x F hF_meas hM0
+  exact cameronMartin_integral_by_parts_of_hasDerivAt (μ := μ) x F hF_meas hShift hTilt
+
+/-- **Gaussian IBP (Cameron–Martin, dominated shift + integrable tilt profile).**
+
+This is the same measure-level IBP as `cameronMartin_integral_by_parts_bounded`, but with:
+- shift derivative justified by a *local-in-`t`* domination hypothesis;
+- tilt derivative justified by an *integrable profile* (cf. `hasDerivAt_tiltFun_at0_of_integrable_profile`). -/
+theorem cameronMartin_integral_by_parts_of_integrable_bound
+    (x : cameronMartin μ) (F : E → ℝ)
+    (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F)
+    {δ : ℝ} (hδ : 0 < δ)
+    (hF_int : Integrable F μ)
+    (bound : E → ℝ) (hbound_int : Integrable bound μ)
+    (hbound :  ∀ᵐ y ∂μ,
+        ∀ t ∈ Metric.ball (0 : ℝ) δ, ‖(fderiv ℝ F (y + t • cmCoe x)) (cmCoe x)‖ ≤ bound y)
+    (hTiltInt : Integrable
+        (fun y : E =>
+          |F y| * (δ * (‖x‖₊ ^ 2 : ℝ) + 1) * ((|x y| + 1) * Real.exp (δ * |x y|))) μ) :
+    (∫ y, (x y) * F y ∂μ) = ∫ y, (fderiv ℝ F y) (cmCoe x) ∂μ := by
+  have hShift :=
+    CameronMartinIBPAnalytic.hasDerivAt_shiftFun_at0_of_integrable_bound (μ := μ)
+      x F hF_meas hF_c1 hδ hF_int bound hbound_int hbound
+  have hTilt :=
+    CameronMartinIBPAnalytic.hasDerivAt_tiltFun_at0_of_integrable_profile (μ := μ)
+      x F hF_meas hδ hTiltInt
   exact cameronMartin_integral_by_parts_of_hasDerivAt (μ := μ) x F hF_meas hShift hTilt
 
 end ProbabilityTheory
