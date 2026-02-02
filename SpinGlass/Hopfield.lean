@@ -56,6 +56,18 @@ noncomputable def hopfieldEtaDot (N M : ℕ) (Ξ : Patterns N M) (i : Fin N) (z 
 noncomputable def finVecNormSq (M : ℕ) (z : Fin M → ℝ) : ℝ :=
   ∑ k : Fin M, (z k) ^ 2
 
+@[fun_prop]
+lemma measurable_finVecNormSq (M : ℕ) : Measurable (finVecNormSq M) := by
+  classical
+  -- finite sum of measurable functions
+  simpa [finVecNormSq] using
+    (Finset.measurable_sum (s := (Finset.univ : Finset (Fin M)))
+      (f := fun k : Fin M => fun z : Fin M → ℝ => (z k) ^ 2)
+      (by
+        intro k _hk
+        -- evaluation then squaring
+        fun_prop))
+
 /-!
 Talagrand’s \( \psi(z) \) (Eq. 4.34, as in `Notes/BovierGayrard.md`):
 \[
@@ -386,6 +398,141 @@ theorem hubbardStratonovich_stdGaussian (M : ℕ) (c : ℝ) (hc : 0 ≤ c) (m : 
         = ProbabilityTheory.mgf ((Finset.univ : Finset (Fin M)).sum fun k => X k) μ (Real.sqrt c) := hL
     _ = ∏ k : Fin M, ProbabilityTheory.mgf (X k) μ (Real.sqrt c) := hmgf_sum
     _ = Real.exp ((c / 2) * ∑ k : Fin M, (m k) ^ 2) := this
+
+/-! ### Talagrand’s Gaussian scaling (variance `1/(βN)`) -/
+
+/-- The variance parameter `v = (β * N)⁻¹` used by Talagrand’s Hopfield analysis. -/
+noncomputable def talagrandGaussianVar (N : ℕ) (β : ℝ) (hβ : 0 ≤ β) : ℝ≥0 :=
+  ⟨(β * (N : ℝ))⁻¹, inv_nonneg.mpr (mul_nonneg hβ (by exact_mod_cast (Nat.zero_le N)))⟩
+
+/-- Talagrand’s auxiliary Gaussian measure `γ` on `ℝ^M`, realized as a product of `N(0,(βN)⁻¹)`. -/
+noncomputable def talagrandGaussianMeasure (N M : ℕ) (β : ℝ) (hβ : 0 ≤ β) : Measure (Fin M → ℝ) :=
+  Measure.infinitePi (fun _ : Fin M =>
+    ProbabilityTheory.gaussianReal 0 (talagrandGaussianVar (N := N) β hβ))
+
+instance (N M : ℕ) (β : ℝ) (hβ : 0 ≤ β) : IsProbabilityMeasure (talagrandGaussianMeasure N M β hβ) := by
+  dsimp [talagrandGaussianMeasure]
+  infer_instance
+
+private lemma mgf_eval_talagrandGaussian (N M : ℕ) (β : ℝ) (hβ : 0 ≤ β) (k : Fin M) :
+    ProbabilityTheory.mgf (fun z : Fin M → ℝ => z k) (talagrandGaussianMeasure N M β hβ)
+      =
+      ProbabilityTheory.mgf id
+        (ProbabilityTheory.gaussianReal 0 (talagrandGaussianVar (N := N) β hβ)) := by
+  have hmap :
+      (talagrandGaussianMeasure N M β hβ).map (fun z : Fin M → ℝ => z k)
+        = ProbabilityTheory.gaussianReal 0 (talagrandGaussianVar (N := N) β hβ) := by
+    simpa [talagrandGaussianMeasure] using
+      (measurePreserving_eval_infinitePi (μ := fun _ : Fin M =>
+        ProbabilityTheory.gaussianReal 0 (talagrandGaussianVar (N := N) β hβ)) k).map_eq
+  have hm :
+      ProbabilityTheory.mgf id ((talagrandGaussianMeasure N M β hβ).map (fun z : Fin M → ℝ => z k))
+        =
+        ProbabilityTheory.mgf (fun z : Fin M → ℝ => z k) (talagrandGaussianMeasure N M β hβ) := by
+    have hmeas :
+        AEMeasurable (fun z : Fin M → ℝ => z k) (talagrandGaussianMeasure N M β hβ) :=
+      (measurable_pi_apply k).aemeasurable
+    simpa using
+      (ProbabilityTheory.mgf_id_map (μ := talagrandGaussianMeasure N M β hβ)
+        (X := fun z : Fin M → ℝ => z k) hmeas)
+  simpa [hmap] using hm.symm
+
+/--
+Hubbard–Stratonovich identity in Talagrand’s scaling:
+`γ` has variance `1/(βN)`, and the linear term is `βN * ⟨m,z⟩`.
+-/
+theorem hubbardStratonovich_talagrandGaussian
+    (N M : ℕ) (β : ℝ) (hβ : 0 ≤ β) (m : Fin M → ℝ) :
+    (∫ z : Fin M → ℝ, Real.exp ((β * (N : ℝ)) * (∑ k : Fin M, m k * z k))
+        ∂(talagrandGaussianMeasure (N := N) (M := M) β hβ))
+      =
+      Real.exp (((β * (N : ℝ)) / 2) * ∑ k : Fin M, (m k) ^ 2) := by
+  let μ : Measure (Fin M → ℝ) := talagrandGaussianMeasure (N := N) (M := M) β hβ
+  let v : ℝ≥0 := talagrandGaussianVar (N := N) β hβ
+  let t : ℝ := β * (N : ℝ)
+  let X : Fin M → (Fin M → ℝ) → ℝ := fun k z => m k * z k
+  by_cases ht : t = 0
+  · simp [t, ht, talagrandGaussianMeasure, talagrandGaussianVar]
+  have h_indep : ProbabilityTheory.iIndepFun (fun k z => z k) μ := by
+    simpa [μ, talagrandGaussianMeasure] using
+      (ProbabilityTheory.iIndepFun_infinitePi
+        (P := fun _ : Fin M => ProbabilityTheory.gaussianReal 0 v)
+        (X := fun _ : Fin M => id) (by fun_prop))
+  have h_indep' : ProbabilityTheory.iIndepFun X μ :=
+    (ProbabilityTheory.iIndepFun.comp h_indep (fun k x => m k * x) (fun _ => by fun_prop))
+  have hX_meas : ∀ k, Measurable (X k) := by fun_prop
+  have hL :
+      (∫ z : Fin M → ℝ, Real.exp (t * (∑ k : Fin M, m k * z k)) ∂μ)
+        =
+        ProbabilityTheory.mgf ((Finset.univ : Finset (Fin M)).sum fun k => X k) μ t := by
+    simp [ProbabilityTheory.mgf, X, μ, t, Finset.mul_sum, mul_assoc, mul_comm]
+  have hmgf_sum :
+      ProbabilityTheory.mgf ((Finset.univ : Finset (Fin M)).sum fun k => X k) μ t
+        = ∏ k : Fin M, ProbabilityTheory.mgf (X k) μ t := by
+    simpa using (h_indep'.mgf_sum (μ := μ) (t := t) hX_meas (Finset.univ : Finset (Fin M)))
+  have hmgf_one (k : Fin M) :
+      ProbabilityTheory.mgf (X k) μ t = Real.exp (((t / 2) * (m k) ^ 2)) := by
+    have hmap_val :
+        ProbabilityTheory.mgf (fun z : Fin M → ℝ => z k) μ ((m k) * t)
+          =
+          ProbabilityTheory.mgf id (ProbabilityTheory.gaussianReal 0 v) ((m k) * t) := by
+      simpa [μ] using congrArg (fun F : ℝ → ℝ => F ((m k) * t))
+        (mgf_eval_talagrandGaussian (N := N) (M := M) (β := β) hβ k)
+    have hscale :
+        ProbabilityTheory.mgf (X k) μ t
+          = ProbabilityTheory.mgf (fun z : Fin M → ℝ => z k) μ ((m k) * t) := by
+      simpa [X, mul_assoc, mul_left_comm, mul_comm] using
+        (ProbabilityTheory.mgf_const_mul (μ := μ) (X := fun z : Fin M → ℝ => z k) (α := m k) (t := t))
+    have hgauss :
+        ProbabilityTheory.mgf id (ProbabilityTheory.gaussianReal 0 v) ((m k) * t)
+          = Real.exp ((v : ℝ) * ((m k) * t) ^ 2 / 2) := by
+      simpa using congrArg (fun F => F ((m k) * t))
+        (ProbabilityTheory.mgf_id_gaussianReal (μ := (0 : ℝ)) (v := v))
+    have hvco : (v : ℝ) = t⁻¹ := by
+      simp [v, t, talagrandGaussianVar]
+    have hv : (v : ℝ) * (t ^ 2) = t := by
+      have : (t⁻¹ : ℝ) * t ^ 2 = t := by
+        calc
+          (t⁻¹ : ℝ) * t ^ 2 = (t⁻¹ * t) * t := by ring_nf
+          _ = (1 : ℝ) * t := by simp [inv_mul_cancel₀ ht]
+          _ = t := by simp
+      simpa [hvco] using this
+    calc
+      ProbabilityTheory.mgf (X k) μ t
+          = ProbabilityTheory.mgf (fun z : Fin M → ℝ => z k) μ ((m k) * t) := hscale
+      _ = ProbabilityTheory.mgf id (ProbabilityTheory.gaussianReal 0 v) ((m k) * t) := hmap_val
+      _ = Real.exp ((v : ℝ) * ((m k) * t) ^ 2 / 2) := hgauss
+      _ = Real.exp (((t / 2) * (m k) ^ 2)) := by
+          have : (v : ℝ) * ((m k) * t) ^ 2 / 2 = (t / 2) * (m k) ^ 2 := by
+            have hpow : ((m k) * t) ^ 2 = (m k) ^ 2 * t ^ 2 := by
+              simpa using (mul_pow (m k) t 2)
+            calc
+              (v : ℝ) * ((m k) * t) ^ 2 / 2
+                  = (v : ℝ) * ((m k) ^ 2 * t ^ 2) / 2 := by simp [hpow]
+              _ = ((v : ℝ) * t ^ 2) * (m k) ^ 2 / 2 := by
+                    ring_nf
+              _ = t * (m k) ^ 2 / 2 := by simp [hv]
+              _ = (t / 2) * (m k) ^ 2 := by ring_nf
+          simp [this]
+  have : (∏ k : Fin M, ProbabilityTheory.mgf (X k) μ t)
+        = Real.exp (((t / 2) * ∑ k : Fin M, (m k) ^ 2)) := by
+    calc
+      (∏ k : Fin M, ProbabilityTheory.mgf (X k) μ t)
+          = ∏ k : Fin M, Real.exp (((t / 2) * (m k) ^ 2)) := by simp [hmgf_one]
+      _ = Real.exp (∑ k : Fin M, ((t / 2) * (m k) ^ 2)) := by
+            simpa using (Real.exp_sum (s := (Finset.univ : Finset (Fin M)))
+              (f := fun k : Fin M => ((t / 2) * (m k) ^ 2))).symm
+      _ = Real.exp (((t / 2) * ∑ k : Fin M, (m k) ^ 2)) := by
+            simp [Finset.mul_sum, mul_comm]
+  have hmain :
+      (∫ z : Fin M → ℝ, Real.exp (t * (∑ k : Fin M, m k * z k)) ∂μ)
+        = Real.exp (((t / 2) * ∑ k : Fin M, (m k) ^ 2)) := by
+    calc
+      (∫ z : Fin M → ℝ, Real.exp (t * (∑ k : Fin M, m k * z k)) ∂μ)
+          = ProbabilityTheory.mgf ((Finset.univ : Finset (Fin M)).sum fun k => X k) μ t := hL
+      _ = ∏ k : Fin M, ProbabilityTheory.mgf (X k) μ t := hmgf_sum
+      _ = Real.exp (((t / 2) * ∑ k : Fin M, (m k) ^ 2)) := this
+  simpa [t, μ, mul_assoc, mul_left_comm, mul_comm, div_eq_mul_inv] using hmain
 
 /-! ### Specialization to Hopfield weights -/
 

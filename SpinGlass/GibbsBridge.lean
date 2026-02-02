@@ -1,4 +1,5 @@
 import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
+import Mathlib.MeasureTheory.Integral.Lebesgue.Countable
 import SpinGlass.Defs
 import SpinGlass.SKModel
 
@@ -9,9 +10,9 @@ Talagrand (Vol. I/II) works with a finite-volume Gibbs distribution on `Config N
 weights `gibbs_pmf`.
 
 For later “Vol. II structure” work (bracket notation, replicas, conditional kernels), it is
-convenient to package these weights as an actual `ProbabilityMeasure` on configurations.
+convenient to bundle these weights as an actual `ProbabilityMeasure` on configurations.
 
-This file provides that packaging in a way that is purely finite-volume and does **not** introduce
+This file provides that in a way that is purely finite-volume and does **not** introduce
 any additional (topological) hypotheses.
 -/
 
@@ -35,18 +36,19 @@ noncomputable def gibbsMeasure (H : EnergySpace N) : Measure (Config N) :=
   (Finset.univ : Finset (Config N)).sum fun σ =>
     ((gibbsWeightNNReal (N := N) H σ : ℝ≥0∞) • Measure.dirac σ)
 
+lemma lintegral_gibbsMeasure
+    (H : EnergySpace N) (f : Config N → ℝ≥0∞) : (∫⁻ σ, f σ ∂gibbsMeasure (N := N) H) = ∑ σ :
+      Config N, (gibbsWeightNNReal (N := N) H σ : ℝ≥0∞) * f σ := by
+  simp [gibbsMeasure, gibbsWeightNNReal, lintegral_finset_sum_measure, mul_comm]
+
 lemma gibbsMeasure_univ (H : EnergySpace N) : gibbsMeasure (N := N) H Set.univ = 1 := by
-  have h_univ :
-      gibbsMeasure (N := N) H Set.univ
-        =
+  have h_univ : gibbsMeasure (N := N) H Set.univ =
         ∑ σ : Config N, (gibbsWeightNNReal (N := N) H σ : ℝ≥0∞) := by
     simp [gibbsMeasure, gibbsWeightNNReal]
-  have hsumNNReal :
-      (∑ σ : Config N, gibbsWeightNNReal (N := N) H σ) = (1 : ℝ≥0) := by
+  have hsumNNReal : (∑ σ : Config N, gibbsWeightNNReal (N := N) H σ) = (1 : ℝ≥0) := by
     apply NNReal.coe_injective
     simpa [gibbsWeightNNReal] using (sum_gibbs_pmf (N := N) (H := H))
-  have hsumENNReal :
-      (∑ σ : Config N, (gibbsWeightNNReal (N := N) H σ : ℝ≥0∞)) = (1 : ℝ≥0∞) := by
+  have hsumENNReal : (∑ σ : Config N, (gibbsWeightNNReal (N := N) H σ : ℝ≥0∞)) = (1 : ℝ≥0∞) := by
     simpa using congrArg (fun x : ℝ≥0 => (x : ℝ≥0∞)) hsumNNReal
   simpa [h_univ] using hsumENNReal
 

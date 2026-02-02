@@ -1,6 +1,6 @@
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPDeriv
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
-import SpinGlass.Mathlib.Probability.Distributions.GaussianIntegrationByParts
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPDeriv
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
+import Common.Mathlib.Probability.Distributions.GaussianIntegrationByParts
 import Mathlib.Analysis.Calculus.Deriv.Comp
 import Mathlib.Analysis.Calculus.Deriv.Add
 import Mathlib.Analysis.Calculus.Deriv.Mul

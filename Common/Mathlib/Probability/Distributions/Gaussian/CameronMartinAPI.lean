@@ -1,6 +1,7 @@
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinThm
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPAnalyticAPI
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinThm
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPAnalyticAPI
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinRV
 
 /-!
 # Cameron–Martin toolkit: public API
@@ -22,6 +23,13 @@ export ProbabilityTheory
    cameronMartin_integral_by_parts_polyGrowth
    cameronMartin_integral_by_parts_of_integrable_bound)
 
+export ProbabilityTheory.HasLaw
+  (lintegral_add_cmCoe_smul_eq
+   hasLaw_add_cmCoe_smul_withDensity_raw
+   cameronMartin_integral_by_parts_bounded
+   cameronMartin_integral_by_parts_polyGrowth
+   cameronMartin_integral_by_parts_of_integrable_bound)
+
 export ProbabilityTheory.IsGaussian
   (exists_C_pos_integrable_rexp_norm_sq
    integrable_norm_pow
@@ -30,4 +38,3 @@ export ProbabilityTheory.IsGaussian
    memLp_strongDual
    integrable_abs_pow_strongDual
    exists_C_pos_integrable_rexp_sq_dual)
-

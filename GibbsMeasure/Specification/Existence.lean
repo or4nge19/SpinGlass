@@ -125,14 +125,11 @@ theorem continuous_bindPM (Λ : Finset S) :
     let κ0 : Kernel Unit (S → E) := Kernel.const Unit (μ : Measure (S → E))
     have hcomp : (ηpi ∘ₖ κ0) () = (μ : Measure (S → E)).bind (γ Λ) := by
       simp [ηpi, κ0]
-    haveI : IsFiniteMeasure ((μ : Measure (S → E)).bind (γ Λ)) := by
-      haveI :
-          IsProbabilityMeasure
-            ((bindPM (γ := γ) Λ μ : ProbabilityMeasure (S → E)) : Measure (S → E)) := by
-        infer_instance
+    haveI : IsProbabilityMeasure ((μ : Measure (S → E)).bind (γ Λ)) := by
+      -- `bindPM` is the same operation, packaged as a `ProbabilityMeasure`.
       simpa [coe_bindPM] using
         (inferInstance :
-          IsFiniteMeasure
+          IsProbabilityMeasure
             ((bindPM (γ := γ) Λ μ : ProbabilityMeasure (S → E)) : Measure (S → E)))
     have hf_int : Integrable (fun x : S → E => f x) ((μ : Measure (S → E)).bind (γ Λ)) := by
       simpa using (BoundedContinuousFunction.integrable (μ := (μ : Measure (S → E)).bind (γ Λ)) f)
@@ -194,7 +191,7 @@ theorem isGibbsMeasure_of_isThermodynamicLimitWeak
     have : Specification.bindPM (γ := γ) Λ μ = μ := tendsto_nhds_unique hbind_to_bindμ hbind_to_μ
     simpa [Specification.bindPM, Specification.coe_bindPM] using
       congrArg (fun ν : ProbabilityMeasure (S → E) => (ν : Measure (S → E))) this
-  simpa [GP, Specification.isGibbsMeasure_iff_forall_bind_eq (γ := γ) hγ] using hfix
+  simpa [GP, Specification.isGibbsMeasure_iff_forall_bind_eq_of_prob (γ := γ) hγ] using hfix
 
 section Compact
 
@@ -289,8 +286,7 @@ lemma mem_GP_iff_forall_bindPM_eq (hγ : γ.IsProper) (μ : ProbabilityMeasure (
     have hμ' :
         ∀ Λ : Finset S, (μ : Measure (S → E)).bind (γ Λ) = (μ : Measure (S → E)) := by
       have hGibbs : γ.IsGibbsMeasure (μ : Measure (S → E)) := hμ
-      haveI : IsFiniteMeasure (μ : Measure (S → E)) := by infer_instance
-      simpa [_root_.Specification.isGibbsMeasure_iff_forall_bind_eq (γ := γ) hγ] using hGibbs
+      simpa [_root_.Specification.isGibbsMeasure_iff_forall_bind_eq_of_prob (γ := γ) hγ] using hGibbs
     intro Λ
     apply Subtype.ext
     simpa [Specification.coe_bindPM] using hμ' Λ
@@ -300,9 +296,8 @@ lemma mem_GP_iff_forall_bindPM_eq (hγ : γ.IsProper) (μ : ProbabilityMeasure (
       intro Λ
       have := congrArg (fun ν : ProbabilityMeasure (S → E) => (ν : Measure (S → E))) (hfix Λ)
       simpa [Specification.coe_bindPM] using this
-    haveI : IsFiniteMeasure (μ : Measure (S → E)) := by infer_instance
     have : γ.IsGibbsMeasure (μ : Measure (S → E)) := by
-      simpa [_root_.Specification.isGibbsMeasure_iff_forall_bind_eq (γ := γ) hγ] using hfix'
+      simpa [_root_.Specification.isGibbsMeasure_iff_forall_bind_eq_of_prob (γ := γ) hγ] using hfix'
     exact this
 
 /-- `GP(γ)` is closed in the weak topology, provided `γ` is Feller and proper. -/

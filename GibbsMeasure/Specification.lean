@@ -3,8 +3,10 @@ import GibbsMeasure.KolmogorovExtension4.ProductMeasure
 import GibbsMeasure.Prereqs.CylinderEvents
 import GibbsMeasure.Prereqs.Filtration.Consistent
 import GibbsMeasure.Prereqs.Juxt
+import GibbsMeasure.Prereqs.MeasureExt
 import GibbsMeasure.Prereqs.Kernel.CondExp
 import GibbsMeasure.Prereqs.Kernel.Proper
+import GibbsMeasure.Prereqs.SquareCylinders
 
 
 /-!
@@ -82,7 +84,7 @@ section IsIndep
 /-- An independent specification is a specification `γ` where `γ Λ₁ ∘ₖ γ Λ₂ = γ (Λ₁ ∪ Λ₂)` for all
 `Λ₁ Λ₂`. -/
 def IsIndep (γ : Specification S E) : Prop :=
-  ∀ ⦃Λ₁ Λ₂⦄ [DecidableEq S] , (γ Λ₁).comap id cylinderEvents_le_pi ∘ₖ γ Λ₂ = (γ (Λ₁ ∪ Λ₂)).comap id
+  ∀ ⦃Λ₁ Λ₂⦄ [DecidableEq S], (γ Λ₁).comap id cylinderEvents_le_pi ∘ₖ γ Λ₂ = (γ (Λ₁ ∪ Λ₂)).comap id
       (measurable_id'' <| by
         gcongr
         exact Finset.subset_union_right)
@@ -157,14 +159,30 @@ lemma isGibbsMeasure_iff_forall_bind_eq (hγ : γ.IsProper) [IsFiniteMeasure μ]
     γ.IsGibbsMeasure μ ↔ ∀ Λ, μ.bind (γ Λ) = μ :=
   forall_congr' fun _Λ ↦ Kernel.isCondExp_iff_bind_eq_left (hγ _) cylinderEvents_le_pi
 
+/-!
+### Probability-measure specializations
+
+In the Vol. II / infinite-volume development, Gibbs measures are probability measures.
+These wrappers avoid threading `[IsFiniteMeasure μ]` explicitly.
+-/
+
+lemma isGibbsMeasure_iff_forall_bind_eq_of_prob (hγ : γ.IsProper) [IsProbabilityMeasure μ] [IsMarkov γ] :
+    γ.IsGibbsMeasure μ ↔ ∀ Λ, μ.bind (γ Λ) = μ := by
+  haveI : IsFiniteMeasure μ := by infer_instance
+  simpa using (isGibbsMeasure_iff_forall_bind_eq (γ := γ) (μ := μ) hγ)
+
 lemma isGibbsMeasure_iff_frequently_bind_eq (hγ : γ.IsProper) [IsFiniteMeasure μ] [IsMarkov γ] :
     γ.IsGibbsMeasure μ ↔ ∃ᶠ Λ in .atTop, μ.bind (γ Λ) = μ := by
-  classical
   rw [isGibbsMeasure_iff_forall_bind_eq hγ]
   refine ⟨Filter.Frequently.of_forall, fun h Λ ↦ ?_⟩
   obtain ⟨Λ', h, hΛ'⟩ := h.forall_exists_of_atTop Λ
   rw [← hΛ', Measure.bind_bind, funext (γ.bind h)] <;>
     exact ((γ _).measurable.mono cylinderEvents_le_pi le_rfl).aemeasurable
+
+lemma isGibbsMeasure_iff_frequently_bind_eq_of_prob (hγ : γ.IsProper) [IsProbabilityMeasure μ] [IsMarkov γ] :
+    γ.IsGibbsMeasure μ ↔ ∃ᶠ Λ in .atTop, μ.bind (γ Λ) = μ := by
+  haveI : IsFiniteMeasure μ := by infer_instance
+  simpa using (isGibbsMeasure_iff_frequently_bind_eq (γ := γ) (μ := μ) hγ)
 
 end IsGibbsMeasure
 
@@ -174,15 +192,13 @@ variable (ν : Measure E) [IsProbabilityMeasure ν] (η : S → E)
 lemma measurable_isssdFun (Λ : Finset S) :
     Measurable[cylinderEvents Λᶜ]
       fun η : S → E ↦ (Measure.pi fun _ : Λ ↦ ν).map (juxt Λ η) := by
-  classical
+  classical -- needed for decidability
   -- We use a π-system generating the product σ-algebra on `S → E` (measurable rectangles).
-  let C : Set (Set (S → E)) :=
-    squareCylinders (fun _ : S ↦ {s : Set E | MeasurableSet s})
+  let C : Set (Set (S → E)) := squareCylindersMeas S E
   have hC_pi : IsPiSystem C := by
-    refine isPiSystem_squareCylinders (fun _ ↦ MeasurableSpace.isPiSystem_measurableSet) ?_
-    intro _; exact MeasurableSet.univ
+    simpa [C] using (isPiSystem_squareCylindersMeas S E)
   have hgen : (inferInstance : MeasurableSpace (S → E)) = .generateFrom C := by
-    simpa [C] using (generateFrom_squareCylinders (α := fun _ : S ↦ E)).symm
+    simpa [C] using (generateFrom_squareCylindersMeas S E)
   let μ' : (S → E) → Measure (S → E) := fun η ↦ (Measure.pi fun _ : Λ ↦ ν).map (juxt Λ η)
   haveI : ∀ η, IsProbabilityMeasure (μ' η) := by
     intro η
@@ -301,7 +317,6 @@ lemma measurable_isssdFun (Λ : Finset S) :
           · intro hζ
             simp at hζ
         simp [hPη, hpre_empty, c]
-    classical
     letI : MeasurableSpace (S → E) := cylinderEvents (X := fun _ : S ↦ E) (Λ : Set S)ᶜ
     have hp : MeasurableSet {η : S → E | P η} := by simpa using hP
     haveI : DecidablePred P := fun η => Classical.propDecidable (P η)
@@ -326,14 +341,14 @@ condition violates an outside-`Λ` constraint) or a finite product of the single
 over the coordinates in `s ∩ Λ`.
 -/
 
-private lemma isssdFun_apply_squareCylinder
+lemma isssdFun_apply_squareCylinder
     [DecidableEq S] (Λ s : Finset S) (t : S → Set E) (ht : ∀ i, MeasurableSet (t i)) (η : S → E) :
     isssdFun ν Λ η ((s : Set S).pi t) =
       (by
-        classical
+        classical -- needed
         exact ite (∀ i ∈ s, i ∉ Λ → η i ∈ t i)
           (∏ i ∈ s ∩ Λ, ν (t i)) 0) := by
-  classical
+  classical -- needed
   have hmeas_rect : MeasurableSet ((s : Set S).pi t) :=
     MeasurableSet.pi s.countable_toSet (fun i _ => ht i)
   simp only [isssdFun_apply, Measure.map_apply (Measurable.juxt (Λ := (Λ : Set S)) (η := η) (𝓔 := mE))
@@ -346,7 +361,6 @@ private lemma isssdFun_apply_squareCylinder
           (Set.univ.pi fun j : Λ => if (j : S) ∈ (s : Set S) then t j else Set.univ)
         = ∏ i ∈ s ∩ Λ, ν (t i) := by
     haveI : SigmaFinite ν := by infer_instance
-    classical
     have hpi :
         (Measure.pi fun _ : Λ ↦ ν)
             (Set.univ.pi fun j : Λ => if (j : S) ∈ (s : Set S) then t j else Set.univ)
@@ -452,17 +466,13 @@ lemma isssdFun_comp_isssdFun [DecidableEq S] (Λ₁ Λ₂ : Finset S) :
   -- measures agree on the π-system of square cylinders generating the product σ-algebra.
   ext η
   -- Let `C` be the generating π-system of measurable rectangles.
-  let C : Set (Set (S → E)) :=
-    squareCylinders (fun _ : S ↦ {s : Set E | MeasurableSet s})
+  let C : Set (Set (S → E)) := squareCylindersMeas S E
   have hC_pi : IsPiSystem C := by
-    refine isPiSystem_squareCylinders (fun _ ↦ MeasurableSpace.isPiSystem_measurableSet) ?_
-    intro _; exact MeasurableSet.univ
+    simpa [C] using (isPiSystem_squareCylindersMeas S E)
   have hgen : (inferInstance : MeasurableSpace (S → E)) = .generateFrom C := by
-    simpa [C] using (generateFrom_squareCylinders (α := fun _ : S ↦ E)).symm
+    simpa [C] using (generateFrom_squareCylindersMeas S E)
   have huniv : (Set.univ : Set (S → E)) ∈ C := by
-    refine ⟨∅, (fun _ : S => Set.univ), ?_, ?_⟩
-    · simp [Set.mem_pi, MeasurableSet.univ]
-    · ext x; simp
+    simpa [C] using (univ_mem_squareCylindersMeas S E)
   have hL_univ :
       (( (isssdFun ν Λ₁).comap id cylinderEvents_le_pi ∘ₖ isssdFun ν Λ₂) η) Set.univ ≠ ∞ := by
     have huniv_meas : MeasurableSet (Set.univ : Set (S → E)) := MeasurableSet.univ
@@ -505,11 +515,10 @@ lemma isssdFun_comp_isssdFun [DecidableEq S] (Λ₁ Λ₂ : Finset S) :
         =
         ((isssdFun ν (Λ₁ ∪ Λ₂)).comap id
             (measurable_id'' <| by gcongr) η) := by
-    refine Measure.ext_of_generateFrom_of_iUnion (C := C)
-      (B := fun _ : ℕ => (Set.univ : Set (S → E)))
-      (hA := hgen) (hC := hC_pi) (h1B := by simp [iUnion_const])
-      (h2B := by intro _; simpa using huniv)
-      (hμB := by intro _; simpa using hL_univ) ?_
+    refine MeasureTheory.Measure.ext_of_generateFrom_of_iUnion_univ (C := C)
+      (μ := (( (isssdFun ν Λ₁).comap id cylinderEvents_le_pi ∘ₖ isssdFun ν Λ₂) η))
+      (ν := ((isssdFun ν (Λ₁ ∪ Λ₂)).comap id (measurable_id'' <| by gcongr) η))
+      (hA := hgen) (hC := hC_pi) (huniv := huniv) (hμ_univ := hL_univ) ?_
     intro A hA
     rcases hA with ⟨s, t, ht, rfl⟩
     have ht_meas : ∀ i : S, MeasurableSet (t i) := by
@@ -887,17 +896,13 @@ lemma isGibbsMeasure_isssd_productMeasure (ν : Measure E) [IsProbabilityMeasure
   haveI : SigmaFinite (μ.trim (cylinderEvents_le_pi (X := fun _ : S ↦ E) (Δ := (Λ : Set S)ᶜ))) := by
     infer_instance
   have h_bind : μ.bind (isssd (S := S) (E := E) ν Λ) = μ := by
-    let C : Set (Set (S → E)) :=
-      squareCylinders (fun _ : S ↦ {s : Set E | MeasurableSet s})
+    let C : Set (Set (S → E)) := squareCylindersMeas S E
     have hC_pi : IsPiSystem C := by
-      refine isPiSystem_squareCylinders (fun _ ↦ MeasurableSpace.isPiSystem_measurableSet) ?_
-      intro _; exact MeasurableSet.univ
+      simpa [C] using (isPiSystem_squareCylindersMeas S E)
     have hgen : (inferInstance : MeasurableSpace (S → E)) = .generateFrom C := by
-      simpa [C] using (generateFrom_squareCylinders (α := fun _ : S ↦ E)).symm
+      simpa [C] using (generateFrom_squareCylindersMeas S E)
     have huniv : (Set.univ : Set (S → E)) ∈ C := by
-      refine ⟨∅, (fun _ : S => Set.univ), ?_, ?_⟩
-      · simp [Set.mem_pi, MeasurableSet.univ]
-      · ext x; simp
+      simpa [C] using (univ_mem_squareCylindersMeas S E)
     have hμ_univ : (μ.bind (isssd (S := S) (E := E) ν Λ)) Set.univ ≠ ∞ := by
       have huniv_meas : MeasurableSet (Set.univ : Set (S → E)) := MeasurableSet.univ
       have hκ :
@@ -915,11 +920,9 @@ lemma isGibbsMeasure_isssd_productMeasure (ν : Measure E) [IsProbabilityMeasure
           (s := Set.univ) huniv_meas hκ]
         simp; aesop
       simp; aesop -- using (ENNReal.one_ne_top)
-    refine Measure.ext_of_generateFrom_of_iUnion (C := C)
-      (B := fun _ : ℕ => (Set.univ : Set (S → E)))
-      (hA := hgen) (hC := hC_pi) (h1B := by simp [iUnion_const])
-      (h2B := by intro _; simpa using huniv)
-      (hμB := by intro _; simpa using hμ_univ) ?_
+    refine MeasureTheory.Measure.ext_of_generateFrom_of_iUnion_univ (C := C)
+      (μ := (μ.bind (isssd (S := S) (E := E) ν Λ))) (ν := μ)
+      (hA := hgen) (hC := hC_pi) (huniv := huniv) (hμ_univ := hμ_univ) ?_
     intro A hA
     rcases hA with ⟨s, t, ht, rfl⟩
     have ht_meas : ∀ i : S, MeasurableSet (t i) := by
@@ -1130,7 +1133,7 @@ lemma premodifierNorm_measurable (hρ : IsPremodifier ρ) :
   intro Λ
   simpa [premodifierNorm, premodifierZ] using (hρ.measurable_div_isssd (S := S) (E := E) (ρ := ρ) ν Λ)
 
-private lemma premodifierZ_congr_of_eqOn_compl
+lemma premodifierZ_congr_of_eqOn_compl
     {Λ : Finset S} (hρΛ : Measurable (ρ Λ)) {η₁ η₂ : S → E} (h : ∀ s ∉ Λ, η₁ s = η₂ s) :
     premodifierZ (S := S) (E := E) ν ρ Λ η₁ = premodifierZ (S := S) (E := E) ν ρ Λ η₂ := by
   classical

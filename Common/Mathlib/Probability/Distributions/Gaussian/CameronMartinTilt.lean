@@ -1,4 +1,4 @@
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinThm
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinThm
 
 /-!
 # Cameron–Martin theorem: scalar-parameter corollaries

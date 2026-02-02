@@ -7,11 +7,11 @@ import SpinGlass.Example
 import SpinGlass.GibbsBridge
 import SpinGlass.GuerraBound
 import SpinGlass.Hopfield
-import SpinGlass.Mathlib.MeasureTheory.ParametricDominatedConvergence
-import SpinGlass.Mathlib.ParametricDominatedConvergence
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinAPI
-import SpinGlass.Mathlib.Probability.Distributions.GaussianIntegrationByParts
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian_IBP_Hilbert
+import Common.Mathlib.MeasureTheory.ParametricDominatedConvergence
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinAPI
+import Common.Mathlib.Probability.Distributions.GaussianIntegrationByParts
+import Common.Mathlib.Probability.Distributions.Gaussian_IBP_Hilbert
+import SpinGlass.Cascades
 import SpinGlass.Replicas
 import SpinGlass.SKModel
 

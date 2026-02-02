@@ -7,9 +7,9 @@ Authors: Matteo Cipollina
 import Mathlib.Algebra.Order.Ring.Star
 import Mathlib.Analysis.InnerProductSpace.Adjoint
 import Mathlib.Data.Real.CompleteField
-import SpinGlass.Mathlib.Probability.Distributions.GaussianIntegrationByParts
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinTilt
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
+import Common.Mathlib.Probability.Distributions.GaussianIntegrationByParts
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinTilt
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
 
 /-!
 # Gaussian Integration by Parts on a real Hilbert space (finite-dimensional, covariant form)

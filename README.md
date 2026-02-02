@@ -91,9 +91,9 @@ In `SpinGlass/ArguinTaiFp.lean`: arithmetic detour
   `hasFDerivAt_Z_p_of_bounded`, `hasFDerivAt_N_p_of_bounded`, `hasFDerivAt_F_p_of_bounded`.
 
 
-- `SpinGlass.Mathlib.Probability.Distributions.GaussianIntegrationByParts`:
+- `Common.Mathlib.Probability.Distributions.GaussianIntegrationByParts`:
   one-dimensional Gaussian tilt calculus (`gaussianTilt`, `gaussianTilt_hasDerivAt_left`, etc.).
-- `SpinGlass.Mathlib.Probability.Distributions.Gaussian_IBP_Hilbert`:
+- `Common.Mathlib.Probability.Distributions.Gaussian_IBP_Hilbert`:
   finite-dimensional Hilbert-space Gaussian IBP; introduces `PhysLean.Probability.GaussianIBP.IsGaussianHilbert`,
   `covOp`, and growth/integrability infrastructure (`HasModerateGrowth`).
 - `SpinGlass.Mathlib.ParametricDominatedConvergence` (and the measure-theory variant):

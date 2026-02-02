@@ -1,4 +1,4 @@
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinTilt
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinTilt
 import Mathlib.Analysis.Calculus.ParametricIntegral
 import Mathlib.MeasureTheory.Integral.Bochner.ContinuousLinearMap
 

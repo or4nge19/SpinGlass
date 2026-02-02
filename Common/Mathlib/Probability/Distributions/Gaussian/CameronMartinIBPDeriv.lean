@@ -1,4 +1,4 @@
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBP
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBP
 import Mathlib.Analysis.Calculus.Deriv.Basic
 
 /-!

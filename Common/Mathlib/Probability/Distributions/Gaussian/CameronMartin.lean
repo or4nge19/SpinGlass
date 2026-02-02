@@ -7,7 +7,7 @@ Authors: Rémy Degenne
 import Mathlib.Analysis.InnerProductSpace.Completion
 import Mathlib.Analysis.InnerProductSpace.Projection.Submodule
 import Mathlib.MeasureTheory.Measure.SeparableMeasure
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CompletionResultsToBeMoved
+import Common.Mathlib.Probability.Distributions.Gaussian.CompletionResultsToBeMoved
 import Mathlib.Probability.Distributions.Gaussian.Fernique
 import Mathlib.Probability.Moments.CovarianceBilin
 import Mathlib.Probability.Moments.CovarianceBilinDual

@@ -14,4 +14,7 @@ git = "https://github.com/leanprover-community/mathlib4.git"
 name = "SpinGlass"
 
 [[lean_lib]]
+name = "Common"
+
+[[lean_lib]]
 name = "GibbsMeasure"

@@ -1,4 +1,4 @@
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPAnalytic
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPAnalytic
 
 /-!
 # Cameron–Martin IBP: public API (analytic layer)
@@ -20,4 +20,3 @@ export ProbabilityTheory
   (cameronMartin_integral_by_parts_bounded
    cameronMartin_integral_by_parts_polyGrowth
    cameronMartin_integral_by_parts_of_integrable_bound)
-

@@ -16,6 +16,9 @@ import Mathlib.Topology.GDelta.MetrizableSpace
 
 This file is vendored from mathlib4 PR #26291 (Cameron–Martin theorem), to avoid depending on
 an unmerged Mathlib PR while keeping our Lean toolchain pinned.
+
+Placed in `Common/` so both `SpinGlass/` and `GibbsMeasure/` can depend on it without creating
+cross-library dependencies.
 -/
 
 @[expose] public section

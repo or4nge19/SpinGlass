@@ -1,4 +1,5 @@
-import Mathlib.MeasureTheory.Constructions.Cylinders
+import GibbsMeasure.Prereqs.MeasureExt
+import GibbsMeasure.Prereqs.SquareCylinders
 import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
 
 /-!
@@ -27,12 +28,6 @@ namespace MeasureTheory
 namespace ProbabilityMeasure
 
 variable {S E : Type*} [MeasurableSpace E]
-
-/-! ### Square cylinders (measurable rectangles) -/
-
-/-- The π-system of **square cylinders** in `(S → E)` built from measurable sets. -/
-def squareCylindersMeas (S E : Type*) [MeasurableSpace E] : Set (Set (S → E)) :=
-  MeasureTheory.squareCylinders (fun _ : S ↦ {s : Set E | MeasurableSet s})
 
 /-- Evaluation of a probability measure on a square cylinder. -/
 def evalSquareCylinder (S E : Type*) [MeasurableSpace E] :
@@ -81,26 +76,17 @@ lemma evalSquareCylinder_injective :
   apply Subtype.ext
   let C : Set (Set (S → E)) := squareCylindersMeas S E
   have hC_pi : IsPiSystem C := by
-    refine isPiSystem_squareCylinders (fun _ ↦ MeasurableSpace.isPiSystem_measurableSet) ?_
-    intro _; exact MeasurableSet.univ
+    simpa [C] using (isPiSystem_squareCylindersMeas S E)
   have hgen : (inferInstance : MeasurableSpace (S → E)) = MeasurableSpace.generateFrom C := by
-    simpa [C, squareCylindersMeas] using (generateFrom_squareCylinders (ι := S) (α := fun _ : S ↦ E)).symm
-  let B : ℕ → Set (S → E) := fun _ ↦ Set.univ
-  have h1B : (⋃ i, B i) = (Set.univ : Set (S → E)) := by
-    simp [B]; aesop
+    simpa [C] using (generateFrom_squareCylindersMeas S E)
   have huniv : (Set.univ : Set (S → E)) ∈ C := by
-    refine ⟨∅, (fun _ : S ↦ (Set.univ : Set E)), ?_, ?_⟩
-    · simp [Set.mem_pi, MeasurableSet.univ]
-    · ext x; simp
-  have h2B : ∀ i : ℕ, B i ∈ C := by intro _; simpa [B] using huniv
-  have hμ1B : ∀ i : ℕ, (μ₁ : Measure (S → E)) (B i) ≠ ⊤ := by
-    intro i
-    simp [B]
-  refine MeasureTheory.Measure.ext_of_generateFrom_of_iUnion (μ := (μ₁ : Measure (S → E)))
-      (ν := (μ₂ : Measure (S → E))) (C := C) (B := B) (hA := hgen) (hC := hC_pi)
-      (h1B := h1B) (h2B := h2B) (hμB := hμ1B) ?_
+    simpa [C] using (univ_mem_squareCylindersMeas S E)
+  have hμ1 : (μ₁ : Measure (S → E)) Set.univ ≠ ⊤ := by simp
+  refine
+    MeasureTheory.Measure.ext_of_generateFrom_of_iUnion_univ (m := MeasurableSpace.pi) (C := C)
+      (μ := (μ₁ : Measure (S → E))) (ν := (μ₂ : Measure (S → E)))
+      (hA := hgen) (hC := hC_pi) (huniv := huniv) (hμ_univ := hμ1) ?_
   intro s hs
-  have hs' : (⟨s, hs⟩ : C) = ⟨s, hs⟩ := rfl
   simpa [evalSquareCylinder] using congrArg (fun f ↦ f ⟨s, hs⟩) h
 
 /-- The topology of local convergence is Hausdorff (T2). -/

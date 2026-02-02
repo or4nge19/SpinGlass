@@ -74,11 +74,11 @@ lemma convexCombo_mem_GP (γ : Specification S E) (hγ : γ.IsProper) [γ.IsMark
   have hμ' :
       ∀ Λ : Finset S, (μ : Measure (S → E)).bind (γ Λ) = (μ : Measure (S → E)) := by
     have : γ.IsGibbsMeasure (μ : Measure (S → E)) := hμ
-    simpa [Specification.isGibbsMeasure_iff_forall_bind_eq (S := S) (E := E) (γ := γ) hγ] using this
+    simpa [Specification.isGibbsMeasure_iff_forall_bind_eq_of_prob (S := S) (E := E) (γ := γ) hγ] using this
   have hν' :
       ∀ Λ : Finset S, (ν : Measure (S → E)).bind (γ Λ) = (ν : Measure (S → E)) := by
     have : γ.IsGibbsMeasure (ν : Measure (S → E)) := hν
-    simpa [Specification.isGibbsMeasure_iff_forall_bind_eq (S := S) (E := E) (γ := γ) hγ] using this
+    simpa [Specification.isGibbsMeasure_iff_forall_bind_eq_of_prob (S := S) (E := E) (γ := γ) hγ] using this
   have hfix :
       ∀ Λ : Finset S,
         ((ProbabilityMeasure.convexCombo (Ω := (S → E)) (p := p) μ ν :
@@ -106,11 +106,7 @@ lemma convexCombo_mem_GP (γ : Specification S E) (hγ : γ.IsProper) [γ.IsMark
       ((ProbabilityMeasure.convexCombo (Ω := (S → E)) (p := p) μ ν :
           ProbabilityMeasure (S → E)) :
         Measure (S → E)) := by
-    haveI : IsFiniteMeasure
-        ((ProbabilityMeasure.convexCombo (Ω := (S → E)) (p := p) μ ν :
-            ProbabilityMeasure (S → E)) :
-          Measure (S → E)) := by infer_instance
-    simpa [Specification.isGibbsMeasure_iff_forall_bind_eq (S := S) (E := E) (γ := γ) hγ] using hfix
+    simpa [Specification.isGibbsMeasure_iff_forall_bind_eq_of_prob (S := S) (E := E) (γ := γ) hγ] using hfix
   exact this
 
 /-! ### Tail σ-algebra -/

@@ -7,7 +7,7 @@ Authors: Rémy Degenne
 import Mathlib.MeasureTheory.Function.ConvergenceInDistribution
 import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
 import Mathlib.Probability.HasLaw
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartin
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartin
 import Mathlib.Probability.Distributions.Gaussian.Real
 
 /-!

@@ -9,8 +9,8 @@ import Mathlib.Data.Real.StarOrdered
 import Mathlib.Order.CompletePartialOrder
 import Mathlib.Probability.Distributions.Gaussian.Real
 import Mathlib.Probability.Distributions.Gaussian.Fernique
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinTilt
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinTilt
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
 import Mathlib.Topology.Algebra.Module.ModuleTopology
 import Mathlib.Topology.EMetricSpace.Paracompact
 import Mathlib.Topology.Separation.CompletelyRegular
