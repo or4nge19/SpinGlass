@@ -19,10 +19,14 @@ Downstream developments should prefer importing this file over the implementatio
 export ProbabilityTheory
   (hasLaw_cameronMartin
    cameronMartin_integral_by_parts_bounded
+   cameronMartin_integral_by_parts_polyGrowth
    cameronMartin_integral_by_parts_of_integrable_bound)
 
 export ProbabilityTheory.IsGaussian
   (exists_C_pos_integrable_rexp_norm_sq
+   integrable_norm_pow
+   integrable_one_add_norm_pow
+   integrable_of_abs_le_mul_one_add_norm_pow
    memLp_strongDual
    integrable_abs_pow_strongDual
    exists_C_pos_integrable_rexp_sq_dual)

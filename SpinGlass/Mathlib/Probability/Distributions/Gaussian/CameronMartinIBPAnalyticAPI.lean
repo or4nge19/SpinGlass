@@ -12,8 +12,12 @@ implementation file; downstream developments should import this file and use the
 /-!
 Re-export:
 - `ProbabilityTheory.cameronMartin_integral_by_parts_bounded`
+- `ProbabilityTheory.cameronMartin_integral_by_parts_polyGrowth`
 - `ProbabilityTheory.cameronMartin_integral_by_parts_of_integrable_bound`
 -/
 
-export ProbabilityTheory (cameronMartin_integral_by_parts_bounded cameronMartin_integral_by_parts_of_integrable_bound)
+export ProbabilityTheory
+  (cameronMartin_integral_by_parts_bounded
+   cameronMartin_integral_by_parts_polyGrowth
+   cameronMartin_integral_by_parts_of_integrable_bound)
 

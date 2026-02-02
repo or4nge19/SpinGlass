@@ -81,6 +81,110 @@ lemma integrable_profile_cameronMartin (x : cameronMartin μ) {δ : ℝ} (hδ : 
     simpa [hx.map_eq] using (integrable_profile_gaussianReal (v := (‖x‖₊ ^ 2)) hδ)
   exact this.comp_aemeasurable hx.aemeasurable
 
+private lemma hasModerateGrowth_sq_add_one : HasModerateGrowth (fun u : ℝ => u ^ 2 + 1) := by
+  refine ⟨2, 2, by norm_num, ?_, ?_⟩
+  · intro u
+    have hu : 0 ≤ u ^ 2 + 1 := by nlinarith [sq_nonneg u]
+    have habs : |u ^ 2 + 1| = u ^ 2 + 1 := abs_of_nonneg hu
+    have hsq : (1 + |u|) ^ 2 = u ^ 2 + 2 * |u| + 1 := by
+      -- expand and normalize; use `|u| * |u| = u * u`
+      simp [pow_two, mul_add, add_mul, abs_mul_abs_self, add_assoc, add_left_comm, add_comm]
+      ring_nf
+    have hpow₁ : u ^ 2 + 1 ≤ (1 + |u|) ^ 2 := by
+      have : (u ^ 2 + 1 : ℝ) ≤ u ^ 2 + 2 * |u| + 1 := by nlinarith [abs_nonneg u]
+      -- rewrite the RHS as `(1 + |u|)^2`
+      simpa [hsq] using this
+    have hpow₂ : u ^ 2 + 1 ≤ 2 * (u ^ 2 + 1) := by nlinarith [hu]
+    have hpow₃ : 2 * (u ^ 2 + 1) ≤ 2 * (1 + |u|) ^ 2 := by
+      exact mul_le_mul_of_nonneg_left hpow₁ (by norm_num : (0 : ℝ) ≤ 2)
+    have hpow : u ^ 2 + 1 ≤ 2 * (1 + |u|) ^ 2 := hpow₂.trans hpow₃
+    simpa [habs] using hpow
+  · intro u
+    have hderiv : deriv (fun u : ℝ => u ^ 2 + 1) u = 2 * u := by
+      simp [pow_one]
+    have hle_abs : |u| ≤ (1 + |u|) ^ 2 := by
+      have : 0 ≤ (1 : ℝ) + |u| + |u| ^ 2 := by positivity
+      -- `(1 + |u|)^2 = 1 + 2|u| + |u|^2 ≥ |u|`
+      nlinarith [this]
+    have hle : |2 * u| ≤ 2 * (1 + |u|) ^ 2 := by
+      calc
+        |2 * u| = (2 : ℝ) * |u| := by simp [abs_mul]
+        _ ≤ (2 : ℝ) * (1 + |u|) ^ 2 := by
+              exact mul_le_mul_of_nonneg_left hle_abs (by norm_num)
+    simpa [hderiv]
+
+private lemma integrable_profile_sq_gaussianReal (v : ℝ≥0) {δ : ℝ} (hδ : 0 < δ) :
+    Integrable (fun u : ℝ => ((|u| + 1) * Real.exp (δ * |u|)) ^ 2) (gaussianReal 0 v) := by
+  have hInt_dom :=
+    integrable_dom_profile_of_moderateGrowth (F := fun u : ℝ => u ^ 2 + 1) hasModerateGrowth_sq_add_one
+      v (2 * δ) (by nlinarith) (by fun_prop)
+  -- Dominate the square by the `integrable_dom_profile` integrand (up to a constant).
+  refine (hInt_dom.const_mul 2).mono' (by fun_prop) (ae_of_all _ (fun u => ?_))
+  have habs : (|u| + 1) ^ 2 ≤ 2 * (u ^ 2 + 1) := by
+    have h2 : 2 * |u| ≤ u ^ 2 + 1 := by
+      -- AM-GM with `a = |u|`, `b = 1`: `2ab ≤ a^2 + b^2`.
+      simpa [mul_assoc, pow_two, sq_abs] using (two_mul_le_add_sq (|u|) (1 : ℝ))
+    have hsq : (|u| + 1) ^ 2 = u ^ 2 + 2 * |u| + 1 := by
+      simp [pow_two, mul_add, add_mul, abs_mul_abs_self, add_assoc, add_left_comm, add_comm]
+      ring_nf
+    have hle₁ : u ^ 2 + 2 * |u| ≤ u ^ 2 + (u ^ 2 + 1) := by
+      simpa [add_assoc, add_comm, add_left_comm] using (add_le_add_left h2 (u ^ 2))
+    have hle₂ : u ^ 2 + 2 * |u| + 1 ≤ u ^ 2 + (u ^ 2 + 1) + 1 := by
+      simpa [add_assoc, add_comm, add_left_comm] using (add_le_add_right hle₁ 1)
+    have : u ^ 2 + (u ^ 2 + 1) + 1 = 2 * (u ^ 2 + 1) := by ring_nf
+    simpa [hsq, this] using hle₂
+  have hnonneg_sq : 0 ≤ ((|u| + 1) * Real.exp (δ * |u|)) ^ 2 := by positivity
+  have hFpos : 0 ≤ (u ^ 2 + 1 : ℝ) := by nlinarith [sq_nonneg u]
+  have habsF : |u ^ 2 + 1| = u ^ 2 + 1 := abs_of_nonneg hFpos
+  have hexp :
+      (Real.exp (δ * |u|)) ^ 2 = Real.exp ((2 * δ) * |u|) := by
+    calc
+      (Real.exp (δ * |u|)) ^ 2 = Real.exp (δ * |u|) * Real.exp (δ * |u|) := by simp [pow_two]
+      _ = Real.exp (δ * |u| + δ * |u|) := (Real.exp_add _ _).symm
+      _ = Real.exp ((2 * δ) * |u|) := by ring_nf
+  have hlin : (1 : ℝ) ≤ |u| + 1 := by nlinarith [abs_nonneg u]
+  have hmul : (u ^ 2 + 1 : ℝ) ≤ (u ^ 2 + 1) * (|u| + 1) := by
+    simpa [mul_one, habsF] using (mul_le_mul_of_nonneg_left hlin hFpos)
+  have hnorm :
+      ‖((|u| + 1) * Real.exp (δ * |u|)) ^ 2‖ = ((|u| + 1) * Real.exp (δ * |u|)) ^ 2 := by
+    simpa using Real.norm_of_nonneg hnonneg_sq
+  -- pointwise inequality
+  calc
+    ‖((|u| + 1) * Real.exp (δ * |u|)) ^ 2‖
+        = ((|u| + 1) * Real.exp (δ * |u|)) ^ 2 := hnorm
+    _ = (|u| + 1) ^ 2 * (Real.exp (δ * |u|)) ^ 2 := by ring
+    _ ≤ (2 * (u ^ 2 + 1)) * Real.exp ((2 * δ) * |u|) := by
+          -- use `habs` and rewrite the exponential square
+          have := mul_le_mul_of_nonneg_right habs (by positivity : 0 ≤ (Real.exp (δ * |u|)) ^ 2)
+          simpa [hexp, mul_assoc, mul_left_comm, mul_comm] using this
+    _ ≤ 2 * (|u ^ 2 + 1| * (|u| + 1) * Real.exp ((2 * δ) * |u|)) := by
+          -- insert an extra factor `( |u| + 1 ) ≥ 1`
+          have hmul' :
+              (u ^ 2 + 1) * Real.exp ((2 * δ) * |u|) ≤
+                (u ^ 2 + 1) * (|u| + 1) * Real.exp ((2 * δ) * |u|) := by
+            have : (u ^ 2 + 1) * Real.exp ((2 * δ) * |u|) ≤
+                ((u ^ 2 + 1) * (|u| + 1)) * Real.exp ((2 * δ) * |u|) := by
+              exact mul_le_mul_of_nonneg_right hmul (by positivity)
+            simpa [mul_assoc] using this
+          simpa [habsF, mul_assoc, mul_left_comm, mul_comm] using
+            (mul_le_mul_of_nonneg_left hmul' (by positivity : 0 ≤ (2 : ℝ)))
+
+lemma memLp_profile_cameronMartin (x : cameronMartin μ) {δ : ℝ} (hδ : 0 < δ) :
+    MemLp (fun y : E => (|x y| + 1) * Real.exp (δ * |x y|)) 2 μ := by
+  have hx := hasLaw_cameronMartin (μ := μ) x
+  have hsq : Integrable (fun y : E => ((|x y| + 1) * Real.exp (δ * |x y|)) ^ 2) μ := by
+    have : Integrable (fun u : ℝ => ((|u| + 1) * Real.exp (δ * |u|)) ^ 2) (Measure.map x μ) := by
+      simpa [hx.map_eq] using (integrable_profile_sq_gaussianReal (v := (‖x‖₊ ^ 2)) hδ)
+    exact this.comp_aemeasurable hx.aemeasurable
+  have hmeas :
+      AEStronglyMeasurable (fun y : E => (|x y| + 1) * Real.exp (δ * |x y|)) μ := by
+    have : Measurable (fun y : E => (|x y| + 1) * Real.exp (δ * |x y|)) := by
+      fun_prop
+    exact this.aestronglyMeasurable
+  -- `MemLp` with `p=2` from integrability of the square
+  exact (MeasureTheory.memLp_two_iff_integrable_sq hmeas).2 (by
+    simpa [pow_two] using hsq)
+
 theorem hasDerivAt_shiftFun_at0_bounded
     (x : cameronMartin μ) (F : E → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)
     {M0 M1 : ℝ} (hF_bdd : ∀ y, |F y| ≤ M0) (hF'_bdd : ∀ y, ‖fderiv ℝ F y‖ ≤ M1) :
@@ -406,6 +510,52 @@ theorem hasDerivAt_tiltFun_at0_of_integrable_profile
     hInt'.2.congr_of_eventuallyEq hEq
   simpa [h0] using hDer
 
+theorem hasDerivAt_tiltFun_at0_polyGrowth
+    (x : cameronMartin μ) (F : E → ℝ) (hF_meas : Measurable F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ y, |F y| ≤ C * (1 + ‖y‖) ^ m)
+    {δ : ℝ} (hδ : 0 < δ) :
+    HasDerivAt (fun t => cameronMartinTiltFun (μ := μ) x F t)
+      (∫ y, (x y) * F y ∂μ) 0 := by
+  -- `|F| ∈ L^2` by Fernique, and the exponential profile is in `L^2` by 1D reduction.
+  have hAbs_meas : AEStronglyMeasurable (fun y : E => |F y|) μ :=
+    (hF_meas.abs).aestronglyMeasurable
+  have hAbs_sq_int : Integrable (fun y : E => (|F y|) ^ 2) μ := by
+    have hbase :
+        Integrable (fun y : E => (1 + ‖y‖) ^ (2 * m)) μ :=
+      ProbabilityTheory.IsGaussian.integrable_one_add_norm_pow (μ := μ) (2 * m)
+    have hdom : Integrable (fun y : E => (C ^ 2) * (1 + ‖y‖) ^ (2 * m)) μ :=
+      hbase.const_mul (C ^ 2)
+    refine hdom.mono' (by fun_prop) (ae_of_all _ (fun y => ?_))
+    have hFy : |F y| ≤ C * (1 + ‖y‖) ^ m := hF_growth y
+    have hnonneg : 0 ≤ C * (1 + ‖y‖) ^ m := by positivity
+    have hsq : (|F y|) ^ 2 ≤ (C * (1 + ‖y‖) ^ m) ^ 2 := by
+      simpa [pow_two] using
+        (mul_le_mul hFy hFy (abs_nonneg _) hnonneg)
+    -- rewrite the RHS square
+    have : (C * (1 + ‖y‖) ^ m) ^ 2 = (C ^ 2) * (1 + ‖y‖) ^ (2 * m) := by
+      simp [pow_two, pow_mul, mul_assoc, mul_left_comm, mul_comm, Nat.mul_comm]
+    have hnonneg' : 0 ≤ (|F y|) ^ 2 := by positivity
+    have : ‖(|F y|) ^ 2‖ ≤ (C ^ 2) * (1 + ‖y‖) ^ (2 * m) := by
+      simpa [Real.norm_eq_abs, abs_of_nonneg hnonneg', this] using hsq
+    exact this
+  have hAbs_L2 : MemLp (fun y : E => |F y|) 2 μ :=
+    (MeasureTheory.memLp_two_iff_integrable_sq hAbs_meas).2 (by
+      simpa [pow_two] using hAbs_sq_int)
+  have hProf_L2 : MemLp (fun y : E => (|x y| + 1) * Real.exp (δ * |x y|)) 2 μ :=
+    memLp_profile_cameronMartin (μ := μ) x hδ
+  have hprod :
+      Integrable (fun y : E => |F y| * ((|x y| + 1) * Real.exp (δ * |x y|))) μ := by
+    simpa [mul_assoc] using (MeasureTheory.MemLp.integrable_mul hAbs_L2 hProf_L2)
+  have hInt :
+      Integrable
+        (fun y : E =>
+          |F y| * (δ * (‖x‖₊ ^ 2 : ℝ) + 1) * ((|x y| + 1) * Real.exp (δ * |x y|))) μ := by
+    -- constant factor `(δ * ‖x‖^2 + 1)` does not depend on `y`
+    simpa [mul_assoc, mul_left_comm, mul_comm] using
+      (hprod.const_mul (δ * (‖x‖₊ ^ 2 : ℝ) + 1))
+  exact hasDerivAt_tiltFun_at0_of_integrable_profile (μ := μ) x F hF_meas hδ hInt
+
 end CameronMartinIBPAnalytic
 
 open CameronMartinIBPAnalytic
@@ -428,6 +578,27 @@ theorem cameronMartin_integral_by_parts_bounded
     CameronMartinIBPAnalytic.hasDerivAt_shiftFun_at0_bounded (μ := μ) x F hF_meas hF_c1 hM0 hM1
   have hTilt :=
     CameronMartinIBPAnalytic.hasDerivAt_tiltFun_at0_bounded (μ := μ) x F hF_meas hM0
+  exact cameronMartin_integral_by_parts_of_hasDerivAt (μ := μ) x F hF_meas hShift hTilt
+
+/-- **Gaussian IBP (Cameron–Martin, polynomial growth).**
+
+This is the measure-level IBP under the natural polynomial growth assumptions on `F` and `fderiv F`,
+with integrability discharged via Fernique + the 1D domination profile along the Cameron–Martin
+coordinate. -/
+theorem cameronMartin_integral_by_parts_polyGrowth
+    (x : cameronMartin μ) (F : E → ℝ)
+    (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ y, |F y| ≤ C * (1 + ‖y‖) ^ m)
+    (hF'_growth : ∀ y, ‖fderiv ℝ F y‖ ≤ C * (1 + ‖y‖) ^ m) :
+    (∫ y, (x y) * F y ∂μ) = ∫ y, (fderiv ℝ F y) (cmCoe x) ∂μ := by
+  have hShift :=
+    CameronMartinIBPAnalytic.hasDerivAt_shiftFun_at0_polyGrowth (μ := μ)
+      x F hF_meas hF_c1 hC hF_growth hF'_growth
+  have hTilt :=
+    CameronMartinIBPAnalytic.hasDerivAt_tiltFun_at0_polyGrowth (μ := μ)
+      x F hF_meas hC hF_growth (δ := 1) (by norm_num)
   exact cameronMartin_integral_by_parts_of_hasDerivAt (μ := μ) x F hF_meas hShift hTilt
 
 /-- **Gaussian IBP (Cameron–Martin, dominated shift + integrable tilt profile).**
