@@ -1,9 +1,15 @@
-import Common.Mathlib.Probability.Distributions.Gaussian_IBP_Hilbert
+import Mathlib.Analysis.Normed.Lp.PiLp
+import Mathlib.Analysis.InnerProductSpace.PiL2
+import Mathlib.LinearAlgebra.FiniteDimensional.Basic
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.Probability.Notation
+import Mathlib.Analysis.Complex.Exponential
 import Mathlib.Analysis.Calculus.FDeriv.CompCLM
 import Mathlib.Analysis.Calculus.FDeriv.WithLp
 import Mathlib.Analysis.Calculus.Deriv.Inv
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.SpecialFunctions.Log.Deriv
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPAnalyticAPI
 
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology

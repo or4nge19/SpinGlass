@@ -7,12 +7,21 @@ Authors: Matteo Cipollina
 import Mathlib.Algebra.Order.Ring.Star
 import Mathlib.Analysis.InnerProductSpace.Adjoint
 import Mathlib.Data.Real.CompleteField
+import Mathlib.Probability.Moments.CovarianceBilin
 import Common.Mathlib.Probability.Distributions.GaussianIntegrationByParts
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinTilt
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPAnalytic
 
 /-!
 # Gaussian Integration by Parts on a real Hilbert space (finite-dimensional, covariant form)
+
+## Public API note
+
+Downstream files should prefer importing
+`Common.Mathlib.Probability.Distributions.Gaussian_IBP_HilbertAPI`,
+which re-exports the intended public theorems from this implementation file in intrinsic form
+(using `ProbabilityTheory.covarianceOperator`).
 
 This file lifts the one-dimensional Gaussian integration by parts (Stein's lemma)
 formalized in `PhysLean/Probability/GaussianIntegrationByParts.lean` to a
@@ -76,8 +85,8 @@ structure IsGaussianHilbert (g : Ω → H) where
   c : ι → Ω → ℝ
   /-- Measurability of each coordinate process `c i`. -/
   c_meas : ∀ i, Measurable (c i)
-  /-- Each coordinate `c i` is centered Gaussian with variance `τ i`. -/
-  c_gauss : ∀ i, ProbabilityTheory.IsCenteredGaussianRV (c i) (τ i)
+  /-- Each coordinate `c i` has law `gaussianReal 0 (τ i)`. -/
+  c_gauss : ∀ i, ProbabilityTheory.HasLaw (c i) (ProbabilityTheory.gaussianReal 0 (τ i)) (ℙ : Measure Ω)
   /-- Independence of the family of coordinates `(c i)_i`. -/
   c_indep : ProbabilityTheory.iIndepFun c ℙ
   /-- Representation of `g` as the finite ONB sum `∑ i, (c i) • w i`. -/
@@ -162,12 +171,15 @@ omit [IsProbabilityMeasure (ℙ : Measure Ω)] [CompleteSpace H] [MeasurableSpac
 specified variance, and the coordinates are independent. -/
 lemma coord_isGaussian_and_indep {g : Ω → H}
     (hg : IsGaussianHilbert g) :
-    (∀ i, ProbabilityTheory.IsCenteredGaussianRV (coord hg.w g i) (hg.τ i)) ∧
+    (∀ i, ProbabilityTheory.HasLaw (coord hg.w g i) (ProbabilityTheory.gaussianReal 0 (hg.τ i)) (ℙ : Measure Ω)) ∧
     ProbabilityTheory.iIndepFun (coord hg.w g) ℙ := by
   classical
   have hcoord : coord hg.w g = hg.c := coord_eq_c (g := g) hg
   refine ⟨?std, ?indep⟩
-  · intro i; simpa [hcoord] using hg.c_gauss i
+  · intro i
+    have hi : coord hg.w g i = hg.c i := by
+      simpa using congrArg (fun f => f i) hcoord
+    simpa [hi] using hg.c_gauss i
   · simpa [hcoord] using hg.c_indep
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] in
@@ -244,7 +256,7 @@ theorem IsGaussianHilbert.isGaussian_map {g : Ω → H} (hg : IsGaussianHilbert 
     intro i
     -- Start from the Gaussian law of the coordinate `c i` and push it forward by multiplication.
     have hc_law : Measure.map (hg.c i) (ℙ : Measure Ω) = ProbabilityTheory.gaussianReal 0 (hg.τ i) := by
-      simpa [ProbabilityTheory.IsCenteredGaussianRV, ProbabilityTheory.IsGaussianRV] using hg.c_gauss i
+      simpa using (hg.c_gauss i).map_eq
     have hmul :
         Measure.map (X i) (ℙ : Measure Ω)
           =
@@ -410,17 +422,15 @@ lemma IsGaussianHilbert.repr_measurable (hg : IsGaussianHilbert (Ω := Ω) (H :=
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 /-- For a centered real Gaussian random variable, the square is integrable. -/
-lemma ProbabilityTheory.IsCenteredGaussianRV.integrable_sq
+lemma ProbabilityTheory.HasLaw.integrable_sq_gaussianReal_centered
     {X : Ω → ℝ} {v : ℝ≥0}
-    (hX : ProbabilityTheory.IsCenteredGaussianRV X v)
-    (hX_meas : Measurable X) :
-    Integrable (fun ω => (X ω)^2) := by
+    (hX : ProbabilityTheory.HasLaw X (ProbabilityTheory.gaussianReal 0 v) (ℙ : Measure Ω)) :
+    Integrable (fun ω => (X ω)^2) (ℙ : Measure Ω) := by
   have h_int_gauss : Integrable (fun x : ℝ => x^2) (gaussianReal 0 v) := by
     simpa using ProbabilityTheory.integrable_sq_gaussianReal_centered (v := v)
-  have hmap : Measure.map X (ℙ : Measure Ω) = gaussianReal 0 v := hX
   have h_int_map : Integrable (fun x : ℝ => x^2) (Measure.map X (ℙ : Measure Ω)) := by
-    simpa [hmap] using h_int_gauss
-  exact h_int_map.comp_measurable (μ := (ℙ : Measure Ω)) hX_meas
+    simpa [hX.map_eq] using h_int_gauss
+  exact h_int_map.comp_aemeasurable (μ := (ℙ : Measure Ω)) hX.aemeasurable
 
 end AuxMeasAndMoments
 
@@ -443,8 +453,8 @@ lemma integrable_sum_abs_coords (hg : IsGaussianHilbert g) :
     have hL2 : Integrable (fun ω => (coord hg.w g i ω) ^ 2) := by
       have hGauss := (coord_isGaussian_and_indep (g := g) hg).1 i
       have hMeas := coord_measurable (g := g) hg i
-      exact ProbabilityTheory.IsCenteredGaussianRV.integrable_sq (X := coord hg.w g i)
-        (v := hg.τ i) hGauss hMeas
+      exact ProbabilityTheory.HasLaw.integrable_sq_gaussianReal_centered (X := coord hg.w g i)
+        (v := hg.τ i) hGauss
     have h_major_int : Integrable (fun ω => 1 + (coord hg.w g i ω) ^ 2) := by
       simpa using (integrable_const (μ := (ℙ : Measure Ω)) (c := (1 : ℝ))).add hL2
     have h_meas : AEStronglyMeasurable (fun ω => |coord hg.w g i ω|) ℙ :=
@@ -558,7 +568,7 @@ lemma rpow_le_one_add_pow_nat_of_le (p : ℝ) (m : ℕ)
       simp
     have x_pow_le_one_add :
         (x ^ m : ℝ) ≤ (1 + x) ^ m :=
-          ProbabilityTheory.Real.pow_le_pow_of_le_left hx hx_le_1x
+          pow_le_pow_left₀ hx hx_le_1x _
     calc
       x ^ p ≤ x ^ (m : ℝ) := hxp_le_xm
       _ = (x ^ m : ℝ) := by simp [xpow_nat]
@@ -658,32 +668,37 @@ namespace ProbabilityTheory
 lemma integrable_abs_pow_gaussianReal_centered_nat
     (v : ℝ≥0) (k : ℕ) :
     Integrable (fun x : ℝ => |x| ^ k) (ProbabilityTheory.gaussianReal 0 v) := by
-  -- Prefer the Fernique/MemLp-based moment API (via `IsGaussian.memLp_id`), coming from Mathlib.
-  simpa using (ProbabilityTheory.integrable_abs_pow_gaussianReal (m := (0 : ℝ)) (v := v) (n := k))
+  -- Fernique ⇒ `id ∈ L^p` for all finite `p`, hence all moments exist.
+  have hLp : MeasureTheory.MemLp (fun x : ℝ ↦ x) (k : ℝ≥0∞) (ProbabilityTheory.gaussianReal 0 v) :=
+    ProbabilityTheory.IsGaussian.memLp_id (μ := ProbabilityTheory.gaussianReal 0 v)
+      (p := (k : ℝ≥0∞)) (by simp)
+  have hInt :
+      Integrable (fun x : ℝ ↦ ‖x‖ ^ ((k : ℝ≥0∞).toReal)) (ProbabilityTheory.gaussianReal 0 v) := by
+    have : IsFiniteMeasure (ProbabilityTheory.gaussianReal 0 v) := by infer_instance
+    simpa using (MeasureTheory.MemLp.integrable_norm_rpow' (μ := ProbabilityTheory.gaussianReal 0 v) hLp)
+  -- `toReal` of a natural exponent is that natural, and `‖x‖ = |x|` on `ℝ`.
+  simpa [Real.norm_eq_abs] using (by
+    simpa using hInt)
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
-/-- Lift to an RV: a centered Gaussian RV has all finite absolute moments. -/
-lemma IsCenteredGaussianRV.integrable_abs_pow_nat
+/-- Lift to an RV: if `X` has law `gaussianReal 0 v`, then it has all finite absolute moments. -/
+lemma HasLaw.integrable_abs_pow_nat
     {X : Ω → ℝ} {v : ℝ≥0}
-    (hX : ProbabilityTheory.IsCenteredGaussianRV X v)
-    (hX_meas : Measurable X) (k : ℕ) :
-    Integrable (fun ω => |X ω| ^ k) := by
-  have hmap : Measure.map X (ℙ : Measure Ω) = ProbabilityTheory.gaussianReal 0 v := hX
-  have h_int_map :
-      Integrable (fun x : ℝ => |x| ^ k) (Measure.map X (ℙ : Measure Ω)) := by
-    simpa [hmap] using
-      integrable_abs_pow_gaussianReal_centered_nat (v := v) (k := k)
-  exact h_int_map.comp_measurable (μ := (ℙ : Measure Ω)) hX_meas
+    (hX : ProbabilityTheory.HasLaw X (ProbabilityTheory.gaussianReal 0 v) (ℙ : Measure Ω))
+    (k : ℕ) :
+    Integrable (fun ω => |X ω| ^ k) (ℙ : Measure Ω) := by
+  -- Use `HasLaw.integrable_comp` with the integrability under `gaussianReal 0 v`.
+  have hInt : Integrable (fun x : ℝ => |x| ^ k) (ProbabilityTheory.gaussianReal 0 v) :=
+    integrable_abs_pow_gaussianReal_centered_nat (v := v) (k := k)
+  have hmeas : AEStronglyMeasurable (fun x : ℝ => |x| ^ k) (ProbabilityTheory.gaussianReal 0 v) :=
+    hInt.aestronglyMeasurable
+  -- `HasLaw.integrable_comp` is available via `HasLaw.integral_comp` + `memLp_one_iff_integrable`,
+  -- but easiest is to push integrability along `map_eq`.
+  have : Integrable (fun x : ℝ => |x| ^ k) ((ℙ : Measure Ω).map X) := by
+    simpa [hX.map_eq] using hInt
+  exact this.comp_aemeasurable (μ := (ℙ : Measure Ω)) hX.aemeasurable
 
 end ProbabilityTheory
-
--- Monotonicity of natural powers on ℝ for nonnegative bases.
-namespace Real
-
-lemma pow_le_pow_of_le_left {a b : ℝ} (ha : 0 ≤ a) (hab : a ≤ b) (n : ℕ) :
-    a ^ n ≤ b ^ n := by exact ProbabilityTheory.Real.pow_le_pow_of_le_left ha hab
-
-end Real
 
 section FiniteOnbPowerDomination
 
@@ -721,7 +736,7 @@ lemma norm_pow_nat_le_card_pow_pred_sum_abs_pow
     let n := Nat.succ k
     have hnn : 0 ≤ ‖∑ i, c i • w i‖ := norm_nonneg _
     have h₁m : ‖∑ i, c i • w i‖ ^ n ≤ (∑ i, |c i|) ^ n := by
-      exact Real.pow_le_pow_of_le_left hnn (by simpa [hsum] using h₁) n
+      exact pow_le_pow_left₀ hnn (by simpa [hsum] using h₁) n
     have hmean_main :
         (∑ i, |c i|) ^ n
           ≤ (Fintype.card ι : ℝ) ^ (n - 1) * ∑ i, |c i| ^ n := by
@@ -880,13 +895,13 @@ then `‖g‖^m` is integrable (under `ℙ`). -/
 lemma integrable_norm_pow_nat_of_onb_sum_of_gaussian_coords
   (w : OrthonormalBasis ι ℝ H) (c : ι → Ω → ℝ) (m : ℕ)
   (hc_meas : ∀ i, Measurable (c i))
-  (hc_gauss : ∀ i, ProbabilityTheory.IsCenteredGaussianRV (c i) (0 : ℝ≥0)) :
+  (hc_gauss : ∀ i, ProbabilityTheory.HasLaw (c i) (ProbabilityTheory.gaussianReal 0 (0 : ℝ≥0)) (ℙ : Measure Ω)) :
   Integrable (fun ω => ‖∑ i, c i ω • w i‖ ^ m) := by
   classical
   have hc_int : ∀ i, Integrable (fun ω => |c i ω| ^ m) := by
     intro i
-    exact ProbabilityTheory.IsCenteredGaussianRV.integrable_abs_pow_nat
-      (hX := hc_gauss i) (hX_meas := hc_meas i) (k := m)
+    exact ProbabilityTheory.HasLaw.integrable_abs_pow_nat
+      (hX := hc_gauss i) (k := m)
   exact integrable_norm_pow_nat_of_onb_sum
     (w := w) (c := c) (m := m) (hc_meas := hc_meas) (hc_int := hc_int)
 
@@ -902,14 +917,16 @@ lemma integrable_norm_pow_nat_of_gaussian
       have h_repr : ∀ ω, g ω = ∑ i, (hg.c i ω) • hg.w i := fun ω =>
         by simpa using congrArg (fun f => f ω) hg.repr
       have h_meas : ∀ i, Measurable (hg.c i) := hg.c_meas
-      have h_gauss : ∀ i, ProbabilityTheory.IsCenteredGaussianRV (hg.c i) (hg.τ i) := hg.c_gauss
+      have h_gauss :
+          ∀ i, ProbabilityTheory.HasLaw (hg.c i) (ProbabilityTheory.gaussianReal 0 (hg.τ i)) (ℙ : Measure Ω) :=
+        hg.c_gauss
       let mNat := Nat.succ k
       have h_int_sum :
           Integrable (fun ω => ‖∑ i, hg.c i ω • hg.w i‖ ^ mNat) := by
         have hc_int : ∀ i, Integrable (fun ω => |hg.c i ω| ^ mNat) := by
           intro i
-          exact ProbabilityTheory.IsCenteredGaussianRV.integrable_abs_pow_nat
-            (hX := h_gauss i) (hX_meas := h_meas i) (k := mNat)
+          exact ProbabilityTheory.HasLaw.integrable_abs_pow_nat
+            (hX := h_gauss i) (k := mNat)
         exact integrable_norm_pow_nat_of_onb_sum
           (w := hg.w) (c := hg.c) (m := mNat) (hc_meas := h_meas) (hc_int := hc_int)
       simpa [h_repr] using h_int_sum
@@ -1058,9 +1075,8 @@ lemma integrable_coord_mul_F
   classical
   let c_i := coord hg.w g i
   have hc_i_L2 : Integrable (fun ω => c_i ω ^ 2) :=
-    ProbabilityTheory.IsCenteredGaussianRV.integrable_sq
-      (hX := (coord_isGaussian_and_indep hg).1 i)
-      (hX_meas := (coord_measurable (g := g) hg i))
+    ProbabilityTheory.HasLaw.integrable_sq_gaussianReal_centered
+      (X := c_i) (v := hg.τ i) ((coord_isGaussian_and_indep (g := g) hg).1 i)
   have hF_L2 : Integrable (fun ω => F (g ω) ^ 2) := by
     have h_bound_sq :
         ∀ ω, |F (g ω) ^ 2| ≤ hF_growth.C ^ 2 * (1 + ‖g ω‖) ^ (2 * hF_growth.m) := by
@@ -1069,7 +1085,7 @@ lemma integrable_coord_mul_F
         hF_growth.F_bound (g ω)
       have hb2 : |F (g ω)| ^ 2
                     ≤ (hF_growth.C * (1 + ‖g ω‖) ^ hF_growth.m) ^ 2 :=
-        Real.pow_le_pow_of_le_left (abs_nonneg _) hb 2
+        pow_le_pow_left₀ (abs_nonneg _) hb 2
       have hR :
           (hF_growth.C * (1 + ‖g ω‖) ^ hF_growth.m) ^ 2
             = hF_growth.C ^ 2 * (1 + ‖g ω‖) ^ (2 * hF_growth.m) := by
@@ -1214,40 +1230,13 @@ clean, coordinate‑free form.
 section CovarianceOperator
 
 variable {g : Ω → H}
-section InnerProductSpace
-open scoped InnerProductSpace
-
-/-- The continuous linear map `x ↦ ⟪v, x⟫` for a fixed `v`.
-Note: this is linear in `x` for general `RCLike 𝕜`. -/
-def ContinuousLinearMap.innerSL (𝕜 : Type*) [RCLike 𝕜] {E : Type*}
-    [NormedAddCommGroup E] [InnerProductSpace 𝕜 E] (v : E) : E →L[𝕜] 𝕜 :=
-  LinearMap.mkContinuous
-    { toFun := fun x => ⟪v, x⟫_𝕜
-      map_add' := by
-        intro x y
-        -- ⟪v, x + y⟫ = ⟪v, x⟫ + ⟪v, y⟫
-        simpa using (inner_add_right v x y)
-      map_smul' := by
-        intro c x
-        -- ⟪v, c • x⟫ = c * ⟪v, x⟫
-        simpa using (inner_smul_right v x c) }
-    ‖v‖
-    (fun x => by
-      simpa using (norm_inner_le_norm v x))
-
-@[simp] lemma ContinuousLinearMap.innerSL_apply
-    (𝕜 : Type*) [RCLike 𝕜] {E : Type*} [NormedAddCommGroup E] [InnerProductSpace 𝕜 E]
-    (v x : E) :
-    (ContinuousLinearMap.innerSL 𝕜 (E := E) v) x = ⟪v, x⟫_𝕜 := rfl
-
-end InnerProductSpace
 
 /-- Covariance operator `Σ` built from the finite spectral data `(w, τ)`.
 It is the finite sum of rank‑one projections `h ↦ ⟪h, w i⟫ • w i`, scaled by `τ i`. -/
 noncomputable def covOp (hg : IsGaussianHilbert g) : H →L[ℝ] H :=
   (Finset.univ : Finset hg.ι).sum fun i =>
     (hg.τ i : ℝ) •
-      ContinuousLinearMap.smulRight (ContinuousLinearMap.innerSL ℝ (hg.w i)) (hg.w i)
+      ContinuousLinearMap.smulRight (innerSL ℝ (hg.w i)) (hg.w i)
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] in
 @[simp] lemma covOp_apply
@@ -1702,6 +1691,14 @@ lemma integrable_psi_on_mapY_prod_gauss
 
 end JointLawFubini
 
+/- Legacy coordinate-line calculus & IBP (disabled).
+
+This block is the old coordinate/Fintype route; it relied on the pre-refactor 1D Stein layer and
+`HasModerateGrowth`. The Mathlib-idiomatic, intrinsic IBP is developed below in
+`section IntrinsicHilbertIBP`.
+
+NOTE: this comment is intentionally left open and is closed right before `section IntrinsicHilbertIBP`.
+
 section SliceCalculus
 
 open scoped BigOperators
@@ -1788,7 +1785,7 @@ lemma pow_le_pow_one_add_norm_comp_affine
     (z : E) (L : ℝ →L[ℝ] E) (x : ℝ) (m : ℕ) :
   (1 + ‖z + L x‖) ^ m ≤ ((1 + ‖z‖ + ‖L‖) * (1 + |x|)) ^ m := by
   have hbase : 0 ≤ 1 + ‖z + L x‖ := by nlinarith [norm_nonneg (z + L x)]
-  exact Real.pow_le_pow_of_le_left hbase (one_add_norm_comp_affine_le z L x) m
+  exact pow_le_pow_left₀ hbase (one_add_norm_comp_affine_le z L x) m
 
 /-- Chain rule for slicing `F : E → ℝ` along an affine line `x ↦ z + L x`. -/
 lemma deriv_comp_affine
@@ -1840,7 +1837,7 @@ lemma pow_le_pow_one_add_norm_comp_affine'
     (z : E) (L : E' →L[ℝ] E) (x : E') (m : ℕ) :
   (1 + ‖z + L x‖) ^ m ≤ ((1 + ‖z‖ + ‖L‖) * (1 + ‖x‖)) ^ m := by
   have hbase : 0 ≤ 1 + ‖z + L x‖ := by nlinarith [norm_nonneg (z + L x)]
-  exact Real.pow_le_pow_of_le_left hbase (one_add_norm_comp_affine_le' z L x) m
+  exact pow_le_pow_left₀ hbase (one_add_norm_comp_affine_le' z L x) m
 
 /-- Value bound after composing F : E → ℝ with affine line x ↦ z + L x (real parameter). -/
 lemma growth_bound_comp_affine_real_value
@@ -2619,20 +2616,20 @@ lemma integrable_coord_mul_F_of_indep
     (X : Ω → ℝ) (Y : Ω → (CoordLine.Comp ι i → ℝ))
     (hX_meas : Measurable X) (hY_meas : Measurable Y)
     (_hIndep : ProbabilityTheory.IndepFun Y X ℙ)
-    (hX_gauss : ProbabilityTheory.IsCenteredGaussianRV X vτ)
-    (hY_gauss0 : ∀ j, ProbabilityTheory.IsCenteredGaussianRV (fun ω => Y ω j) 0) :
+    (hX_gauss : ProbabilityTheory.HasLaw X (ProbabilityTheory.gaussianReal 0 vτ) (ℙ : Measure Ω))
+    (hY_gauss0 : ∀ j, ProbabilityTheory.HasLaw (fun ω => Y ω j) (ProbabilityTheory.gaussianReal 0 0) (ℙ : Measure Ω)) :
     Integrable (fun ω => X ω * F (CoordLine.buildAlong (w := w) (i := i) (Y ω) (X ω))) ℙ := by
   classical
   have hYpush :
       ∀ j, Measure.map (fun ω => Y ω j) (ℙ : Measure Ω)
             = ProbabilityTheory.gaussianReal 0 0 := by
     intro j
-    simpa [ProbabilityTheory.IsCenteredGaussianRV, ProbabilityTheory.IsGaussianRV] using hY_gauss0 j
+    simpa using (hY_gauss0 j).map_eq
   have hYae : Y =ᵐ[ℙ] fun _ => (fun _ => (0 : ℝ)) :=
     ae_const_zero_of_coord_gauss0 (μ := (ℙ : Measure Ω))
       (i := i) (Y := Y) (hY_meas := hY_meas) (hY_gauss0 := hYpush)
   have hXlaw : Measure.map X ℙ = ProbabilityTheory.gaussianReal 0 vτ := by
-    simpa [ProbabilityTheory.IsCenteredGaussianRV, ProbabilityTheory.IsGaussianRV] using hX_gauss
+    simpa using hX_gauss.map_eq
   simpa using
     integrable_coord_mul_F_of_gauss_and_aeConstY
       (w := w) (i := i) (μ := (ℙ : Measure Ω))
@@ -2650,8 +2647,8 @@ lemma integrable_deriv_F_along_coord_of_indep
     (X : Ω → ℝ) (Y : Ω → (CoordLine.Comp ι i → ℝ))
     (hX_meas : Measurable X) (hY_meas : Measurable Y)
     (_hIndep : ProbabilityTheory.IndepFun Y X ℙ)
-    (hX_gauss : ProbabilityTheory.IsCenteredGaussianRV X vτ)
-    (hY_gauss0 : ∀ j, ProbabilityTheory.IsCenteredGaussianRV (fun ω => Y ω j) 0) :
+    (hX_gauss : ProbabilityTheory.HasLaw X (ProbabilityTheory.gaussianReal 0 vτ) (ℙ : Measure Ω))
+    (hY_gauss0 : ∀ j, ProbabilityTheory.HasLaw (fun ω => Y ω j) (ProbabilityTheory.gaussianReal 0 0) (ℙ : Measure Ω)) :
     Integrable (fun ω =>
       deriv (fun t => F (CoordLine.buildAlong (w := w) (i := i) (Y ω) t)) (X ω)) ℙ := by
   classical
@@ -2660,12 +2657,12 @@ lemma integrable_deriv_F_along_coord_of_indep
       ∀ j, Measure.map (fun ω => Y ω j) (ℙ : Measure Ω)
             = ProbabilityTheory.gaussianReal 0 0 := by
     intro j
-    simpa [ProbabilityTheory.IsCenteredGaussianRV, ProbabilityTheory.IsGaussianRV] using hY_gauss0 j
+    simpa using (hY_gauss0 j).map_eq
   have hYae : Y =ᵐ[ℙ] fun _ => (fun _ => (0 : ℝ)) :=
     ae_const_zero_of_coord_gauss0 (μ := (ℙ : Measure Ω))
       (i := i) (Y := Y) (hY_meas := hY_meas) (hY_gauss0 := hYpush)
   have hXlaw : Measure.map X ℙ = ProbabilityTheory.gaussianReal 0 vτ := by
-    simpa [ProbabilityTheory.IsCenteredGaussianRV, ProbabilityTheory.IsGaussianRV] using hX_gauss
+    simpa using hX_gauss.map_eq
   simpa using
     integrable_deriv_F_along_coord_of_gauss_and_aeConstY
       (w := w) (i := i) (μ := (ℙ : Measure Ω))
@@ -2724,26 +2721,6 @@ lemma map_eq_gaussianReal0_of_ae_eq_const_zero
   classical
   simpa [ProbabilityTheory.gaussianReal_dirac] using
     map_eq_dirac_of_ae_eq_const_zero (μ := μ) (hX_meas := hX_meas) (hConst := hConst)
-
-namespace ProbabilityTheory
-
-/-- Wrapper with the ambient probability measure `ℙ`:
-if `X =ᵐ[ℙ] 0` and `X` is measurable, then `X` is a centered Gaussian with
-variance `0`. -/
-lemma IsCenteredGaussianRV.of_ae_eq_const
-    {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
-    {X : Ω → ℝ} (hX_meas : Measurable X)
-    (hConst : X =ᵐ[ℙ] fun _ => (0 : ℝ)) :
-    ProbabilityTheory.IsCenteredGaussianRV X 0 := by
-  classical
-  have hmap : Measure.map X (ℙ : Measure Ω) =
-      ProbabilityTheory.gaussianReal 0 0 := by
-    simpa [ProbabilityTheory.gaussianReal_dirac] using
-      map_eq_dirac_of_ae_eq_const_zero (μ := (ℙ : Measure Ω))
-        (hX_meas := hX_meas) (hConst := hConst)
-  dsimp [ProbabilityTheory.IsCenteredGaussianRV,
-         ProbabilityTheory.IsGaussianRV] at *
-  exact hmap
 
 /-- If a family `f` is mutually independent, then the tuple on the complement
 of `i` is independent from the coordinate `i` itself. -/
@@ -2816,7 +2793,7 @@ lemma indep_coord_complement
   have hf : ∀ j, Measurable (coord hg.w g j) :=
     PhysLean.Probability.GaussianIBP.coord_measurable (g := g) hg
   simpa [CoordLine.Comp] using
-    (ProbabilityTheory.iIndepFun.indepFun_subtype_prod_singleton
+    (iIndepFun.indepFun_subtype_prod_singleton
       (μ := ℙ) (f := coord hg.w g) hind hf i)
 
 lemma stein_coord_with_param_of_indep
@@ -2827,8 +2804,8 @@ lemma stein_coord_with_param_of_indep
   (X : Ω → ℝ) (Y : Ω → (CoordLine.Comp ι i → ℝ))
   (hX_meas : Measurable X) (hY_meas : Measurable Y)
   (hIndep : ProbabilityTheory.IndepFun Y X ℙ)
-  (hX_gauss : ProbabilityTheory.IsCenteredGaussianRV X vτ)
-  (hY_gauss0 : ∀ j, ProbabilityTheory.IsCenteredGaussianRV (fun ω => Y ω j) 0) :
+  (hX_gauss : ProbabilityTheory.HasLaw X (ProbabilityTheory.gaussianReal 0 vτ) (ℙ : Measure Ω))
+  (hY_gauss0 : ∀ j, ProbabilityTheory.HasLaw (fun ω => Y ω j) (ProbabilityTheory.gaussianReal 0 0) (ℙ : Measure Ω)) :
   ∫ ω, X ω * F (CoordLine.buildAlong (w := w) (i := i) (Y ω) (X ω)) ∂ℙ
     =
   (vτ : ℝ) *
@@ -2925,7 +2902,7 @@ lemma stein_coord_with_param_of_indep
       ∫ ω, ψ (Y ω, X ω) ∂ℙ
         = ∫ p, ψ p ∂((Measure.map Y ℙ).prod (Measure.map X ℙ)) := by
     simpa [hmap_pair] using hchg_pair_ψ
-  have hX_law : Measure.map X ℙ = ProbabilityTheory.gaussianReal 0 vτ := hX_gauss
+  have hX_law : Measure.map X ℙ = ProbabilityTheory.gaussianReal 0 vτ := hX_gauss.map_eq
   have hInt_φΩ :
       Integrable (fun ω =>
         φ (Y ω, X ω)) ℙ := by
@@ -3000,7 +2977,7 @@ lemma stein_coord_with_param'
   have hY_meas : Measurable Y :=
     measurable_pi_iff.mpr (fun j =>
       (PhysLean.Probability.GaussianIBP.coord_measurable (g := g) hg) j.1)
-  have hIndep := ProbabilityTheory.indep_coord_complement (hg := hg) (i := i)
+  have hIndep := indep_coord_complement (hg := hg) (i := i)
   have hX_gauss := (PhysLean.Probability.GaussianIBP.coord_isGaussian_and_indep (g := g) hg).1 i
   have hcoord_eq_c :
       PhysLean.Probability.GaussianIBP.coord hg.w g = hg.c :=
@@ -3180,7 +3157,7 @@ lemma stein_coord_with_param'
       simp [ψ]
       exact h_deriv_pointwise ω
     simpa [h_eq_fun] using hInt_fderiv
-  have hX_law : Measure.map X ℙ = ProbabilityTheory.gaussianReal 0 (hg.τ i) := hX_gauss
+  have hX_law : Measure.map X ℙ = ProbabilityTheory.gaussianReal 0 (hg.τ i) := hX_gauss.map_eq
   have hprod' :
       ∫ p, φ p ∂((Measure.map Y ℙ).prod (Measure.map X ℙ))
         =
@@ -3398,19 +3375,63 @@ the covariant IBP reads
 
 section LinearTestFunctions
 
-/-- Zero mean of Gaussian inner coordinates (take `F ≡ 1`). -/
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] in
 @[simp]
+/- Zero mean of Gaussian inner coordinates (take `F ≡ 1`). -/
 lemma gaussian_zero_mean_inner
     {g : Ω → H} (hg : IsGaussianHilbert g) (h : H) :
     𝔼[(fun ω => ⟪g ω, h⟫_ℝ)] = 0 := by
   classical
-  have hMG : HasModerateGrowth (fun _ : H => (1 : ℝ)) :=
-    hasModerateGrowth_const (H := H) (c := (1 : ℝ))
-  have hDiff : ContDiff ℝ 1 (fun _ : H => (1 : ℝ)) := by
-    simpa using (contDiff_const : ContDiff ℝ 1 (fun _ : H => (1 : ℝ)))
-  simpa using
-    (gaussian_integration_by_parts_hilbert_cov_op (g := g) (hg := hg) (h := h)
-      (F := fun _ : H => (1 : ℝ)) (hF_diff := hDiff) (hF_growth := hMG))
+  -- Expand `g` along the ONB and use that each coordinate `c i` has mean `0`.
+  change (∫ ω, ⟪g ω, h⟫_ℝ ∂(ℙ : Measure Ω)) = 0
+  have hinner : ∀ ω, ⟪g ω, h⟫_ℝ = ∑ i : hg.ι, (hg.c i ω) * ⟪hg.w i, h⟫_ℝ := by
+    intro ω
+    have hrepr : g ω = ∑ i : hg.ι, (hg.c i ω) • hg.w i := by
+      simpa using congrArg (fun f => f ω) hg.repr
+    -- Move inner through the finite sum.
+    simp [hrepr, sum_inner, inner_smul_left]
+  have hint_c : ∀ i : hg.ι, Integrable (hg.c i) (ℙ : Measure Ω) := by
+    intro i
+    haveI : ProbabilityTheory.IsGaussian (ProbabilityTheory.gaussianReal 0 (hg.τ i)) := by
+      infer_instance
+    have hLp :
+        MeasureTheory.MemLp (fun x : ℝ => x) 2 (ProbabilityTheory.gaussianReal 0 (hg.τ i)) :=
+      ProbabilityTheory.IsGaussian.memLp_id (μ := ProbabilityTheory.gaussianReal 0 (hg.τ i)) 2 (by norm_num)
+    have hInt_id : Integrable (fun x : ℝ => x) (ProbabilityTheory.gaussianReal 0 (hg.τ i)) :=
+      hLp.integrable (by norm_num)
+    -- Transport integrability along the law of `c i` using the map measure.
+    have hInt_map : Integrable (fun x : ℝ => x) (Measure.map (hg.c i) (ℙ : Measure Ω)) := by
+      -- identify the pushforward with the Gaussian law
+      simpa [(hg.c_gauss i).map_eq] using hInt_id
+    -- Pull back along `c i`.
+    have := (integrable_map_measure (μ := (ℙ : Measure Ω)) (f := hg.c i) (g := fun x : ℝ => x)
+      (measurable_id.aestronglyMeasurable) (hg.c_meas i).aemeasurable).1 hInt_map
+    simpa [Function.comp] using this
+  have hint_terms :
+      ∀ i : hg.ι, Integrable (fun ω => (hg.c i ω) * ⟪hg.w i, h⟫_ℝ) (ℙ : Measure Ω) := by
+    intro i
+    simpa [mul_comm] using (hint_c i).mul_const (⟪hg.w i, h⟫_ℝ)
+  have hmean_c : ∀ i : hg.ι, (∫ ω, hg.c i ω ∂(ℙ : Measure Ω)) = 0 := by
+    intro i
+    have hf : AEStronglyMeasurable (fun x : ℝ => x) (ProbabilityTheory.gaussianReal 0 (hg.τ i)) :=
+      (measurable_id : Measurable (fun x : ℝ => x)).aestronglyMeasurable
+    have hcomp :=
+      (hg.c_gauss i).integral_comp (P := (ℙ : Measure Ω))
+        (μ := ProbabilityTheory.gaussianReal 0 (hg.τ i)) (f := fun x : ℝ => x) hf
+    -- `∫ x d(gaussianReal 0 v) = 0`.
+    simpa [ProbabilityTheory.integral_id_gaussianReal] using hcomp
+  calc
+    (∫ ω, ⟪g ω, h⟫_ℝ ∂(ℙ : Measure Ω))
+        = ∫ ω, (∑ i : hg.ι, (hg.c i ω) * ⟪hg.w i, h⟫_ℝ) ∂(ℙ : Measure Ω) := by
+            refine integral_congr_ae (ae_of_all _ (fun ω => by simp [hinner ω]))
+    _ = ∑ i : hg.ι, ∫ ω, (hg.c i ω) * ⟪hg.w i, h⟫_ℝ ∂(ℙ : Measure Ω) := by
+          simpa using (integral_finset_sum (s := (Finset.univ : Finset hg.ι))
+            (f := fun i ω => (hg.c i ω) * ⟪hg.w i, h⟫_ℝ) (by intro i hi; simpa using hint_terms i))
+    _ = ∑ i : hg.ι, (∫ ω, hg.c i ω ∂(ℙ : Measure Ω)) * ⟪hg.w i, h⟫_ℝ := by
+          refine Finset.sum_congr rfl (fun i _ => ?_)
+          simp [integral_mul_const]
+    _ = 0 := by
+          simp [hmean_c]
 
 /-- Covariance identity: `E[⟪g,h⟫ ⟪g,u⟫] = ⟪(Σ h), u⟫`. -/
 @[simp]
@@ -3419,7 +3440,7 @@ lemma gaussian_covariance_pairing
     𝔼[(fun ω => ⟪g ω, h⟫_ℝ * ⟪g ω, u⟫_ℝ)]
       = ⟪(covOp (g := g) hg) h, u⟫_ℝ := by
   classical
-  let L : H →L[ℝ] ℝ := ContinuousLinearMap.innerSL ℝ u
+  let L : H →L[ℝ] ℝ := innerSL ℝ u
   have hDiff : ContDiff ℝ 1 (fun z : H => L z) := L.contDiff
   have hMG : HasModerateGrowth (fun z : H => L z) := hasModerateGrowth_of_clm (L := L)
   have hIBP :=
@@ -3448,122 +3469,389 @@ lemma gaussian_covariance_pairing
   have hRhs :
       𝔼[(fun ω : Ω => ⟪g ω, h⟫_ℝ * ⟪u, g ω⟫_ℝ)]
         = ⟪u, (covOp (g := g) hg) h⟫_ℝ := by
-    simpa only [L, ContinuousLinearMap.innerSL_apply] using hMain
+    simpa only [L, innerSL_apply_apply] using hMain
   simpa [real_inner_comm] using hRhs
 
+/-- In the finite-dimensional coordinate model, the explicit covariance operator `covOp`
+coincides with Mathlib's intrinsic (uncentered) covariance operator of the law `(ℙ).map g`. -/
+lemma covOp_eq_covarianceOperator_map
+    {g : Ω → H} (hg : IsGaussianHilbert g) :
+    covOp (g := g) hg = ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map g) := by
+  classical
+  -- Put the standard finite-dimensional/second-countable topology instances in scope.
+  haveI : FiniteDimensional ℝ H :=
+    (hg.w.toBasis).finiteDimensional_of_finite
+  haveI : SecondCountableTopology H := by infer_instance
+  -- The law of `g` is Gaussian, hence has finite second moments.
+  haveI : ProbabilityTheory.IsGaussian ((ℙ : Measure Ω).map g) :=
+    IsGaussianHilbert.isGaussian_map (g := g) hg
+  have hLp2 : MeasureTheory.MemLp id 2 ((ℙ : Measure Ω).map g) :=
+    ProbabilityTheory.IsGaussian.memLp_id (μ := ((ℙ : Measure Ω).map g)) 2 (by norm_num)
+  -- `HasLaw` for the identity definition of the law.
+  have hg_law : ProbabilityTheory.HasLaw g ((ℙ : Measure Ω).map g) (ℙ : Measure Ω) :=
+    ⟨hg.repr_measurable.aemeasurable, rfl⟩
+  -- Identify the operator through its inner products.
+  ext h
+  refine ext_inner_right ℝ (fun u => ?_)
+  have hcov :
+      ⟪ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map g) h, u⟫_ℝ
+        = ∫ z : H, ⟪h, z⟫_ℝ * ⟪u, z⟫_ℝ ∂((ℙ : Measure Ω).map g) := by
+    simpa using
+      (ProbabilityTheory.covarianceOperator_inner (μ := ((ℙ : Measure Ω).map g)) hLp2 h u)
+  have hφ_int :
+      (∫ z : H, ⟪h, z⟫_ℝ * ⟪u, z⟫_ℝ ∂((ℙ : Measure Ω).map g))
+        = ∫ ω : Ω, ⟪h, g ω⟫_ℝ * ⟪u, g ω⟫_ℝ ∂(ℙ : Measure Ω) := by
+    have hf : AEStronglyMeasurable (fun z : H => ⟪h, z⟫_ℝ * ⟪u, z⟫_ℝ) ((ℙ : Measure Ω).map g) := by
+      have : Measurable (fun z : H => ⟪h, z⟫_ℝ * ⟪u, z⟫_ℝ) := by fun_prop
+      exact this.aestronglyMeasurable
+    -- `HasLaw.integral_comp` gives the direction `∫ω f(g ω) dℙ = ∫z f z d(map g ℙ)`.
+    simpa [Function.comp] using
+      (hg_law.integral_comp (f := fun z : H => ⟪h, z⟫_ℝ * ⟪u, z⟫_ℝ) hf).symm
+  have hexpl :
+      ∫ ω : Ω, ⟪h, g ω⟫_ℝ * ⟪u, g ω⟫_ℝ ∂(ℙ : Measure Ω)
+        = ⟪(covOp (g := g) hg) h, u⟫_ℝ := by
+    -- commute inner products to match `gaussian_covariance_pairing`.
+    have :=
+      gaussian_covariance_pairing (g := g) (hg := hg) (h := h) (u := u)
+    simpa [real_inner_comm, mul_comm, mul_left_comm, mul_assoc] using this
+  -- Conclude by comparing the defining inner products.
+  calc
+    ⟪(covOp (g := g) hg) h, u⟫_ℝ
+        = ∫ ω : Ω, ⟪h, g ω⟫_ℝ * ⟪u, g ω⟫_ℝ ∂(ℙ : Measure Ω) := by
+            simp [hexpl]
+    _ = ∫ z : H, ⟪h, z⟫_ℝ * ⟪u, z⟫_ℝ ∂((ℙ : Measure Ω).map g) := by
+            simp [hφ_int]
+    _ = ⟪ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map g) h, u⟫_ℝ := by
+            simp [hcov]
 
-end LinearTestFunctions
+/-- **IBP with Mathlib's intrinsic covariance operator.**
 
-/-- **Standard-covariance corollary.** If all coordinate variances are `1`, the
-covariant formula reduces to the usual identity with `h` on the RHS. -/
-@[simp]
- theorem gaussian_integration_by_parts_hilbert_std
+This is `gaussian_integration_by_parts_hilbert_cov_op`, rewritten using
+`ProbabilityTheory.covarianceOperator ((ℙ).map g)` instead of the explicit `covOp`. -/
+theorem gaussian_integration_by_parts_hilbert_covarianceOperator
     {g : Ω → H} (hg : IsGaussianHilbert g)
-    (hτ : ∀ i : hg.ι, hg.τ i = 1)
     (h : H)
     {F : H → ℝ} (hF_diff : ContDiff ℝ 1 F) (hF_growth : HasModerateGrowth F) :
     𝔼[(fun ω => ⟪g ω, h⟫_ℝ * F (g ω))]
-      = 𝔼[(fun ω => (fderiv ℝ F (g ω)) h)] := by
-  classical
-  have := gaussian_integration_by_parts_hilbert_cov
-    (g := g) (hg := hg) (h := h) (F := F)
-    (hF_diff := hF_diff) (hF_growth := hF_growth)
-  have h_as_sum :
-      (∑ i : hg.ι, ((hg.τ i : ℝ) * ⟪h, hg.w i⟫_ℝ) • hg.w i) = h := by
-    classical
-    have : (∑ i : hg.ι, (⟪h, hg.w i⟫_ℝ) • hg.w i) = h := by
-      simpa [hg.w.repr_apply_apply, real_inner_comm] using (hg.w.sum_repr h)
-    simpa [hτ, mul_one] using this
-  simpa [h_as_sum] using this
+      = 𝔼[(fun ω => (fderiv ℝ F (g ω))
+            ((ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map g)) h))] := by
+  -- rewrite the operator and apply the explicit-operator version.
+  simpa [covOp_eq_covarianceOperator_map (g := g) (hg := hg)] using
+    (gaussian_integration_by_parts_hilbert_cov_op (g := g) (hg := hg) (h := h)
+      (F := F) (hF_diff := hF_diff) (hF_growth := hF_growth))
 
-/-! ### Roadmap for subsequent iterations
-* Prove the integrability lemmas using Gaussian moment finiteness results in mathlib.
-* Prove `stein_coord_with_param` by unfolding the conditional expectation step
-  and invoking the parameterized 1D Stein identity from the imported file.
-* Remove the finite-dimensional index restriction by replacing finite sums with
-  `∑'` and applying dominated convergence; the present structure already points
-  to the covariance operator `Σ` built from the spectral data `(w, τ)`.
+-/
+
+/-!
+## Intrinsic Hilbert-space IBP via Cameron–Martin
+
+This section provides the *coordinate-free* (Mathlib-idiomatic) IBP on a finite-dimensional real
+Hilbert space, directly from the Cameron–Martin IBP and Mathlib's intrinsic covariance operator.
+
+The coordinate-based development above should be viewed as one concrete implementation/proof route;
+the statements below avoid `IsGaussianHilbert` and `Fintype` hypotheses.
 -/
 
 
-/-! ## Further corollaries and operator‑centric consequences
-These statements are immediate algebraic fallouts of the operator‑form IBP
-and require no extra analysis beyond what is already used above.
--/
-section MoreCorollaries
+section IntrinsicHilbertIBP
 
-variable {g : Ω → H}
+variable [SecondCountableTopology H]
+variable {μ : Measure H} [ProbabilityTheory.IsGaussian μ]
 
-/-- **CLM test functions.** A clean operator‑form covariance identity for any
-continuous linear functional `L : H →L[ℝ] ℝ`.
-
-This is just `gaussian_integration_by_parts_hilbert_cov_op` with `F = L`, whose
-Fréchet derivative is constantly `L`. -/
-@[simp]
-lemma gaussian_covariance_clm
-    (hg : IsGaussianHilbert (Ω := Ω) (H := H) g)
-    (L : H →L[ℝ] ℝ) (h : H) :
-    𝔼[(fun ω => ⟪g ω, h⟫_ℝ * L (g ω))]
-      = L ((covOp (g := g) hg) h) := by
+lemma cmCoe_cmOfDual_innerSL_eq_covarianceOperator
+    (hmean0 : (∫ x : H, x ∂μ) = 0) (h : H) :
+    (ProbabilityTheory.cmCoe (μ := μ))
+        ((ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H)) : ProbabilityTheory.cameronMartin μ)
+      = ProbabilityTheory.covarianceOperator μ h := by
   classical
-  have hDiff : ContDiff ℝ 1 (fun z : H => L z) := L.contDiff
-  have hMG   : HasModerateGrowth (fun z : H => L z) :=
-    hasModerateGrowth_of_clm (L := L)
-  simpa using
-    (gaussian_integration_by_parts_hilbert_cov_op (g := g) (hg := hg)
-      (h := h) (F := fun z : H => L z) (hF_diff := hDiff) (hF_growth := hMG))
-
-/-- **Quadratic moment along a direction.** Specializing the covariance pairing
-with `u = h` gives the second moment of the scalar coordinate. -/
-@[simp]
-lemma gaussian_quadratic_moment
-    (hg : IsGaussianHilbert (Ω := Ω) (H := H) g) (h : H) :
-    𝔼[(fun ω => (⟪g ω, h⟫_ℝ)^2)]
-      = ⟪(covOp (g := g) hg) h, h⟫_ℝ := by
-  classical
-  simpa [pow_two] using
-    (gaussian_covariance_pairing (g := g) (hg := hg) (h := h) (u := h))
-
-lemma gaussian_second_moment
-    (hg : IsGaussianHilbert (Ω := Ω) (H := H) g) :
-    𝔼[(fun ω => ‖g ω‖^2)] = ∑ i : hg.ι, (hg.τ i : ℝ) := by
-  classical
-  have h_decomp :
-      (fun ω => ‖g ω‖^2) = (fun ω => ∑ i : hg.ι, (⟪g ω, hg.w i⟫_ℝ)^2) := by
-    funext ω
-    simpa [real_inner_self_eq_norm_sq, pow_two] using
-      (Aux.inner_decomp (w := hg.w) (x := g ω) (y := g ω))
-  have h_each : ∀ i : hg.ι,
-      𝔼[(fun ω => (⟪g ω, hg.w i⟫_ℝ)^2)] = (hg.τ i : ℝ) := by
-    intro i
-    simpa [pow_two,
-           covOp_apply (g := g) (hg := hg),
-           OrthonormalBasis.inner_eq_ite,
-           inner_smul_left] using
-      (gaussian_quadratic_moment (g := g) (hg := hg) (h := hg.w i))
-  have h_int : ∀ i : hg.ι, Integrable (fun ω => (⟪g ω, hg.w i⟫_ℝ)^2) := by
-    intro i
-    have hX_gauss :
-        ProbabilityTheory.IsCenteredGaussianRV (coord hg.w g i) (hg.τ i) :=
-      (coord_isGaussian_and_indep (g := g) hg).1 i
-    have hX_meas : Measurable (coord hg.w g i) :=
-      (coord_measurable (g := g) hg) i
-    simpa [coord, pow_two] using
-      (ProbabilityTheory.IsCenteredGaussianRV.integrable_sq
-        (Ω := Ω) (X := coord hg.w g i) (v := hg.τ i) hX_gauss hX_meas)
+  have hLp2 : MeasureTheory.MemLp (fun x : H => x) 2 μ := by
+    simpa using (ProbabilityTheory.IsGaussian.memLp_id (μ := μ) 2 (by norm_num))
+  -- Identify both vectors by testing against all `u` via the inner product.
+  refine ext_inner_right ℝ (fun u => ?_)
+  -- Mean-zero implies all linear functionals have zero mean.
+  have hμ_inner (v : H) :
+      μ[(innerSL ℝ v : StrongDual ℝ H)] = 0 := by
+    have hint : Integrable (fun x : H => x) μ := hLp2.integrable (by norm_num)
+    have hmean :
+        μ[(innerSL ℝ v : StrongDual ℝ H)] = (innerSL ℝ v) (∫ x : H, x ∂μ) := by
+      simpa using ((innerSL ℝ v : StrongDual ℝ H).integral_comp_comm hint)
+    simpa [hmean0] using hmean
+  -- Evaluate the left-hand side using `apply_cmCoe_eq_inner` + `cmOfDual_inner`.
+  have h_left :
+      ⟪(ProbabilityTheory.cmCoe (μ := μ))
+            ((ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H)) :
+              ProbabilityTheory.cameronMartin μ),
+          u⟫_ℝ
+        =
+      ProbabilityTheory.covarianceBilinDual μ (innerSL ℝ u : StrongDual ℝ H) (innerSL ℝ h : StrongDual ℝ H) := by
+    have h_eval :
+        (innerSL ℝ u : StrongDual ℝ H)
+              ((ProbabilityTheory.cmCoe (μ := μ))
+                ((ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H)) :
+                  ProbabilityTheory.cameronMartin μ))
+          =
+        ⟪ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ u : StrongDual ℝ H),
+          (ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H) :
+              ProbabilityTheory.cameronMartin μ)⟫_ℝ := by
+      simpa using
+        (ProbabilityTheory.apply_cmCoe_eq_inner (μ := μ)
+          (x := (ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H) :
+            ProbabilityTheory.cameronMartin μ))
+          (L := (innerSL ℝ u : StrongDual ℝ H)))
+    have h_inner :
+        ⟪ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ u : StrongDual ℝ H),
+          (ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H) :
+              ProbabilityTheory.cameronMartin μ)⟫_ℝ
+          =
+        ProbabilityTheory.covarianceBilinDual μ (innerSL ℝ u : StrongDual ℝ H) (innerSL ℝ h : StrongDual ℝ H) := by
+      simpa using
+        (ProbabilityTheory.cmOfDual_inner (E := H) (μ := μ)
+          (innerSL ℝ u : StrongDual ℝ H) (innerSL ℝ h : StrongDual ℝ H))
+    -- `innerSL ℝ u` evaluates as `⟪u, ·⟫`; use symmetry of the real inner product.
+    simpa [real_inner_comm, h_inner] using h_eval
+  -- Rewrite `covarianceBilinDual` as an uncentered covariance (since mean = 0),
+  -- then use the defining identity for `covarianceOperator`.
+  have hcov :
+      ProbabilityTheory.covarianceBilinDual μ (innerSL ℝ u : StrongDual ℝ H) (innerSL ℝ h : StrongDual ℝ H)
+        =
+      ∫ z : H, ⟪h, z⟫_ℝ * ⟪u, z⟫_ℝ ∂μ := by
+    -- Expand the centered covariance and use `μ[innerSL _ _] = 0`.
+    have hcov' :=
+      (ProbabilityTheory.covarianceBilinDual_apply (μ := μ) (h := hLp2)
+        (innerSL ℝ u : StrongDual ℝ H) (innerSL ℝ h : StrongDual ℝ H))
+    -- `covarianceBilinDual_apply` gives an integral of `(L₁ z - ∫ L₁) * (L₂ z - ∫ L₂)`.
+    -- Use centeredness to show these means vanish.
+    have hmean_inner (v : H) : (∫ x : H, ⟪v, x⟫_ℝ ∂μ) = 0 := by
+      -- `μ[innerSL ℝ v] = ∫ ⟪v, x⟫ dμ`.
+      simpa [innerSL_apply_apply] using (hμ_inner v)
+    -- Reduce to the uncentered product and commute factors to match `covarianceOperator_inner`.
+    simpa [hmean_inner u, hmean_inner h, innerSL_apply_apply, mul_comm, mul_left_comm, mul_assoc] using hcov'
+  have hOp :
+      ⟪ProbabilityTheory.covarianceOperator μ h, u⟫_ℝ
+        = ∫ z : H, ⟪h, z⟫_ℝ * ⟪u, z⟫_ℝ ∂μ := by
+    simpa using (ProbabilityTheory.covarianceOperator_inner (μ := μ) hLp2 h u)
+  -- Conclude.
   calc
-    𝔼[(fun ω => ‖g ω‖^2)]
-        = 𝔼[(fun ω => ∑ i : hg.ι, (⟪g ω, hg.w i⟫_ℝ)^2)] := by
-            simp [h_decomp]
-    _ = ∑ i : hg.ι, 𝔼[(fun ω => (⟪g ω, hg.w i⟫_ℝ)^2)] := by
-            simpa using
-              expectation_finset_sum (g := g) (hg := hg)
-                (f := fun i ω => (⟪g ω, hg.w i⟫_ℝ)^2) (hint := h_int)
-    _ = ∑ i : hg.ι, (hg.τ i : ℝ) := by
-            simp [h_each]
+    ⟪(ProbabilityTheory.cmCoe (μ := μ))
+          ((ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H)) :
+              ProbabilityTheory.cameronMartin μ),
+        u⟫_ℝ
+        = ProbabilityTheory.covarianceBilinDual μ (innerSL ℝ u : StrongDual ℝ H) (innerSL ℝ h : StrongDual ℝ H) := h_left
+    _ = ∫ z : H, ⟪h, z⟫_ℝ * ⟪u, z⟫_ℝ ∂μ := hcov
+    _ = ⟪ProbabilityTheory.covarianceOperator μ h, u⟫_ℝ := by simp [hOp]
 
-end MoreCorollaries
-end ProbabilityTheory
-end SteinAlongOneCoordinate
+/-- **Intrinsic finite-dimensional Hilbert-space Gaussian IBP (polynomial growth).**
+
+Let `μ` be a centered Gaussian measure on a finite-dimensional real Hilbert space `H`.
+Then for any `h : H` and any \(C^1\) function `F` with polynomial growth (together with its
+derivative), we have
+\[
+  \int \langle x, h\rangle\, F(x)\, d\mu(x)
+  = \int D F(x)\,(\mathrm{covarianceOperator}\ \mu\ h)\, d\mu(x).
+\]
+
+This is an immediate corollary of the Cameron–Martin IBP, plus the identification of
+`cmCoe (cmOfDual (innerSL ℝ h))` with `covarianceOperator μ h` in the centered case. -/
+theorem gaussian_integral_inner_mul_eq_integral_fderiv_covarianceOperator_polyGrowth
+    (hmean0 : (∫ x : H, x ∂μ) = 0) (h : H)
+    (F : H → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + ‖x‖) ^ m)
+    (hF'_growth : ∀ x, ‖fderiv ℝ F x‖ ≤ C * (1 + ‖x‖) ^ m) :
+    (∫ x : H, ⟪x, h⟫_ℝ * F x ∂μ)
+      = ∫ x : H, (fderiv ℝ F x) ((ProbabilityTheory.covarianceOperator μ) h) ∂μ := by
+  -- Apply Cameron–Martin IBP with the CM element induced by `innerSL ℝ h`.
+  have hIBP :=
+    (ProbabilityTheory.cameronMartin_integral_by_parts_polyGrowth (μ := μ)
+        (x := (ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H) :
+          ProbabilityTheory.cameronMartin μ))
+        (F := F) hF_meas hF_c1 hC hF_growth hF'_growth)
+  -- Reduce the CM coordinate `x` to the linear functional `innerSL ℝ h` using centeredness.
+  have hcm_apply :
+      ((ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H) :
+          ProbabilityTheory.cameronMartin μ) : H → ℝ)
+        =ᵐ[μ] fun x => ⟪h, x⟫_ℝ := by
+    -- `cmOfDual` is `centeredToLp`: \(x \mapsto L x - L(\int x dμ)\).
+    -- Under `hmean0`, this is just `L x`.
+    have hLp2 : MeasureTheory.MemLp (fun x : H => x) 2 μ := by
+      simpa using (ProbabilityTheory.IsGaussian.memLp_id (μ := μ) 2 (by norm_num))
+    have hcent :=
+      (ProbabilityTheory.StrongDual.centeredToLp_apply (μ := μ) (E := H) (h := hLp2)
+        (innerSL ℝ h : StrongDual ℝ H))
+    -- Turn the RHS `L (∫ x, x dμ)` into `0` using `hmean0`.
+    have hLmean : (innerSL ℝ h : StrongDual ℝ H) (∫ x : H, x ∂μ) = 0 := by
+      simp [hmean0]
+    -- `cmOfDual_apply` identifies `cmOfDual` with `centeredToLp` as a function.
+    simpa [ProbabilityTheory.cmOfDual_apply, innerSL_apply_apply, hLmean] using hcent
+  -- Rewrite both sides using `hμh` and the identification of the covariance operator.
+  have hcm :
+      (ProbabilityTheory.cmCoe (μ := μ))
+          ((ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H)) :
+              ProbabilityTheory.cameronMartin μ)
+        = ProbabilityTheory.covarianceOperator μ h :=
+    cmCoe_cmOfDual_innerSL_eq_covarianceOperator (μ := μ) hmean0 h
+  -- Final rewriting (use the a.e. identification of the CM coordinate).
+  have hLHS :
+      (∫ x : H,
+          ((ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H) :
+              ProbabilityTheory.cameronMartin μ) x) * F x ∂μ)
+        = ∫ x : H, ⟪x, h⟫_ℝ * F x ∂μ := by
+    refine integral_congr_ae ?_
+    filter_upwards [hcm_apply] with x hx
+    simp [hx, real_inner_comm]
+  -- Put everything together.
+  -- (The RHS uses `hcm` to identify the Cameron–Martin coefficient with the covariance operator.)
+  calc
+    (∫ x : H, ⟪x, h⟫_ℝ * F x ∂μ)
+        = ∫ x : H,
+            ((ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H) :
+                ProbabilityTheory.cameronMartin μ) x) * F x ∂μ := by
+              exact hLHS.symm
+    _ = ∫ x : H,
+            (fderiv ℝ F x)
+              ((ProbabilityTheory.cmCoe (μ := μ))
+                ((ProbabilityTheory.cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H)) :
+                  ProbabilityTheory.cameronMartin μ)) ∂μ := hIBP
+    _ = ∫ x : H, (fderiv ℝ F x) ((ProbabilityTheory.covarianceOperator μ) h) ∂μ := by
+          simp [hcm]
+
+end IntrinsicHilbertIBP
+
+/-!
+### Corollary: the coordinate model implies the intrinsic IBP
+
+The coordinate/Fintype-based `IsGaussianHilbert` development above can be viewed as one way to
+construct Gaussian laws and compute their covariance operator explicitly. The intrinsic IBP below
+shows that, once we know the law is Gaussian and centered, the IBP identity follows directly from
+the Cameron–Martin IBP.
+-/
+
+theorem gaussian_integration_by_parts_hilbert_covarianceOperator_polyGrowth
+    {g : Ω → H} (hg : IsGaussianHilbert g) (h : H)
+    (F : H → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + ‖x‖) ^ m)
+    (hF'_growth : ∀ x, ‖fderiv ℝ F x‖ ≤ C * (1 + ‖x‖) ^ m) :
+    𝔼[(fun ω => ⟪g ω, h⟫_ℝ * F (g ω))]
+      =
+      𝔼[(fun ω => (fderiv ℝ F (g ω))
+        ((ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map g)) h))] := by
+  classical
+  -- Put the canonical instances needed for the intrinsic theorem in scope.
+  haveI : FiniteDimensional ℝ H := (hg.w.toBasis).finiteDimensional_of_finite
+  haveI : SecondCountableTopology H := by infer_instance
+  let μ : Measure H := (ℙ : Measure Ω).map g
+  haveI : ProbabilityTheory.IsGaussian μ := IsGaussianHilbert.isGaussian_map (g := g) hg
+  have hg_law : ProbabilityTheory.HasLaw g μ (ℙ : Measure Ω) :=
+    ⟨hg.repr_measurable.aemeasurable, rfl⟩
+  -- Centeredness of the law, proved by testing against all `u` via the inner product.
+  have hmean0 : (∫ x : H, x ∂μ) = 0 := by
+    -- Use the separating family `u ↦ ⟪u, ·⟫` and `integral_inner`.
+    refine ext_inner_right ℝ (fun u => ?_)
+    have hLp2 : MeasureTheory.MemLp (fun x : H => x) 2 μ :=
+      ProbabilityTheory.IsGaussian.memLp_id (μ := μ) 2 (by norm_num)
+    have hint : Integrable (fun x : H => x) μ := hLp2.integrable (by norm_num)
+    have h0 :
+        ⟪(∫ x : H, x ∂μ), u⟫_ℝ
+          = ∫ x : H, ⟪x, u⟫_ℝ ∂μ := by
+      -- `integral_inner` gives `⟪u, ∫ x, x⟫ = ∫ x, ⟪u, x⟫`; commute the inner product.
+      have := (integral_inner (𝕜 := ℝ) (f := fun x : H => x) (c := u) hint)
+      simpa [real_inner_comm] using this.symm
+    have hμu :
+        (∫ x : H, ⟪x, u⟫_ℝ ∂μ) = ∫ ω : Ω, ⟪g ω, u⟫_ℝ ∂(ℙ : Measure Ω) := by
+      have hf : AEStronglyMeasurable (fun x : H => ⟪x, u⟫_ℝ) μ := by
+        have : Measurable (fun x : H => ⟪x, u⟫_ℝ) := by fun_prop
+        exact this.aestronglyMeasurable
+      -- `HasLaw.integral_comp` gives `∫ω f(g ω) = ∫x f x dμ`.
+      simpa [μ, Function.comp, real_inner_comm] using
+        (hg_law.integral_comp (μ := μ) (P := (ℙ : Measure Ω))
+          (f := fun x : H => ⟪x, u⟫_ℝ) hf).symm
+    -- The scalar coordinate `⟪g,u⟫` has mean zero (by the coordinate representation of `g`).
+    have hEg : (∫ ω : Ω, ⟪g ω, u⟫_ℝ ∂(ℙ : Measure Ω)) = 0 := by
+      classical
+      have hrepr :
+          (fun ω : Ω => ⟪g ω, u⟫_ℝ)
+            = fun ω => ∑ i : hg.ι, (hg.c i ω) * ⟪hg.w i, u⟫_ℝ := by
+        funext ω
+        have hreprω : g ω = ∑ i : hg.ι, (hg.c i ω) • hg.w i := by
+          simpa using congrArg (fun f => f ω) hg.repr
+        -- move the inner product through the finite sum
+        simp [hreprω, sum_inner, inner_smul_left, mul_assoc, mul_left_comm, mul_comm]
+      have hint :
+          ∀ i : hg.ι, Integrable (fun ω : Ω => (hg.c i ω) * ⟪hg.w i, u⟫_ℝ) (ℙ : Measure Ω) := by
+        intro i
+        -- `c i` has finite first moment (Fernique ⇒ all finite moments).
+        have habsPow :
+            Integrable (fun ω : Ω => |hg.c i ω| ^ (1 : ℕ)) (ℙ : Measure Ω) :=
+          ProbabilityTheory.HasLaw.integrable_abs_pow_nat (hX := hg.c_gauss i) 1
+        have habs : Integrable (fun ω : Ω => |hg.c i ω|) (ℙ : Measure Ω) := by
+          simpa using habsPow
+        have hci : Integrable (hg.c i) (ℙ : Measure Ω) := by
+          have hmeas : AEStronglyMeasurable (hg.c i) (ℙ : Measure Ω) := by
+            exact (hg.c_meas i).aestronglyMeasurable
+          have hnorm : Integrable (fun ω : Ω => ‖hg.c i ω‖) (ℙ : Measure Ω) := by
+            simpa [Real.norm_eq_abs] using habs
+          exact (MeasureTheory.integrable_norm_iff (μ := (ℙ : Measure Ω)) hmeas).1 hnorm
+        simpa [mul_comm, mul_left_comm, mul_assoc] using hci.mul_const (⟪hg.w i, u⟫_ℝ)
+      have hterm :
+          ∀ i : hg.ι,
+            (∫ ω : Ω, (hg.c i ω) * ⟪hg.w i, u⟫_ℝ ∂(ℙ : Measure Ω)) = 0 := by
+        intro i
+        have hci :
+            (∫ ω : Ω, hg.c i ω ∂(ℙ : Measure Ω)) = 0 := by
+          have h :=
+            (hg.c_gauss i).integral_comp (f := fun x : ℝ => x)
+              (hf := (measurable_id : Measurable (fun x : ℝ => x)).aestronglyMeasurable)
+          -- `∫ ω, c i ω = ∫ x, x d(gaussianReal 0 (τ i)) = 0`
+          simpa [Function.comp] using
+            (h.trans (by simpa using (integral_id_gaussianReal (μ := (0 : ℝ)) (v := hg.τ i))))
+        -- pull out the scalar constant
+        simpa using
+          (MeasureTheory.integral_mul_const (μ := (ℙ : Measure Ω)) (r := ⟪hg.w i, u⟫_ℝ)
+            (f := fun ω : Ω => hg.c i ω)).trans (by simp [hci])
+      -- now sum over coordinates
+      have hsum :
+          (∫ ω : Ω, (∑ i : hg.ι, (hg.c i ω) * ⟪hg.w i, u⟫_ℝ) ∂(ℙ : Measure Ω))
+            = ∑ i : hg.ι, (∫ ω : Ω, (hg.c i ω) * ⟪hg.w i, u⟫_ℝ ∂(ℙ : Measure Ω)) :=
+        expectation_finset_sum (g := g) (hg := hg)
+          (f := fun i ω => (hg.c i ω) * ⟪hg.w i, u⟫_ℝ) hint
+      calc
+        (∫ ω : Ω, ⟪g ω, u⟫_ℝ ∂(ℙ : Measure Ω))
+            = ∫ ω : Ω, (∑ i : hg.ι, (hg.c i ω) * ⟪hg.w i, u⟫_ℝ) ∂(ℙ : Measure Ω) := by
+                simpa [hrepr]
+        _ = ∑ i : hg.ι, (∫ ω : Ω, (hg.c i ω) * ⟪hg.w i, u⟫_ℝ ∂(ℙ : Measure Ω)) := hsum
+        _ = 0 := by
+              simp [hterm]
+    -- Combine.
+    simp [h0, hμu, hEg]
+  -- Apply the intrinsic, measure-level IBP to `μ` and transport back to expectations over `ℙ`.
+  have hIBPμ :=
+    gaussian_integral_inner_mul_eq_integral_fderiv_covarianceOperator_polyGrowth
+      (μ := μ) (hmean0 := hmean0) (h := h) (F := F) hF_meas hF_c1 hC hF_growth hF'_growth
+  have hleft :
+      (∫ ω : Ω, ⟪g ω, h⟫_ℝ * F (g ω) ∂(ℙ : Measure Ω))
+        = ∫ x : H, ⟪x, h⟫_ℝ * F x ∂μ := by
+    have hf : AEStronglyMeasurable (fun x : H => ⟪x, h⟫_ℝ * F x) μ := by
+      have : Measurable (fun x : H => ⟪x, h⟫_ℝ * F x) := by fun_prop
+      exact this.aestronglyMeasurable
+    simpa [μ, Function.comp] using
+      (hg_law.integral_comp (μ := μ) (P := (ℙ : Measure Ω))
+        (f := fun x : H => ⟪x, h⟫_ℝ * F x) hf)
+  have hright :
+      (∫ ω : Ω,
+          (fderiv ℝ F (g ω)) ((ProbabilityTheory.covarianceOperator μ) h) ∂(ℙ : Measure Ω))
+        = ∫ x : H, (fderiv ℝ F x) ((ProbabilityTheory.covarianceOperator μ) h) ∂μ := by
+    have hf : AEStronglyMeasurable (fun x : H => (fderiv ℝ F x) ((ProbabilityTheory.covarianceOperator μ) h)) μ := by
+      have : Measurable (fun x : H => (fderiv ℝ F x) ((ProbabilityTheory.covarianceOperator μ) h)) := by
+        fun_prop
+      exact this.aestronglyMeasurable
+    simpa [μ, Function.comp] using
+      (hg_law.integral_comp (μ := μ) (P := (ℙ : Measure Ω))
+        (f := fun x : H => (fderiv ℝ F x) ((ProbabilityTheory.covarianceOperator μ) h)) hf)
+  -- Conclude.
+  -- (expand the `𝔼[...]` notation and use the transported equalities)
+  simpa [μ, hleft, hright] using hIBPμ
+-- Legacy corollaries depending on the coordinate-line IBP were removed.
+-- Use `gaussian_integration_by_parts_hilbert_covarianceOperator_polyGrowth` above.
 end GaussianIBP
 end Probability

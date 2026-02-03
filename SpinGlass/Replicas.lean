@@ -11,7 +11,6 @@ import Mathlib.MeasureTheory.Integral.IntegrableOn
 import Mathlib.MeasureTheory.Function.L1Space.Integrable
 
 open MeasureTheory ProbabilityTheory Real BigOperators SpinGlass SpinGlass.Algebra
-open PhysLean.Probability.GaussianIBP
 open scoped ENNReal NNReal
 
 namespace SpinGlass
@@ -61,264 +60,29 @@ noncomputable def H_t (t : ℝ) : Ω → EnergySpace N :=
       + H_field (N := N) (h := h)
 
 /-!
-### Joint Gaussian packaging for `(U,V)`
+### Gaussian integrability helpers (intrinsic)
 
-To apply Hilbert-space Gaussian IBP to functions depending on **both** processes `U` and `V`,
-we package the pair `(sk.U, sim.V)` as a single `IsGaussianHilbert` random variable valued in
-the `L²`-product space `WithLp 2 (EnergySpace N × EnergySpace N)`.
-
-This construction uses the independence assumption `sk.U ⟂ᵢ sim.V` and the existing coordinate
-models `sk.hU` and `sim.hV`.
+We avoid the coordinate-based `IsGaussianHilbert` packaging. Instead we work with the intrinsic
+law-based predicate `IsGaussian ((ℙ).map g)`. Basic integrability properties are obtained by
+pulling back integrability on the law along the map measure.
 -/
 
-/-- The joint Gaussian vector `(U,V)` in the `L²`-product space. -/
-noncomputable def UV : Ω → WithLp 2 (EnergySpace N × EnergySpace N) :=
-  fun ω => WithLp.toLp 2 (sk.U ω, sim.V ω)
-
-/-- `UV` is a centered Gaussian Hilbert random variable when `U` and `V` are independent. -/
-noncomputable def isGaussianHilbert_UV
-    (hIndep : ProbabilityTheory.IndepFun sk.U sim.V (ℙ : Measure Ω)) :
-    IsGaussianHilbert (UV (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)) := by
+lemma integrable_norm_of_isGaussian_map
+    {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] [CompleteSpace E]
+    [MeasurableSpace E] [BorelSpace E]
+    [SecondCountableTopology E] (P : Measure Ω) [IsProbabilityMeasure P]
+    (g : Ω → E) (hg_meas : Measurable g) (hg_gauss : ProbabilityTheory.IsGaussian (P.map g)) :
+    Integrable (fun ω => ‖g ω‖) P := by
   classical
-  let hU := sk.hU
-  let hV := sim.hV
-  let κ : Bool → Type* := fun
-    | true => hU.ι
-    | false => hV.ι
-  let X : (b : Bool) → (j : κ b) → Ω → ℝ :=
-    fun b =>
-      match b with
-      | true => fun j => hU.c j
-      | false => fun j => hV.c j
-  have mX : ∀ b j, Measurable (X b j) := by
-    intro b j
-    cases b <;> simpa [X] using (by
-      first | exact hV.c_meas j | exact hU.c_meas j)
-  have h2 : ∀ b, ProbabilityTheory.iIndepFun (X b) (ℙ : Measure Ω) := by
-    intro b
-    cases b <;> simpa [X] using (by
-      first | exact hV.c_indep | exact hU.c_indep)
-  have h1 : ProbabilityTheory.iIndepFun (fun b ω => (X b · ω)) (ℙ : Measure Ω) := by
-    -- We derive independence of the coordinate-tuples from independence of `(U,V)` by composition.
-    have hφ : Measurable (fun u : EnergySpace N => fun i : hU.ι => inner ℝ u (hU.w i)) := by
-      refine measurable_pi_lambda _ ?_
-      intro i
-      have hcont : Continuous (fun u : EnergySpace N => inner ℝ u (hU.w i)) := by
-        have hpair : Continuous (fun u : EnergySpace N => (u, hU.w i)) :=
-          (continuous_id.prodMk continuous_const)
-        simpa using (continuous_inner.comp hpair)
-      exact hcont.measurable
-    have hψ : Measurable (fun v : EnergySpace N => fun j : hV.ι => inner ℝ v (hV.w j)) := by
-      refine measurable_pi_lambda _ ?_
-      intro j
-      have hcont : Continuous (fun v : EnergySpace N => inner ℝ v (hV.w j)) := by
-        have hpair : Continuous (fun v : EnergySpace N => (v, hV.w j)) :=
-          (continuous_id.prodMk continuous_const)
-        simpa using (continuous_inner.comp hpair)
-      exact hcont.measurable
-    have hInd_tuples :
-        ProbabilityTheory.IndepFun
-          (fun ω : Ω => fun i : hU.ι => hU.c i ω)
-          (fun ω : Ω => fun j : hV.ι => hV.c j ω)
-          (ℙ : Measure Ω) := by
-      have hcomp :
-          ProbabilityTheory.IndepFun (fun ω => (fun u => fun i : hU.ι => inner ℝ u (hU.w i)) (sk.U ω))
-            (fun ω => (fun v => fun j : hV.ι => inner ℝ v (hV.w j)) (sim.V ω))
-            (ℙ : Measure Ω) :=
-        (ProbabilityTheory.IndepFun.comp hIndep hφ hψ)
-      refine ProbabilityTheory.IndepFun.congr hcomp ?_ ?_
-      · refine Filter.Eventually.of_forall (fun ω => ?_)
-        funext i
-        have hcoord : PhysLean.Probability.GaussianIBP.coord hU.w sk.U i = hU.c i := by
-          funext ω'
-          simpa using
-            congrArg (fun f => f i ω')
-              (PhysLean.Probability.GaussianIBP.coord_eq_c (g := sk.U) hU)
-        simpa [PhysLean.Probability.GaussianIBP.coord] using congrArg (fun f => f ω) hcoord
-      · refine Filter.Eventually.of_forall (fun ω => ?_)
-        funext j
-        have hcoord : PhysLean.Probability.GaussianIBP.coord hV.w sim.V j = hV.c j := by
-          funext ω'
-          simpa using
-            congrArg (fun f => f j ω')
-              (PhysLean.Probability.GaussianIBP.coord_eq_c (g := sim.V) hV)
-        simpa [PhysLean.Probability.GaussianIBP.coord] using congrArg (fun f => f ω) hcoord
-    refine
-      (ProbabilityTheory.iIndepFun_iff (m := fun b => inferInstance)
-        (f := fun b ω => (X b · ω)) (μ := (ℙ : Measure Ω))).2 ?_
-    intro s f' hs
-    classical
-    by_cases hfalse : false ∈ s
-    · by_cases htrue : true ∈ s
-      · have hs' :
-            (ℙ : Measure Ω) (f' false ∩ f' true) =
-              (ℙ : Measure Ω) (f' false) * (ℙ : Measure Ω) (f' true) := by
-          have hInd_bool :
-              ProbabilityTheory.IndepFun (fun ω => (X false · ω)) (fun ω => (X true · ω))
-                (ℙ : Measure Ω) := by
-            simpa [X] using hInd_tuples.symm
-          have hInd_ms :
-              ProbabilityTheory.Indep
-                (MeasurableSpace.comap (fun ω => (X false · ω)) (inferInstance))
-                (MeasurableSpace.comap (fun ω => (X true · ω)) (inferInstance))
-                (ℙ : Measure Ω) := by
-            simpa [ProbabilityTheory.IndepFun] using
-              (ProbabilityTheory.IndepFun_iff_Indep (f := fun ω => (X false · ω))
-                (g := fun ω => (X true · ω)) (μ := (ℙ : Measure Ω))).1 hInd_bool
-          have hA :
-              MeasurableSet[
-                MeasurableSpace.comap (fun ω => (X false · ω)) (inferInstance)] (f' false) := by
-            simpa using hs false hfalse
-          have hB :
-              MeasurableSet[
-                MeasurableSpace.comap (fun ω => (X true · ω)) (inferInstance)] (f' true) := by
-            simpa using hs true htrue
-          have hIndSet :
-              ProbabilityTheory.IndepSet (f' false) (f' true) (ℙ : Measure Ω) :=
-            hInd_ms.indepSet_of_measurableSet hA hB
-          simpa [Set.inter_comm] using hIndSet.measure_inter_eq_mul
-        have hs_eq : s = ({false, true} : Finset Bool) := by
-          ext b
-          cases b <;> simp [hfalse, htrue]
-        subst hs_eq
-        have hInter : (⋂ i : Bool, f' i) = f' false ∩ f' true := by
-          ext ω; simp
-        simpa [hInter] using hs'
-      · have hs_eq : s = ({false} : Finset Bool) := by
-          ext b
-          cases b <;> simp [hfalse, htrue]
-        subst hs_eq
-        simp
-    · by_cases htrue : true ∈ s
-      · have hs_eq : s = ({true} : Finset Bool) := by
-          ext b
-          cases b <;> simp [hfalse, htrue]
-        subst hs_eq
-        simp
-      · have hs_eq : s = (∅ : Finset Bool) := by
-          ext b
-          cases b <;> simp [hfalse, htrue]
-        subst hs_eq
-        simp
-  have h_uncurry :
-      ProbabilityTheory.iIndepFun (fun (p : (b : Bool) × κ b) ω => X p.1 p.2 ω) (ℙ : Measure Ω) :=
-    ProbabilityTheory.iIndepFun_uncurry (P := (ℙ : Measure Ω)) (X := X) mX h1 h2
-  let g : (b : Bool) × κ b → hU.ι ⊕ hV.ι :=
-    fun
-      | ⟨true, i⟩ => Sum.inl i
-      | ⟨false, j⟩ => Sum.inr j
-  have hg : Function.Surjective g := by
-    intro s
-    cases s with
-    | inl i => exact ⟨⟨true, i⟩, rfl⟩
-    | inr j => exact ⟨⟨false, j⟩, rfl⟩
-  have h_sum :
-      ProbabilityTheory.iIndepFun (fun i ω => (Sum.elim hU.c hV.c i) ω) (ℙ : Measure Ω) := by
-    have hpre :
-        ProbabilityTheory.iIndepFun (fun p ω => (Sum.elim hU.c hV.c (g p)) ω) (ℙ : Measure Ω) := by
-      refine
-        (ProbabilityTheory.iIndepFun.congr (μ := (ℙ : Measure Ω))
-            (f := fun p ω => X p.1 p.2 ω)
-            (g := fun p ω => (Sum.elim hU.c hV.c (g p)) ω) ?_) h_uncurry
-      intro p
-      refine Filter.Eventually.of_forall (fun ω => ?_)
-      cases p with
-      | mk b j =>
-        cases b <;> rfl
-    refine ProbabilityTheory.iIndepFun.of_precomp (μ := (ℙ : Measure Ω)) (g := g) hg ?_
-    exact hpre
-  refine
-    { ι := hU.ι ⊕ hV.ι
-      fintype_ι := inferInstance
-      w := hU.w.prod hV.w
-      τ := Sum.elim hU.τ hV.τ
-      c := Sum.elim hU.c hV.c
-      c_meas := by
-        intro i
-        cases i <;> simpa using (by
-          first | exact hU.c_meas _ | exact hV.c_meas _)
-      c_gauss := by
-        intro i
-        cases i <;> simpa using (by
-          first | exact hU.c_gauss _ | exact hV.c_gauss _)
-      c_indep := by
-        simpa using h_sum
-      repr := by
-        funext ω
-        apply (WithLp.ofLp_injective (p := (2 : ENNReal)))
-        simp [UV, hU.repr, hV.repr, OrthonormalBasis.prod_apply]
-        ext i
-        · have hfstU :
-              (∑ x : hU.ι, hU.c x ω • (hU.w x, (0 : EnergySpace N))).1
-                = ∑ x : hU.ι, hU.c x ω • hU.w x := by
-            simpa using
-              (Prod.fst_sum (s := (Finset.univ : Finset hU.ι))
-                (f := fun x : hU.ι => hU.c x ω • (hU.w x, (0 : EnergySpace N))))
-          have hfstV :
-              (∑ x : hV.ι, hV.c x ω • ((0 : EnergySpace N), hV.w x)).1 = 0 := by
-            calc
-              (∑ x : hV.ι, hV.c x ω • ((0 : EnergySpace N), hV.w x)).1
-                  = ∑ x : hV.ι, (hV.c x ω • ((0 : EnergySpace N), hV.w x)).1 := by
-                      simpa using
-                        (Prod.fst_sum (s := (Finset.univ : Finset hV.ι))
-                          (f := fun x : hV.ι => hV.c x ω • ((0 : EnergySpace N), hV.w x)))
-              _ = ∑ x : hV.ι, (0 : EnergySpace N) := by simp
-              _ = 0 := by simp
-          have hfstU' :
-              (∑ i' : hU.ι, hU.c i' ω • hU.w i') i
-                = (∑ x : hU.ι, hU.c x ω • (hU.w x, (0 : EnergySpace N))).1 i := by
-            simpa using (congrArg (fun H : EnergySpace N => H i) hfstU.symm)
-          have hfstV' : ((∑ x : hV.ι, hV.c x ω • ((0 : EnergySpace N), hV.w x)).1) i = 0 := by
-            simpa using congrArg (fun H : EnergySpace N => H i) hfstV
-          calc
-            (WithLp.toLp 2
-                (∑ j : hU.ι, hU.c j ω • hU.w j, ∑ j : hV.ι, hV.c j ω • hV.w j)).fst i
-                = (∑ j : hU.ι, hU.c j ω • hU.w j) i := by
-                    simp
-            _ = (∑ x : hU.ι, hU.c x ω • (hU.w x, (0 : EnergySpace N))).1 i := by
-                    exact hfstU'
-            _ =
-                (∑ x : hU.ι, hU.c x ω • (hU.w x, (0 : EnergySpace N))
-                  + ∑ x : hV.ι, hV.c x ω • ((0 : EnergySpace N), hV.w x)).1 i := by
-                    simp only [Prod.fst_add, hfstV, add_zero]
-          aesop
-        · have hsndU :
-              (∑ x : hU.ι, hU.c x ω • (hU.w x, (0 : EnergySpace N))).2 = 0 := by
-            calc
-              (∑ x : hU.ι, hU.c x ω • (hU.w x, (0 : EnergySpace N))).2
-                  = ∑ x : hU.ι, (hU.c x ω • (hU.w x, (0 : EnergySpace N))).2 := by
-                      simpa using
-                        (Prod.snd_sum (s := (Finset.univ : Finset hU.ι))
-                          (f := fun x : hU.ι => hU.c x ω • (hU.w x, (0 : EnergySpace N))))
-              _ = ∑ x : hU.ι, (0 : EnergySpace N) := by simp
-              _ = 0 := by simp
-          have hsndV :
-              (∑ x : hV.ι, hV.c x ω • ((0 : EnergySpace N), hV.w x)).2
-                = ∑ x : hV.ι, hV.c x ω • hV.w x := by
-            simpa using
-              (Prod.snd_sum (s := (Finset.univ : Finset hV.ι))
-                (f := fun x : hV.ι => hV.c x ω • ((0 : EnergySpace N), hV.w x)))
-          have hsndV' :
-              (∑ i' : hV.ι, hV.c i' ω • hV.w i') i
-                = (∑ x : hV.ι, hV.c x ω • ((0 : EnergySpace N), hV.w x)).2 i := by
-            exact congrArg (fun H : EnergySpace N => H i) hsndV.symm
-          have hsndU' : ((∑ x : hU.ι, hU.c x ω • (hU.w x, (0 : EnergySpace N))).2) i = 0 := by
-            simpa using congrArg (fun H : EnergySpace N => H i) hsndU
-          calc
-            (WithLp.toLp 2
-                (∑ j : hU.ι, hU.c j ω • hU.w j, ∑ j : hV.ι, hV.c j ω • hV.w j)).snd i
-                = (∑ j : hV.ι, hV.c j ω • hV.w j) i := by
-                    simp
-            _ = (∑ x : hV.ι, hV.c x ω • ((0 : EnergySpace N), hV.w x)).2 i := by
-                  exact hsndV'
-            _ =
-                (∑ x : hU.ι, hU.c x ω • (hU.w x, (0 : EnergySpace N))
-                  + ∑ x : hV.ι, hV.c x ω • ((0 : EnergySpace N), hV.w x)).2 i := by
-                    simp only [Prod.snd_add, hsndU, zero_add]
-          classical
-          simp only [Prod.smul_mk]
-          aesop
-    }
+  let μ : Measure E := P.map g
+  haveI : ProbabilityTheory.IsGaussian μ := hg_gauss
+  have hIntμ : Integrable (fun x : E => ‖x‖ ^ (1 : ℕ)) μ :=
+    ProbabilityTheory.IsGaussian.integrable_norm_pow (μ := μ) 1
+  have hIntμ' : Integrable (fun x : E => ‖x‖) μ := by simpa using hIntμ
+  have hpull :=
+    (integrable_map_measure (μ := P) (f := g) (g := fun x : E => ‖x‖)
+      (by fun_prop) hg_meas.aemeasurable).1 hIntμ'
+  simpa [Function.comp] using hpull
 
 noncomputable def gibbs_average_n (t : ℝ) (f : ReplicaFun N n) : Ω → ℝ :=
   fun w =>
@@ -511,8 +275,8 @@ lemma integrable_gibbs_average_n (t : ℝ) (f : ReplicaFun N n) :
     simpa [Real.norm_eq_abs] using
       (abs_gibbs_average_n_le (N := N) (β := β) (h := h) (q := q)
         (sk := sk) (sim := sim) (n := n) (t := t) (f := f) w)
-  have hU_meas : Measurable (sk.U) := sk.hU.repr_measurable
-  have hV_meas : Measurable (sim.V) := sim.hV.repr_measurable
+  have hU_meas : Measurable (sk.U) := sk.measU
+  have hV_meas : Measurable (sim.V) := sim.measV
   have hHt_meas :
       Measurable (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t) := by
     have h1 : Measurable (fun w => (Real.sqrt t) • sk.U w) := hU_meas.const_smul (Real.sqrt t)
@@ -1108,16 +872,16 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
   let bound : Ω → ℝ := fun w => Cf * (cU * ‖sk.U w‖ + cV * ‖sim.V w‖)
   have hbound_int : Integrable bound (ℙ : Measure Ω) := by
     have hU_int : Integrable (fun w => ‖sk.U w‖) (ℙ : Measure Ω) :=
-      (integrable_norm_of_gaussian (g := sk.U) sk.hU)
+      integrable_norm_of_isGaussian_map (P := (ℙ : Measure Ω)) (g := sk.U) sk.measU sk.hU
     have hV_int : Integrable (fun w => ‖sim.V w‖) (ℙ : Measure Ω) :=
-      (integrable_norm_of_gaussian (g := sim.V) sim.hV)
+      integrable_norm_of_isGaussian_map (P := (ℙ : Measure Ω)) (g := sim.V) sim.measV sim.hV
     have h1 : Integrable (fun w => cU * ‖sk.U w‖) (ℙ : Measure Ω) := (hU_int.const_mul cU)
     have h2 : Integrable (fun w => cV * ‖sim.V w‖) (ℙ : Measure Ω) := (hV_int.const_mul cV)
     have hsum : Integrable (fun w => cU * ‖sk.U w‖ + cV * ‖sim.V w‖) (ℙ : Measure Ω) := h1.add h2
     simpa [bound, Cf, mul_add, mul_assoc] using hsum.const_mul Cf
   have hF'_meas : AEStronglyMeasurable (F' t) (ℙ : Measure Ω) := by
-    have hU_meas : Measurable (sk.U) := sk.hU.repr_measurable
-    have hV_meas : Measurable (sim.V) := sim.hV.repr_measurable
+    have hU_meas : Measurable (sk.U) := sk.measU
+    have hV_meas : Measurable (sim.V) := sim.measV
     have hHt_meas :
         Measurable (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t) := by
       have h1 : Measurable (fun w => (Real.sqrt t) • sk.U w) := hU_meas.const_smul (Real.sqrt t)

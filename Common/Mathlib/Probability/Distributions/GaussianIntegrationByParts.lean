@@ -1,3 +1,623 @@
+import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
+import Mathlib.Probability.Distributions.Gaussian.Real
+import Mathlib.Analysis.Calculus.Deriv.Basic
+
+/-!
+# Gaussian integration by parts for `gaussianReal` (intrinsic corollaries)
+
+This file provides the **1D** Gaussian integration-by-parts identities for the real Gaussian
+measure `gaussianReal μ v`.
+
+All statements are derived from the intrinsic Cameron–Martin IBP theorem
+`ProbabilityTheory.cameronMartin_integral_by_parts_polyGrowth`.
+
+Hypotheses on the test function `F : ℝ → ℝ`:
+- measurability,
+- `C¹` regularity (`ContDiff ℝ 1`),
+- polynomial growth bounds for `F` and `deriv F`.
+-/
+
+open MeasureTheory Filter
+open scoped Topology Real NNReal ENNReal ProbabilityTheory
+
+namespace ProbabilityTheory
+
+/-! ### A small bridge: `cmCoe` for the identity dual in `ℝ` -/
+
+/-! ### Convenience integrability lemmas for `gaussianReal` -/
+
+@[simp] lemma gaussianReal_dirac (μ : ℝ) : gaussianReal μ 0 = Measure.dirac μ := by
+  simpa using (gaussianReal_zero_var μ)
+
+lemma integrable_sq_gaussianReal_centered (v : ℝ≥0) :
+    Integrable (fun x : ℝ => x ^ 2) (gaussianReal 0 v) := by
+  haveI : IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
+  -- Gaussian measures have finite moments of all orders.
+  have h : Integrable (fun x : ℝ => ‖x‖ ^ (2 : ℕ)) (gaussianReal (0 : ℝ) v) :=
+    IsGaussian.integrable_norm_pow (μ := gaussianReal (0 : ℝ) v) 2
+  -- `‖x‖ = |x|` and `|x|^2 = x^2`.
+  simpa [Real.norm_eq_abs, pow_two, sq_abs] using h
+
+lemma gaussianReal_integrable_one_add_abs_pow_centered (v : ℝ≥0) (k : ℕ) :
+    Integrable (fun x : ℝ => (1 + |x|) ^ k) (gaussianReal 0 v) := by
+  haveI : IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
+  have h : Integrable (fun x : ℝ => (1 + ‖x‖) ^ k) (gaussianReal (0 : ℝ) v) :=
+    IsGaussian.integrable_one_add_norm_pow (μ := gaussianReal (0 : ℝ) v) k
+  simpa [Real.norm_eq_abs] using h
+
+private noncomputable def idDual : StrongDual ℝ ℝ :=
+  (ContinuousLinearMap.id ℝ ℝ)
+
+private lemma cmCoe_cmOfDual_idDual_gaussianReal (μ : ℝ) (v : ℝ≥0) :
+    cmCoe (μ := gaussianReal μ v) (cmOfDual (μ := gaussianReal μ v) idDual) = (v : ℝ) := by
+  classical
+  let μR : Measure ℝ := gaussianReal μ v
+  haveI : IsGaussian μR := by infer_instance
+  have h :=
+    (apply_cmCoe_eq_inner (μ := μR) (x := (cmOfDual (μ := μR) idDual)) (L := idDual))
+  have hnorm :
+      idDual (cmCoe (μ := μR) (cmOfDual (μ := μR) idDual)) = ‖cmOfDual (μ := μR) idDual‖ ^ 2 := by
+    simpa [real_inner_self_eq_norm_sq] using h
+  have hVar : Var[idDual; μR] = v := by
+    simp [μR, idDual]
+  have hVar' : (Var[idDual; μR] : ℝ) = (v : ℝ) := by
+    exact_mod_cast hVar
+  have hVarCm :
+      idDual (cmCoe (μ := μR) (cmOfDual (μ := μR) idDual)) = (Var[idDual; μR] : ℝ) := by
+    calc
+      idDual (cmCoe (μ := μR) (cmOfDual (μ := μR) idDual))
+          = ‖cmOfDual (μ := μR) idDual‖ ^ 2 := hnorm
+      _ = (Var[idDual; μR] : ℝ) := by
+            simpa using (sq_norm_cmOfDual (μ := μR) idDual)
+  have : idDual (cmCoe (μ := μR) (cmOfDual (μ := μR) idDual)) = (v : ℝ) := by
+    simpa [hVar'] using hVarCm
+  simpa [idDual] using this
+
+/-! ### Measure-level IBP -/
+
+theorem gaussian_integration_by_parts_general
+    {μ : ℝ} {v : ℝ≥0} {F : ℝ → ℝ}
+    (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + |x|) ^ m)
+    (hF'_growth : ∀ x, |deriv F x| ≤ C * (1 + |x|) ^ m) :
+    ∫ x, (x - μ) * F x ∂(gaussianReal μ v)
+      = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal μ v) := by
+  classical
+  let μR : Measure ℝ := gaussianReal μ v
+  haveI : IsGaussian μR := by infer_instance
+  have hIBP :=
+    cameronMartin_integral_by_parts_polyGrowth (μ := μR) (x := (cmOfDual (μ := μR) idDual))
+      (F := F) hF_meas hF_c1 hC
+      (by
+        intro x
+        simpa [Real.norm_eq_abs] using hF_growth x)
+      (by
+        intro x
+        have h' := hF'_growth x
+        have hn : ‖fderiv ℝ F x‖ = ‖deriv F x‖ := by
+          simpa using (norm_deriv_eq_norm_fderiv (f := F) (x := x)).symm
+        simpa [hn, Real.norm_eq_abs] using h')
+  have hmean : (∫ x : ℝ, x ∂μR) = μ := by
+    simp [μR]
+  have hcent :
+      (fun x : ℝ => (cmOfDual (μ := μR) idDual) x) =ᵐ[μR] fun x => x - μ := by
+    have hcent' :=
+      (StrongDual.centeredToLp_apply (μ := μR) (E := ℝ) (h := memLp_two_id) idDual)
+    filter_upwards [hcent'] with x hx
+    simpa [idDual, hmean] using hx
+  have hLHS :
+      (∫ x, ((cmOfDual (μ := μR) idDual) x) * F x ∂μR) = ∫ x, (x - μ) * F x ∂μR := by
+    refine integral_congr_ae ?_
+    filter_upwards [hcent] with x hx
+    simp [hx]
+  have hcm : cmCoe (μ := μR) (cmOfDual (μ := μR) idDual) = (v : ℝ) :=
+    cmCoe_cmOfDual_idDual_gaussianReal μ v
+  have hpoint : ∀ x y, (fderiv ℝ F x : ℝ →L[ℝ] ℝ) y = (deriv F x) * y := by
+    intro x y
+    simpa using (fderiv_eq_deriv_mul (f := F) (x := x) (y := y))
+  have hRHS :
+      (∫ x, (fderiv ℝ F x) (cmCoe (μ := μR) (cmOfDual (μ := μR) idDual)) ∂μR)
+        = (v : ℝ) * ∫ x, deriv F x ∂μR := by
+    calc
+      (∫ x, (fderiv ℝ F x) (cmCoe (μ := μR) (cmOfDual (μ := μR) idDual)) ∂μR)
+          = ∫ x, (deriv F x) * (v : ℝ) ∂μR := by
+              refine integral_congr_ae (ae_of_all _ (fun x => ?_))
+              simp [hcm, hpoint]
+      _ = (∫ x, deriv F x ∂μR) * (v : ℝ) := by
+            simpa using (integral_mul_const (μ := μR) (r := (v : ℝ)) (f := fun x : ℝ => deriv F x))
+      _ = (v : ℝ) * ∫ x, deriv F x ∂μR := by
+            simp [mul_comm]
+  have h1 :
+      (∫ x, (x - μ) * F x ∂μR) = ∫ x, ((cmOfDual (μ := μR) idDual) x) * F x ∂μR := by
+    simp [hLHS]
+  have h2 :
+      (∫ x, ((cmOfDual (μ := μR) idDual) x) * F x ∂μR) =
+        ∫ x, (fderiv ℝ F x) (cmCoe (μ := μR) (cmOfDual (μ := μR) idDual)) ∂μR := by
+    simpa using hIBP
+  have h3 :
+      (∫ x, (fderiv ℝ F x) (cmCoe (μ := μR) (cmOfDual (μ := μR) idDual)) ∂μR)
+        = (v : ℝ) * ∫ x, deriv F x ∂μR := hRHS
+  simpa [μR] using (h1.trans (h2.trans h3))
+
+theorem stein_lemma_gaussianReal
+    {v : ℝ≥0} {F : ℝ → ℝ}
+    (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + |x|) ^ m)
+    (hF'_growth : ∀ x, |deriv F x| ≤ C * (1 + |x|) ^ m) :
+    ∫ x, x * F x ∂(gaussianReal 0 v)
+      = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal 0 v) := by
+  simpa using
+    (gaussian_integration_by_parts_general (μ := (0 : ℝ)) (v := v) (F := F)
+      hF_meas hF_c1 hC hF_growth hF'_growth)
+
+lemma gaussianReal_integration_by_parts
+    {F : ℝ → ℝ} {v : ℝ≥0}
+    (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + |x|) ^ m)
+    (hF'_growth : ∀ x, |deriv F x| ≤ C * (1 + |x|) ^ m) :
+    ∫ x, x * F x ∂(gaussianReal 0 v)
+      = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal 0 v) :=
+  stein_lemma_gaussianReal (v := v) (F := F) hF_meas hF_c1 hC hF_growth hF'_growth
+
+theorem gaussianRV_integration_by_parts
+    {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
+    {g : Ω → ℝ} {v : ℝ≥0}
+    (hg : HasLaw g (gaussianReal 0 v) (ℙ : Measure Ω))
+    {F : ℝ → ℝ}
+    (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + |x|) ^ m)
+    (hF'_growth : ∀ x, |deriv F x| ≤ C * (1 + |x|) ^ m) :
+    ∫ ω, g ω * F (g ω) ∂ℙ
+      = (v : ℝ) * ∫ ω, deriv F (g ω) ∂ℙ := by
+  classical
+  haveI : IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
+
+  have hInt_xF : Integrable (fun x : ℝ => x * F x) (gaussianReal 0 v) := by
+    have hmeas : Measurable (fun x : ℝ => x * F x) := (measurable_id.mul hF_meas)
+    refine (IsGaussian.integrable_of_abs_le_mul_one_add_norm_pow (μ := gaussianReal (0 : ℝ) v) hmeas
+      (C := C) (m := m + 1) hC ?_)
+    intro x
+    have hx : |x| ≤ 1 + |x| := by nlinarith [abs_nonneg x]
+    calc
+      |x * F x| = |x| * |F x| := by simp [abs_mul]
+      _ ≤ (1 + |x|) * (C * (1 + |x|) ^ m) := by
+            have hF := hF_growth x
+            have h1 : |x| * |F x| ≤ (1 + |x|) * |F x| :=
+              mul_le_mul_of_nonneg_right hx (abs_nonneg _)
+            have h2 : (1 + |x|) * |F x| ≤ (1 + |x|) * (C * (1 + |x|) ^ m) :=
+              mul_le_mul_of_nonneg_left hF (by nlinarith [abs_nonneg x])
+            exact le_trans h1 h2
+      _ = C * (1 + |x|) ^ (m + 1) := by
+            simp [pow_succ, mul_assoc, mul_left_comm, mul_comm, add_comm, add_left_comm, add_assoc]
+
+  have hInt_dF : Integrable (fun x : ℝ => deriv F x) (gaussianReal 0 v) := by
+    have hmeas : Measurable (fun x : ℝ => deriv F x) :=
+      (hF_c1.continuous_deriv_one).measurable
+    refine (IsGaussian.integrable_of_abs_le_mul_one_add_norm_pow (μ := gaussianReal (0 : ℝ) v) hmeas
+      (C := C) (m := m) hC ?_)
+    intro x
+    simpa using hF'_growth x
+
+  have h1 :
+      (∫ ω, g ω * F (g ω) ∂ℙ) = ∫ x, x * F x ∂(gaussianReal 0 v) := by
+    simpa [Function.comp] using
+      (hg.integral_comp (f := fun x : ℝ => x * F x) (hf := hInt_xF.aestronglyMeasurable))
+  have h2 :
+      (∫ ω, deriv F (g ω) ∂ℙ) = ∫ x, deriv F x ∂(gaussianReal 0 v) := by
+    simpa [Function.comp] using
+      (hg.integral_comp (f := fun x : ℝ => deriv F x) (hf := hInt_dF.aestronglyMeasurable))
+
+  calc
+    ∫ ω, g ω * F (g ω) ∂ℙ
+        = ∫ x, x * F x ∂(gaussianReal 0 v) := h1
+    _ = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal 0 v) :=
+        stein_lemma_gaussianReal (v := v) (F := F) hF_meas hF_c1 hC hF_growth hF'_growth
+    _ = (v : ℝ) * ∫ ω, deriv F (g ω) ∂ℙ := by simp [h2]
+
+end ProbabilityTheory
+
+/- Legacy duplicated content (pre-refactor), disabled:
+import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
+import Mathlib.Probability.Distributions.Gaussian.Real
+import Mathlib.Analysis.Calculus.Deriv.Basic
+
+/-!
+# Gaussian integration by parts for `gaussianReal` (intrinsic corollaries)
+
+This file provides the **1D** Gaussian integration-by-parts identities for the real Gaussian
+measure `gaussianReal μ v`.
+
+All statements are derived from the intrinsic Cameron–Martin IBP theorem
+`ProbabilityTheory.cameronMartin_integral_by_parts_polyGrowth`.
+
+Hypotheses on the test function `F : ℝ → ℝ`:
+- measurability,
+- `C¹` regularity (`ContDiff ℝ 1`),
+- polynomial growth bounds for `F` and `deriv F`.
+-/
+
+open MeasureTheory Filter
+open scoped Topology Real NNReal ENNReal ProbabilityTheory
+
+namespace ProbabilityTheory
+
+/-! ### A small bridge: `cmCoe` for the identity dual in `ℝ` -/
+
+private noncomputable def idDual : StrongDual ℝ ℝ :=
+  (ContinuousLinearMap.id ℝ ℝ)
+
+private lemma cmCoe_cmOfDual_idDual_gaussianReal (μ : ℝ) (v : ℝ≥0) :
+    cmCoe (μ := gaussianReal μ v) (cmOfDual (μ := gaussianReal μ v) idDual) = (v : ℝ) := by
+  classical
+  -- Evaluate against the identity functional and use `Var[id; gaussianReal μ v] = v`.
+  have h :=
+    (apply_cmCoe_eq_inner (μ := gaussianReal μ v)
+      (x := (cmOfDual (μ := gaussianReal μ v) idDual)) (L := idDual))
+  have hinter :
+      ⟪cmOfDual (μ := gaussianReal μ v) idDual,
+          cmOfDual (μ := gaussianReal μ v) idDual⟫_ℝ
+        = covarianceBilinDual (gaussianReal μ v) idDual idDual := by
+    simpa using (cmOfDual_inner (μ := gaussianReal μ v) idDual idDual)
+  have hVar :
+      covarianceBilinDual (gaussianReal μ v) idDual idDual = (v : ℝ) := by
+    simpa [idDual, variance_id_gaussianReal] using
+      (covarianceBilinDual_self_eq_variance (μ := gaussianReal μ v) (h := memLp_two_id) idDual)
+  have : idDual (cmCoe (μ := gaussianReal μ v) (cmOfDual (μ := gaussianReal μ v) idDual)) = (v : ℝ) := by
+    simpa [hinter, hVar] using h
+  simpa [idDual] using this
+
+/-! ### Measure-level IBP -/
+
+theorem gaussian_integration_by_parts_general
+    {μ : ℝ} {v : ℝ≥0} {F : ℝ → ℝ}
+    (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + |x|) ^ m)
+    (hF'_growth : ∀ x, |deriv F x| ≤ C * (1 + |x|) ^ m) :
+    ∫ x, (x - μ) * F x ∂(gaussianReal μ v)
+      = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal μ v) := by
+  classical
+  let μR : Measure ℝ := gaussianReal μ v
+  haveI : IsGaussian μR := by infer_instance
+
+  -- Apply Cameron–Martin IBP with `x := cmOfDual idDual`.
+  have hIBP :=
+    cameronMartin_integral_by_parts_polyGrowth (μ := μR) (x := (cmOfDual (μ := μR) idDual))
+      (F := F) hF_meas hF_c1 hC
+      (by
+        intro x
+        simpa [Real.norm_eq_abs] using hF_growth x)
+      (by
+        intro x
+        have h' := hF'_growth x
+        have hn : ‖fderiv ℝ F x‖ = ‖deriv F x‖ := by
+          simpa using (norm_deriv_eq_norm_fderiv (f := F) (x := x)).symm
+        simpa [hn, Real.norm_eq_abs, Real.norm_eq_abs, Real.norm_eq_abs, Real.norm_eq_abs,
+          Real.norm_eq_abs, Real.norm_eq_abs, Real.norm_eq_abs, Real.norm_eq_abs] using h')
+
+  -- Rewrite LHS: `(cmOfDual idDual) x = x - μ` a.e.
+  have hmean : (∫ x : ℝ, x ∂μR) = μ := by
+    simpa [μR] using (integral_id_gaussianReal (μ := μ) (v := v))
+  have hcent :
+      (fun x : ℝ => (cmOfDual (μ := μR) idDual) x) =ᵐ[μR] fun x => x - μ := by
+    have hcent' :=
+      (StrongDual.centeredToLp_apply (μ := μR) (E := ℝ) (h := memLp_two_id) idDual)
+    filter_upwards [hcent'] with x hx
+    simpa [idDual, hmean] using hx
+  have hLHS :
+      (∫ x, ((cmOfDual (μ := μR) idDual) x) * F x ∂μR) = ∫ x, (x - μ) * F x ∂μR := by
+    refine integral_congr_ae ?_
+    filter_upwards [hcent] with x hx
+    simp [hx]
+
+  -- Rewrite RHS: `cmCoe (...) = v` and 1D identification of `fderiv`.
+  have hcm : cmCoe (μ := μR) (cmOfDual (μ := μR) idDual) = (v : ℝ) :=
+    cmCoe_cmOfDual_idDual_gaussianReal μ v
+  have hpoint : ∀ x y, (fderiv ℝ F x : ℝ →L[ℝ] ℝ) y = (deriv F x) * y := by
+    intro x y
+    simpa using (fderiv_eq_deriv_mul (f := F) (x := x) (y := y))
+  have hRHS :
+      (∫ x, (fderiv ℝ F x) (cmCoe (μ := μR) (cmOfDual (μ := μR) idDual)) ∂μR)
+        = (v : ℝ) * ∫ x, deriv F x ∂μR := by
+    -- substitute `y = v`, rewrite, and pull out the constant
+    simp [hcm, hpoint, integral_mul_const, mul_comm, mul_left_comm, mul_assoc]
+
+  -- Finish.
+  simpa [μR, hLHS, hRHS] using hIBP
+
+theorem stein_lemma_gaussianReal
+    {v : ℝ≥0} {F : ℝ → ℝ}
+    (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + |x|) ^ m)
+    (hF'_growth : ∀ x, |deriv F x| ≤ C * (1 + |x|) ^ m) :
+    ∫ x, x * F x ∂(gaussianReal 0 v)
+      = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal 0 v) := by
+  simpa using
+    (gaussian_integration_by_parts_general (μ := (0 : ℝ)) (v := v) (F := F)
+      hF_meas hF_c1 hC hF_growth hF'_growth)
+
+lemma gaussianReal_integration_by_parts
+    {F : ℝ → ℝ} {v : ℝ≥0}
+    (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + |x|) ^ m)
+    (hF'_growth : ∀ x, |deriv F x| ≤ C * (1 + |x|) ^ m) :
+    ∫ x, x * F x ∂(gaussianReal 0 v)
+      = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal 0 v) :=
+  stein_lemma_gaussianReal (v := v) (F := F) hF_meas hF_c1 hC hF_growth hF'_growth
+
+/-! ### Random-variable versions -/
+
+theorem gaussianRV_integration_by_parts
+    {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
+    {g : Ω → ℝ} {v : ℝ≥0}
+    (hg : HasLaw g (gaussianReal 0 v) (ℙ : Measure Ω))
+    {F : ℝ → ℝ}
+    (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + |x|) ^ m)
+    (hF'_growth : ∀ x, |deriv F x| ≤ C * (1 + |x|) ^ m) :
+    ∫ ω, g ω * F (g ω) ∂ℙ
+      = (v : ℝ) * ∫ ω, deriv F (g ω) ∂ℙ := by
+  classical
+  haveI : IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
+
+  have hInt_xF : Integrable (fun x : ℝ => x * F x) (gaussianReal 0 v) := by
+    have hmeas : Measurable (fun x : ℝ => x * F x) := (measurable_id.mul hF_meas)
+    refine (integrable_of_abs_le_mul_one_add_norm_pow (μ := gaussianReal (0 : ℝ) v) hmeas
+      (C := C) (m := m + 1) hC ?_)
+    intro x
+    have hx : |x| ≤ 1 + |x| := by nlinarith [abs_nonneg x]
+    calc
+      |x * F x| = |x| * |F x| := by simp [abs_mul]
+      _ ≤ (1 + |x|) * (C * (1 + |x|) ^ m) := by
+            gcongr
+            · exact hx
+            · simpa using hF_growth x
+      _ = C * (1 + |x|) ^ (m + 1) := by
+            simp [pow_succ, mul_assoc, mul_left_comm, mul_comm, add_comm, add_left_comm, add_assoc]
+
+  have hInt_dF : Integrable (fun x : ℝ => deriv F x) (gaussianReal 0 v) := by
+    have hmeas : Measurable (fun x : ℝ => deriv F x) :=
+      (hF_c1.continuous_deriv_one).measurable
+    refine (integrable_of_abs_le_mul_one_add_norm_pow (μ := gaussianReal (0 : ℝ) v) hmeas
+      (C := C) (m := m) hC ?_)
+    intro x
+    simpa using hF'_growth x
+
+  have h1 :
+      (∫ ω, g ω * F (g ω) ∂ℙ) = ∫ x, x * F x ∂(gaussianReal 0 v) := by
+    simpa [Function.comp] using
+      (hg.integral_comp (f := fun x : ℝ => x * F x) (hf := hInt_xF.aestronglyMeasurable))
+  have h2 :
+      (∫ ω, deriv F (g ω) ∂ℙ) = ∫ x, deriv F x ∂(gaussianReal 0 v) := by
+    simpa [Function.comp] using
+      (hg.integral_comp (f := fun x : ℝ => deriv F x) (hf := hInt_dF.aestronglyMeasurable))
+
+  calc
+    ∫ ω, g ω * F (g ω) ∂ℙ
+        = ∫ x, x * F x ∂(gaussianReal 0 v) := h1
+    _ = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal 0 v) :=
+        stein_lemma_gaussianReal (v := v) (F := F) hF_meas hF_c1 hC hF_growth hF'_growth
+    _ = (v : ℝ) * ∫ ω, deriv F (g ω) ∂ℙ := by simp [h2]
+
+end ProbabilityTheory
+
+import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
+import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
+import Mathlib.Probability.Distributions.Gaussian.Real
+import Mathlib.Analysis.Calculus.Deriv.Basic
+
+/-!
+# Gaussian integration by parts for `gaussianReal` (intrinsic corollaries)
+
+This file provides the **1D** Gaussian integration-by-parts identities for the real Gaussian
+measure `gaussianReal μ v`.
+
+Unlike the legacy implementation (tilt + dominated differentiation), the statements here are
+proved as corollaries of the intrinsic **Cameron–Martin IBP** theorem
+`ProbabilityTheory.cameronMartin_integral_by_parts_polyGrowth`.
+
+The only hypotheses on the test function are:
+- measurability,
+- `C¹` regularity (`ContDiff ℝ 1`),
+- polynomial growth bounds for `F` and `deriv F`.
+
+No bespoke “test function” structures are introduced.
+-/
+
+open MeasureTheory Filter
+open scoped Topology Real NNReal ENNReal ProbabilityTheory
+
+namespace ProbabilityTheory
+
+/-! ### A small bridge: `cmCoe` for the identity dual in `ℝ` -/
+
+private noncomputable def idDual : StrongDual ℝ ℝ :=
+  (ContinuousLinearMap.id ℝ ℝ)
+
+private lemma idDual_apply (x : ℝ) : idDual x = x := by
+  rfl
+
+private lemma cmCoe_cmOfDual_idDual_gaussianReal (μ : ℝ) (v : ℝ≥0) :
+    cmCoe (μ := gaussianReal μ v) (cmOfDual (μ := gaussianReal μ v) idDual) = (v : ℝ) := by
+  classical
+  -- Evaluate against the identity functional and use the variance computation for `gaussianReal`.
+  have h :=
+    (apply_cmCoe_eq_inner (μ := gaussianReal μ v) (x := (cmOfDual (μ := gaussianReal μ v) idDual))
+        (L := idDual))
+  -- RHS is the Cameron–Martin inner product, i.e. the covariance bilinear form.
+  have hinter :
+      ⟪cmOfDual (μ := gaussianReal μ v) idDual, cmOfDual (μ := gaussianReal μ v) idDual⟫_ℝ
+        = covarianceBilinDual (gaussianReal μ v) idDual idDual := by
+    simpa using (cmOfDual_inner (μ := gaussianReal μ v) idDual idDual)
+  -- Convert covariance-self to variance, and use `Var[id; gaussianReal μ v] = v`.
+  have hVar :
+      covarianceBilinDual (gaussianReal μ v) idDual idDual = (v : ℝ) := by
+    -- `covarianceBilinDual_self_eq_variance` uses `memLp_two_id`, available for Gaussians.
+    simpa [idDual, variance_id_gaussianReal] using
+      (covarianceBilinDual_self_eq_variance (μ := gaussianReal μ v) (h := memLp_two_id) idDual)
+  -- Put it together and use that `idDual` is the identity.
+  have : idDual (cmCoe (μ := gaussianReal μ v) (cmOfDual (μ := gaussianReal μ v) idDual)) = (v : ℝ) := by
+    -- rewrite `h` using the two identifications
+    simpa [hinter, hVar] using h
+  simpa [idDual_apply] using this
+
+/-! ### Measure-level IBP -/
+
+theorem gaussian_integration_by_parts_general
+    {μ : ℝ} {v : ℝ≥0} {F : ℝ → ℝ}
+    (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + |x|) ^ m)
+    (hF'_growth : ∀ x, |deriv F x| ≤ C * (1 + |x|) ^ m) :
+    ∫ x, (x - μ) * F x ∂(gaussianReal μ v)
+      = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal μ v) := by
+  classical
+  let μR : Measure ℝ := gaussianReal μ v
+  haveI : IsGaussian μR := by
+    -- provided by Mathlib for `gaussianReal`
+    infer_instance
+  -- Apply Cameron–Martin IBP with `x := cmOfDual idDual`.
+  have hIBP :=
+    cameronMartin_integral_by_parts_polyGrowth (μ := μR) (x := (cmOfDual (μ := μR) idDual))
+      (F := F) hF_meas hF_c1 hC
+      (by
+        intro x
+        simpa [Real.norm_eq_abs] using hF_growth x)
+      (by
+        intro x
+        -- `‖fderiv F x‖ = ‖deriv F x‖ = |deriv F x|`
+        have := hF'_growth x
+        -- `‖fderiv‖ = ‖deriv‖`
+        have hn : ‖fderiv ℝ F x‖ = ‖deriv F x‖ := by
+          simpa [norm_deriv_eq_norm_fderiv] using (rfl : ‖deriv F x‖ = ‖deriv F x‖)
+        -- convert norms to abs
+        simpa [hn, Real.norm_eq_abs, Real.norm_eq_abs, Real.norm_eq_abs, Real.norm_eq_abs,
+          Real.norm_eq_abs] using this)
+  -- Rewrite LHS: `(cmOfDual idDual) x = x - μ` a.e.
+  have hmean : (∫ x : ℝ, x ∂μR) = μ := by simpa [μR] using (integral_id_gaussianReal (μ := μ) (v := v))
+  have hcent :
+      (fun x : ℝ => (cmOfDual (μ := μR) idDual) x) =ᵐ[μR] fun x => x - μ := by
+    -- `cmOfDual` is the centered-to-Lp map, so it is `id - mean` a.e.
+    have hcent' :=
+      (StrongDual.centeredToLp_apply (μ := μR) (E := ℝ) (h := memLp_two_id) idDual)
+    -- unfold the mean
+    filter_upwards [hcent'] with x hx
+    simpa [idDual, hmean] using hx
+  have hLHS :
+      (∫ x, ((cmOfDual (μ := μR) idDual) x) * F x ∂μR) = ∫ x, (x - μ) * F x ∂μR := by
+    refine integral_congr_ae ?_
+    filter_upwards [hcent] with x hx
+    simp [hx]
+  -- Rewrite RHS: evaluate `fderiv` at the scalar `cmCoe(...) = v`.
+  have hcm : cmCoe (μ := μR) (cmOfDual (μ := μR) idDual) = (v : ℝ) :=
+    cmCoe_cmOfDual_idDual_gaussianReal μ v
+  have hRHS :
+      (∫ x, (fderiv ℝ F x) (cmCoe (μ := μR) (cmOfDual (μ := μR) idDual)) ∂μR)
+        = (v : ℝ) * ∫ x, deriv F x ∂μR := by
+    -- In 1D, `(fderiv F x) y = (deriv F x) * y`.
+    have hpoint : ∀ x y, (fderiv ℝ F x : ℝ →L[ℝ] ℝ) y = (deriv F x) * y := by
+      intro x y
+      simpa using (fderiv_eq_deriv_mul (f := F) (x := x) (y := y))
+    -- Substitute `y = v` and pull out constants.
+    simp [hcm, hpoint, mul_assoc, mul_left_comm, mul_comm, integral_mul_right]
+  -- Finish.
+  simpa [μR, hLHS, hRHS] using hIBP
+
+theorem stein_lemma_gaussianReal
+    {v : ℝ≥0} {F : ℝ → ℝ}
+    (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + |x|) ^ m)
+    (hF'_growth : ∀ x, |deriv F x| ≤ C * (1 + |x|) ^ m) :
+    ∫ x, x * F x ∂(gaussianReal 0 v)
+      = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal 0 v) := by
+  simpa using
+    (gaussian_integration_by_parts_general (μ := (0 : ℝ)) (v := v) (F := F)
+      hF_meas hF_c1 hC hF_growth hF'_growth)
+
+lemma gaussianReal_integration_by_parts
+    {F : ℝ → ℝ} {v : ℝ≥0}
+    (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + |x|) ^ m)
+    (hF'_growth : ∀ x, |deriv F x| ≤ C * (1 + |x|) ^ m) :
+    ∫ x, x * F x ∂(gaussianReal 0 v)
+      = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal 0 v) :=
+  stein_lemma_gaussianReal (v := v) (F := F) hF_meas hF_c1 hC hF_growth hF'_growth
+
+/-! ### Random-variable versions -/
+
+theorem gaussianRV_integration_by_parts
+    {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
+    {g : Ω → ℝ} {v : ℝ≥0}
+    (hg : HasLaw g (gaussianReal 0 v) (ℙ : Measure Ω))
+    {F : ℝ → ℝ}
+    (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + |x|) ^ m)
+    (hF'_growth : ∀ x, |deriv F x| ≤ C * (1 + |x|) ^ m) :
+    ∫ ω, g ω * F (g ω) ∂ℙ
+      = (v : ℝ) * ∫ ω, deriv F (g ω) ∂ℙ := by
+  classical
+  -- Integrability on the law, discharged via Gaussian moments.
+  haveI : IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
+  have hInt_xF : Integrable (fun x : ℝ => x * F x) (gaussianReal 0 v) := by
+    have hmeas : Measurable (fun x : ℝ => x * F x) := (measurable_id.mul hF_meas)
+    refine (integrable_of_growth (μ := gaussianReal (0 : ℝ) v) hmeas ?_ (C := C) (m := m+1) hC) 
+    intro x
+    have hx : |x| ≤ 1 + |x| := by nlinarith [abs_nonneg x]
+    calc
+      |x * F x| = |x| * |F x| := by simp [abs_mul]
+      _ ≤ (1 + |x|) * (C * (1 + |x|) ^ m) := by
+            gcongr
+            · exact hx
+            · simpa using hF_growth x
+      _ = C * (1 + |x|) ^ (m + 1) := by
+            simp [pow_succ, mul_assoc, mul_left_comm, mul_comm, add_comm, add_left_comm, add_assoc]
+  have hInt_dF : Integrable (fun x : ℝ => deriv F x) (gaussianReal 0 v) := by
+    have hmeas : Measurable (fun x : ℝ => deriv F x) :=
+      (hF_c1.continuous_deriv (by simp : (0 : ℕ) ≤ 1)).measurable
+    refine (integrable_of_growth (μ := gaussianReal (0 : ℝ) v) hmeas ?_ (C := C) (m := m) hC)
+    intro x
+    simpa using hF'_growth x
+  have h1 :
+      (∫ ω, g ω * F (g ω) ∂ℙ) = ∫ x, x * F x ∂(gaussianReal 0 v) := by
+    simpa [Function.comp] using
+      (hg.integral_comp (f := fun x : ℝ => x * F x) (hf := hInt_xF.aestronglyMeasurable))
+  have h2 :
+      (∫ ω, deriv F (g ω) ∂ℙ) = ∫ x, deriv F x ∂(gaussianReal 0 v) := by
+    simpa [Function.comp] using
+      (hg.integral_comp (f := fun x : ℝ => deriv F x) (hf := hInt_dF.aestronglyMeasurable))
+  calc
+    ∫ ω, g ω * F (g ω) ∂ℙ
+        = ∫ x, x * F x ∂(gaussianReal 0 v) := h1
+    _ = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal 0 v) :=
+        stein_lemma_gaussianReal (v := v) (F := F) hF_meas hF_c1 hC hF_growth hF'_growth
+    _ = (v : ℝ) * ∫ ω, deriv F (g ω) ∂ℙ := by simp [h2]
+
+end ProbabilityTheory
+
 /-
 Copyright (c) 2025 Matteo Cipollina. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
@@ -19,38 +639,13 @@ open MeasureTheory Filter Set Real
 open scoped ProbabilityTheory NNReal ENNReal Filter Topology
 
 /-!
-## Cameron–Martin / Fernique integration layer
-
-This file is historically self-contained (it proves integrability bounds “by hand” for one
-dimension). For downstream refactors and for upstreaming to Mathlib, it is useful to also expose
-the fact that Gaussian measures have *all* polynomial moments as a direct consequence of Fernique.
-
-The lemmas below are a thin wrapper around `ProbabilityTheory.IsGaussian.memLp_id` and the
-`MemLp.integrable_norm_rpow'` API.
--/
-
-namespace ProbabilityTheory
-
-open MeasureTheory
-
-/-- A real Gaussian has finite moments of all (natural) orders. -/
-lemma integrable_abs_pow_gaussianReal (m : ℝ) (v : ℝ≥0) (n : ℕ) :
-    Integrable (fun x : ℝ ↦ |x| ^ n) (gaussianReal m v) := by
-  -- `gaussianReal` is Gaussian, hence `id ∈ L^p` for all finite `p`.
-  have hLp : MemLp (fun x : ℝ ↦ x) (n : ℝ≥0∞) (gaussianReal m v) :=
-    ProbabilityTheory.IsGaussian.memLp_id (μ := gaussianReal m v) (p := (n : ℝ≥0∞)) (by simp)
-  have : Integrable (fun x : ℝ ↦ ‖x‖ ^ ((n : ℝ≥0∞).toReal)) (gaussianReal m v) := by
-    -- `gaussianReal m v` is a probability measure, hence finite.
-    have : IsFiniteMeasure (gaussianReal m v) := by infer_instance
-    simpa using (MeasureTheory.MemLp.integrable_norm_rpow' (μ := gaussianReal m v) hLp)
-  simpa [Real.norm_eq_abs] using (by
-    -- `toReal` of a natural exponent is that natural.
-    simpa using this)
-
-end ProbabilityTheory
-
-/-!
 # Gaussian integration by parts via exponential tilt (Stein’s identity)
+
+## Public API note
+
+Downstream files should prefer importing
+`Common.Mathlib.Probability.Distributions.GaussianIntegrationByPartsAPI`,
+which re-exports the intended public theorems from this implementation file.
 
 We prove Stein’s lemma and the integration by parts formula for real Gaussian
 measures by an explicit control of the exponential tilt and a dominated
@@ -161,16 +756,6 @@ end MeasureTheory
 variable {Ω : Type*} [MeasureSpace Ω]
 
 namespace ProbabilityTheory
-
-/-- A random variable `g` is Gaussian with mean `μ` and variance `v` if its law is
-`gaussianReal μ v`. -/
-def IsGaussianRV (g : Ω → ℝ) (μ : ℝ) (v : ℝ≥0) : Prop :=
-  Measure.map g ℙ = gaussianReal μ v
-
-/-- A random variable `g` is centered Gaussian with variance `v` if its law is
-`gaussianReal 0 v`. -/
-def IsCenteredGaussianRV (g : Ω → ℝ) (v : ℝ≥0) : Prop :=
-  IsGaussianRV g 0 v
 
 /-- Second central moment of a (possibly non–centered) real Gaussian. -/
 lemma integral_sq_sub_mean_gaussianReal (μ : ℝ) (v : ℝ≥0) :
@@ -330,8 +915,7 @@ lemma hasDerivAt_tiltKernel (v : ℝ≥0) (x t : ℝ) :
 /-- Specialization of `hasDerivAt_tiltKernel` at `t = 0`. -/
 lemma hasDerivAt_tiltKernel_at0 (v : ℝ≥0) (x : ℝ) :
   HasDerivAt (fun s => tiltKernel v s x) (x) 0 := by
-  simpa [tiltKernel] using
-    (hasDerivAt_tiltKernel v x 0)
+  simpa [tiltKernel] using (hasDerivAt_tiltKernel v x 0)
 
 /-- Derivative of the full integrand (with fixed space parameter `x`)
     before multiplying by the test function `F x`. -/
@@ -346,8 +930,7 @@ lemma hasDerivAt_F_mul_tiltKernel
 lemma hasDerivAt_F_mul_tiltKernel_at0
     (v : ℝ≥0) (F : ℝ → ℝ) (x : ℝ) :
   HasDerivAt (fun s => F x * tiltKernel v s x) (F x * x) 0 := by
-  simpa using
-    (hasDerivAt_F_mul_tiltKernel v F x 0)
+  simpa using (hasDerivAt_F_mul_tiltKernel v F x 0)
 
 /-- The integrand (as a 2-variable function) used in `gaussianTilt`. -/
 @[simp] noncomputable def gaussianTiltIntegrand (F : ℝ → ℝ) (v : ℝ≥0) (t x : ℝ) : ℝ :=
@@ -358,8 +941,7 @@ lemma hasDerivAt_gaussianTiltIntegrand
     (v : ℝ≥0) (F : ℝ → ℝ) (x t : ℝ) :
   HasDerivAt (fun s => gaussianTiltIntegrand F v s x)
     (F x * (x - (v:ℝ) * t) * tiltKernel v t x) t := by
-  simpa [gaussianTiltIntegrand] using
-    hasDerivAt_F_mul_tiltKernel v F x t
+  simpa [gaussianTiltIntegrand] using hasDerivAt_F_mul_tiltKernel v F x t
 
 /-- Pointwise derivative (in `t`) at `0` of the integrand: `F x * x`. -/
 lemma hasDerivAt_gaussianTiltIntegrand_at0
@@ -369,10 +951,10 @@ lemma hasDerivAt_gaussianTiltIntegrand_at0
   simpa [gaussianTiltIntegrand] using
     hasDerivAt_F_mul_tiltKernel_at0 v F x
 
-/-! ### Refined uniform bounds for the tilt kernel (replacing the coarse placeholder)
+/-! ### Refined uniform bounds for the tilt kernel
 
 We give standard (sharp enough) analytic inequalities used to justify dominated
-convergence.  No ad–hoc `nlinarith` placeholders remain.
+convergence.
 -/
 
 /-- Basic upper bound: the exponential tilt never exceeds `exp (|t| |x|)`. -/
@@ -1738,7 +2320,9 @@ lemma gaussianReal_integrable_one_add_abs_pow_centered
         have h1 : Integrable (fun _ : ℝ => (2 : ℝ) ^ n) (gaussianReal 0 v) := by
           simp
         have h2 : Integrable (fun x : ℝ => |x| ^ n) (gaussianReal 0 v) := by
-          simpa using ProbabilityTheory.integrable_abs_pow_gaussianReal (m := (0 : ℝ)) (v := v) (n := n)
+          -- Fernique ⇒ all polynomial moments exist.
+          simpa [Real.norm_eq_abs] using
+            (ProbabilityTheory.IsGaussian.integrable_norm_pow (μ := gaussianReal 0 v) (E := ℝ) n)
         have : Integrable
             (fun x : ℝ =>
               (2 : ℝ) ^ n + (2 : ℝ) ^ n * |x| ^ n) (gaussianReal 0 v) :=
@@ -2231,54 +2815,165 @@ lemma integrable_dom_profile_of_moderateGrowth
     simpa [hdirac] using Measure.integrable_dirac hMeas
   · rcases HasModerateGrowth.bound_F_mul_linear (F := F) hF with
       ⟨C, m, hCpos, hBound⟩
-    have hExpDom := exp_abs_linear_le_gaussian_aux δ v hv
-    have hAE :
-        ∀ᵐ x ∂ gaussianReal 0 v,
-          |F x| * (|x| + 1) * Real.exp (δ * |x|)
-            ≤ (C * Real.exp ((v:ℝ) * δ^2))
-              * (1 + |x|)^(m+1) * Real.exp (|x|^2 / (4 * (v:ℝ))) := by
-      refine ae_of_all _ ?_
-      intro x
-      have h1 := hBound x
-      have h2 := hExpDom x
-      have hposExp : 0 ≤ Real.exp (δ * |x|) := by positivity
-      calc
-        |F x| * (|x| + 1) * Real.exp (δ * |x|)
-            ≤ (C * (1 + |x|)^(m+1)) * Real.exp (δ * |x|) :=
-              (mul_le_mul_of_nonneg_right h1 hposExp)
-        _ ≤ (C * (1 + |x|)^(m+1)) *
-              (Real.exp ((v:ℝ) * δ^2) * Real.exp (|x|^2 / (4 * (v:ℝ)))) :=
-            (mul_le_mul_of_nonneg_left h2 (by positivity))
-        _ = (C * Real.exp ((v:ℝ) * δ^2)) * (1 + |x|)^(m+1)
-              * Real.exp (|x|^2 / (4 * (v:ℝ))) := by
-              ring_nf
+    -- Use Fernique (existence of some exponential-square moment) to avoid explicit 1D Gaussian
+    -- integral computations: polynomial moments come from `IsGaussian.memLp_id`, and
+    -- `exp (δ * |x|)` is dominated by `exp (A/2 * x^2)` up to a constant factor.
+    obtain ⟨A, hApos, hAint⟩ :=
+      ProbabilityTheory.IsGaussian.exists_integrable_exp_sq (μ := gaussianReal 0 v)
+    have hsqrtA : Real.sqrt A ≠ 0 := (Real.sqrt_pos.2 hApos).ne'
+    have hExp_le (x : ℝ) :
+        Real.exp (δ * |x|)
+          ≤ Real.exp (δ ^ 2 / (2 * A)) * Real.exp ((A / 2) * x ^ 2) := by
+      -- From `2ab ≤ a^2 + b^2` with `a = √A * |x|`, `b = δ / √A`.
+      have h2ab :
+          2 * (Real.sqrt A * |x|) * (δ / Real.sqrt A)
+            ≤ (Real.sqrt A * |x|) ^ 2 + (δ / Real.sqrt A) ^ 2 :=
+        two_mul_le_add_sq (Real.sqrt A * |x|) (δ / Real.sqrt A)
+      have hquad :
+          δ * |x| ≤ (A / 2) * x ^ 2 + δ ^ 2 / (2 * A) := by
+        -- Simplify `h2ab` to `2 * δ * |x| ≤ A * x^2 + δ^2 / A` and divide by 2.
+        have h2ab' :
+            2 * δ * |x| ≤ A * x ^ 2 + δ ^ 2 / A := by
+          -- `2 * (√A * |x|) * (δ / √A) = 2 * δ * |x|`.
+          -- `(√A * |x|)^2 = A * x^2` and `(δ/√A)^2 = δ^2 / A`.
+          have hsq1 : (Real.sqrt A * |x|) ^ 2 = A * x ^ 2 := by
+            calc
+              (Real.sqrt A * |x|) ^ 2
+                  = (Real.sqrt A) ^ 2 * (|x|) ^ 2 := by
+                      simpa using (mul_pow (Real.sqrt A) (|x|) 2)
+              _ = A * x ^ 2 := by
+                    -- `(√A)^2 = A` and `|x|^2 = x^2`.
+                    simp [pow_two, Real.mul_self_sqrt (le_of_lt hApos)]
+          have hsq2 : (δ / Real.sqrt A) ^ 2 = δ ^ 2 / A := by
+            calc
+              (δ / Real.sqrt A) ^ 2 = δ ^ 2 / (Real.sqrt A) ^ 2 := by
+                simpa using (div_pow δ (Real.sqrt A) 2)
+              _ = δ ^ 2 / A := by
+                simp [pow_two, Real.mul_self_sqrt (le_of_lt hApos)]
+          have : 2 * (Real.sqrt A * |x|) * (δ / Real.sqrt A)
+                    ≤ (Real.sqrt A * |x|) ^ 2 + (δ / Real.sqrt A) ^ 2 := h2ab
+          have hlhs : 2 * (Real.sqrt A * |x|) * (δ / Real.sqrt A) = 2 * δ * |x| := by
+            simp [div_eq_mul_inv, mul_assoc, mul_left_comm, mul_comm, hsqrtA]
+          simpa [hlhs, hsq1, hsq2] using this
+        have hhalf : δ * |x| ≤ (A * x ^ 2 + δ ^ 2 / A) / 2 := by
+          nlinarith [h2ab']
+        have hhalf' : δ * |x| ≤ (δ ^ 2 / A + A * x ^ 2) / 2 := by
+          simpa [add_comm, add_left_comm, add_assoc] using hhalf
+        have hrewrite :
+            (δ ^ 2 / A + A * x ^ 2) / 2 = δ ^ 2 / (2 * A) + (A / 2) * x ^ 2 := by
+          ring_nf
+        simpa [hrewrite, add_comm, add_left_comm, add_assoc] using hhalf'
+      have hexp :=
+        Real.exp_le_exp.mpr (by
+          -- `δ*|x| ≤ (A/2)*x^2 + δ^2/(2A)` but the RHS is written as `... + ...`
+          simpa [add_comm, add_left_comm, add_assoc] using hquad)
+      simpa [Real.exp_add, mul_comm, mul_left_comm, mul_assoc] using hexp
+    -- L² bounds for Hölder/Cauchy–Schwarz on the Gaussian measure.
+    have hpoly_memLp2 :
+        MemLp (fun x : ℝ => (1 + |x|) ^ (m + 1)) 2 (gaussianReal 0 v) := by
+      have hmeas : AEStronglyMeasurable (fun x : ℝ => (1 + |x|) ^ (m + 1)) (gaussianReal 0 v) := by
+        exact (((measurable_const.add measurable_abs).pow_const _)).aestronglyMeasurable
+      -- square-integrability from integrability of the square, via Fernique moments
+      have hsq :
+          Integrable (fun x : ℝ => ((1 + |x|) ^ (m + 1)) ^ 2) (gaussianReal 0 v) := by
+        -- `(a^n)^2 = a^(2n)` and Gaussian measures have all polynomial moments
+        have hmom :
+            Integrable (fun x : ℝ => (1 + ‖x‖) ^ ((m + 1) * 2)) (gaussianReal 0 v) :=
+          ProbabilityTheory.IsGaussian.integrable_one_add_norm_pow (μ := gaussianReal 0 v) ((m + 1) * 2)
+        simpa [Real.norm_eq_abs, pow_mul] using hmom
+      exact (memLp_two_iff_integrable_sq hmeas).2 (by
+        simpa [pow_two] using hsq)
+    have hexp_memLp2 :
+        MemLp (fun x : ℝ => Real.exp ((A / 2) * x ^ 2)) 2 (gaussianReal 0 v) := by
+      have hmeas :
+          AEStronglyMeasurable (fun x : ℝ => Real.exp ((A / 2) * x ^ 2)) (gaussianReal 0 v) := by
+        have : Measurable (fun x : ℝ => Real.exp ((A / 2) * x ^ 2)) := by
+          fun_prop
+        exact this.aestronglyMeasurable
+      have hsq :
+          Integrable (fun x : ℝ => (Real.exp ((A / 2) * x ^ 2)) ^ 2) (gaussianReal 0 v) := by
+        -- `(exp ((A/2)*x^2))^2 = exp (A*x^2)`; Fernique gives integrability of `exp (A*‖x‖^2)`.
+        have hAint' :
+            Integrable (fun x : ℝ => Real.exp (A * x ^ 2)) (gaussianReal 0 v) := by
+          simpa [Real.norm_eq_abs, pow_two, mul_assoc, mul_left_comm, mul_comm] using hAint
+        have hEq :
+            (fun x : ℝ => (Real.exp ((A / 2) * x ^ 2)) ^ 2)
+              = fun x : ℝ => Real.exp (A * x ^ 2) := by
+          funext x
+          calc
+            (Real.exp ((A / 2) * x ^ 2)) ^ 2
+                = Real.exp ((A / 2) * x ^ 2) * Real.exp ((A / 2) * x ^ 2) := by
+                    simp [pow_two]
+            _ = Real.exp (((A / 2) * x ^ 2) + ((A / 2) * x ^ 2)) := by
+                    simp [Real.exp_add]
+            _ = Real.exp (A * x ^ 2) := by
+                    ring_nf
+        simpa [hEq] using hAint'
+      exact (memLp_two_iff_integrable_sq hmeas).2 (by
+        simpa [pow_two] using hsq)
+    have hMulInt :
+        Integrable (fun x : ℝ => (1 + |x|) ^ (m + 1) * Real.exp ((A / 2) * x ^ 2))
+          (gaussianReal 0 v) :=
+      MeasureTheory.MemLp.integrable_mul hpoly_memLp2 hexp_memLp2
+    have hMeas :
+        Measurable (fun x : ℝ => |F x| * (|x| + 1) * Real.exp (δ * |x|)) := by
+      have hFabs : Measurable fun x : ℝ => |F x| := hFmeas.abs
+      have hAbs : Measurable fun x : ℝ => |x| := measurable_abs
+      have hLin : Measurable fun x : ℝ => |x| + 1 := hAbs.add measurable_const
+      have hExp : Measurable fun x : ℝ => Real.exp (δ * |x|) :=
+        (Real.continuous_exp.comp (continuous_const.mul continuous_abs)).measurable
+      exact (hFabs.mul hLin).mul hExp
     have hDomInt :
-        Integrable (fun x =>
-          (C * Real.exp ((v:ℝ) * δ^2)) * (1 + |x|)^(m+1)
-              * Real.exp (|x|^2 / (4 * (v:ℝ))))
-          (gaussianReal 0 v) := by
-      have hpoly := integrable_polynomial_exp_quadratic_gaussian v (m+1)
-      simpa [mul_comm, mul_left_comm, mul_assoc] using
-        hpoly.const_mul (C * Real.exp ((v:ℝ) * δ^2))
+        Integrable
+            (fun x : ℝ =>
+              (C * Real.exp (δ ^ 2 / (2 * A)))
+                * ((1 + |x|) ^ (m + 1) * Real.exp ((A / 2) * x ^ 2)))
+            (gaussianReal 0 v) := by
+      simpa [mul_assoc, mul_left_comm, mul_comm] using
+        (hMulInt.const_mul (C * Real.exp (δ ^ 2 / (2 * A))))
     have hAE_norm :
         ∀ᵐ x ∂ gaussianReal 0 v,
           ‖|F x| * (|x| + 1) * Real.exp (δ * |x|)‖
-            ≤ (C * Real.exp ((v:ℝ) * δ^2))
-              * (1 + |x|)^(m+1) * Real.exp (|x|^2 / (4 * (v:ℝ))) := by
-      refine hAE.mono ?_
-      intro x hx
-      have hnon : 0 ≤ |F x| * (|x| + 1) * Real.exp (δ * |x|) := by positivity
-      rw [Real.norm_eq_abs, abs_of_nonneg hnon]
-      exact hx
+            ≤ (C * Real.exp (δ ^ 2 / (2 * A)))
+                * ((1 + |x|) ^ (m + 1) * Real.exp ((A / 2) * x ^ 2)) := by
+      refine ae_of_all _ (fun x => ?_)
+      have hnonneg : 0 ≤ |F x| * (|x| + 1) * Real.exp (δ * |x|) := by positivity
+      -- start from the moderate-growth bound on `|F x| * (|x| + 1)`
+      have hbase :
+          |F x| * (|x| + 1) * Real.exp (δ * |x|)
+            ≤ (C * (1 + |x|) ^ (m + 1)) * Real.exp (δ * |x|) := by
+        have hposExp : 0 ≤ Real.exp (δ * |x|) := by positivity
+        exact mul_le_mul_of_nonneg_right (hBound x) hposExp
+      -- upgrade `exp (δ|x|)` using the Fernique exponential-square integrability constant `A`
+      have hupgrade :
+          (C * (1 + |x|) ^ (m + 1)) * Real.exp (δ * |x|)
+            ≤ (C * Real.exp (δ ^ 2 / (2 * A)))
+                * ((1 + |x|) ^ (m + 1) * Real.exp ((A / 2) * x ^ 2)) := by
+        have hmul :
+            Real.exp (δ * |x|) ≤ Real.exp (δ ^ 2 / (2 * A)) * Real.exp ((A / 2) * x ^ 2) :=
+          hExp_le x
+        have hnonneg : 0 ≤ C * (1 + |x|) ^ (m + 1) := by
+          exact mul_nonneg (le_of_lt hCpos) (by positivity)
+        have : (C * (1 + |x|) ^ (m + 1)) * Real.exp (δ * |x|)
+              ≤ (C * (1 + |x|) ^ (m + 1)) * (Real.exp (δ ^ 2 / (2 * A)) * Real.exp ((A / 2) * x ^ 2)) :=
+          mul_le_mul_of_nonneg_left hmul hnonneg
+        simpa [mul_assoc, mul_left_comm, mul_comm, right_distrib] using this
+      have hfinal := hbase.trans hupgrade
+      have hnorm :
+          ‖|F x| * (|x| + 1) * Real.exp (δ * |x|)‖
+            = |F x| * (|x| + 1) * Real.exp (δ * |x|) := by
+        exact Real.norm_of_nonneg hnonneg
+      simpa [hnorm] using hfinal
+
     have hFabs : Measurable fun x : ℝ => |F x| := hFmeas.abs
     have hAbs : Measurable fun x : ℝ => |x| := measurable_abs
     have hLin : Measurable fun x : ℝ => |x| + 1 := hAbs.add measurable_const
     have hExp : Measurable fun x : ℝ => Real.exp (δ * |x|) :=
       (Real.continuous_exp.comp (continuous_const.mul continuous_abs)).measurable
-    have hMeas :
+    have hMeas' :
         Measurable (fun x : ℝ => |F x| * (|x| + 1) * Real.exp (δ * |x|)) :=
       (hFabs.mul hLin).mul hExp
-    refine hDomInt.mono' hMeas.aestronglyMeasurable hAE_norm
+    refine hDomInt.mono' hMeas'.aestronglyMeasurable hAE_norm
 
 lemma integrable_dom_profile
     {F : ℝ → ℝ} (hF : HasModerateGrowth F)
@@ -2874,17 +3569,6 @@ lemma gaussianReal_integration_by_parts
       = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal 0 v) :=
   stein_lemma_gaussianReal hv hF hMod
 
-lemma IsCenteredGaussianRV.expectation_comp
-    {g : Ω → ℝ} {v : ℝ≥0} (hg : IsCenteredGaussianRV g v)
-    (hgAE : AEMeasurable g ℙ)
-    {Φ : ℝ → ℝ} (hInt : Integrable Φ (gaussianReal 0 v)) :
-    ∫ ω, Φ (g ω) ∂ℙ = ∫ x, Φ x ∂(gaussianReal 0 v) := by
-  unfold IsCenteredGaussianRV IsGaussianRV at hg
-  have hIntLaw : Integrable Φ (Measure.map g ℙ) := by simpa [hg] using hInt
-  have hΦ_aesm : AEStronglyMeasurable Φ (Measure.map g ℙ) := hIntLaw.aestronglyMeasurable
-  have hMap := integral_map hgAE hΦ_aesm
-  rw [← hMap, hg]
-
 -- The second moment is integrable under any centered Gaussian.
 lemma integrable_sq_gaussianReal_centered (v : ℝ≥0) :
     Integrable (fun x : ℝ => x^2) (gaussianReal 0 v) := by
@@ -2902,31 +3586,12 @@ lemma integrable_sq_gaussianReal_centered (v : ℝ≥0) :
     simpa [Real.norm_eq_abs, pow_two, mul_comm, mul_left_comm, mul_assoc] using hmul
   exact hMom2.mono' (hMeas.aestronglyMeasurable) hAE
 
-lemma IsCenteredGaussianRV.secondMoment
-    {g : Ω → ℝ} {v : ℝ≥0}
-    (hg : IsCenteredGaussianRV g v) (hgMeas : Measurable g) :
-    ∫ ω, (g ω)^2 ∂ℙ = v := by
-  unfold IsCenteredGaussianRV IsGaussianRV at hg
-  have hIntGauss : Integrable (fun x : ℝ => x^2) (gaussianReal 0 v) :=
-    integrable_sq_gaussianReal_centered (v := v)
-  have hIntLaw : Integrable (fun x : ℝ => x^2) (Measure.map g ℙ) := by
-    simpa [hg] using hIntGauss
-  have hΦ_aesm :
-      AEStronglyMeasurable (fun x : ℝ => x^2) (Measure.map g ℙ) :=
-    hIntLaw.aestronglyMeasurable
-  have hMap := integral_map hgMeas.aemeasurable hΦ_aesm
-  rw [← hMap, hg, integral_sq_gaussianReal_centered (v := v)]
-
 lemma gaussianRV_integration_by_parts
     {g : Ω → ℝ} {v : ℝ≥0} (hv : v ≠ 0)
-    (hg : IsCenteredGaussianRV g v) (hgMeas : Measurable g)
+    (hg : HasLaw g (gaussianReal 0 v) (ℙ : Measure Ω))
     {F : ℝ → ℝ} (hF : ContDiff ℝ 1 F) (hMod : HasModerateGrowth F) :
     ∫ ω, g ω * F (g ω) ∂ℙ
       = (v : ℝ) * ∫ ω, deriv F (g ω) ∂ℙ := by
-  have hΦ1m : Measurable (fun x : ℝ => x * F x) :=
-    (measurable_id.mul hF.continuous.measurable)
-  have hΦ2m : Measurable (fun x : ℝ => deriv F x) :=
-    (hF.continuous_deriv le_rfl).measurable
   classical
   have hModCopy : HasModerateGrowth F := hMod
   rcases hMod with ⟨C, m, hCpos, hFbound, hF'bound⟩
@@ -2958,7 +3623,9 @@ lemma gaussianRV_integration_by_parts
                   simp [pow_succ, mul_comm]
     have hDomInt : Integrable (fun x => C * (1 + |x|) ^ (m + 1)) (gaussianReal 0 v) :=
       (hMom_m1.const_mul C)
-    exact hDomInt.mono' (hΦ1m.aestronglyMeasurable) hAE
+    have hMeas : Measurable (fun x : ℝ => x * F x) :=
+      (measurable_id.mul hF.continuous.measurable)
+    exact hDomInt.mono' (hMeas.aestronglyMeasurable) hAE
   have hInt2 : Integrable (fun x => deriv F x) (gaussianReal 0 v) := by
     have hAE : ∀ᵐ x ∂ gaussianReal 0 v,
         ‖deriv F x‖ ≤ C * (1 + |x|) ^ m := by
@@ -2967,10 +3634,14 @@ lemma gaussianRV_integration_by_parts
     have hDomInt : Integrable (fun x => C * (1 + |x|) ^ m) (gaussianReal 0 v) :=
       (hMom_m.const_mul C)
     exact hDomInt.mono' ((hF.continuous_deriv le_rfl).measurable.aestronglyMeasurable) hAE
-  have h1 := IsCenteredGaussianRV.expectation_comp (g := g) (v := v)
-              hg hgMeas.aemeasurable hInt1
-  have h2 := IsCenteredGaussianRV.expectation_comp (g := g) (v := v)
-              hg hgMeas.aemeasurable hInt2
+  have h1 :
+      (∫ ω, g ω * F (g ω) ∂ℙ) = ∫ x, x * F x ∂(gaussianReal 0 v) := by
+    simpa [Function.comp] using
+      (hg.integral_comp (f := fun x : ℝ => x * F x) (hf := hInt1.aestronglyMeasurable))
+  have h2 :
+      (∫ ω, deriv F (g ω) ∂ℙ) = ∫ x, deriv F x ∂(gaussianReal 0 v) := by
+    simpa [Function.comp] using
+      (hg.integral_comp (f := fun x : ℝ => deriv F x) (hf := hInt2.aestronglyMeasurable))
   calc
     ∫ ω, g ω * F (g ω) ∂ℙ
         = ∫ x, x * F x ∂(gaussianReal 0 v) := h1
@@ -2985,31 +3656,28 @@ lemma mul_pos_of_pos_of_nonneg {a b : ℝ} (ha : 0 < a) (hb : 0 ≤ b) (hb_ne : 
 
 theorem gaussian_integration_by_parts_general
     {g : Ω → ℝ} {μ : ℝ} {v : ℝ≥0} (hv : v ≠ 0)
-    (hg : IsGaussianRV g μ v) (hgMeas : Measurable g)
+    (hg : HasLaw g (gaussianReal μ v) (ℙ : Measure Ω))
     {F : ℝ → ℝ} (hF : ContDiff ℝ 1 F) (hMod : HasModerateGrowth F) :
     ∫ ω, (g ω - μ) * F (g ω) ∂ℙ = (v : ℝ) * ∫ ω, deriv F (g ω) ∂ℙ := by
   let Y : Ω → ℝ := fun ω => g ω - μ
-  have hY : IsCenteredGaussianRV Y v := by
-    unfold IsCenteredGaussianRV IsGaussianRV Y
-    -- map g by (· - μ)
+  have hY : HasLaw Y (gaussianReal 0 v) (ℙ : Measure Ω) := by
+    refine ⟨hg.aemeasurable.sub_const μ, ?_⟩
+    -- map g by (· - μ), using the ae-measurable `map_map` lemma.
     have hmap :
-        Measure.map (fun ω => g ω - μ) ℙ
-          = (Measure.map g ℙ).map (fun x : ℝ => x - μ) := by
+        (Measure.map g (ℙ : Measure Ω)).map (fun x : ℝ => x - μ)
+          = Measure.map Y (ℙ : Measure Ω) := by
       simpa [Y, Function.comp] using
-        (Measure.map_map
-          (hf := hgMeas)
-          (hg := (measurable_id.sub measurable_const))
-          (μ := ℙ) (f := g) (g := fun x : ℝ => x - μ)).symm
+        (AEMeasurable.map_map_of_aemeasurable
+          (hg := (measurable_id.sub measurable_const).aemeasurable)
+          (hf := hg.aemeasurable))
     calc
-      Measure.map Y ℙ
-          = (Measure.map g ℙ).map (fun x : ℝ => x - μ) := hmap
+      Measure.map Y (ℙ : Measure Ω)
+          = (Measure.map g (ℙ : Measure Ω)).map (fun x : ℝ => x - μ) := by
+              simpa using hmap.symm
       _ = (gaussianReal μ v).map (fun x : ℝ => x - μ) := by
-            simpa using
-              congrArg (fun m : Measure ℝ =>
-                Measure.map (fun x : ℝ => x - μ) m) hg
+            simp [hg.map_eq]
       _ = gaussianReal (μ - μ) v := gaussianReal_map_sub_const (μ := μ) (v := v) μ
       _ = gaussianReal 0 v := by simp
-  have hYMeas : Measurable Y := hgMeas.sub measurable_const
   let F_shifted : ℝ → ℝ := fun x => F (x + μ)
   have hF_shifted : ContDiff ℝ 1 F_shifted :=
     hF.comp (contDiff_id.add contDiff_const)
@@ -3094,7 +3762,7 @@ theorem gaussian_integration_by_parts_general
                       have hCnn : 0 ≤ C := le_of_lt hCpos
                       exact mul_le_mul_of_nonneg_left hpow_le hCnn))
   have hIBP :=
-    gaussianRV_integration_by_parts (v := v) hv hY hYMeas hF_shifted hMod_shifted
+    gaussianRV_integration_by_parts (g := Y) (v := v) hv hY (F := F_shifted) hF_shifted hMod_shifted
   convert hIBP using 1
   · congr with ω
     simp [Y, F_shifted]
@@ -3102,3 +3770,4 @@ theorem gaussian_integration_by_parts_general
     aesop
 
 end ProbabilityTheory
+-/

@@ -1,8 +1,8 @@
 import SpinGlass.Defs
-import Common.Mathlib.Probability.Distributions.Gaussian_IBP_Hilbert
+import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
+import Mathlib.Probability.Moments.CovarianceBilin
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology
-open PhysLean.Probability.GaussianIBP
 
 namespace SpinGlass
 
@@ -58,11 +58,16 @@ structure GaussianDisorder where
   cov : Config N → Config N → ℝ
   /-- The (random) Hamiltonian. -/
   U : Ω → EnergySpace N
-  /-- Centered Gaussian structure in the Hilbert space `EnergySpace N`. -/
-  hU : IsGaussianHilbert U
+  /-- Measurability of the Hamiltonian. -/
+  measU : Measurable U
+  /-- The law of `U` is Gaussian. -/
+  hU : ProbabilityTheory.IsGaussian ((ℙ : Measure Ω).map U)
+  /-- Centeredness of the disorder (mean zero). -/
+  mean0 : (∫ x : EnergySpace N, x ∂((ℙ : Measure Ω).map U)) = 0
   /-- Covariance kernel agreement on the canonical basis. -/
   cov_eq : ∀ σ τ,
-    inner ℝ ((covOp (g := U) hU) (std_basis N σ)) (std_basis N τ) = cov σ τ
+    inner ℝ ((ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map U)) (std_basis N σ))
+      (std_basis N τ) = cov σ τ
 
 /--
 SK disorder: a centered Gaussian Hamiltonian with covariance kernel `sk_cov_kernel`.
@@ -73,11 +78,16 @@ This corresponds (up to the usual normalizations) to the classical SK Hamiltonia
 structure SKDisorder (β h : ℝ) where
   /-- The (random) Hamiltonian. -/
   U : Ω → EnergySpace N
-  /-- Centered Gaussian structure in the Hilbert space `EnergySpace N`. -/
-  hU : IsGaussianHilbert U
+  /-- Measurability of the Hamiltonian. -/
+  measU : Measurable U
+  /-- The law of `U` is Gaussian. -/
+  hU : ProbabilityTheory.IsGaussian ((ℙ : Measure Ω).map U)
+  /-- Centeredness of the disorder (mean zero). -/
+  mean0 : (∫ x : EnergySpace N, x ∂((ℙ : Measure Ω).map U)) = 0
   /-- Covariance on the canonical basis. -/
-  cov_eq : ∀ σ τ, inner ℝ ((covOp (g := U) hU)
-    (std_basis N σ)) (std_basis N τ) =  sk_cov_kernel N β σ τ
+  cov_eq : ∀ σ τ,
+    inner ℝ ((ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map U)) (std_basis N σ))
+      (std_basis N τ) =  sk_cov_kernel N β σ τ
 
 /--
 Simple (reference) disorder: a centered Gaussian Hamiltonian with covariance kernel
@@ -88,11 +98,16 @@ This matches the “magnetic field” comparison model used in Guerra's bound.
 structure SimpleDisorder (β q : ℝ) where
   /-- The (random) Hamiltonian. -/
   V : Ω → EnergySpace N
-  /-- Centered Gaussian structure in the Hilbert space `EnergySpace N`. -/
-  hV : IsGaussianHilbert V
+  /-- Measurability of the Hamiltonian. -/
+  measV : Measurable V
+  /-- The law of `V` is Gaussian. -/
+  hV : ProbabilityTheory.IsGaussian ((ℙ : Measure Ω).map V)
+  /-- Centeredness of the disorder (mean zero). -/
+  mean0 : (∫ x : EnergySpace N, x ∂((ℙ : Measure Ω).map V)) = 0
   /-- Covariance on the canonical basis. -/
-  cov_eq : ∀ σ τ, inner ℝ ((covOp (g := V) hV) (std_basis N σ))
-    (std_basis N τ) = simple_cov_kernel N β (fun x => q * x) σ τ
+  cov_eq : ∀ σ τ,
+    inner ℝ ((ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map V)) (std_basis N σ))
+      (std_basis N τ) = simple_cov_kernel N β (fun x => q * x) σ τ
 
 /-- View an `SKDisorder` as an abstract covariance-specified `GaussianDisorder`. -/
 @[simp] noncomputable
@@ -100,7 +115,9 @@ def SKDisorder.toGaussianDisorder {β h : ℝ} (sk : SKDisorder (Ω := Ω) (N :=
     GaussianDisorder (Ω := Ω) (N := N) :=
   { cov := sk_cov_kernel N β
     U := sk.U
+    measU := sk.measU
     hU := sk.hU
+    mean0 := sk.mean0
     cov_eq := by
       intro σ τ
       simpa using sk.cov_eq σ τ }
@@ -111,7 +128,9 @@ def SimpleDisorder.toGaussianDisorder {β q : ℝ} (sim : SimpleDisorder (Ω := 
     GaussianDisorder (Ω := Ω) (N := N) :=
   { cov := simple_cov_kernel N β (fun x => q * x)
     U := sim.V
+    measU := sim.measV
     hU := sim.hV
+    mean0 := sim.mean0
     cov_eq := by
       intro σ τ
       simpa using sim.cov_eq σ τ }

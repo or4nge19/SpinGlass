@@ -62,7 +62,7 @@ lemma hasLaw_cameronMartin (x : cameronMartin μ) : HasLaw x (gaussianReal 0 (�
     · simp only [hx0, ZeroMemClass.coe_zero, nnnorm_zero, ne_eq, OfNat.ofNat_ne_zero,
         not_false_eq_true, zero_pow, gaussianReal_zero_var]
       suffices μ.map (fun _ ↦ (0 : ℝ)) = Measure.dirac 0 by
-        convert this <;> simp
+        convert this; simp
       simp
     have hx_norm_pos : 0 < ‖x‖ := by simp [norm_pos_iff, hx0]
     have h := x.2
@@ -72,7 +72,26 @@ lemma hasLaw_cameronMartin (x : cameronMartin μ) : HasLaw x (gaussianReal 0 (�
           closure
             ((LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap : Submodule ℝ (Lp ℝ 2 μ)) :
               Set (Lp ℝ 2 μ)) := by
-      simpa [ProbabilityTheory.cameronMartin, Submodule.topologicalClosure_coe] using h
+      -- `x.2` is membership in `topologicalClosure`; rewrite the goal accordingly.
+      let s : Submodule ℝ (Lp ℝ 2 μ) :=
+        LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap
+      have hx : (x : Lp ℝ 2 μ) ∈ (s.topologicalClosure : Set (Lp ℝ 2 μ)) := by
+        -- Unfold the abbreviations so the goal matches `x.2`.
+        dsimp [s]
+        have hx' :
+            (x : Lp ℝ 2 μ) ∈
+              ((LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap).topologicalClosure :
+                Set (Lp ℝ 2 μ)) := by
+          -- `x.2` is membership in `cameronMartin μ`; unfold it.
+          have hx0 :
+              (x : Lp ℝ 2 μ) ∈ (ProbabilityTheory.cameronMartin (μ := μ) : Set (Lp ℝ 2 μ)) := x.2
+          dsimp [ProbabilityTheory.cameronMartin] at hx0
+          exact hx0
+        exact hx'
+      -- now rewrite `closure` as `topologicalClosure` and conclude.
+      -- `Submodule.topologicalClosure_coe` is definitional (`rfl`), but `rw` avoids `simpa`.
+      rw [← Submodule.topologicalClosure_coe (s := s)]
+      exact hx
     rcases (mem_closure_iff_seq_limit.mp h') with ⟨L, hL_mem, hL_tendsto⟩
     have hL_mem' :
         ∀ n, ∃ y : StrongDual ℝ E, StrongDual.centeredToLp (E := E) μ y = L n := by

@@ -1,9 +1,10 @@
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPDeriv
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
-import Common.Mathlib.Probability.Distributions.GaussianIntegrationByParts
+import Common.Mathlib.Probability.Distributions.Gaussian.TiltKernel
 import Mathlib.Analysis.Calculus.Deriv.Comp
 import Mathlib.Analysis.Calculus.Deriv.Add
 import Mathlib.Analysis.Calculus.Deriv.Mul
+import Mathlib.MeasureTheory.Function.L2Space
 
 /-!
 # Cameron–Martin IBP: analytic layer
@@ -40,10 +41,6 @@ variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] [MeasurableSpace
 
 namespace CameronMartinIBPAnalytic
 
-/-- A tiny helper: the constant function `1` has moderate growth (in the 1D sense). -/
-lemma hasModerateGrowth_one : HasModerateGrowth (fun _ : ℝ => (1 : ℝ)) := by
-  refine ⟨1, 0, by norm_num, ?_, ?_⟩ <;> intro x <;> simp [pow_zero]
-
 private lemma cameronMartin_smul_ae (x : cameronMartin μ) (t : ℝ) :
     (fun y : E => (t • (x : Lp ℝ 2 μ)) y) =ᵐ[μ] fun y : E => t * x y := by
   simpa [Pi.smul_apply] using (Lp.coeFn_smul (c := t) (f := (x : Lp ℝ 2 μ)))
@@ -70,9 +67,49 @@ lemma cameronMartinTiltKernel_aeEq_tiltKernel (x : cameronMartin μ) (t : ℝ) :
 
 private lemma integrable_profile_gaussianReal (v : ℝ≥0) {δ : ℝ} (hδ : 0 < δ) :
     Integrable (fun u : ℝ => (|u| + 1) * Real.exp (δ * |u|)) (gaussianReal 0 v) := by
-  have h := integrable_dom_profile (hF := hasModerateGrowth_one) (v := v) (hδ := hδ)
-    (hFmeas := measurable_const)
-  simpa using h
+  classical
+  -- Cauchy–Schwarz (`L² × L² → L¹`): show both factors are in `L²`.
+  have hLp_lin : MemLp (fun u : ℝ => |u| + 1) (2 : ℝ≥0∞) (gaussianReal 0 v) := by
+    have h2 : MemLp (fun u : ℝ => u) (2 : ℝ≥0∞) (gaussianReal 0 v) := by
+      simpa using
+        (memLp_id_gaussianReal' (μ := (0 : ℝ)) (v := v) (p := (2 : ℝ≥0∞)) (by simp))
+    have habs : MemLp (fun u : ℝ => |u|) (2 : ℝ≥0∞) (gaussianReal 0 v) := by
+      simpa [Real.norm_eq_abs] using h2.norm
+    simpa [add_comm, add_left_comm, add_assoc] using habs.add (memLp_const (c := (1 : ℝ)))
+
+  have hExpAbs : Integrable (fun u : ℝ => Real.exp ((2 * δ) * |u|)) (gaussianReal 0 v) := by
+    have hpos : Integrable (fun u : ℝ => Real.exp ((2 * δ) * u)) (gaussianReal 0 v) :=
+      integrable_exp_mul_gaussianReal (μ := (0 : ℝ)) (v := v) (t := (2 * δ))
+    have hneg : Integrable (fun u : ℝ => Real.exp (-(2 * δ) * u)) (gaussianReal 0 v) :=
+      integrable_exp_mul_gaussianReal (μ := (0 : ℝ)) (v := v) (t := -(2 * δ))
+    have hmeas : Measurable (fun u : ℝ => Real.exp ((2 * δ) * |u|)) := by fun_prop
+    refine (hpos.add hneg).mono' hmeas.aestronglyMeasurable (ae_of_all _ (fun u => ?_))
+    by_cases hu : 0 ≤ u
+    · have : |u| = u := abs_of_nonneg hu
+      -- `exp(a|u|) = exp(au) ≤ exp(au) + exp(-au)`
+      simpa [this] using
+        (le_add_of_nonneg_right (a := Real.exp ((2 * δ) * u))
+          (b := Real.exp (-(2 * δ) * u)) (by positivity : (0 : ℝ) ≤ Real.exp (-(2 * δ) * u)))
+    · have : |u| = -u := abs_of_neg (lt_of_not_ge hu)
+      -- `exp(a|u|) = exp(-au) ≤ exp(au) + exp(-au)` (use commutativity of `+`)
+      have h :
+          Real.exp (-(2 * δ) * u) ≤ Real.exp (-(2 * δ) * u) + Real.exp ((2 * δ) * u) :=
+        le_add_of_nonneg_right (by positivity : (0 : ℝ) ≤ Real.exp ((2 * δ) * u))
+      simpa [this, add_comm, mul_assoc, mul_left_comm, mul_comm] using h
+
+  have hLp_exp : MemLp (fun u : ℝ => Real.exp (δ * |u|)) (2 : ℝ≥0∞) (gaussianReal 0 v) := by
+    have hmeas : AEStronglyMeasurable (fun u : ℝ => Real.exp (δ * |u|)) (gaussianReal 0 v) := by
+      fun_prop
+    refine (memLp_two_iff_integrable_sq hmeas).2 ?_
+    have : (fun u : ℝ => (Real.exp (δ * |u|)) ^ 2) = fun u : ℝ => Real.exp ((2 * δ) * |u|) := by
+      funext u
+      calc
+        (Real.exp (δ * |u|)) ^ 2 = Real.exp (δ * |u|) * Real.exp (δ * |u|) := by simp [pow_two]
+        _ = Real.exp (δ * |u| + δ * |u|) := (Real.exp_add _ _).symm
+        _ = Real.exp ((2 * δ) * |u|) := by ring_nf
+    simpa [this] using hExpAbs
+
+  simpa [mul_comm, mul_left_comm, mul_assoc] using (MemLp.integrable_mul hLp_lin hLp_exp)
 
 lemma integrable_profile_cameronMartin (x : cameronMartin μ) {δ : ℝ} (hδ : 0 < δ) :
     Integrable (fun y : E => (|x y| + 1) * Real.exp (δ * |x y|)) μ := by
@@ -81,93 +118,92 @@ lemma integrable_profile_cameronMartin (x : cameronMartin μ) {δ : ℝ} (hδ : 
     simpa [hx.map_eq] using (integrable_profile_gaussianReal (v := (‖x‖₊ ^ 2)) hδ)
   exact this.comp_aemeasurable hx.aemeasurable
 
-private lemma hasModerateGrowth_sq_add_one : HasModerateGrowth (fun u : ℝ => u ^ 2 + 1) := by
-  refine ⟨2, 2, by norm_num, ?_, ?_⟩
-  · intro u
-    have hu : 0 ≤ u ^ 2 + 1 := by nlinarith [sq_nonneg u]
-    have habs : |u ^ 2 + 1| = u ^ 2 + 1 := abs_of_nonneg hu
-    have hsq : (1 + |u|) ^ 2 = u ^ 2 + 2 * |u| + 1 := by
-      -- expand and normalize; use `|u| * |u| = u * u`
-      simp [pow_two, mul_add, add_mul, abs_mul_abs_self, add_assoc, add_left_comm, add_comm]
-      ring_nf
-    have hpow₁ : u ^ 2 + 1 ≤ (1 + |u|) ^ 2 := by
-      have : (u ^ 2 + 1 : ℝ) ≤ u ^ 2 + 2 * |u| + 1 := by nlinarith [abs_nonneg u]
-      -- rewrite the RHS as `(1 + |u|)^2`
-      simpa [hsq] using this
-    have hpow₂ : u ^ 2 + 1 ≤ 2 * (u ^ 2 + 1) := by nlinarith [hu]
-    have hpow₃ : 2 * (u ^ 2 + 1) ≤ 2 * (1 + |u|) ^ 2 := by
-      exact mul_le_mul_of_nonneg_left hpow₁ (by norm_num : (0 : ℝ) ≤ 2)
-    have hpow : u ^ 2 + 1 ≤ 2 * (1 + |u|) ^ 2 := hpow₂.trans hpow₃
-    simpa [habs] using hpow
-  · intro u
-    have hderiv : deriv (fun u : ℝ => u ^ 2 + 1) u = 2 * u := by
-      simp [pow_one]
-    have hle_abs : |u| ≤ (1 + |u|) ^ 2 := by
-      have : 0 ≤ (1 : ℝ) + |u| + |u| ^ 2 := by positivity
-      -- `(1 + |u|)^2 = 1 + 2|u| + |u|^2 ≥ |u|`
-      nlinarith [this]
-    have hle : |2 * u| ≤ 2 * (1 + |u|) ^ 2 := by
-      calc
-        |2 * u| = (2 : ℝ) * |u| := by simp [abs_mul]
-        _ ≤ (2 : ℝ) * (1 + |u|) ^ 2 := by
-              exact mul_le_mul_of_nonneg_left hle_abs (by norm_num)
-    simpa [hderiv]
-
 private lemma integrable_profile_sq_gaussianReal (v : ℝ≥0) {δ : ℝ} (hδ : 0 < δ) :
     Integrable (fun u : ℝ => ((|u| + 1) * Real.exp (δ * |u|)) ^ 2) (gaussianReal 0 v) := by
-  have hInt_dom :=
-    integrable_dom_profile_of_moderateGrowth (F := fun u : ℝ => u ^ 2 + 1) hasModerateGrowth_sq_add_one
-      v (2 * δ) (by nlinarith) (by fun_prop)
-  -- Dominate the square by the `integrable_dom_profile` integrand (up to a constant).
-  refine (hInt_dom.const_mul 2).mono' (by fun_prop) (ae_of_all _ (fun u => ?_))
-  have habs : (|u| + 1) ^ 2 ≤ 2 * (u ^ 2 + 1) := by
-    have h2 : 2 * |u| ≤ u ^ 2 + 1 := by
-      -- AM-GM with `a = |u|`, `b = 1`: `2ab ≤ a^2 + b^2`.
-      simpa [mul_assoc, pow_two, sq_abs] using (two_mul_le_add_sq (|u|) (1 : ℝ))
-    have hsq : (|u| + 1) ^ 2 = u ^ 2 + 2 * |u| + 1 := by
-      simp [pow_two, mul_add, add_mul, abs_mul_abs_self, add_assoc, add_left_comm, add_comm]
-      ring_nf
-    have hle₁ : u ^ 2 + 2 * |u| ≤ u ^ 2 + (u ^ 2 + 1) := by
-      simpa [add_assoc, add_comm, add_left_comm] using (add_le_add_left h2 (u ^ 2))
-    have hle₂ : u ^ 2 + 2 * |u| + 1 ≤ u ^ 2 + (u ^ 2 + 1) + 1 := by
-      simpa [add_assoc, add_comm, add_left_comm] using (add_le_add_right hle₁ 1)
-    have : u ^ 2 + (u ^ 2 + 1) + 1 = 2 * (u ^ 2 + 1) := by ring_nf
-    simpa [hsq, this] using hle₂
-  have hnonneg_sq : 0 ≤ ((|u| + 1) * Real.exp (δ * |u|)) ^ 2 := by positivity
-  have hFpos : 0 ≤ (u ^ 2 + 1 : ℝ) := by nlinarith [sq_nonneg u]
-  have habsF : |u ^ 2 + 1| = u ^ 2 + 1 := abs_of_nonneg hFpos
-  have hexp :
-      (Real.exp (δ * |u|)) ^ 2 = Real.exp ((2 * δ) * |u|) := by
-    calc
-      (Real.exp (δ * |u|)) ^ 2 = Real.exp (δ * |u|) * Real.exp (δ * |u|) := by simp [pow_two]
-      _ = Real.exp (δ * |u| + δ * |u|) := (Real.exp_add _ _).symm
-      _ = Real.exp ((2 * δ) * |u|) := by ring_nf
-  have hlin : (1 : ℝ) ≤ |u| + 1 := by nlinarith [abs_nonneg u]
-  have hmul : (u ^ 2 + 1 : ℝ) ≤ (u ^ 2 + 1) * (|u| + 1) := by
-    simpa [mul_one, habsF] using (mul_le_mul_of_nonneg_left hlin hFpos)
-  have hnorm :
-      ‖((|u| + 1) * Real.exp (δ * |u|)) ^ 2‖ = ((|u| + 1) * Real.exp (δ * |u|)) ^ 2 := by
-    simpa using Real.norm_of_nonneg hnonneg_sq
-  -- pointwise inequality
-  calc
-    ‖((|u| + 1) * Real.exp (δ * |u|)) ^ 2‖
-        = ((|u| + 1) * Real.exp (δ * |u|)) ^ 2 := hnorm
-    _ = (|u| + 1) ^ 2 * (Real.exp (δ * |u|)) ^ 2 := by ring
-    _ ≤ (2 * (u ^ 2 + 1)) * Real.exp ((2 * δ) * |u|) := by
-          -- use `habs` and rewrite the exponential square
-          have := mul_le_mul_of_nonneg_right habs (by positivity : 0 ≤ (Real.exp (δ * |u|)) ^ 2)
-          simpa [hexp, mul_assoc, mul_left_comm, mul_comm] using this
-    _ ≤ 2 * (|u ^ 2 + 1| * (|u| + 1) * Real.exp ((2 * δ) * |u|)) := by
-          -- insert an extra factor `( |u| + 1 ) ≥ 1`
-          have hmul' :
-              (u ^ 2 + 1) * Real.exp ((2 * δ) * |u|) ≤
-                (u ^ 2 + 1) * (|u| + 1) * Real.exp ((2 * δ) * |u|) := by
-            have : (u ^ 2 + 1) * Real.exp ((2 * δ) * |u|) ≤
-                ((u ^ 2 + 1) * (|u| + 1)) * Real.exp ((2 * δ) * |u|) := by
-              exact mul_le_mul_of_nonneg_right hmul (by positivity)
-            simpa [mul_assoc] using this
-          simpa [habsF, mul_assoc, mul_left_comm, mul_comm] using
-            (mul_le_mul_of_nonneg_left hmul' (by positivity : 0 ≤ (2 : ℝ)))
+  -- Expand the square:
+  -- `((a*b)^2) = (a^2) * (b^2)` with `a = |u|+1`, `b = exp(δ|u|)`.
+  have hLp_lin_sq : MemLp (fun u : ℝ => (|u| + 1) ^ 2) (2 : ℝ≥0∞) (gaussianReal 0 v) := by
+    -- `MemLp` at `2` is integrability of the square.
+    have hmeas :
+        AEStronglyMeasurable (fun u : ℝ => (|u| + 1) ^ 2) (gaussianReal 0 v) := by
+      fun_prop
+    refine (memLp_two_iff_integrable_sq hmeas).2 ?_
+    -- square is `(|u|+1)^4`, integrable since Gaussians have all moments.
+    haveI : ProbabilityTheory.IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
+    have habs4 : Integrable (fun u : ℝ => |u| ^ 4) (gaussianReal 0 v) := by
+      simpa [Real.norm_eq_abs] using
+        (ProbabilityTheory.IsGaussian.integrable_norm_pow (μ := gaussianReal (0 : ℝ) v) 4)
+    have hRhs : Integrable (fun u : ℝ => (8 : ℝ) * (|u| ^ 4 + 1)) (gaussianReal 0 v) :=
+      (habs4.add (integrable_const (μ := gaussianReal 0 v) (c := (1 : ℝ)))).const_mul 8
+    refine hRhs.mono' (by fun_prop) (ae_of_all _ (fun u => ?_))
+    set a : ℝ := |u| with ha_def
+    have ha : 0 ≤ a := by simpa [ha_def] using (abs_nonneg u)
+    -- polynomial bound: `(a+1)^4 ≤ 8*(a^4+1)` for `a ≥ 0`
+    have hpoly : (a + 1) ^ 4 ≤ 8 * (a ^ 4 + 1) := by
+      have hfactor :
+          8 * (a ^ 4 + 1) - (a + 1) ^ 4 = (a - 1) ^ 2 * (7 * a ^ 2 + 10 * a + 7) := by
+        ring
+      have hnonneg : 0 ≤ 8 * (a ^ 4 + 1) - (a + 1) ^ 4 := by
+        have hsq : 0 ≤ (a - 1) ^ 2 := by positivity
+        have hquad : 0 ≤ (7 * a ^ 2 + 10 * a + 7) := by nlinarith [ha]
+        simpa [hfactor] using mul_nonneg hsq hquad
+      linarith
+    -- rewrite `((|u|+1)^2)^2 = (|u|+1)^4`
+    have hpow : ((|u| + 1) ^ 2) ^ 2 = (|u| + 1) ^ 4 := by
+      simpa using (pow_mul (|u| + 1) 2 2).symm
+    have hnonneg : 0 ≤ |u| + 1 := by nlinarith [abs_nonneg u]
+    simpa [abs_of_nonneg hnonneg, hpow, ha_def] using hpoly
+
+  have hExpAbs4 : Integrable (fun u : ℝ => Real.exp ((4 * δ) * |u|)) (gaussianReal 0 v) := by
+    have hpos : Integrable (fun u : ℝ => Real.exp ((4 * δ) * u)) (gaussianReal 0 v) :=
+      integrable_exp_mul_gaussianReal (μ := (0 : ℝ)) (v := v) (t := (4 * δ))
+    have hneg : Integrable (fun u : ℝ => Real.exp (-(4 * δ) * u)) (gaussianReal 0 v) :=
+      integrable_exp_mul_gaussianReal (μ := (0 : ℝ)) (v := v) (t := -(4 * δ))
+    have hmeas : Measurable (fun u : ℝ => Real.exp ((4 * δ) * |u|)) := by fun_prop
+    refine (hpos.add hneg).mono' hmeas.aestronglyMeasurable (ae_of_all _ (fun u => ?_))
+    by_cases hu : 0 ≤ u
+    · have : |u| = u := abs_of_nonneg hu
+      simpa [this] using
+        (le_add_of_nonneg_right (a := Real.exp ((4 * δ) * u))
+          (b := Real.exp (-(4 * δ) * u)) (by positivity : (0 : ℝ) ≤ Real.exp (-(4 * δ) * u)))
+    · have : |u| = -u := abs_of_neg (lt_of_not_ge hu)
+      have h :
+          Real.exp (-(4 * δ) * u) ≤ Real.exp (-(4 * δ) * u) + Real.exp ((4 * δ) * u) :=
+        le_add_of_nonneg_right (by positivity : (0 : ℝ) ≤ Real.exp ((4 * δ) * u))
+      simpa [this, add_comm, mul_assoc, mul_left_comm, mul_comm] using h
+
+  have hLp_exp_sq : MemLp (fun u : ℝ => (Real.exp (δ * |u|)) ^ 2) (2 : ℝ≥0∞) (gaussianReal 0 v) := by
+    have hmeas : AEStronglyMeasurable (fun u : ℝ => (Real.exp (δ * |u|)) ^ 2) (gaussianReal 0 v) := by
+      fun_prop
+    refine (memLp_two_iff_integrable_sq hmeas).2 ?_
+    have : (fun u : ℝ => ((Real.exp (δ * |u|)) ^ 2) ^ 2) = fun u : ℝ => Real.exp ((4 * δ) * |u|) := by
+      funext u
+      -- first square: `(exp a)^2 = exp (2a)`
+      have hsq : (Real.exp (δ * |u|)) ^ 2 = Real.exp ((2 * δ) * |u|) := by
+        calc
+          (Real.exp (δ * |u|)) ^ 2 = Real.exp (δ * |u|) * Real.exp (δ * |u|) := by simp [pow_two]
+          _ = Real.exp (δ * |u| + δ * |u|) := (Real.exp_add _ _).symm
+          _ = Real.exp ((2 * δ) * |u|) := by ring_nf
+      -- second square
+      calc
+        ((Real.exp (δ * |u|)) ^ 2) ^ 2 = (Real.exp ((2 * δ) * |u|)) ^ 2 := by simp [hsq]
+        _ = Real.exp ((4 * δ) * |u|) := by
+          calc
+            (Real.exp ((2 * δ) * |u|)) ^ 2
+                = Real.exp ((2 * δ) * |u|) * Real.exp ((2 * δ) * |u|) := by simp [pow_two]
+            _ = Real.exp (((2 * δ) * |u|) + ((2 * δ) * |u|)) := (Real.exp_add _ _).symm
+            _ = Real.exp ((4 * δ) * |u|) := by ring_nf
+    simpa [this] using hExpAbs4
+
+  have hInt :
+      Integrable (fun u : ℝ => (|u| + 1) ^ 2 * (Real.exp (δ * |u|)) ^ 2) (gaussianReal 0 v) :=
+    MemLp.integrable_mul hLp_lin_sq hLp_exp_sq
+  have hrewrite :
+      (fun u : ℝ => ((|u| + 1) * Real.exp (δ * |u|)) ^ 2)
+        = fun u : ℝ => (|u| + 1) ^ 2 * (Real.exp (δ * |u|)) ^ 2 := by
+    funext u
+    ring
+  simpa [hrewrite] using hInt
 
 lemma memLp_profile_cameronMartin (x : cameronMartin μ) {δ : ℝ} (hδ : 0 < δ) :
     MemLp (fun y : E => (|x y| + 1) * Real.exp (δ * |x y|)) 2 μ := by
@@ -464,7 +500,6 @@ theorem hasDerivAt_tiltFun_at0_of_integrable_profile
       have : |F y| ≤ |F y| * ((δ * (v : ℝ) + 1) * ((|x y| + 1) * Real.exp (δ * |x y|))) := by
         simpa [mul_one] using (mul_le_mul_of_nonneg_left hprod1 (abs_nonneg (F y)))
       simpa [H, tiltKernel, Real.norm_eq_abs, mul_assoc, mul_left_comm, mul_comm] using this
-    -- `hInt` dominates `H 0` since the profile factor is ≥ 1.
     exact hInt.mono' hmeas hbound
   have hH'0 : AEStronglyMeasurable (H' 0) μ := by
     have hx' : AEStronglyMeasurable (fun y : E => x y) μ := hx.aestronglyMeasurable
@@ -532,9 +567,8 @@ theorem hasDerivAt_tiltFun_at0_polyGrowth
     have hsq : (|F y|) ^ 2 ≤ (C * (1 + ‖y‖) ^ m) ^ 2 := by
       simpa [pow_two] using
         (mul_le_mul hFy hFy (abs_nonneg _) hnonneg)
-    -- rewrite the RHS square
     have : (C * (1 + ‖y‖) ^ m) ^ 2 = (C ^ 2) * (1 + ‖y‖) ^ (2 * m) := by
-      simp [pow_two, pow_mul, mul_assoc, mul_left_comm, mul_comm, Nat.mul_comm]
+      simp [pow_two, pow_mul, mul_assoc, mul_left_comm, mul_comm]
     have hnonneg' : 0 ≤ (|F y|) ^ 2 := by positivity
     have : ‖(|F y|) ^ 2‖ ≤ (C ^ 2) * (1 + ‖y‖) ^ (2 * m) := by
       simpa [Real.norm_eq_abs, abs_of_nonneg hnonneg', this] using hsq

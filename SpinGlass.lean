@@ -9,6 +9,8 @@ import SpinGlass.GuerraBound
 import SpinGlass.Hopfield
 import SpinGlass.HopfieldConvolution
 import SpinGlass.HopfieldCascades
+import SpinGlass.HopfieldLocalization
+import SpinGlass.Talagrand.MainResults
 import Common.Mathlib.MeasureTheory.ParametricDominatedConvergence
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinAPI
 import Common.Mathlib.Probability.Distributions.GaussianIntegrationByParts
