@@ -7,6 +7,8 @@ import SpinGlass.Example
 import SpinGlass.GibbsBridge
 import SpinGlass.GuerraBound
 import SpinGlass.Hopfield
+import SpinGlass.HopfieldConvolution
+import SpinGlass.HopfieldCascades
 import Common.Mathlib.MeasureTheory.ParametricDominatedConvergence
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinAPI
 import Common.Mathlib.Probability.Distributions.GaussianIntegrationByParts

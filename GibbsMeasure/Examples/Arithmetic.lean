@@ -217,23 +217,5 @@ noncomputable def standardGaussianMeasure : Measure (P → ℝ) :=
 /- The Guerra interpolation identity.
     ∂_t E[F_N(t)] = - (β^2 L / (2 N)) * E[ ⟨ q_{11} - q_{12} ⟩_t ].
     This relates the change in free energy to the variance of the overlap. -/
-/-
-theorem guerra_interpolation_identity
-    (p_inv : P → ℝ) (β : ℝ) (ν : Measure Bool) [IsProbabilityMeasure ν]
-    (Λ : Finset P) (η : P → Bool)
-    :
-    ∀ t > 0,
-    deriv (fun t ↦ ∫ g, interpolatedFreeEnergyDensity p_inv g t β ν Λ η ∂standardGaussianMeasure) t =
-    - (β^2 * Λ.card / (2 * Λ.card)) * -- Assuming L ≈ Λ.card for normalization
-      ∫ g, (
-        let μ := Specification.isssd ν Λ η
-        let H := interpolatedPotential p_inv g t
-        let ρ := Potential.boltzmannWeight (Φ := H) β Λ
-        let Z := ∫⁻ σ, ρ σ ∂μ
-        -- The Gibbs expectation of (q11 - q12)
-        (∫ σ, (selfOverlap p_inv Λ.card σ) * (ρ σ).toReal ∂μ) / Z.toReal -
-        (∫ σ, (∫ σ', (primeOverlap p_inv Λ.card σ σ') * (ρ σ').toReal ∂μ) * (ρ σ).toReal ∂μ) / (Z.toReal ^ 2)
-      ) ∂standardGaussianMeasure := sorry
-      -/
 
 end GibbsMeasure.Examples.Arithmetic
