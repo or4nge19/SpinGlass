@@ -1,6 +1,7 @@
 import SpinGlass.Defs
 import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
 import Mathlib.Probability.Moments.CovarianceBilin
+import Mathlib.Probability.Distributions.Gaussian.HasGaussianLaw.Independence
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology
 
@@ -134,5 +135,57 @@ def SimpleDisorder.toGaussianDisorder {β q : ℝ} (sim : SimpleDisorder (Ω := 
     cov_eq := by
       intro σ τ
       simpa using sim.cov_eq σ τ }
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+/--
+Joint Gaussianity of an independent pair of Gaussian disorders.
+
+This is the canonical Mathlib route to get a Gaussian law on the product space: use
+`ProbabilityTheory.IndepFun.hasGaussianLaw` and then read it as `IsGaussian` on the pushforward
+measure.
+
+
+Downstream (e.g. `SpinGlass/Replicas.lean`) can use this to discharge the `IsGaussian` assumption
+needed for Hilbert-space Gaussian IBP on the product disorder.
+-/
+lemma SKDisorder.simple_joint_isGaussian_of_indep
+    {β h q : ℝ} (sk : SKDisorder (Ω := Ω) (N := N) β h) (sim : SimpleDisorder (Ω := Ω) (N := N) β q)
+    (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) :
+    ProbabilityTheory.IsGaussian
+      (((ℙ : Measure Ω).map fun ω => (sk.U ω, sim.V ω))) := by
+  -- Upgrade the marginal `IsGaussian` laws to `HasGaussianLaw`, apply independence lemma,
+  -- then unwrap back to `IsGaussian` on the pushforward.
+  have hX : ProbabilityTheory.HasGaussianLaw sk.U (ℙ : Measure Ω) :=
+    ⟨sk.hU⟩
+  have hY : ProbabilityTheory.HasGaussianLaw sim.V (ℙ : Measure Ω) :=
+    ⟨sim.hV⟩
+  exact (ProbabilityTheory.IndepFun.hasGaussianLaw (P := (ℙ : Measure Ω)) hX hY hindep).isGaussian_map
+
+open scoped ENNReal
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+/--
+`IsGaussian` formulation of joint Gaussianity on the `L²`-product space `WithLp 2 (E × F)`.
+
+This is the form needed to apply the intrinsic Hilbert-space Gaussian IBP theorem to the
+`WithLp`-repackaged pair `(U,V)`.
+-/
+lemma SKDisorder.simple_joint_isGaussian_withLp_of_indep
+    {β h q : ℝ} (sk : SKDisorder (Ω := Ω) (N := N) β h) (sim : SimpleDisorder (Ω := Ω) (N := N) β q)
+    (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) :
+    ProbabilityTheory.IsGaussian
+      (((ℙ : Measure Ω).map fun ω => WithLp.toLp 2 (sk.U ω, sim.V ω))) := by
+  -- Use the canonical `HasGaussianLaw` lemma that already repackages via `toLp`.
+  have hX : ProbabilityTheory.HasGaussianLaw sk.U (ℙ : Measure Ω) := ⟨sk.hU⟩
+  have hY : ProbabilityTheory.HasGaussianLaw sim.V (ℙ : Measure Ω) := ⟨sim.hV⟩
+  have hXY : ProbabilityTheory.HasGaussianLaw (fun ω => (sk.U ω, sim.V ω)) (ℙ : Measure Ω) :=
+    ProbabilityTheory.IndepFun.hasGaussianLaw (P := (ℙ : Measure Ω)) hX hY hindep
+  have htoLp : ProbabilityTheory.HasGaussianLaw
+      (fun ω => WithLp.toLp (p := (2 : ℝ≥0∞)) (sk.U ω, sim.V ω)) (ℙ : Measure Ω) := by
+    -- `Fact (1 ≤ 2)` is needed for `toLp`.
+    haveI : Fact ((1 : ℝ≥0∞) ≤ (2 : ℝ≥0∞)) := ⟨by norm_num⟩
+    exact ProbabilityTheory.HasGaussianLaw.toLp_prodMk (X := sk.U) (Y := sim.V)
+      (P := (ℙ : Measure Ω)) (p := (2 : ℝ≥0∞)) hXY
+  exact htoLp.isGaussian_map
 
 end SpinGlass

@@ -2,6 +2,7 @@ import SpinGlass.SKModel
 import SpinGlass.GuerraBound
 import SpinGlass.Calculus
 import SpinGlass.ReplicaMeasure
+import Common.Mathlib.Probability.Distributions.Gaussian_IBP_HilbertAPI
 import Mathlib.Analysis.SpecialFunctions.Sqrt
 import Mathlib.Analysis.InnerProductSpace.ProdL2
 import Mathlib.Analysis.Calculus.FDeriv.Mul
@@ -67,6 +68,7 @@ law-based predicate `IsGaussian ((ℙ).map g)`. Basic integrability properties a
 pulling back integrability on the law along the map measure.
 -/
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma integrable_norm_of_isGaussian_map
     {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] [CompleteSpace E]
     [MeasurableSpace E] [BorelSpace E]
@@ -160,12 +162,13 @@ def liftReplicaFun (k : ℕ) (f : ReplicaFun N n) : ReplicaFun N (n + k) :=
 
 -- The remaining lemmas about replica measures are now in `SpinGlass/ReplicaMeasure.lean`.
 
-/--
+/-
 Uniform bound on the n-replica Gibbs average:
 \[
 |\langle f\rangle_{t,n}| \le \max_{\sigma^1,\dots,\sigma^n} |f(\sigma^1,\dots,\sigma^n)|.
 \]
 -/
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma abs_gibbs_average_n_le (t : ℝ) (f : ReplicaFun N n) (w : Ω) :
     |gibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w|
       ≤ ∑ σs : ReplicaSpace N n, |f σs| := by
@@ -376,6 +379,101 @@ noncomputable def U_interaction_SK (l l' : Fin n) (σs : ReplicaSpace N n) : ℝ
   U_interaction (N := N) (n := n) (U := U_kernel_SK (N := N) (β := β) (q := q)) l l' σs
 
 /-!
+### Gaussian IBP on the product disorder space
+
+For the IBP step in the smart-path method, it is convenient to view the pair `(U,V)` of Gaussian
+Hamiltonians as a single Gaussian random vector in the product Hilbert space
+`EnergySpace N × EnergySpace N`.
+
+The lemmas below are small bridges between:
+- coordinate evaluation `uv.1 σ` / `uv.2 σ`, and
+- inner products against the canonical basis vectors in the product space,
+so that we can apply the intrinsic Hilbert-space Gaussian IBP theorem.
+-/
+
+abbrev DisorderSpace := WithLp 2 (EnergySpace N × EnergySpace N)
+
+noncomputable def std_basis_left (σ : Config N) : DisorderSpace (N := N) :=
+  WithLp.toLp 2 (std_basis N σ, 0)
+
+noncomputable def std_basis_right (σ : Config N) : DisorderSpace (N := N) :=
+  WithLp.toLp 2 (0, std_basis N σ)
+
+lemma inner_apply_std_basis_left (σ : Config N) (uv : DisorderSpace (N := N)) :
+    inner ℝ uv (std_basis_left (N := N) σ) = ((WithLp.ofLp uv).1) σ := by
+  classical
+  -- `⟪(u,v),(eσ,0)⟫ = ⟪u,eσ⟫ = u σ`.
+  -- Expand the `L²`-product inner product (`WithLp.prod_inner_apply`).
+  simp [DisorderSpace, std_basis_left, WithLp.prod_inner_apply, inner_std_basis_apply,
+    real_inner_comm]
+
+lemma inner_apply_std_basis_right (σ : Config N) (uv : DisorderSpace (N := N)) :
+    inner ℝ uv (std_basis_right (N := N) σ) = ((WithLp.ofLp uv).2) σ := by
+  classical
+  -- `⟪(u,v),(0,eσ)⟫ = ⟪v,eσ⟫ = v σ`.
+  simp [DisorderSpace, std_basis_right, WithLp.prod_inner_apply, inner_std_basis_apply,
+    real_inner_comm]
+
+theorem ProbabilityTheory.IsGaussian.integral_apply_mul_eq_integral_fderiv_covarianceOperator_std_basis_left_polyGrowth
+    (μ : Measure (DisorderSpace (N := N))) [ProbabilityTheory.IsGaussian μ]
+    (hmean0 : (∫ x : DisorderSpace (N := N), x ∂μ) = 0) (σ : Config N)
+    (F : DisorderSpace (N := N) → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + ‖x‖) ^ m)
+    (hF'_growth : ∀ x, ‖fderiv ℝ F x‖ ≤ C * (1 + ‖x‖) ^ m) :
+    (∫ x : DisorderSpace (N := N), ((WithLp.ofLp x).1 σ) * F x ∂μ)
+      = ∫ x : DisorderSpace (N := N),
+          (fderiv ℝ F x) (ProbabilityTheory.covarianceOperator μ (std_basis_left (N := N) σ)) ∂μ := by
+  simpa [inner_apply_std_basis_left (N := N) (σ := σ)] using
+    (ProbabilityTheory.IsGaussian.integral_inner_mul_eq_integral_fderiv_covarianceOperator_polyGrowth
+      (μ := μ) (hmean0 := hmean0) (h := std_basis_left (N := N) σ) (F := F)
+      hF_meas hF_c1 hC hF_growth hF'_growth)
+
+theorem ProbabilityTheory.IsGaussian.integral_apply_mul_eq_integral_fderiv_covarianceOperator_std_basis_right_polyGrowth
+    (μ : Measure (DisorderSpace (N := N))) [ProbabilityTheory.IsGaussian μ]
+    (hmean0 : (∫ x : DisorderSpace (N := N), x ∂μ) = 0) (σ : Config N)
+    (F : DisorderSpace (N := N) → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)
+    {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
+    (hF_growth : ∀ x, |F x| ≤ C * (1 + ‖x‖) ^ m)
+    (hF'_growth : ∀ x, ‖fderiv ℝ F x‖ ≤ C * (1 + ‖x‖) ^ m) :
+    (∫ x : DisorderSpace (N := N), ((WithLp.ofLp x).2 σ) * F x ∂μ)
+      = ∫ x : DisorderSpace (N := N),
+          (fderiv ℝ F x) (ProbabilityTheory.covarianceOperator μ (std_basis_right (N := N) σ)) ∂μ := by
+  simpa [inner_apply_std_basis_right (N := N) (σ := σ)] using
+    (ProbabilityTheory.IsGaussian.integral_inner_mul_eq_integral_fderiv_covarianceOperator_polyGrowth
+      (μ := μ) (hmean0 := hmean0) (h := std_basis_right (N := N) σ) (F := F)
+      hF_meas hF_c1 hC hF_growth hF'_growth)
+
+/-!
+### Repackaging the smart path over the product disorder space
+
+For the Gaussian IBP step we want to integrate against the *law* of the pair `(U,V)`, i.e. the
+pushforward of `ℙ` under the map `ω ↦ (U ω, V ω)`, viewed in the `L²`-product space
+`DisorderSpace`.
+
+This lets us apply Hilbert-space Gaussian IBP directly in `DisorderSpace`, without introducing
+coordinate-based Gaussian structures.
+-/
+
+noncomputable def disorderPair : Ω → DisorderSpace (N := N) :=
+  fun w => WithLp.toLp 2 (sk.U w, sim.V w)
+
+noncomputable abbrev disorderPairLaw : Measure (DisorderSpace (N := N)) :=
+  (ℙ : Measure Ω).map (disorderPair (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim))
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+@[simp] lemma disorderPair_fst (w : Ω) :
+    (WithLp.ofLp (disorderPair (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) w)).1
+      = sk.U w := by
+  simp [disorderPair]
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+@[simp] lemma disorderPair_snd (w : Ω) :
+    (WithLp.ofLp (disorderPair (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) w)).2
+      = sim.V w := by
+  simp [disorderPair]
+
+/-!
 ### The Derivative of the Gibbs Average with respect to the Hamiltonian
 
 This is an essential building block for deriving the replica‑derivative formula (Talagrand Lemma
@@ -508,6 +606,7 @@ lemma fderiv_gibbs_average_n_det_apply (H v : EnergySpace N) (f : ReplicaFun N n
     fderiv_prod_gibbs_pmf_apply, mul_assoc, mul_left_comm, mul_comm, mul_add, sub_eq_add_neg,
     Finset.mul_sum]
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 /--
 Differentiability of the `gibbs_average_n` in the Hamiltonian `H`.
 -/
@@ -569,6 +668,7 @@ open Set
 noncomputable def dH_t (t : ℝ) (w : Ω) : EnergySpace N :=
   (1 / (2 * Real.sqrt t)) • sk.U w - (1 / (2 * Real.sqrt (1 - t))) • sim.V w
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma hasDerivAt_H_gauss (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (w : Ω) :
     HasDerivAt
         (fun s =>
@@ -598,6 +698,7 @@ lemma hasDerivAt_H_gauss (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (w : Ω) :
   simpa [H_gauss, dH_t, sub_eq_add_neg, add_comm, add_left_comm, add_assoc,
     mul_assoc, mul_left_comm, mul_comm] using hadd
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma hasDerivAt_H_t (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (w : Ω) :
     HasDerivAt
         (fun s =>
@@ -613,6 +714,64 @@ noncomputable def dgibbs_average_n (t : ℝ) (f : ReplicaFun N n) (w : Ω) : ℝ
     (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w)
     (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w)
 
+/-! The interpolated Hamiltonian and its `t`-derivative, as functions of the disorder pair. -/
+
+noncomputable def H_t_disorder (t : ℝ) (x : DisorderSpace (N := N)) : EnergySpace N :=
+  (Real.sqrt t) • (WithLp.ofLp x).1
+    + (Real.sqrt (1 - t)) • (WithLp.ofLp x).2
+    + H_field (N := N) (h := h)
+
+noncomputable def dH_t_disorder (t : ℝ) (x : DisorderSpace (N := N)) : EnergySpace N :=
+  (1 / (2 * Real.sqrt t)) • (WithLp.ofLp x).1
+    - (1 / (2 * Real.sqrt (1 - t))) • (WithLp.ofLp x).2
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+@[simp] lemma H_t_disorder_disorderPair (t : ℝ) (w : Ω) :
+    H_t_disorder (N := N) (h := h) t
+        (disorderPair (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) w)
+      =
+      H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w := by
+  simp [H_t_disorder, H_t, H_gauss, H_field, disorderPair]
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+@[simp] lemma dH_t_disorder_disorderPair (t : ℝ) (w : Ω) :
+    dH_t_disorder (N := N) t
+        (disorderPair (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) w)
+      =
+      dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w := by
+  simp [dH_t_disorder, dH_t, disorderPair]
+
+noncomputable def gibbs_average_n_disorder (t : ℝ) (f : ReplicaFun N n) :
+    DisorderSpace (N := N) → ℝ :=
+  fun x =>
+    gibbs_average_n_det (N := N) (n := n)
+      (H_t_disorder (N := N) (h := h) t x) f
+
+noncomputable def dgibbs_average_n_disorder (t : ℝ) (f : ReplicaFun N n) :
+    DisorderSpace (N := N) → ℝ :=
+  fun x =>
+    fderiv ℝ (fun H' => gibbs_average_n_det (N := N) (n := n) H' f)
+      (H_t_disorder (N := N) (h := h) t x)
+      (dH_t_disorder (N := N) t x)
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+@[simp] lemma gibbs_average_n_disorder_disorderPair (t : ℝ) (f : ReplicaFun N n) (w : Ω) :
+    gibbs_average_n_disorder (N := N) (n := n) (h := h) t f
+        (disorderPair (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) w)
+      =
+      gibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w := by
+  simp [gibbs_average_n_disorder, gibbs_average_n, H_t_disorder_disorderPair]
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+@[simp] lemma dgibbs_average_n_disorder_disorderPair (t : ℝ) (f : ReplicaFun N n) (w : Ω) :
+    dgibbs_average_n_disorder (N := N) (n := n) (h := h) t f
+        (disorderPair (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) w)
+      =
+      dgibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w := by
+  simp [dgibbs_average_n_disorder, dgibbs_average_n, H_t_disorder_disorderPair,
+    dH_t_disorder_disorderPair]
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma hasDerivAt_gibbs_average_n (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n) (w : Ω) :
     HasDerivAt
         (fun s =>

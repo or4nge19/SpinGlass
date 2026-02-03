@@ -13,7 +13,6 @@ import SpinGlass.HopfieldLocalization
 import SpinGlass.Talagrand.MainResults
 import Common.Mathlib.MeasureTheory.ParametricDominatedConvergence
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinAPI
-import Common.Mathlib.Probability.Distributions.GaussianIntegrationByParts
 import Common.Mathlib.Probability.Distributions.Gaussian_IBP_HilbertAPI
 import SpinGlass.Cascades
 import SpinGlass.Replicas
