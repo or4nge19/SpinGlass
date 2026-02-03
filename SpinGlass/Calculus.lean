@@ -1,6 +1,6 @@
 import SpinGlass.Defs
 import Mathlib.Analysis.Calculus.ContDiff.Operations
-import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPAnalyticAPI
+import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology
 

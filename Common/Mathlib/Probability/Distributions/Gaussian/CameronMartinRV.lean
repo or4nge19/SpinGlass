@@ -1,4 +1,4 @@
-import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPAnalyticAPI
+import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
 import Mathlib.Analysis.Calculus.FDeriv.Measurable
 
 /-!

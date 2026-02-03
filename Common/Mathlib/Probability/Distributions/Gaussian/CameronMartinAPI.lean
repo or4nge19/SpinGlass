@@ -1,6 +1,6 @@
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinThm
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
-import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPAnalyticAPI
+import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinRV
 
 /-!

@@ -9,7 +9,7 @@ import Mathlib.Analysis.Calculus.FDeriv.WithLp
 import Mathlib.Analysis.Calculus.Deriv.Inv
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.SpecialFunctions.Log.Deriv
-import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPAnalyticAPI
+import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
 
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology
