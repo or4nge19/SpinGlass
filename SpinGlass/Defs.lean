@@ -9,7 +9,6 @@ import Mathlib.Analysis.Calculus.FDeriv.WithLp
 import Mathlib.Analysis.Calculus.Deriv.Inv
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.SpecialFunctions.Log.Deriv
-import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
 
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology
@@ -77,6 +76,10 @@ def Z (H : EnergySpace N) : ℝ := ∑ σ, Real.exp (- H σ)
 
 def gibbs_pmf (H : EnergySpace N) (σ : Config N) : ℝ :=
   Real.exp (- H σ) / Z N H
+
+/-- Gibbs average \(\langle f \rangle_H\) under the Gibbs weights `gibbs_pmf`. -/
+noncomputable def gibbs_average (H : EnergySpace N) (f : Config N → ℝ) : ℝ :=
+  ∑ σ, gibbs_pmf N H σ * f σ
 
 /-! ### Free energy density and its abstract (Fréchet) Hessian -/
 

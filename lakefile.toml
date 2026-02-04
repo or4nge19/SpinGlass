@@ -10,6 +10,11 @@ relaxedAutoImplicit = false
 name = "mathlib"
 git = "https://github.com/leanprover-community/mathlib4.git"
 
+[[require]]
+name = "LeanArchitect"
+git = "https://github.com/hanwenzhu/LeanArchitect.git"
+rev = "main"
+
 [[lean_lib]]
 name = "SpinGlass"
 

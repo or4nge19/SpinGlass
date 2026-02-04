@@ -6,6 +6,8 @@ import SpinGlass.Defs
 import SpinGlass.Example
 import SpinGlass.GibbsBridge
 import SpinGlass.GuerraBound
+import SpinGlass.GuerraInterpolation
+import SpinGlass.GuerraIBP
 import SpinGlass.Hopfield
 import SpinGlass.HopfieldConvolution
 import SpinGlass.HopfieldCascades
