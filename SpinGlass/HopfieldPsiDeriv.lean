@@ -1,4 +1,5 @@
 import SpinGlass.Hopfield
+import SpinGlass.LogCosh
 import Mathlib.Analysis.Calculus.Deriv.Comp
 import Mathlib.Analysis.Calculus.Deriv.Pow
 import Mathlib.Analysis.Calculus.LocalExtr.Basic
@@ -6,6 +7,7 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.DerivHyp
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 import Mathlib.Analysis.Normed.Group.Bounded
 import Mathlib.Topology.Order.Compact
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.ArctanDeriv
 
 /-!
 # Hopfield `ψ`: Fréchet derivative formulas
@@ -36,6 +38,29 @@ lemma hasDerivAt_log_cosh (x : ℝ) :
     simpa [Function.comp] using hlog.comp x hcosh
   simpa [Real.tanh_eq_sinh_div_cosh, div_eq_mul_inv, mul_assoc, mul_left_comm, mul_comm] using hcomp
 
+lemma hasDerivAt_tanh (x : ℝ) :
+    HasDerivAt Real.tanh (1 - Real.tanh x ^ 2) x := by
+  have hx : Real.cosh x ≠ 0 := ne_of_gt (Real.cosh_pos x)
+  have hdiv :
+      HasDerivAt (fun t : ℝ => Real.sinh t / Real.cosh t)
+        ((Real.cosh x * Real.cosh x - Real.sinh x * Real.sinh x) / Real.cosh x ^ 2) x := by
+    simpa using (Real.hasDerivAt_sinh x).div (Real.hasDerivAt_cosh x) hx
+  have hfun : (fun t : ℝ => Real.sinh t / Real.cosh t) = Real.tanh := by
+    funext t
+    simp [Real.tanh_eq_sinh_div_cosh]
+  have htanh :
+      HasDerivAt Real.tanh
+        ((Real.cosh x * Real.cosh x - Real.sinh x * Real.sinh x) / Real.cosh x ^ 2) x := by
+    simpa [hfun] using hdiv
+  refine htanh.congr_deriv ?_
+  -- simplify the quotient-rule expression to `1 - tanh x ^ 2`
+  have : ((Real.cosh x * Real.cosh x - Real.sinh x * Real.sinh x) / Real.cosh x ^ 2 : ℝ)
+      = (1 - Real.tanh x ^ 2) := by
+    -- rewrite `tanh` as `sinh/cosh`, then clear denominators
+    simp [Real.tanh_eq_sinh_div_cosh, pow_two]
+    field_simp [hx]
+  simpa using this
+
 /-! ### Basic inequalities: `log(cosh x) ≤ |x|` -/
 
 lemma cosh_le_exp_abs (x : ℝ) :
@@ -65,18 +90,15 @@ noncomputable def hopfieldEtaDotCLM (Ξ : Patterns N M) (i : Fin N) : (Fin M →
 
 lemma hopfieldEtaDotCLM_apply (Ξ : Patterns N M) (i : Fin N) (v : Fin M → ℝ) :
     hopfieldEtaDotCLM (N := N) (M := M) Ξ i v = ∑ k : Fin M, hopfieldEta (N := N) (M := M) Ξ i k * v k := by
-  classical
   simp [hopfieldEtaDotCLM, ContinuousLinearMap.sum_apply, smul_eq_mul]
 
 @[simp] lemma hopfieldEtaDotCLM_piSingle_one (Ξ : Patterns N M) (i : Fin N) (k : Fin M) :
     hopfieldEtaDotCLM (N := N) (M := M) Ξ i (Pi.single k (1 : ℝ)) = hopfieldEta (N := N) (M := M) Ξ i k := by
-  classical
   -- evaluate the linear functional on a coordinate basis vector
   simp [hopfieldEtaDotCLM, ContinuousLinearMap.sum_apply, Pi.single_apply, smul_eq_mul]
 
 @[simp] lemma hopfieldEtaDot_eq_hopfieldEtaDotCLM (Ξ : Patterns N M) (i : Fin N) :
     hopfieldEtaDot (N := N) (M := M) Ξ i = hopfieldEtaDotCLM (N := N) (M := M) Ξ i := by
-  classical
   funext z
   simp [hopfieldEtaDot, hopfieldEtaDotCLM, ContinuousLinearMap.sum_apply, smul_eq_mul]
 
@@ -93,17 +115,14 @@ noncomputable def finVecNormSqFDeriv (z : Fin M → ℝ) : (Fin M → ℝ) →L[
 
 lemma finVecNormSqFDeriv_apply (z v : Fin M → ℝ) :
     finVecNormSqFDeriv (M := M) z v = ∑ k : Fin M, (2 * z k) * v k := by
-  classical
   simp [finVecNormSqFDeriv, ContinuousLinearMap.sum_apply, smul_eq_mul]
 
 @[simp] lemma finVecNormSqFDeriv_piSingle_one (z : Fin M → ℝ) (k : Fin M) :
     finVecNormSqFDeriv (M := M) z (Pi.single k (1 : ℝ)) = 2 * z k := by
-  classical
   simp [finVecNormSqFDeriv, ContinuousLinearMap.sum_apply, Pi.single_apply, smul_eq_mul]
 
 @[fun_prop] lemma hasFDerivAt_finVecNormSq (z : Fin M → ℝ) :
     HasFDerivAt (finVecNormSq M) (finVecNormSqFDeriv (M := M) z) z := by
-  classical
   -- differentiate `∑ k, (z k)^2` termwise
   have hterm :
       ∀ k : Fin M,
@@ -145,7 +164,6 @@ lemma hopfieldPsiFDeriv_piSingle_one (β h : ℝ) (Ξ : Patterns N M) (z : Fin M
         + ∑ i : Fin N,
             (Real.tanh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h) * β)
               * hopfieldEta (N := N) (M := M) Ξ i k := by
-  classical
   -- expand the Fréchet derivative and evaluate on a basis vector
   simp [hopfieldPsiFDeriv, finVecNormSqFDeriv_piSingle_one, hopfieldEtaDotCLM_piSingle_one,
     mul_left_comm, mul_comm]
@@ -221,7 +239,6 @@ lemma hopfieldPsi_eq_neg_mul_finVecNormSq_add_sum (β h : ℝ) (Ξ : Patterns N 
 
 @[fun_prop] lemma hasFDerivAt_hopfieldPsi (β h : ℝ) (Ξ : Patterns N M) (z : Fin M → ℝ) :
     HasFDerivAt (hopfieldPsi (N := N) (M := M) β h Ξ) (hopfieldPsiFDeriv (N := N) (M := M) β h Ξ z) z := by
-  classical
   simpa [hopfieldPsiFDeriv, hopfieldPsi_eq_neg_mul_finVecNormSq_add_sum (N := N) (M := M) (β := β) (h := h) Ξ] using
     (hasFDerivAt_hopfieldPsi_quadratic (N := N) (M := M) (β := β) z).add
       (hasFDerivAt_hopfieldPsi_sum_logcosh (N := N) (M := M) (β := β) (h := h) Ξ z)
@@ -286,7 +303,7 @@ lemma hopfieldPsi_coord_eq_of_fderiv_eq_zero
         ∑ i : Fin N,
           hopfieldEta (N := N) (M := M) Ξ i k
             * Real.tanh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h) := by
-    classical
+
     have hR :
         ∑ i : Fin N,
             (Real.tanh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h) * β)
@@ -354,7 +371,6 @@ lemma abs_hopfieldEta_eq_one (Ξ : Patterns N M) (i : Fin N) (k : Fin M) :
 lemma abs_one_div_mul_sum_le_one
     (a : Fin N → ℝ) (hN : (N : ℝ) ≠ 0) (habs : ∀ i, |a i| ≤ (1 : ℝ)) :
     |(1 / (N : ℝ)) * ∑ i : Fin N, a i| ≤ (1 : ℝ) := by
-  classical
   have hN0 : N ≠ 0 := by
     intro hN0
     apply hN
@@ -385,7 +401,6 @@ lemma abs_coord_le_one_of_fderiv_eq_zero
     (hβ : β ≠ 0) (hN : (N : ℝ) ≠ 0)
     (hz : fderiv ℝ (hopfieldPsi (N := N) (M := M) β h Ξ) z = 0) (k : Fin M) :
     |z k| ≤ 1 := by
-  classical
   have hcoord :=
     hopfieldPsi_coord_eq_of_fderiv_eq_zero (N := N) (M := M) (β := β) (h := h) (Ξ := Ξ)
       (z := z) hβ hN hz k
@@ -425,8 +440,6 @@ theorem exists_isMaxOn_hopfieldPsi_Icc (β h : ℝ) (Ξ : Patterns N M) :
     ∃ z ∈ Set.Icc (fun _ : Fin M => (-1 : ℝ)) (fun _ : Fin M => (1 : ℝ)),
       IsMaxOn (hopfieldPsi (N := N) (M := M) β h Ξ)
         (Set.Icc (fun _ : Fin M => (-1 : ℝ)) (fun _ : Fin M => (1 : ℝ))) z := by
-  classical
-  -- continuity via differentiability
   have hdiff : Differentiable ℝ (hopfieldPsi (N := N) (M := M) β h Ξ) := by
     intro z
     exact (hasFDerivAt_hopfieldPsi (N := N) (M := M) (β := β) (h := h) Ξ z).differentiableAt
@@ -444,7 +457,6 @@ theorem exists_isMaxOn_hopfieldPsi_Icc (β h : ℝ) (Ξ : Patterns N M) :
 
 lemma abs_hopfieldEtaDot_le (Ξ : Patterns N M) (i : Fin N) (z : Fin M → ℝ) :
     |hopfieldEtaDot (N := N) (M := M) Ξ i z| ≤ (M : ℝ) * ‖z‖ := by
-  classical
   set b : Fin M → ℝ := fun k => hopfieldEta (N := N) (M := M) Ξ i k * z k
   have hsum : hopfieldEtaDot (N := N) (M := M) Ξ i z = ∑ k : Fin M, b k := by
     simp [hopfieldEtaDot, b]
@@ -454,19 +466,16 @@ lemma abs_hopfieldEtaDot_le (Ξ : Patterns N M) (i : Fin N) (z : Fin M → ℝ) 
   have habs : ∀ k : Fin M, |b k| = |z k| := by
     intro k
     have hη : |hopfieldEta (N := N) (M := M) Ξ i k| = 1 := by
-      -- `hopfieldEta` is a `spin` so its absolute value is `1`.
       simpa [hopfieldEta] using (abs_spin_eq_one (N := N) (σ := Ξ k) (i := i))
     simp [b, abs_mul, hη]
   have hsum' : ∑ k : Fin M, |z k| ≤ (M : ℝ) * ‖z‖ := by
     have hterm : ∀ k : Fin M, |z k| ≤ ‖z‖ := by
       intro k
-      -- `‖z k‖ ≤ ‖z‖` for the `sup` norm on `Fin M → ℝ`.
       simpa [Real.norm_eq_abs] using (norm_le_pi_norm z k)
     have hle : (∑ k : Fin M, |z k|) ≤ ∑ _k : Fin M, ‖z‖ := by
       refine Finset.sum_le_sum ?_
       intro k _hk
       exact hterm k
-    -- `∑ _k, ‖z‖ = M * ‖z‖`
     simpa [Finset.sum_const, nsmul_eq_mul, mul_comm, mul_left_comm, mul_assoc] using hle
   calc
     |hopfieldEtaDot (N := N) (M := M) Ξ i z|
@@ -480,45 +489,36 @@ lemma abs_hopfieldEtaDot_le (Ξ : Patterns N M) (i : Fin N) (z : Fin M → ℝ) 
 
 lemma norm_sq_le_finVecNormSq (z : Fin M → ℝ) :
     ‖z‖ ^ 2 ≤ finVecNormSq M z := by
-  classical
   cases M with
   | zero =>
-      -- `Fin 0 → ℝ` is a subsingleton, so `z = 0`.
       have hz : z = 0 := by
         funext i
         exact (Fin.elim0 i)
       simp [hz, finVecNormSq]
   | succ M =>
-      -- pick a coordinate attaining the `sup` norm
       have hne : (Finset.univ : Finset (Fin (M + 1))).Nonempty := Finset.univ_nonempty
       rcases (Finset.sup_mem_of_nonempty (s := (Finset.univ : Finset (Fin (M + 1))))
         (f := fun k : Fin (M + 1) => ‖z k‖₊) hne) with ⟨k0, hk0, hk0eq⟩
       have hzk0 : ‖z‖ = ‖z k0‖ := by
-        -- unfold the `sup` norm on `Fin (M+1) → ℝ`
         have : (Finset.univ.sup fun k : Fin (M + 1) => ‖z k‖₊) = ‖z k0‖₊ := hk0eq.symm
         calc
           ‖z‖ = (↑(Finset.univ.sup fun k : Fin (M + 1) => ‖z k‖₊) : ℝ) := by
                   simpa using (Pi.norm_def (f := z))
           _ = (↑(‖z k0‖₊) : ℝ) := by
-                  simpa [this]
+                  simp [this]
           _ = ‖z k0‖ := by
-                  simpa using (coe_nnnorm (z k0))
+                  simp
       have hterm : ‖z k0‖ ^ 2 ≤ finVecNormSq (M + 1) z := by
         have hnonneg : ∀ k : Fin (M + 1), 0 ≤ (z k) ^ 2 := fun k => sq_nonneg (z k)
         have hsingle : (z k0) ^ 2 ≤ ∑ k : Fin (M + 1), (z k) ^ 2 := by
-          -- `f k0 ≤ ∑ k, f k` for a nonnegative function.
           simpa using
             (Finset.single_le_sum (s := (Finset.univ : Finset (Fin (M + 1))))
               (f := fun k : Fin (M + 1) => (z k) ^ 2)
               (fun k _hk => hnonneg k) (by simp))
-        -- rewrite the LHS using `‖x‖^2 = x^2` for reals
         simpa [Real.norm_eq_abs, sq_abs] using hsingle
-      -- rewrite `‖z‖` using the maximizing coordinate
-      have hpow : ‖z‖ ^ 2 = ‖z k0‖ ^ 2 := by simpa [hzk0]
-      -- `‖z k0‖ ^ 2 = (z k0) ^ 2`
+      have hpow : ‖z‖ ^ 2 = ‖z k0‖ ^ 2 := by simp [hzk0]
       have hsq : ‖z k0‖ ^ 2 = (z k0) ^ 2 := by
         simp [Real.norm_eq_abs, sq_abs]
-      -- combine
       calc
         ‖z‖ ^ 2 = ‖z k0‖ ^ 2 := hpow
         _ = (z k0) ^ 2 := hsq
@@ -531,7 +531,6 @@ lemma hopfieldPsi_le_quadratic_norm
       ≤
       -((N : ℝ) * β / 2) * (‖z‖ ^ 2)
         + (N : ℝ) * (|β| * (M : ℝ) * ‖z‖ + |h|) := by
-  classical
   have hc : -((N : ℝ) * β / 2) ≤ 0 := by
     have hnonneg : 0 ≤ (N : ℝ) * β / 2 := by
       have hN : 0 ≤ (N : ℝ) := Nat.cast_nonneg N
@@ -541,7 +540,6 @@ lemma hopfieldPsi_le_quadratic_norm
   have hquad :
       -((N : ℝ) * β / 2) * finVecNormSq M z
         ≤ -((N : ℝ) * β / 2) * (‖z‖ ^ 2) := by
-    -- `finVecNormSq ≥ ‖z‖^2` and the coefficient is nonpositive.
     simpa [mul_assoc] using
       (mul_le_mul_of_nonpos_left (norm_sq_le_finVecNormSq (M := M) z) hc)
   have hlog :
@@ -573,7 +571,6 @@ lemma hopfieldPsi_le_quadratic_norm
       have hη' :
           |β| * |hopfieldEtaDot (N := N) (M := M) Ξ i z| + |h|
             ≤ |β| * (M : ℝ) * ‖z‖ + |h| := by
-        -- reassociate `|β| * ((M) * ‖z‖)` as `(|β| * M) * ‖z‖`
         have : |β| * ((M : ℝ) * ‖z‖) + |h| = |β| * (M : ℝ) * ‖z‖ + |h| := by
           ring_nf
         exact (add_le_add_left hη |h|).trans_eq this
@@ -585,15 +582,12 @@ lemma hopfieldPsi_le_quadratic_norm
       refine Finset.sum_le_sum ?_
       intro i _hi
       exact hterm i
-    -- evaluate the constant sum
     simpa only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul] using hsum
-  -- combine quadratic + sum bound
   have hψ :
       hopfieldPsi (N := N) (M := M) β h Ξ z
         = -((N : ℝ) * β / 2) * finVecNormSq M z
           + ∑ i : Fin N, Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) := by
     simp [hopfieldPsi]
-  -- finish
   calc
     hopfieldPsi (N := N) (M := M) β h Ξ z
         = -((N : ℝ) * β / 2) * finVecNormSq M z
@@ -602,6 +596,124 @@ lemma hopfieldPsi_le_quadratic_norm
           + (N : ℝ) * (|β| * (M : ℝ) * ‖z‖ + |h|) := by
           exact add_le_add hquad hlog
 
+lemma tendsto_hopfieldPsi_cocompact_atBot
+    (β h : ℝ) (Ξ : Patterns N M) (hβ : 0 < β) (hN : N ≠ 0) :
+    Filter.Tendsto (hopfieldPsi (N := N) (M := M) β h Ξ) (Filter.cocompact (Fin M → ℝ))
+      Filter.atBot := by
+  have hβ0 : 0 ≤ β := hβ.le
+  have hN0 : 0 < (N : ℝ) := Nat.cast_pos.mpr (Nat.pos_of_ne_zero hN)
+  have hcoeff_neg : -((N : ℝ) * β / 4) < 0 := by
+    have : 0 < (N : ℝ) * β / 4 := by
+      have : 0 < (N : ℝ) * β := mul_pos hN0 hβ
+      exact div_pos this (by norm_num)
+    simpa using (neg_neg_of_pos this)
+  have hnorm :
+      Filter.Tendsto (fun z : Fin M → ℝ => ‖z‖) (Filter.cocompact (Fin M → ℝ)) Filter.atTop := by
+    simpa using (tendsto_norm_cocompact_atTop (E := (Fin M → ℝ)))
+  have hnegquad :
+      Filter.Tendsto
+          (fun z : Fin M → ℝ => (-((N : ℝ) * β / 4)) * (‖z‖ ^ (2 : ℕ)))
+          (Filter.cocompact (Fin M → ℝ)) Filter.atBot := by
+    have h' :
+        Filter.Tendsto (fun x : ℝ => (-((N : ℝ) * β / 4)) * x ^ (2 : ℕ)) Filter.atTop
+          Filter.atBot :=
+      Filter.tendsto_neg_const_mul_pow_atTop (c := -((N : ℝ) * β / 4)) (n := 2) (by decide)
+        hcoeff_neg
+    exact h'.comp hnorm
+  have hdom :
+      (fun z : Fin M → ℝ => hopfieldPsi (N := N) (M := M) β h Ξ z)
+        ≤ᶠ[Filter.cocompact (Fin M → ℝ)]
+        (fun z : Fin M → ℝ => (-((N : ℝ) * β / 4)) * (‖z‖ ^ (2 : ℕ))) := by
+    -- reduce to the quadratic upper bound and dominate the linear term for large `‖z‖`
+    have hR :
+        ∀ᶠ z : Fin M → ℝ in Filter.cocompact (Fin M → ℝ),
+          (N : ℝ) * (|β| * (M : ℝ) * ‖z‖ + |h|)
+            ≤ ((N : ℝ) * β / 4) * (‖z‖ ^ (2 : ℕ)) := by
+      have hR' :
+          ∀ᶠ z : Fin M → ℝ in Filter.cocompact (Fin M → ℝ),
+            max (1 : ℝ) (4 * ((M : ℝ) + |h| / β)) ≤ ‖z‖ :=
+        hnorm.eventually (Filter.eventually_ge_atTop (max (1 : ℝ) (4 * ((M : ℝ) + |h| / β))))
+      filter_upwards [hR'] with z hz
+      have hz1 : (1 : ℝ) ≤ ‖z‖ := (le_max_left _ _).trans hz
+      have hzM : 4 * ((M : ℝ) + |h| / β) ≤ ‖z‖ := (le_max_right _ _).trans hz
+      have hz0 : 0 ≤ ‖z‖ := (norm_nonneg z)
+      have habsβ : |β| = β := by simp [abs_of_nonneg hβ0]
+      have hh : |h| ≤ |h| * ‖z‖ := by
+        simpa [one_mul] using (mul_le_mul_of_nonneg_left hz1 (abs_nonneg h))
+      have hlin :
+          |β| * (M : ℝ) * ‖z‖ + |h| ≤ β / 4 * (‖z‖ ^ (2 : ℕ)) := by
+        -- use `‖z‖ ≥ 1` to absorb `|h|`, then use `‖z‖ ≥ 4 * (M + |h|/β)`
+        have hsum :
+            |β| * (M : ℝ) * ‖z‖ + |h| ≤ (β * (M : ℝ) + |h|) * ‖z‖ := by
+          calc
+            |β| * (M : ℝ) * ‖z‖ + |h|
+                ≤ |β| * (M : ℝ) * ‖z‖ + (|h| * ‖z‖) := add_le_add_right hh _
+            _ = (β * (M : ℝ) + |h|) * ‖z‖ := by
+                  simp [habsβ, mul_assoc, add_mul]
+        have hbound :
+            (β * (M : ℝ) + |h|) * ‖z‖ ≤ (β / 4) * (‖z‖ ^ (2 : ℕ)) := by
+          have : (β * (M : ℝ) + |h|) ≤ (β / 4) * ‖z‖ := by
+            -- from `hzM : 4 * (M + |h|/β) ≤ ‖z‖`
+            have hmul :=
+              mul_le_mul_of_nonneg_left hzM (show (0 : ℝ) ≤ β / 4 by positivity)
+            have hβne : β ≠ 0 := ne_of_gt hβ
+            have hsim :
+                (β / 4) * (4 * ((M : ℝ) + |h| / β)) = β * (M : ℝ) + |h| := by
+              calc
+                (β / 4) * (4 * ((M : ℝ) + |h| / β))
+                    = ((β / 4) * 4) * ((M : ℝ) + |h| / β) := by
+                        simpa using (mul_assoc (β / 4) 4 ((M : ℝ) + |h| / β)).symm
+                _ = β * ((M : ℝ) + |h| / β) := by
+                      have h4 : (4 : ℝ) ≠ 0 := by norm_num
+                      have hβ4 : (β / 4) * 4 = β := by
+                        -- `β / 4 * 4 = β`
+                        simp [h4]
+                      simp [hβ4]
+                _ = β * (M : ℝ) + β * (|h| / β) := by
+                      simp [mul_add]
+                _ = β * (M : ℝ) + |h| := by
+                      have : β * (|h| / β) = (β * |h|) / β := by
+                        simpa using (mul_div_assoc β |h| β).symm
+                      -- `((β * |h|) / β) = |h|`
+                      simp [this, hβne]
+            simpa [hsim] using hmul
+          have hmul' : (β * (M : ℝ) + |h|) * ‖z‖ ≤ ((β / 4) * ‖z‖) * ‖z‖ :=
+            mul_le_mul_of_nonneg_right this hz0
+          simpa [pow_two, mul_assoc] using hmul'
+        -- combine and rewrite `‖z‖ * ‖z‖` as `‖z‖ ^ 2`
+        have : (β * (M : ℝ) + |h|) * ‖z‖ ≤ (β / 4) * (‖z‖ ^ (2 : ℕ)) := hbound
+        exact hsum.trans this
+      have hNnonneg : 0 ≤ (N : ℝ) := Nat.cast_nonneg N
+      have := mul_le_mul_of_nonneg_left (by simpa [habsβ] using hlin) hNnonneg
+      -- put the RHS in the standard `((N:ℝ) * β / 4) * ‖z‖^2` shape
+      simpa [mul_add, mul_assoc, habsβ, div_eq_mul_inv] using this
+    filter_upwards [hR] with z hz
+    have hψ :=
+      hopfieldPsi_le_quadratic_norm (N := N) (M := M) (β := β) (h := h) (Ξ := Ξ) (z := z) hβ0
+    have hpow : (‖z‖ ^ 2) = (‖z‖ ^ (2 : ℕ)) := by simp
+    calc
+      hopfieldPsi (N := N) (M := M) β h Ξ z
+          ≤ -((N : ℝ) * β / 2) * (‖z‖ ^ 2)
+              + (N : ℝ) * (|β| * (M : ℝ) * ‖z‖ + |h|) := hψ
+      _ ≤ -((N : ℝ) * β / 2) * (‖z‖ ^ (2 : ℕ))
+              + ((N : ℝ) * β / 4) * (‖z‖ ^ (2 : ℕ)) := by
+            simpa [hpow, mul_assoc, add_assoc, add_left_comm, add_comm] using
+              add_le_add_left hz (-((N : ℝ) * β / 2) * (‖z‖ ^ (2 : ℕ)))
+      _ = (-((N : ℝ) * β / 4)) * (‖z‖ ^ (2 : ℕ)) := by ring
+  exact (Filter.tendsto_atBot_mono' (l := Filter.cocompact (Fin M → ℝ)) hdom) hnegquad
+
+theorem exists_maximizer_hopfieldPsi
+    (β h : ℝ) (Ξ : Patterns N M) (hβ : 0 < β) (hN : N ≠ 0) :
+    ∃ z : Fin M → ℝ, ∀ y : Fin M → ℝ,
+      hopfieldPsi (N := N) (M := M) β h Ξ y ≤ hopfieldPsi (N := N) (M := M) β h Ξ z := by
+  have hcont : Continuous (hopfieldPsi (N := N) (M := M) β h Ξ) :=
+    (differentiable_hopfieldPsi (N := N) (M := M) (β := β) (h := h) (Ξ := Ξ)).continuous
+  have hlim :
+      Filter.Tendsto (hopfieldPsi (N := N) (M := M) β h Ξ) (Filter.cocompact (Fin M → ℝ))
+        Filter.atBot :=
+    tendsto_hopfieldPsi_cocompact_atBot (N := N) (M := M) (β := β) (h := h) (Ξ := Ξ) hβ hN
+  simpa using (hcont.exists_forall_ge hlim)
+
 /-! ### Specialization: axis critical points under `IsConstantPattern` -/
 
 lemma hopfieldEtaDot_smul_piSingle_one
@@ -609,7 +721,6 @@ lemma hopfieldEtaDot_smul_piSingle_one
     hopfieldEtaDot (N := N) (M := M) Ξ i (m • Pi.single (M := fun _ : Fin M => ℝ) k (1 : ℝ))
       =
       m * hopfieldEta (N := N) (M := M) Ξ i k := by
-  classical
   simp [hopfieldEtaDot, Pi.single_apply, smul_eq_mul, mul_comm]
 
 lemma hopfieldEtaDot_smul_piSingle_one_of_isConstantPattern
@@ -633,5 +744,56 @@ lemma fixedPoint_tanh_of_hopfieldPsi_critical_on_axis
   simpa [Pi.single_apply, hopfieldEta_eq_one_of_isConstantPattern (N := N) (hΞ := hΞ),
     hopfieldEtaDot_smul_piSingle_one_of_isConstantPattern (N := N) (M := M) (hΞ := hΞ),
     Finset.sum_const, hN, smul_eq_mul, mul_assoc, mul_left_comm, mul_comm] using hcoord
+
+/-! ### Second derivative: Hessian of `hopfieldPsi` -/
+
+/-- Second derivative of `finVecNormSq`. Constant map (as a bilinear map). -/
+noncomputable def finVecNormSqFDeriv2 : (Fin M → ℝ) →L[ℝ] (Fin M → ℝ) →L[ℝ] ℝ :=
+  ∑ k : Fin M, (2 : ℝ) • (ContinuousLinearMap.proj (R := ℝ) k).smulRight (ContinuousLinearMap.proj (R := ℝ) k)
+
+lemma finVecNormSqFDeriv_eq_finVecNormSqFDeriv2 (z : Fin M → ℝ) :
+    finVecNormSqFDeriv (M := M) z = finVecNormSqFDeriv2 (M := M) z := by
+  ext v
+  -- unfold both sides and compare coefficients
+  simp [finVecNormSqFDeriv_apply, finVecNormSqFDeriv2, ContinuousLinearMap.sum_apply,
+    ContinuousLinearMap.smulRight_apply, smul_eq_mul, mul_assoc, mul_left_comm, mul_comm]
+
+@[fun_prop] lemma hasFDerivAt_finVecNormSqFDeriv (z : Fin M → ℝ) :
+    HasFDerivAt (finVecNormSqFDeriv (M := M)) (finVecNormSqFDeriv2 (M := M)) z := by
+  -- `finVecNormSqFDeriv` is linear, so its derivative is itself (as a constant bilinear map)
+  rw [funext finVecNormSqFDeriv_eq_finVecNormSqFDeriv2]
+  exact (finVecNormSqFDeriv2 (M := M)).hasFDerivAt
+
+/-- Hessian (second Fréchet derivative) of `hopfieldPsi` at `z`. -/
+noncomputable def hopfieldPsiFDeriv2 (β h : ℝ) (Ξ : Patterns N M) (z : Fin M → ℝ) :
+    (Fin M → ℝ) →L[ℝ] (Fin M → ℝ) →L[ℝ] ℝ :=
+  -(((N : ℝ) * β / 2) • finVecNormSqFDeriv2 (M := M))
+    + ∑ i : Fin N,
+        ((1 - Real.tanh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h) ^ 2) * β ^ 2)
+          • (hopfieldEtaDotCLM (N := N) (M := M) Ξ i).smulRight (hopfieldEtaDotCLM (N := N) (M := M) Ξ i)
+
+@[fun_prop] lemma hasFDerivAt_hopfieldPsiFDeriv (β h : ℝ) (Ξ : Patterns N M) (z : Fin M → ℝ) :
+    HasFDerivAt (hopfieldPsiFDeriv (N := N) (M := M) β h Ξ) (hopfieldPsiFDeriv2 (N := N) (M := M) β h Ξ z) z := by
+  -- term 1: quadratic part
+  have h1 : HasFDerivAt (fun z => -(((N : ℝ) * β / 2) • finVecNormSqFDeriv (M := M) z))
+      (-(((N : ℝ) * β / 2) • finVecNormSqFDeriv2 (M := M))) z := by
+    -- `finVecNormSqFDeriv` is linear in `z`, so the derivative is constant.
+    have hlin : HasFDerivAt (finVecNormSqFDeriv (M := M)) (finVecNormSqFDeriv2 (M := M)) z :=
+      hasFDerivAt_finVecNormSqFDeriv (M := M) z
+    -- scale and negate
+    simpa using (hlin.const_smul ((N : ℝ) * β / 2)).neg
+  -- term 2: sum of log-cosh derivatives
+  have h2 : HasFDerivAt
+      (fun z => ∑ i : Fin N, (Real.tanh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h) * β)
+          • hopfieldEtaDotCLM (N := N) (M := M) Ξ i)
+      (∑ i : Fin N,
+        ((1 - Real.tanh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h) ^ 2) * β ^ 2)
+          • (hopfieldEtaDotCLM (N := N) (M := M) Ξ i).smulRight (hopfieldEtaDotCLM (N := N) (M := M) Ξ i)) z := by
+    -- use the generic `SpinGlass.LogCosh` calculus (termwise differentiation + rank-one Hessians)
+    simpa [SpinGlass.LogCosh.sumFDeriv, SpinGlass.LogCosh.sumFDeriv2, SpinGlass.LogCosh.termFDeriv,
+      SpinGlass.LogCosh.termFDeriv2, hopfieldEtaDot_eq_hopfieldEtaDotCLM] using
+      (SpinGlass.LogCosh.hasFDerivAt_sumFDeriv (V := (Fin M → ℝ)) (β := β) (h := h)
+        (L := fun i : Fin N => hopfieldEtaDotCLM (N := N) (M := M) Ξ i) (z := z))
+  convert h1.add h2
 
 end SpinGlass
