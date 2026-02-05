@@ -3,6 +3,7 @@ import Mathlib.Probability.Distributions.Gaussian.Real
 import Mathlib.Probability.Moments.Basic
 import Mathlib.Probability.Independence.InfinitePi
 import Mathlib.Analysis.Complex.Trigonometric
+import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
 /-!
 # Hopfield model (Talagrand, Hopfield chapter): prerequisites
@@ -36,9 +37,66 @@ abbrev Patterns (N M : ℕ) : Type := Fin M → Config N
 noncomputable def hopfieldOverlap (N : ℕ) (σ ξ : Config N) : ℝ :=
   (1 / (N : ℝ)) * ∑ i : Fin N, (spin N σ i) * (spin N ξ i)
 
+lemma abs_spin_eq_one {N : ℕ} (σ : Config N) (i : Fin N) :
+    |spin N σ i| = 1 := by
+  by_cases h : σ i <;> simp [spin, h]
+
+lemma abs_hopfieldOverlap_le_one (N : ℕ) (σ ξ : Config N) :
+    |hopfieldOverlap (N := N) σ ξ| ≤ (1 : ℝ) := by
+  classical
+  cases N with
+  | zero =>
+      simp [hopfieldOverlap]
+  | succ N =>
+      set a : Fin (N + 1) → ℝ := fun i => (spin (N + 1) σ i) * (spin (N + 1) ξ i)
+      have hsum_abs : |∑ i : Fin (N + 1), a i| ≤ ∑ i : Fin (N + 1), |a i| := by
+        simpa using
+          (Finset.abs_sum_le_sum_abs (f := a) (s := (Finset.univ : Finset (Fin (N + 1)))))
+      have habs : ∀ i : Fin (N + 1), |a i| = (1 : ℝ) := by
+        intro i
+        simp [a, abs_mul, abs_spin_eq_one (σ := σ) (i := i), abs_spin_eq_one (σ := ξ) (i := i)]
+      have hsum : (∑ i : Fin (N + 1), |a i|) = (N + 1 : ℝ) := by
+        simp [habs]
+      have hNpos : 0 ≤ (1 / ((N + 1 : ℕ) : ℝ)) := by
+        have : 0 < ((N + 1 : ℕ) : ℝ) := Nat.cast_pos.mpr (Nat.succ_pos N)
+        exact (one_div_pos.2 this).le
+      have hNne : ((N + 1 : ℕ) : ℝ) ≠ 0 := by
+        exact_mod_cast (Nat.succ_ne_zero N)
+      calc
+        |hopfieldOverlap (N := N + 1) σ ξ|
+            = |(1 / ((N + 1 : ℕ) : ℝ)) * ∑ i : Fin (N + 1), a i| := by
+                simp [hopfieldOverlap, a]
+        _ = |(1 / ((N + 1 : ℕ) : ℝ))| * |∑ i : Fin (N + 1), a i| := by
+              simp [abs_mul]
+        _ = (1 / ((N + 1 : ℕ) : ℝ)) * |∑ i : Fin (N + 1), a i| := by
+              rw [abs_of_nonneg hNpos]
+        _ ≤ (1 / ((N + 1 : ℕ) : ℝ)) * (∑ i : Fin (N + 1), |a i|) := by
+              exact mul_le_mul_of_nonneg_left hsum_abs hNpos
+        _ = (1 / ((N + 1 : ℕ) : ℝ)) * (N + 1 : ℝ) := by
+              simp [hsum]
+        _ = 1 := by
+              simpa using (one_div_mul_cancel hNne)
+
 /-- The Hopfield overlap vector \(m(\sigma)\in \mathbb R^M\). -/
 noncomputable def hopfieldOverlapVec (N M : ℕ) (Ξ : Patterns N M) (σ : Config N) : Fin M → ℝ :=
   fun k => hopfieldOverlap (N := N) σ (Ξ k)
+
+lemma abs_hopfieldOverlapVec_le_one {N M : ℕ} (Ξ : Patterns N M) (σ : Config N) (k : Fin M) :
+    |hopfieldOverlapVec (N := N) (M := M) Ξ σ k| ≤ (1 : ℝ) := by
+  simpa [hopfieldOverlapVec] using abs_hopfieldOverlap_le_one (N := N) σ (Ξ k)
+
+lemma hopfieldOverlapVec_mem_Icc {N M : ℕ} (Ξ : Patterns N M) (σ : Config N) :
+    hopfieldOverlapVec (N := N) (M := M) Ξ σ
+      ∈ Set.Icc (fun _ : Fin M => (-1 : ℝ)) (fun _ : Fin M => (1 : ℝ)) := by
+  constructor
+  · intro k
+    have hk : |hopfieldOverlapVec (N := N) (M := M) Ξ σ k| ≤ (1 : ℝ) :=
+      abs_hopfieldOverlapVec_le_one (Ξ := Ξ) (σ := σ) k
+    exact (abs_le.mp hk).1
+  · intro k
+    have hk : |hopfieldOverlapVec (N := N) (M := M) Ξ σ k| ≤ (1 : ℝ) :=
+      abs_hopfieldOverlapVec_le_one (Ξ := Ξ) (σ := σ) k
+    exact (abs_le.mp hk).2
 
 /-! ## Site-wise pattern matrix (Talagrand’s `η_{i,k}`) -/
 

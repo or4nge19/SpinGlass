@@ -19,6 +19,38 @@ variable (N : ℕ) (β : ℝ)
 
 /-! ### Basic Definitions -/
 
+/-!
+### Vol II–style abstraction boundary
+
+Most of the “thermodynamic” objects used throughout Talagrand Vol I/II (partition function,
+Gibbs weights, free energy, covariance/Hessian identities) only depend on a **finite configuration
+space** `Σ` and an energy function `H : Σ → ℝ`.
+
+In this repo, concrete models fix `Σ := Config N := Fin N → Bool`, and we keep that specialization
+for compatibility. But we also expose a configuration-agnostic API so that Vol I models become
+instances of the Vol II general framework (Gaussian processes indexed by `Σ`).
+-/
+
+/-- A generic finite configuration space. Concrete models will take `Σ := Config N`. -/
+abbrev Conf := Type*
+
+/--
+Generic partition function on a finite configuration space `Σ`.
+
+This is the canonical `log-sum-exp` object of Vol II (Ch. 8–9, Appendix A): any Gaussian
+interpolation/comparison statement is ultimately applied to `H ↦ log (∑ σ, exp (-H σ))`.
+-/
+noncomputable def Z' {α : Type*} [Fintype α] (H : α → ℝ) : ℝ :=
+  ∑ σ : α, Real.exp (- H σ)
+
+/-- Generic Gibbs weight on `Σ` (a probability mass function when normalized by `Z'`). -/
+noncomputable def gibbs_pmf' {α : Type*} [Fintype α] (H : α → ℝ) (σ : α) : ℝ :=
+  Real.exp (- H σ) / Z' H
+
+/-- Generic free energy density with an explicit scaling parameter `N` (system size). -/
+noncomputable def free_energy_density' {α : Type*} [Fintype α] (N : ℕ) (H : α → ℝ) : ℝ :=
+  (1 / (N : ℝ)) * Real.log (Z' H)
+
 abbrev Config := Fin N → Bool
 
 def spin (σ : Config N) (i : Fin N) : ℝ := if σ i then 1 else -1
@@ -77,6 +109,18 @@ def Z (H : EnergySpace N) : ℝ := ∑ σ, Real.exp (- H σ)
 def gibbs_pmf (H : EnergySpace N) (σ : Config N) : ℝ :=
   Real.exp (- H σ) / Z N H
 
+/-! #### Vol II bridge lemmas (`Config N` specialization) -/
+
+/-- `Z` is the specialization of the Vol II partition function `Z'` to `Σ := Config N`. -/
+lemma Z_eq_Z' (H : EnergySpace N) :
+    Z (N := N) H = Z' (α := Config N) (fun σ : Config N => H σ) := by
+  rfl
+
+/-- `gibbs_pmf` is the specialization of the Vol II Gibbs weight `gibbs_pmf'` to `Σ := Config N`. -/
+lemma gibbs_pmf_eq_gibbs_pmf' (H : EnergySpace N) (σ : Config N) :
+    gibbs_pmf (N := N) H σ = gibbs_pmf' (α := Config N) (fun τ : Config N => H τ) σ := by
+  rfl
+
 /-- Gibbs average \(\langle f \rangle_H\) under the Gibbs weights `gibbs_pmf`. -/
 noncomputable def gibbs_average (H : EnergySpace N) (f : Config N → ℝ) : ℝ :=
   ∑ σ, gibbs_pmf N H σ * f σ
@@ -91,6 +135,12 @@ Reference: Talagrand, *Mean Field Models for Spin Glasses*, Vol. I, Ch. 1, §1.3
 -/
 noncomputable def free_energy_density (H : EnergySpace N) : ℝ :=
   (1 / (N : ℝ)) * Real.log (Z N H)
+
+/-- `free_energy_density` is the specialization of the Vol II free energy `free_energy_density'`. -/
+lemma free_energy_density_eq_free_energy_density' (H : EnergySpace N) :
+    free_energy_density (N := N) H =
+      free_energy_density' (α := Config N) N (fun σ : Config N => H σ) := by
+  rfl
 
 /--
 The Hessian of the free energy density, defined abstractly as the second Fréchet derivative

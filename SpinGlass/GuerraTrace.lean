@@ -734,8 +734,8 @@ theorem derivative_value_guerraPhi_eq_trace_integral
     derivative_value_guerraPhi_eq_ibp (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
       (sk := sk) (sim := sim) hindep t
   rw [hIBP]
-  -- Make all measures explicit as `μ0`.
-  simp [μ0, μ]
+  -- Unfold the disorder law abbreviation on the RHS (and nothing else).
+  simp only [μ]
 
   -- SK part: rewrite into the trace form inside the disorder integral.
   have hSKInt :
@@ -1081,12 +1081,42 @@ theorem derivative_value_guerraPhi_eq_trace_integral
         ∫ x : DisorderSpace (N := N),
             ((1 / 2 : ℝ) * SK x - (1 / 2 : ℝ) * SIM x) ∂μ0 := by
     simpa using (MeasureTheory.integral_sub hintSK' hintSIM').symm
-  -- Finish by rewriting the integrand as `(1/2) * (SK - SIM)`.
-  -- Then the result matches the theorem statement.
-  -- First rewrite the IBP RHS using `hSKInt` and `hSIMInt`.
-  -- (These appear after expanding `mul_sub`.)
-  -- The goal currently has `μ0` hidden under the abbreviation `μ`; `simp [μ0]` already took care of it above.
-  -- Assemble:
+  -- Finish: rewrite the IBP expression using `hSKInt` and `hSIMInt`,
+  -- then fold the difference of integrals into an integral of the difference.
+  --
+  -- The goal LHS is the IBP RHS after `rw [hIBP]` and `simp [μ0, μ]`.
+  -- We convert it into a difference of the two terms handled by `hSKInt`/`hSIMInt`,
+  -- and then finish with `integral_sub`.
+  have hrewrite :
+      (-(1 / (N : ℝ))) *
+          ( ((1 / (2 * Real.sqrt t)) *
+                ∑ τ : Config N,
+                  ∫ x : DisorderSpace (N := N),
+                      (fderiv ℝ (fun x : DisorderSpace (N := N) =>
+                            gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) τ) x)
+                        (ProbabilityTheory.covarianceOperator μ0 (std_basis_left (N := N) τ))
+                    ∂μ0)
+            -
+            ((1 / (2 * Real.sqrt (1 - t))) *
+                ∑ τ : Config N,
+                  ∫ x : DisorderSpace (N := N),
+                      (fderiv ℝ (fun x : DisorderSpace (N := N) =>
+                            gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) τ) x)
+                        (ProbabilityTheory.covarianceOperator μ0 (std_basis_right (N := N) τ))
+                    ∂μ0) )
+        =
+        (∫ x : DisorderSpace (N := N), (1 / 2 : ℝ) * SK x ∂μ0)
+          - (∫ x : DisorderSpace (N := N), (1 / 2 : ℝ) * SIM x ∂μ0) := by
+    -- distribute the outer scalar over the subtraction, then use `hSKInt`/`hSIMInt`
+    -- (avoid normalizing scalars to `2⁻¹` / `√t` inverses, so the patterns match syntactically).
+    simp only [mul_sub]
+    -- first term
+    rw [hSKInt]
+    -- second term: rewrite `(-a) * b` as `a * (-b)` and use `hSIMInt`
+    rw [hSIMInt]
+  -- rewrite the goal using `hrewrite`, then finish by folding the difference of integrals
+  -- and normalizing the integrand.
+  rw [hrewrite]
   calc
     (∫ x : DisorderSpace (N := N), (1 / 2 : ℝ) * SK x ∂μ0)
         - (∫ x : DisorderSpace (N := N), (1 / 2 : ℝ) * SIM x ∂μ0)

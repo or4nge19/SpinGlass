@@ -9,6 +9,8 @@ import SpinGlass.GuerraBound
 import SpinGlass.GuerraInterpolation
 import SpinGlass.GuerraIBP
 import SpinGlass.Hopfield
+import SpinGlass.HopfieldPsiDeriv
+import SpinGlass.HopfieldFixedPoint
 import SpinGlass.HopfieldConvolution
 import SpinGlass.HopfieldCascades
 import SpinGlass.HopfieldLocalization
