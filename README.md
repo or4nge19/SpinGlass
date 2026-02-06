@@ -1,6 +1,6 @@
 # SpinGlass
 
-This repository contains two Lean 4 libraries developed against Mathlib:
+This repository contains two Lean 4 libraries:
 
 - `SpinGlass`: finite-volume mean-field spin glass calculus (Talagrand, Vol. I–II).
 - `GibbsMeasure`: DLR specifications and infinite-volume Gibbs measures (Georgii; Talagrand,
