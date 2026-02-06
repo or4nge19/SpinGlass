@@ -16,7 +16,7 @@ variable {N : ℕ}
 /-!
 ## Calculus bridge for the free energy (Talagrand)
 
-This file packages the **calculus layer** needed to connect:
+This file provides the **calculus layer** needed to connect:
 
 - the *abstract* Fréchet-derivative API used by the Gaussian IBP library; and
 - the *explicit* Gibbs-average / covariance formulas used in the SK algebra.
@@ -46,8 +46,6 @@ This is the finite-volume regularity input behind Talagrand’s differentiation 
 functional (Vol. I, Ch. 1, §1.3).
 -/
 lemma contDiff_Z (N : ℕ) : ContDiff ℝ (∞) (fun H : EnergySpace N => Z N H) := by
-  classical
-  -- Thin wrapper around the model-agnostic `FiniteGibbs` smoothness lemma.
   simpa [Z, FiniteGibbs.Z] using (FiniteGibbs.contDiff_Z (α := Config N))
 
 /--
@@ -55,8 +53,6 @@ lemma contDiff_Z (N : ℕ) : ContDiff ℝ (∞) (fun H : EnergySpace N => Z N H)
 -/
 lemma contDiff_gibbs_pmf (N : ℕ) (σ : Config N) :
     ContDiff ℝ (∞) (fun H : EnergySpace N => gibbs_pmf N H σ) := by
-  classical
-  -- Thin wrapper around the model-agnostic `FiniteGibbs` smoothness lemma.
   simpa [gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
     (FiniteGibbs.contDiff_gibbs_pmf (α := Config N) (σ := σ))
 
@@ -76,8 +72,6 @@ Reference: Talagrand, Vol. I, Ch. 1, §1.3 (differentiation of the free energy).
 -/
 lemma contDiff_free_energy_density (N : ℕ) :
     ContDiff ℝ (∞) (fun H : EnergySpace N => free_energy_density (N := N) H) := by
-  classical
-  -- Thin wrapper around the model-agnostic `FiniteGibbs` smoothness lemma.
   simpa [free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z, smul_eq_mul, mul_assoc] using
     (FiniteGibbs.contDiff_free_energy_density (α := Config N) (n := N))
 
@@ -145,7 +139,6 @@ open scoped BigOperators
 variable (N)
 
 lemma abs_apply_le_norm (H : EnergySpace N) (σ : Config N) : |H σ| ≤ ‖H‖ := by
-  -- Vol II backend: the same statement holds for any finite configuration space.
   simpa using (FiniteGibbs.abs_apply_le_norm (α := Config N) (H := H) (σ := σ))
 
 lemma Z_le_card_mul_exp_norm (H : EnergySpace N) :
@@ -160,7 +153,6 @@ lemma abs_free_energy_density_le
     (H : EnergySpace N) :
     |free_energy_density (N := N) H|
       ≤ (Real.log (Fintype.card (Config N)) + 1) * (1 + ‖H‖) := by
-  -- Vol II backend: use the model-agnostic linear growth bound.
   simpa [free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z] using
     (FiniteGibbs.abs_free_energy_density_le (α := Config N) (n := N) (H := H))
 
@@ -170,7 +162,6 @@ lemma integrable_free_energy_density_of_isGaussian
     {g : Ω → EnergySpace N} (hg_meas : Measurable g)
     (hg_gauss : ProbabilityTheory.IsGaussian (P.map g)) :
     Integrable (fun w : Ω => free_energy_density (N := N) (g w)) P := by
-  -- Vol II backend: use the model-agnostic Gaussian integrability lemma.
   simpa [free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z] using
     (FiniteGibbs.integrable_free_energy_density_of_isGaussian_map (α := Config N) (P := P) (n := N)
       (g := g) hg_meas hg_gauss)
