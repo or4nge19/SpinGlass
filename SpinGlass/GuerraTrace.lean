@@ -101,8 +101,8 @@ private lemma hessian_free_energy_std_basis_eq_neg_fderiv_gibbs_pmf
           (gibbs_pmf N H σ) * ((gibbs_pmf N H σ) - (if σ = σ then 1 else 0)) :=
       fderiv_gibbs_pmf_apply_std_basis (N := N) (H := H) (σ := σ) (τ := σ)
     rw [hf]
-    simp [hessian_free_energy, std_basis]
-    ring
+    simp [hessian_free_energy, std_basis, FiniteGibbs.std_basis]
+    ring_nf
   · -- off-diagonal: the covariance is `-(gσ*gτ)`
     -- rewrite the `fderiv` term *before* unfolding `std_basis`
     have hf :
@@ -111,7 +111,7 @@ private lemma hessian_free_energy_std_basis_eq_neg_fderiv_gibbs_pmf
           (gibbs_pmf N H σ) * ((gibbs_pmf N H τ) - (if σ = τ then 1 else 0)) :=
       fderiv_gibbs_pmf_apply_std_basis (N := N) (H := H) (σ := σ) (τ := τ)
     rw [hf]
-    simp [hessian_free_energy, std_basis, hστ]
+    simp [hessian_free_energy, std_basis, FiniteGibbs.std_basis, hστ]
 
 /-!
 ### Bookkeeping lemmas for the trace/Hessian step
