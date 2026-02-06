@@ -156,10 +156,6 @@ and indexed in `SpinGlass.Talagrand.MainResults`. Near-term goals include:
 - M. Talagrand, *The Parisi formula*, Annals of Mathematics, 163 (2006), 221–263
 - H.-O. Georgii, *Gibbs Measures and Phase Transitions*.
 
-## Tags
-
-spin glass, SK, Hopfield, Guerra interpolation, Gaussian IBP, Cameron–Martin, DLR specification
-
 ## Build
 
 Toolchain: see `lean-toolchain`.
