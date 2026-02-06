@@ -153,6 +153,7 @@ and indexed in `SpinGlass.Talagrand.MainResults`. Near-term goals include:
 ## References
 
 - M. Talagrand, *Mean Field Models for Spin Glasses*, Vol. I–II.
+- M. Talagrand, *The Parisi formula*, Annals of Mathematics, 163 (2006), 221–263
 - D. Panchenko, *The Sherrington–Kirkpatrick Model*.
 - H.-O. Georgii, *Gibbs Measures and Phase Transitions*.
 
