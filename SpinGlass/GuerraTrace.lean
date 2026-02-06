@@ -147,13 +147,11 @@ private lemma sum_integral_eq_integral_sum
 
 private lemma sk_cov_kernel_symm (σ τ : Config N) :
     sk_cov_kernel N β σ τ = sk_cov_kernel N β τ σ := by
-  classical
-  simp [sk_cov_kernel, SpinGlass.overlap, mul_comm]
+  simpa using sk_cov_kernel_comm (N := N) (β := β) σ τ
 
 private lemma simple_cov_kernel_symm (xi : ℝ → ℝ) (σ τ : Config N) :
     simple_cov_kernel N β xi σ τ = simple_cov_kernel N β xi τ σ := by
-  classical
-  simp [simple_cov_kernel, SpinGlass.overlap, mul_comm]
+  simpa using simple_cov_kernel_comm (N := N) (β := β) (xi := xi) σ τ
 
 private lemma hessian_free_energy_std_basis_eq
     (H : EnergySpace N) (σ τ : Config N) :

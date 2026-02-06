@@ -46,8 +46,8 @@ variable {N n : ℕ}
 
 /-- Symmetry of the SK overlap. -/
 lemma overlap_symm (N : ℕ) (σ τ : Config N) : overlap N σ τ = overlap N τ σ := by
-  classical
-  simp [SpinGlass.overlap, mul_comm]
+  simp_rw [SpinGlass.overlap]; grind only [overlapOf_comm]
+
 
 /-- The overlap matrix on `n` replicas in the SK configuration space. -/
 noncomputable def skOverlapMatrix (N : ℕ) (σs : ReplicaSpace N n) : Fin n → Fin n → ℝ :=

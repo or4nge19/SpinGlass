@@ -37,10 +37,6 @@ abbrev Patterns (N M : ℕ) : Type := Fin M → Config N
 noncomputable def hopfieldOverlap (N : ℕ) (σ ξ : Config N) : ℝ :=
   (1 / (N : ℝ)) * ∑ i : Fin N, (spin N σ i) * (spin N ξ i)
 
-lemma abs_spin_eq_one {N : ℕ} (σ : Config N) (i : Fin N) :
-    |spin N σ i| = 1 := by
-  by_cases h : σ i <;> simp [spin, h]
-
 lemma abs_hopfieldOverlap_le_one (N : ℕ) (σ ξ : Config N) :
     |hopfieldOverlap (N := N) σ ξ| ≤ (1 : ℝ) := by
   classical
@@ -232,7 +228,7 @@ lemma sum_exp_sum_spin (N : ℕ) (a : Fin N → ℝ) :
             =
             (a 0) * (if b then 1 else -1)
               + ∑ j : Fin N, (a (Fin.succ j)) * (spin N σtail j) := by
-        simp [e, Fin.sum_univ_succ, spin]
+        simp [e, Fin.sum_univ_succ, spin, isingSpin]
       calc
         (∑ σ : Config (N + 1),
               Real.exp (∑ i : Fin (N + 1), (a i) * (spin (N + 1) σ i)))

@@ -27,9 +27,10 @@ Most of the “thermodynamic” objects used throughout Talagrand Vol I/II (part
 Gibbs weights, free energy, covariance/Hessian identities) only depend on a **finite configuration
 space** `Σ` and an energy function `H : Σ → ℝ`.
 
-In this repo, concrete models fix `Σ := Config N := Fin N → Bool`, and we keep that specialization
-for compatibility. But we also expose a configuration-agnostic API so that Vol I models become
-instances of the Vol II general framework (Gaussian processes indexed by `Σ`).
+In this repository, concrete models use the Ising configuration space
+`Config N := Fin N → Bool` (spins in `{±1}`), and we keep that specialization as the default.
+But we also expose a configuration-agnostic API so that Vol I models become instances of the
+Vol II general framework (Gaussian processes indexed by `Σ`).
 -/
 
 /-- A generic finite configuration space. Concrete models will take `Σ := Config N`. -/
@@ -52,9 +53,62 @@ noncomputable def gibbs_pmf' {α : Type*} [Fintype α] (H : α → ℝ) (σ : α
 noncomputable def free_energy_density' {α : Type*} [Fintype α] (N : ℕ) (H : α → ℝ) : ℝ :=
   (1 / (N : ℝ)) * Real.log (Z' H)
 
-abbrev Config := Fin N → Bool
+/-!
+### Configuration space and “single-site spin” observables
 
-def spin (σ : Config N) (i : Fin N) : ℝ := if σ i then 1 else -1
+We parameterize configurations by a *single-site* type `S`.  The default choice `S := Bool`
+recovers the Ising case `Fin N → Bool`.  This small generalization is enough to reuse the
+finite-volume calculus (and the overlap-based covariance kernels) for e.g. Potts-type models by
+changing only the single-site space and the real-valued map `spin : S → ℝ`.
+-/
+
+/-- Configuration space on `N` sites with single-site space `S` (default: `Bool`). -/
+abbrev Config (N : ℕ) (S : Type := Bool) : Type := Fin N → S
+
+/-- The standard Ising single-site map `Bool → ℝ`, sending `true ↦ 1` and `false ↦ -1`. -/
+def isingSpin : Bool → ℝ := fun b => if b then 1 else -1
+
+/-- `isingSpin true = 1`. -/
+@[simp] lemma isingSpin_true : isingSpin true = (1 : ℝ) := by
+  simp [isingSpin]
+
+/-- `isingSpin false = -1`. -/
+@[simp] lemma isingSpin_false : isingSpin false = (-1 : ℝ) := by
+  simp [isingSpin]
+
+/-- `|isingSpin b| = 1` for all `b : Bool`. -/
+lemma abs_isingSpin_eq_one (b : Bool) : |isingSpin b| = (1 : ℝ) := by
+  cases b <;> simp [isingSpin]
+
+/-- `isingSpin b * isingSpin b = 1` for all `b : Bool`. -/
+lemma isingSpin_mul_self (b : Bool) : isingSpin b * isingSpin b = (1 : ℝ) := by
+  cases b <;> simp [isingSpin]
+
+/-- Spin at site `i` induced by a single-site observable `spin : S → ℝ`. -/
+def spinOf {S : Type} (spin : S → ℝ) (σ : Config N S) (i : Fin N) : ℝ :=
+  spin (σ i)
+
+/-- Unfolding lemma for `spinOf`. -/
+@[simp] lemma spinOf_apply {S : Type} (s : S → ℝ) (σ : Config N S) (i : Fin N) :
+    spinOf (N := N) s σ i = s (σ i) := by
+  rfl
+
+/-- The Ising spin at site `i` (specialization of `spinOf` to `isingSpin`). -/
+def spin (σ : Config N) (i : Fin N) : ℝ :=
+  spinOf (N := N) isingSpin σ i
+
+/-- `spin` is `spinOf` specialized to `isingSpin`. -/
+lemma spin_eq_spinOf (σ : Config N) (i : Fin N) :
+    spin N σ i = spinOf (N := N) isingSpin σ i := by
+  rfl
+
+/-- Ising spins satisfy `|spin N σ i| = 1`. -/
+lemma abs_spin_eq_one (σ : Config N) (i : Fin N) : |spin N σ i| = (1 : ℝ) := by
+  simpa [spin, spinOf] using abs_isingSpin_eq_one (σ i)
+
+/-- Ising spins satisfy `spin N σ i * spin N σ i = 1`. -/
+lemma spin_mul_self (σ : Config N) (i : Fin N) : spin N σ i * spin N σ i = (1 : ℝ) := by
+  simpa [spin, spinOf] using isingSpin_mul_self (σ i)
 
 /--
 Energy Hilbert space for Hamiltonians.
@@ -65,9 +119,20 @@ finite-volume calculus are with respect to this \(ℓ^2\) convention (not \(ℓ^
 -/
 abbrev EnergySpace := PiLp 2 (fun _ : Config N => ℝ)
 
-/-- Magnetization of a configuration: \( \sum_{i=1}^N \sigma_i \) (with `σ_i ∈ {±1}`). -/
+/-! #### Magnetization and overlap -/
+
+/-- Magnetization induced by a single-site observable `spin : S → ℝ`. -/
+def magnetizationOf {S : Type} (spin : S → ℝ) (σ : Config N S) : ℝ :=
+  ∑ i : Fin N, spinOf (N := N) spin σ i
+
+/-- Magnetization of an Ising configuration: \( \sum_{i=1}^N \sigma_i \) (with `σ_i ∈ {±1}`). -/
 def magnetization (σ : Config N) : ℝ :=
-  ∑ i : Fin N, spin N σ i
+  magnetizationOf (N := N) isingSpin σ
+
+/-- `magnetization` is `magnetizationOf` specialized to `isingSpin`. -/
+lemma magnetization_eq_magnetizationOf (σ : Config N) :
+    magnetization N σ = magnetizationOf (N := N) isingSpin σ := by
+  rfl
 
 /--
 External field energy term:
@@ -84,7 +149,6 @@ noncomputable instance : InnerProductSpace ℝ (EnergySpace N) :=
   PiLp.innerProductSpace (𝕜 := ℝ) (fun _ : Config N => ℝ)
 
 noncomputable instance : FiniteDimensional ℝ (EnergySpace N) := by
-  classical
   -- `EnergySpace N` is a type synonym of the finite product `∀ σ : Config N, ℝ`.
   infer_instance
 
@@ -103,16 +167,78 @@ lemma inner_std_basis_apply (σ : Config N) (H : EnergySpace N) :
 
 noncomputable section
 
+/-- Overlap induced by a single-site observable `spin : S → ℝ`. -/
+def overlapOf {S : Type} (spin : S → ℝ) (σ τ : Config N S) : ℝ :=
+  (1 / (N : ℝ)) * ∑ i : Fin N, (spinOf (N := N) spin σ i) * (spinOf (N := N) spin τ i)
+
+/-- The Ising overlap (specialization of `overlapOf` to `isingSpin`). -/
 def overlap (σ τ : Config N) : ℝ :=
-  (1 / (N : ℝ)) * ∑ i, (spin N σ i) * (spin N τ i)
+  overlapOf (N := N) isingSpin σ τ
+
+/-- `overlap` is `overlapOf` specialized to `isingSpin`. -/
+lemma overlap_eq_overlapOf (σ τ : Config N) :
+    overlap N σ τ = overlapOf (N := N) isingSpin σ τ := by
+  rfl
+
+/-- The overlap is symmetric in its two configuration arguments. -/
+lemma overlapOf_comm {S : Type} (spin : S → ℝ) (σ τ : Config N S) :
+    overlapOf (N := N) spin σ τ = overlapOf (N := N) spin τ σ := by
+  simp [overlapOf, mul_comm]
+
+/-- The Ising overlap is symmetric. -/
+lemma overlap_comm (σ τ : Config N) : overlap N σ τ = overlap N τ σ := by
+  simpa [overlap] using overlapOf_comm (N := N) (spin := isingSpin) σ τ
 
 /-! ### Covariance Kernels -/
 
+/-- SK covariance kernel induced by a single-site observable `spin : S → ℝ`. -/
+def sk_cov_kernelOf {S : Type} (spin : S → ℝ) (σ τ : Config N S) : ℝ :=
+  (N * β^2 / 2) * (overlapOf (N := N) spin σ τ)^2
+
+/-- The SK covariance kernel induced by `spin` is symmetric. -/
+lemma sk_cov_kernelOf_comm {S : Type} (spin : S → ℝ) (σ τ : Config N S) :
+    sk_cov_kernelOf (N := N) (β := β) spin σ τ
+      = sk_cov_kernelOf (N := N) (β := β) spin τ σ := by
+  simp [sk_cov_kernelOf, overlapOf_comm]
+
+/-- The Ising SK covariance kernel (specialization of `sk_cov_kernelOf` to `isingSpin`). -/
 def sk_cov_kernel (σ τ : Config N) : ℝ :=
   (N * β^2 / 2) * (overlap N σ τ)^2
 
+/-- `sk_cov_kernel` is `sk_cov_kernelOf` specialized to `isingSpin`. -/
+lemma sk_cov_kernel_eq_sk_cov_kernelOf (σ τ : Config N) :
+    sk_cov_kernel N β σ τ = sk_cov_kernelOf (N := N) (β := β) isingSpin σ τ := by
+  rfl
+
+/-- The Ising SK covariance kernel is symmetric. -/
+lemma sk_cov_kernel_comm (σ τ : Config N) :
+    sk_cov_kernel N β σ τ = sk_cov_kernel N β τ σ := by
+  simp [sk_cov_kernel, overlap_comm]
+
+/-- “Reference” covariance kernel induced by a single-site observable `spin : S → ℝ`. -/
+def simple_cov_kernelOf {S : Type} (xi : ℝ → ℝ) (spin : S → ℝ) (σ τ : Config N S) : ℝ :=
+  N * β^2 * xi (overlapOf (N := N) spin σ τ)
+
+/-- The reference covariance kernel induced by `spin` is symmetric. -/
+lemma simple_cov_kernelOf_comm {S : Type} (xi : ℝ → ℝ) (spin : S → ℝ) (σ τ : Config N S) :
+    simple_cov_kernelOf (N := N) (β := β) xi spin σ τ
+      = simple_cov_kernelOf (N := N) (β := β) xi spin τ σ := by
+  simp [simple_cov_kernelOf, overlapOf_comm]
+
+/-- The Ising reference covariance kernel (specialization of `simple_cov_kernelOf` to `isingSpin`). -/
 def simple_cov_kernel (xi : ℝ → ℝ) (σ τ : Config N) : ℝ :=
   N * β^2 * xi (overlap N σ τ)
+
+/-- `simple_cov_kernel` is `simple_cov_kernelOf` specialized to `isingSpin`. -/
+lemma simple_cov_kernel_eq_simple_cov_kernelOf (xi : ℝ → ℝ) (σ τ : Config N) :
+    simple_cov_kernel N β xi σ τ
+      = simple_cov_kernelOf (N := N) (β := β) xi isingSpin σ τ := by
+  rfl
+
+/-- The Ising reference covariance kernel is symmetric. -/
+lemma simple_cov_kernel_comm (xi : ℝ → ℝ) (σ τ : Config N) :
+    simple_cov_kernel N β xi σ τ = simple_cov_kernel N β xi τ σ := by
+  simp [simple_cov_kernel, overlap_comm]
 
 /-! ### Thermodynamic Quantities -/
 
@@ -180,7 +306,6 @@ noncomputable def hessian_free_energy_fderiv (H : EnergySpace N) :
   fderiv ℝ (fun H' => fderiv ℝ (free_energy_density (N := N)) H') H
 
 lemma Z_pos (H : EnergySpace N) : 0 < Z N H := by
-  classical
   have : 0 < ∑ σ : Config N, Real.exp (- H σ) := by
     refine Finset.sum_pos ?_ Finset.univ_nonempty
     intro σ _hσ
@@ -198,7 +323,6 @@ lemma gibbs_pmf_nonneg (H : EnergySpace N) (σ : Config N) : 0 ≤ gibbs_pmf N H
   le_of_lt (gibbs_pmf_pos (N := N) (H := H) σ)
 
 lemma gibbs_pmf_le_one (H : EnergySpace N) (σ : Config N) : gibbs_pmf N H σ ≤ 1 := by
-  classical
   have hZpos : 0 < Z N H := Z_pos (N := N) (H := H)
   have hterm_le :
       Real.exp (-H σ) ≤ Z N H := by
@@ -211,7 +335,6 @@ lemma gibbs_pmf_le_one (H : EnergySpace N) (σ : Config N) : gibbs_pmf N H σ �
   simpa [gibbs_pmf] using this
 
 lemma sum_gibbs_pmf (H : EnergySpace N) : (∑ σ, gibbs_pmf N H σ) = 1 := by
-  classical
   have hZ : Z N H ≠ 0 := Z_ne_zero (N := N) (H := H)
   calc
     (∑ σ, gibbs_pmf N H σ) = ∑ σ, Real.exp (- H σ) / Z N H := by rfl
@@ -236,7 +359,6 @@ noncomputable def grad_free_energy_density (H : EnergySpace N) : EnergySpace N �
 lemma hasFDerivAt_exp_neg_eval (H : EnergySpace N) (σ : Config N) :
     HasFDerivAt (fun H : EnergySpace N => Real.exp (-H σ))
       ((-(Real.exp (-H σ))) • evalCLM (N := N) σ) H := by
-  classical
   have heval :
       HasFDerivAt (fun H : EnergySpace N => H σ) (evalCLM (N := N) σ) H := by
     simpa [evalCLM] using
@@ -257,7 +379,6 @@ lemma hasFDerivAt_exp_neg_eval (H : EnergySpace N) (σ : Config N) :
 lemma hasFDerivAt_Z (H : EnergySpace N) :
     HasFDerivAt (fun H : EnergySpace N => Z N H)
       (∑ σ : Config N, (-(Real.exp (-H σ))) • evalCLM (N := N) σ) H := by
-  classical
   have hterm :
       ∀ σ : Config N,
         HasFDerivAt (fun H : EnergySpace N => Real.exp (-H σ))
@@ -275,7 +396,6 @@ lemma hasFDerivAt_inv_Z (H : EnergySpace N) :
     HasFDerivAt (fun H : EnergySpace N => (Z N H)⁻¹)
       ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z N H ^ 2)⁻¹)).comp
         (∑ σ : Config N, (-(Real.exp (-H σ))) • evalCLM (N := N) σ)) H := by
-  classical
   have hInv :
       HasFDerivAt (fun x : ℝ => x⁻¹)
         (ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z N H ^ 2)⁻¹) : ℝ →L[ℝ] ℝ)
@@ -289,7 +409,6 @@ lemma hasFDerivAt_gibbs_pmf (H : EnergySpace N) (σ : Config N) :
           (Real.exp (-H σ)) •
             ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z N H ^ 2)⁻¹)).comp
               (∑ τ : Config N, (-(Real.exp (-H τ))) • evalCLM (N := N) τ))) H := by
-  classical
   have hnum :
       HasFDerivAt (fun H : EnergySpace N => Real.exp (-H σ))
         ((-(Real.exp (-H σ))) • evalCLM (N := N) σ) H :=
@@ -321,7 +440,6 @@ lemma fderiv_gibbs_pmf_apply (H h : EnergySpace N) (σ : Config N) :
     fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H h =
       (gibbs_pmf N H σ) *
         ((∑ τ : Config N, (gibbs_pmf N H τ) * h τ) - h σ) := by
-  -- Reuse the model-agnostic Vol II calculus on a finite configuration space.
   simpa [gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
     (FiniteGibbs.fderiv_gibbs_pmf_apply (α := Config N) (H := H) (h := h) σ)
 
@@ -331,7 +449,6 @@ lemma hasFDerivAt_grad_free_energy_density (H : EnergySpace N) :
           ∑ σ : Config N,
             (fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H).smulRight
               (evalCLM (N := N) σ))) H := by
-  classical
   have hterm :
       ∀ σ : Config N,
         HasFDerivAt (fun H : EnergySpace N => (gibbs_pmf N H σ) • evalCLM (N := N) σ)
@@ -356,7 +473,6 @@ lemma hasFDerivAt_grad_free_energy_density (H : EnergySpace N) :
 lemma fderiv_Z_apply (H h : EnergySpace N) :
     fderiv ℝ (fun H : EnergySpace N => Z N H) H h =
       - ∑ σ : Config N, Real.exp (-H σ) * h σ := by
-  classical
   have hZ' := (hasFDerivAt_Z (N := N) (H := H)).fderiv
   simp [hZ', evalCLM, ContinuousLinearMap.sum_apply, ContinuousLinearMap.smul_apply]
 
@@ -370,7 +486,6 @@ lemma fderiv_free_energy_density_apply (H h : EnergySpace N) :
 lemma fderiv_free_energy_density_eq (H : EnergySpace N) :
     fderiv ℝ (fun H : EnergySpace N => free_energy_density (N := N) H) H =
       grad_free_energy_density (N := N) H := by
-  classical
   ext h
   simp [grad_free_energy_density, fderiv_free_energy_density_apply, ContinuousLinearMap.sum_apply,
     ContinuousLinearMap.smul_apply, smul_eq_mul]
@@ -439,21 +554,17 @@ theorem trace_formula (H : EnergySpace N) (Cov : Config N → Config N → ℝ) 
 Self-overlap is always 1.
 -/
 theorem overlap_self (hN : 0 < N) (σ : Config N) : overlap N σ σ = 1 := by
-  classical
-  unfold overlap
-  have hterm : ∀ i : Fin N, spin N σ i * spin N σ i = (1 : ℝ) := by
-    intro i
-    cases hσ : σ i <;> simp [spin, hσ]
-  have hsum : (∑ i : Fin N, spin N σ i * spin N σ i) = (N : ℝ) := by
+  unfold overlap overlapOf
+  have hsum : (∑ i : Fin N, isingSpin (σ i) * isingSpin (σ i)) = (N : ℝ) := by
     calc
-      (∑ i : Fin N, spin N σ i * spin N σ i)
+      (∑ i : Fin N, isingSpin (σ i) * isingSpin (σ i))
           = ∑ _i : Fin N, (1 : ℝ) := by
               refine Finset.sum_congr rfl ?_
               intro i _hi
-              exact hterm i
+              simpa using isingSpin_mul_self (σ i)
       _ = (N : ℝ) := by simp
   have hN0 : (N : ℝ) ≠ 0 := by exact_mod_cast hN.ne'
-  simp [hsum, hN0, div_eq_mul_inv]
+  simp [spinOf, hsum, hN0, div_eq_mul_inv]
 
 /--
 Trace calculation for the SK model covariance.
@@ -465,7 +576,6 @@ leading to Eq. (1.65)).
 theorem trace_sk (hN : 0 < N) (H : EnergySpace N) :
     (∑ σ, ∑ τ, sk_cov_kernel N β σ τ * hessian_free_energy N H (std_basis N σ) (std_basis N τ)) =
     (β^2 / 2) * (1 - ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ)^2) := by
-  classical
   let E_R2 : ℝ :=
     ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ)^2
   have hs1 : (∑ σ, gibbs_pmf N H σ) = 1 := sum_gibbs_pmf (N := N) (H := H)
@@ -517,7 +627,6 @@ Reference: Talagrand, Vol. I, Ch. 1, §1.3 (generalized for RSB).
 theorem trace_simple (hN : 0 < N) (H : EnergySpace N) (xi : ℝ → ℝ) :
     (∑ σ, ∑ τ, simple_cov_kernel N β xi σ τ * hessian_free_energy N H (std_basis N σ) (std_basis N τ)) =
     (β^2) * (xi 1 - ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * xi (overlap N σ τ)) := by
-  classical
   let E_xi : ℝ :=
     ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * xi (overlap N σ τ)
   have hs1 : (∑ σ, gibbs_pmf N H σ) = 1 := sum_gibbs_pmf (N := N) (H := H)
@@ -581,14 +690,13 @@ theorem guerra_derivative_bound_algebra
   rw [h_main]
   congr 1
   congr 1
-  classical
   simp [E_R2, E_xi]
   have hhalf :
       (2⁻¹ : ℝ) *
           (∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ) ^ 2)
         =
           ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * ((overlap N σ τ) ^ 2 / 2) := by
-    classical
+
     simp [div_eq_mul_inv]
     calc
       (2⁻¹ : ℝ) *
