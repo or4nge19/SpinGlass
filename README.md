@@ -7,10 +7,13 @@ This repository contains two Lean 4 libraries developed against Mathlib:
   Vol. II). See `GibbsMeasure/README.md`.
   Upstream: <https://github.com/james18lpc/GibbsMeasure>.
 
+Both are independent `lean_lib`s (see `lakefile.toml`).
+
 ## Overview
 
-Finite-volume thermodynamic functionals depend only on a finite configuration space `α`. In the
-namespace `SpinGlass.FiniteGibbs` we represent Hamiltonians as vectors in the Hilbert space
+Finite-volume thermodynamic functionals depend only on a finite configuration space `α`
+(typically assumed via `[Fintype α]`). In the namespace `SpinGlass.FiniteGibbs` we represent
+Hamiltonians as vectors in the Hilbert space
 `EnergySpace α := PiLp 2 (fun _ : α => ℝ)` and define:
 
 - `Z H := ∑ σ : α, Real.exp (-H σ)` (partition function),
@@ -34,14 +37,14 @@ main entry point for interpolation arguments.
 - Random Hamiltonians are specified via covariance identities on the canonical basis, so that
   comparison/interpolation statements are kernel-level.
 - Interpolation arguments are stratified into dominated differentiation, Gaussian IBP, and a
-  finite-dimensional algebraic layer (trace/Hessian identities).
+  finite-dimensional algebraic reduction (trace/Hessian identities).
 
 ## Entry points
 
 - `import SpinGlass` re-exports the full development
   (and currently also imports `GibbsMeasure`).
 - For the finite-configuration calculus: `import SpinGlass.FiniteGibbs`.
-- For the Guerra interpolation pipeline: `import SpinGlass.GuerraPipeline`.
+- For the Guerra interpolation development: `import SpinGlass.GuerraPipeline`.
 - For the DLR/specification library: `import GibbsMeasure`.
 
 Gaussian analysis entry points:
@@ -57,7 +60,7 @@ Gaussian analysis entry points:
 
 ### Umbrella modules
 
-- `Common`: shared utilities (re-export layer).
+- `Common`: shared utilities (re-export module).
 - `SpinGlass`: main import for the full `SpinGlass` development
   (currently also imports `GibbsMeasure`).
 - `GibbsMeasure`: main import for the full `GibbsMeasure` development.
@@ -95,7 +98,7 @@ Namespace: `SpinGlass.FiniteGibbs`.
 - `SpinGlass.GuerraTrace`:
   conversion of the IBP expression to Talagrand’s trace/Hessian form.
 - `SpinGlass.GuerraPipeline`:
-  a packaged `HasDerivAt` theorem combining the previous steps.
+  a consolidated `HasDerivAt` theorem combining the previous steps.
 - `SpinGlass.Replicas`:
   replica calculus and reusable IBP lemmas on `disorderPairLaw` in polynomial-growth form.
 
@@ -127,7 +130,7 @@ See `GibbsMeasure/README.md` for entry points and a file map.
   `SpinGlass.FiniteGibbs.trace_formula`.
 - Hilbert-space Gaussian IBP:
   `ProbabilityTheory.IsGaussian.integral_inner_mul_eq_integral_fderiv_covarianceOperator_polyGrowth`.
-- Guerra pipeline (derivative in trace/Hessian form):
+- Guerra interpolation (derivative in trace/Hessian form):
   `SpinGlass.hasDerivAt_guerraPhi_eq_trace_integral`.
 - SK trace computations and algebraic core:
   `SpinGlass.trace_sk`, `SpinGlass.trace_simple`,
