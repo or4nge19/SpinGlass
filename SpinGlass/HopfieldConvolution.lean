@@ -45,6 +45,7 @@ lemma hopfieldOverlapImageMeasure_Icc_compl (Ξ : Patterns N M) (H : EnergySpace
         (Set.Icc (fun _ : Fin M => (-1 : ℝ)) (fun _ : Fin M => (1 : ℝ)))ᶜ
       = 0 := by
   have hm : Measurable (hopfieldOverlapVec (N := N) (M := M) Ξ) := by
+    -- `Config N` is finite (discrete σ-algebra), so every function out of it is measurable.
     simpa using measurable_of_finite (hopfieldOverlapVec (N := N) (M := M) Ξ)
   have hpre :
       (hopfieldOverlapVec (N := N) (M := M) Ξ) ⁻¹'

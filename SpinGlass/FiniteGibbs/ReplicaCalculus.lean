@@ -16,6 +16,8 @@ applies Gaussian integration by parts on the disorder.
 ## Main results
 
 - `abs_gibbs_average_n_det_le_sum_abs`: a crude bound on the deterministic Gibbs average.
+- `abs_n_mul_gibbs_pmf_sub_card_le`: a uniform bound on `(n * gibbs_pmf H τ) - count`.
+- `abs_sum_mul_prod_gibbs_pmf_mul_n_mul_sub_card_le`: a bound for the explicit `A`-summand used in IBP.
 - `fderiv_prod_gibbs_pmf_apply`: derivative of the product Gibbs weight on `n` replicas.
 - `norm_fderiv_prod_gibbs_pmf_le`: a uniform bound on the derivative of the product Gibbs weight.
 - `fderiv_gibbs_average_n_det_apply`: derivative of the deterministic Gibbs average.
@@ -88,6 +90,131 @@ lemma abs_gibbs_average_n_det_le_sum_abs (n : ℕ) (H : EnergySpace α) (f : Rep
           intro σs _hσs
           have := mul_le_mul_of_nonneg_left (hprod_abs_le_one σs) (abs_nonneg (f σs))
           simpa using this
+
+/-! ## Elementary combinatorial bounds used in replica calculus -/
+
+lemma abs_n_mul_gibbs_pmf_sub_card_le [DecidableEq α] (n : ℕ) (H : EnergySpace α) (τ : α)
+    (σs : ReplicaSpace (α := α) n) :
+    |(n : ℝ) * (gibbs_pmf (α := α) H τ)
+        - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)|
+      ≤ (2 * (n : ℝ)) := by
+  classical
+  set g : ℝ := gibbs_pmf (α := α) H τ
+  have hg0 : 0 ≤ g := by
+    simpa [g] using (gibbs_pmf_nonneg (α := α) (H := H) (σ := τ))
+  have hg1 : g ≤ 1 := by
+    simpa [g] using (gibbs_pmf_le_one (α := α) (H := H) (σ := τ))
+  have hcard_le : ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ) ≤ n := by
+    have h' :
+        (Finset.univ.filter fun l : Fin n => σs l = τ).card
+          ≤ (Finset.univ : Finset (Fin n)).card :=
+      Finset.card_le_card (Finset.filter_subset _ _)
+    simpa [Finset.card_univ] using (Nat.cast_le.2 h')
+  have ha : |(n : ℝ) * g| ≤ n := by
+    have hn0 : (0 : ℝ) ≤ (n : ℝ) := Nat.cast_nonneg _
+    have hng0 : 0 ≤ (n : ℝ) * g := mul_nonneg hn0 hg0
+    have : (n : ℝ) * g ≤ (n : ℝ) * 1 := mul_le_mul_of_nonneg_left hg1 hn0
+    simpa [abs_of_nonneg hng0] using (by simpa using this)
+  have hb : |((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)| ≤ n := by
+    have hnonneg : 0 ≤ ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ) :=
+      Nat.cast_nonneg _
+    simpa [abs_of_nonneg hnonneg] using hcard_le
+  have hab :
+      |(n : ℝ) * g - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)|
+        ≤ |(n : ℝ) * g| + |((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)| := by
+    simpa [sub_zero, zero_sub] using
+      (abs_sub_le ((n : ℝ) * g) (0 : ℝ) ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))
+  calc
+    |(n : ℝ) * g - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)|
+        ≤ |(n : ℝ) * g| + |((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)| := hab
+    _ ≤ n + n := by gcongr
+    _ = 2 * (n : ℝ) := by ring
+
+lemma abs_sum_mul_prod_gibbs_pmf_mul_n_mul_sub_card_le [DecidableEq α] (n : ℕ) (H : EnergySpace α)
+    (f : ReplicaFun (α := α) n) (τ : α) :
+    |∑ σs : ReplicaSpace (α := α) n,
+        f σs * (∏ l : Fin n, gibbs_pmf (α := α) H (σs l)) *
+          ((n : ℝ) * (gibbs_pmf (α := α) H τ)
+            - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))|
+      ≤ (2 * (n : ℝ)) * (∑ σs : ReplicaSpace (α := α) n, |f σs|) := by
+  classical
+  -- Bound term-by-term, using `|∏ gibbs_pmf| ≤ 1` and `|(n*g) - count| ≤ 2n`.
+  have hterm :
+      ∀ σs : ReplicaSpace (α := α) n,
+        |f σs * (∏ l : Fin n, gibbs_pmf (α := α) H (σs l)) *
+            ((n : ℝ) * (gibbs_pmf (α := α) H τ)
+              - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))|
+          ≤ (2 * (n : ℝ)) * |f σs| := by
+    intro σs
+    have hP : |∏ l : Fin n, gibbs_pmf (α := α) H (σs l)| ≤ (1 : ℝ) := by
+      have hnonneg :
+          0 ≤ ∏ l : Fin n, gibbs_pmf (α := α) H (σs l) :=
+        prod_gibbs_pmf_nonneg (α := α) (n := n) (H := H) σs
+      have hle1 :
+          (∏ l : Fin n, gibbs_pmf (α := α) H (σs l)) ≤ (1 : ℝ) :=
+        prod_gibbs_pmf_le_one (α := α) (n := n) (H := H) σs
+      simpa [abs_of_nonneg hnonneg] using hle1
+    have hD :
+        |(n : ℝ) * (gibbs_pmf (α := α) H τ)
+            - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)|
+          ≤ 2 * (n : ℝ) :=
+      abs_n_mul_gibbs_pmf_sub_card_le (α := α) (n := n) (H := H) (τ := τ) σs
+    calc
+      |f σs * (∏ l : Fin n, gibbs_pmf (α := α) H (σs l)) *
+          ((n : ℝ) * (gibbs_pmf (α := α) H τ)
+            - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))|
+          = |f σs| * |∏ l : Fin n, gibbs_pmf (α := α) H (σs l)| *
+              |(n : ℝ) * (gibbs_pmf (α := α) H τ)
+                  - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)| := by
+              simp [abs_mul, mul_assoc]
+      _ ≤ |f σs| * 1 * (2 * (n : ℝ)) := by
+              have hf0 : 0 ≤ |f σs| := abs_nonneg _
+              have hD0 :
+                  0 ≤ |(n : ℝ) * (gibbs_pmf (α := α) H τ)
+                          - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)| :=
+                abs_nonneg _
+              have hmid :
+                  |f σs| * |∏ l : Fin n, gibbs_pmf (α := α) H (σs l)| *
+                      |(n : ℝ) * (gibbs_pmf (α := α) H τ)
+                          - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)|
+                    ≤ |f σs| * 1 *
+                        |(n : ℝ) * (gibbs_pmf (α := α) H τ)
+                            - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)| := by
+                have := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hP hf0) hD0
+                simpa [mul_assoc] using this
+              have hlast :
+                  |f σs| * 1 *
+                        |(n : ℝ) * (gibbs_pmf (α := α) H τ)
+                            - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)|
+                    ≤ |f σs| * 1 * (2 * (n : ℝ)) := by
+                have hf1 : 0 ≤ |f σs| * (1 : ℝ) := by nlinarith [hf0]
+                have := mul_le_mul_of_nonneg_left hD hf1
+                simpa [mul_assoc] using this
+              exact le_trans hmid hlast
+      _ = (2 * (n : ℝ)) * |f σs| := by ring
+  -- Sum bound.
+  calc
+    |∑ σs : ReplicaSpace (α := α) n,
+        f σs * (∏ l : Fin n, gibbs_pmf (α := α) H (σs l)) *
+          ((n : ℝ) * (gibbs_pmf (α := α) H τ)
+            - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))|
+        ≤ ∑ σs : ReplicaSpace (α := α) n,
+          |f σs * (∏ l : Fin n, gibbs_pmf (α := α) H (σs l)) *
+              ((n : ℝ) * (gibbs_pmf (α := α) H τ)
+                - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))| := by
+            simpa using
+              (Finset.abs_sum_le_sum_abs
+                (s := (Finset.univ : Finset (ReplicaSpace (α := α) n)))
+                (f := fun σs : ReplicaSpace (α := α) n =>
+                  f σs * (∏ l : Fin n, gibbs_pmf (α := α) H (σs l)) *
+                    ((n : ℝ) * (gibbs_pmf (α := α) H τ)
+                      - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))))
+    _ ≤ ∑ σs : ReplicaSpace (α := α) n, (2 * (n : ℝ)) * |f σs| := by
+            refine Finset.sum_le_sum ?_
+            intro σs _hσs
+            exact hterm σs
+    _ = (2 * (n : ℝ)) * (∑ σs : ReplicaSpace (α := α) n, |f σs|) := by
+            simpa [Finset.mul_sum, mul_comm, mul_left_comm, mul_assoc]
 
 /-! ## Bounds for the derivative of `gibbs_pmf` -/
 

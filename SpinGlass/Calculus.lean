@@ -57,7 +57,7 @@ lemma contDiff_gibbs_pmf (N : ℕ) (σ : Config N) :
     ContDiff ℝ (∞) (fun H : EnergySpace N => gibbs_pmf N H σ) := by
   classical
   -- Thin wrapper around the model-agnostic `FiniteGibbs` smoothness lemma.
-  simpa [gibbs_pmf, Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z] using
+  simpa [gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
     (FiniteGibbs.contDiff_gibbs_pmf (α := Config N) (σ := σ))
 
 /--

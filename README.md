@@ -58,7 +58,7 @@ Gaussian analysis entry points:
 
 ## Library map
 
-### Umbrella modules
+### Main modules
 
 - `Common`: shared utilities (re-export module).
 - `SpinGlass`: main import for the full `SpinGlass` development

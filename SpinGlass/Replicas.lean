@@ -69,6 +69,14 @@ law-based predicate `IsGaussian ((ℙ).map g)`. Basic integrability properties a
 pulling back integrability on the law along the map measure.
 -/
 
+/-!
+If a map `g : Ω → E` has a Gaussian pushforward law, then `‖g‖` is integrable.
+
+This is a pullback along `P.map g` of the Fernique-type integrability lemma
+`ProbabilityTheory.IsGaussian.integrable_norm_pow` (proved in
+`Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique`).
+-/
+
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma integrable_norm_of_isGaussian_map
     {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] [CompleteSpace E]
@@ -639,7 +647,7 @@ lemma norm_fderiv_gibbs_pmf_disorder_le (t : ℝ) (σ : Config N) (x : DisorderS
       ‖fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ)
             (H_t_disorder (N := N) (h := h) t x)‖ ≤ 2 :=
     by
-      simpa [SpinGlass.gibbs_pmf, SpinGlass.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z] using
+      simpa [gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
         (FiniteGibbs.norm_fderiv_gibbs_pmf_le_two (α := Config N)
           (H := H_t_disorder (N := N) (h := h) t x) (σ := σ))
   have ht : ‖H_t_disorder_lin (N := N) t‖ ≤ |Real.sqrt t| + |Real.sqrt (1 - t)| :=
@@ -921,7 +929,7 @@ lemma norm_fderiv_prod_gibbs_pmf_disorder_le (t : ℝ) (σs : ReplicaSpace N n) 
   have hF_diff :
       DifferentiableAt ℝ F (H_t_disorder (N := N) (h := h) t x) := by
     -- Delegate to the configuration-agnostic lemma.
-    simpa [F, SpinGlass.gibbs_pmf, SpinGlass.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z] using
+    simpa [F, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
       (FiniteGibbs.differentiableAt_prod_gibbs_pmf (α := Config N) (n := n)
         (H := H_t_disorder (N := N) (h := h) t x) (σs := σs))
   have hF :
@@ -939,7 +947,7 @@ lemma norm_fderiv_prod_gibbs_pmf_disorder_le (t : ℝ) (σs : ReplicaSpace N n) 
     simpa using hcomp.fderiv
   have hF_norm :
       ‖fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)‖ ≤ 2 * (n : ℝ) := by
-    simpa [F, SpinGlass.gibbs_pmf, SpinGlass.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z] using
+    simpa [F, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
       (FiniteGibbs.norm_fderiv_prod_gibbs_pmf_le (α := Config N) (n := n)
         (H := H_t_disorder (N := N) (h := h) t x) (σs := σs))
   have hH_norm : ‖H_t_disorder_lin (N := N) t‖ ≤ |Real.sqrt t| + |Real.sqrt (1 - t)| :=
@@ -1027,151 +1035,37 @@ lemma measurable_A_disorder_explicit (t : ℝ) (f : ReplicaFun N n) (τ : Config
 lemma abs_prod_gibbs_pmf_disorder_le_one (t : ℝ) (σs : ReplicaSpace N n) (x : DisorderSpace (N := N)) :
     |prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) (t := t) σs x| ≤ 1 := by
   classical
-  -- Each Gibbs pmf is in `[0,1]`, hence the product has absolute value ≤ 1.
-  have hfac :
-      ∀ l : Fin n, |gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := σs l) x| ≤ 1 := by
-    intro l
-    have hle : gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) (σs l) ≤ 1 :=
-      gibbs_pmf_le_one (N := N) (H := H_t_disorder (N := N) (h := h) t x) (σ := σs l)
-    have hn : 0 ≤ gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) (σs l) :=
-      gibbs_pmf_nonneg (N := N) (H := H_t_disorder (N := N) (h := h) t x) (σ := σs l)
-    simpa [gibbs_pmf_disorder, abs_of_nonneg hn] using hle
-  have hprod :
-      (∏ l : Fin n, |gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := σs l) x|) ≤ 1 := by
-    simpa using
-      (Finset.prod_le_one (s := (Finset.univ : Finset (Fin n)))
-        (f := fun l : Fin n => |gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := σs l) x|)
-        (h0 := fun _ _ => abs_nonneg _)
-        (h1 := by
-          intro l _hl
-          exact hfac l))
-  simpa [prod_gibbs_pmf_disorder, Finset.abs_prod] using hprod
+  -- Reduce to the model-agnostic finite-volume bounds for Gibbs weights.
+  let H : EnergySpace N := H_t_disorder (N := N) (h := h) t x
+  have hnonneg :
+      0 ≤ ∏ l : Fin n, FiniteGibbs.gibbs_pmf (α := Config N) H (σs l) :=
+    FiniteGibbs.prod_gibbs_pmf_nonneg (α := Config N) (n := n) (H := H) σs
+  have hle1 :
+      (∏ l : Fin n, FiniteGibbs.gibbs_pmf (α := Config N) H (σs l)) ≤ (1 : ℝ) :=
+    FiniteGibbs.prod_gibbs_pmf_le_one (α := Config N) (n := n) (H := H) σs
+  simpa [prod_gibbs_pmf_disorder, gibbs_pmf_disorder, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf, H,
+    abs_of_nonneg hnonneg] using hle1
 
 lemma abs_n_mul_gibbs_pmf_sub_card_le (t : ℝ) (τ : Config N) (σs : ReplicaSpace N n)
     (x : DisorderSpace (N := N)) :
     |(n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
         - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)|
       ≤ (2 * (n : ℝ)) := by
-  classical
-  set g : ℝ := gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x
-  have hg0 : 0 ≤ g := by
-    simpa [g, gibbs_pmf_disorder] using
-      (gibbs_pmf_nonneg (N := N) (H := H_t_disorder (N := N) (h := h) t x) (σ := τ))
-  have hg1 : g ≤ 1 := by
-    simpa [g, gibbs_pmf_disorder] using
-      (gibbs_pmf_le_one (N := N) (H := H_t_disorder (N := N) (h := h) t x) (σ := τ))
-  have hcard_le : ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ) ≤ n := by
-    have h' :
-        (Finset.univ.filter fun l : Fin n => σs l = τ).card
-          ≤ (Finset.univ : Finset (Fin n)).card :=
-      Finset.card_le_card (Finset.filter_subset _ _)
-    simpa [Finset.card_univ] using (Nat.cast_le.2 h')
-  have hn0 : (0 : ℝ) ≤ (n : ℝ) := by exact Nat.cast_nonneg _
-  have ha : |(n : ℝ) * g| ≤ n := by
-    have hng0 : 0 ≤ (n : ℝ) * g := mul_nonneg hn0 hg0
-    have : (n : ℝ) * g ≤ (n : ℝ) * 1 := mul_le_mul_of_nonneg_left hg1 hn0
-    simpa [abs_of_nonneg hng0] using (by simpa using this)
-  have hb : |((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)| ≤ n := by
-    have hnonneg : 0 ≤ ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ) :=
-      Nat.cast_nonneg _
-    simpa [abs_of_nonneg hnonneg] using hcard_le
-  have hab : |(n : ℝ) * g - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)|
-      ≤ |(n : ℝ) * g| + |((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)| := by
-    simpa [sub_zero, zero_sub] using
-      (abs_sub_le ((n : ℝ) * g) (0 : ℝ) ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))
-  calc
-    |(n : ℝ) * g - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)|
-        ≤ |(n : ℝ) * g| + |((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)| := hab
-    _ ≤ n + n := by gcongr
-    _ = 2 * (n : ℝ) := by ring
+  -- Expand `gibbs_pmf_disorder` and apply the model-agnostic bound.
+  simpa [gibbs_pmf_disorder, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
+    (FiniteGibbs.abs_n_mul_gibbs_pmf_sub_card_le (α := Config N) (n := n)
+      (H := H_t_disorder (N := N) (h := h) t x) (τ := τ) (σs := σs))
 
 lemma abs_A_disorder_explicit_le (t : ℝ) (f : ReplicaFun N n) (τ : Config N)
     (x : DisorderSpace (N := N)) :
     |A_disorder_explicit (N := N) (n := n) (h := h) t f τ x|
       ≤ (2 * (n : ℝ)) * (∑ σs : ReplicaSpace N n, |f σs|) := by
   classical
-  -- Expand and bound term-by-term.
-  have hterm :
-      ∀ σs : ReplicaSpace N n,
-        |f σs *
-            (prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) (t := t) σs x) *
-            ((n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
-              - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))|
-          ≤ (2 * (n : ℝ)) * |f σs| := by
-    intro σs
-    have hP : |prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) (t := t) σs x| ≤ 1 :=
-      abs_prod_gibbs_pmf_disorder_le_one (N := N) (n := n) (h := h) (t := t) σs x
-    have hD :
-        |(n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
-            - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)|
-          ≤ 2 * (n : ℝ) :=
-      abs_n_mul_gibbs_pmf_sub_card_le (N := N) (n := n) (h := h) (t := t) (τ := τ) σs x
-    -- `|f * P * D| ≤ |f| * 1 * (2n)`.
-    calc
-      |f σs *
-          (prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) (t := t) σs x) *
-          ((n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
-            - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))|
-          = |f σs| * |prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) (t := t) σs x| *
-              |(n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
-                  - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)| := by
-              simp [abs_mul, mul_assoc]
-      _ ≤ |f σs| * 1 * (2 * (n : ℝ)) := by
-              have hf0 : 0 ≤ |f σs| := abs_nonneg _
-              have hD0 :
-                  0 ≤ |(n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
-                          - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)| :=
-                abs_nonneg _
-              -- bound `|P|` by `1`, then bound `|D|` by `2n`.
-              have hmid :
-                  |f σs| * |prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) (t := t) σs x| *
-                      |(n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
-                          - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)|
-                    ≤ |f σs| * 1 *
-                        |(n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
-                            - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)| := by
-                -- multiply inequality `|P| ≤ 1` by the nonnegative factors.
-                have := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hP hf0) hD0
-                -- rearrange
-                simpa [mul_assoc] using this
-              have hlast :
-                  |f σs| * 1 *
-                        |(n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
-                            - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)|
-                    ≤ |f σs| * 1 * (2 * (n : ℝ)) := by
-                -- multiply inequality `|D| ≤ 2n` by `|f| * 1 ≥ 0`.
-                have hf1 : 0 ≤ |f σs| * (1 : ℝ) := by nlinarith [hf0]
-                have := mul_le_mul_of_nonneg_left hD hf1
-                -- rearrange
-                simpa [mul_assoc] using this
-              exact le_trans hmid hlast
-      _ = (2 * (n : ℝ)) * |f σs| := by ring
-  -- Sum bound.
-  calc
-    |A_disorder_explicit (N := N) (n := n) (h := h) t f τ x|
-        = |∑ σs : ReplicaSpace N n,
-            f σs *
-              (prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) (t := t) σs x) *
-              ((n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
-                - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))| := by
-            simp [A_disorder_explicit]
-    _ ≤ ∑ σs : ReplicaSpace N n,
-          |f σs *
-              (prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) (t := t) σs x) *
-              ((n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
-                - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))| := by
-            simpa using
-              (Finset.abs_sum_le_sum_abs
-                (f := fun σs : ReplicaSpace N n =>
-                  f σs *
-                    (prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) (t := t) σs x) *
-                    ((n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
-                      - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)))
-                (s := (Finset.univ : Finset (ReplicaSpace N n))))
-    _ ≤ ∑ σs : ReplicaSpace N n, (2 * (n : ℝ)) * |f σs| := by
-            refine Finset.sum_le_sum (fun σs _ => hterm σs)
-    _ = (2 * (n : ℝ)) * (∑ σs : ReplicaSpace N n, |f σs|) := by
-            simp [Finset.mul_sum, mul_comm]
+  let H : EnergySpace N := H_t_disorder (N := N) (h := h) t x
+  simpa [A_disorder_explicit, prod_gibbs_pmf_disorder, gibbs_pmf_disorder,
+    gibbs_pmf_eq_FiniteGibbs_gibbs_pmf, H] using
+    (FiniteGibbs.abs_sum_mul_prod_gibbs_pmf_mul_n_mul_sub_card_le (α := Config N)
+      (n := n) (H := H) (f := f) (τ := τ))
 
 lemma norm_fderiv_A_disorder_explicit_le (t : ℝ) (f : ReplicaFun N n) (τ : Config N)
     (x : DisorderSpace (N := N)) :
@@ -1588,8 +1482,8 @@ lemma A_disorder_eq_explicit (t : ℝ) (f : ReplicaFun N n) (τ : Config N) (x :
   -- Unfold `A_disorder` via the generic derivative formula, then rewrite the counting term using `hcount`.
   simp [A_disorder, A_disorder_explicit, gibbs_average_n_det, hcard,
     FiniteGibbs.fderiv_gibbs_average_n_det_apply, FiniteGibbs.std_basis,
-    SpinGlass.gibbs_pmf, SpinGlass.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z,
-    gibbs_pmf_disorder, prod_gibbs_pmf_disorder, std_basis, mul_assoc, mul_comm]
+    gibbs_pmf_eq_FiniteGibbs_gibbs_pmf,
+    gibbs_pmf_disorder, prod_gibbs_pmf_disorder, std_basis, mul_comm]
   apply Fintype.sum_congr
   intro σs
   -- The summands differ only by rewriting the counting term.
@@ -2385,9 +2279,8 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
                         (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ) -
                     (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l))) := by
       funext w
-      -- Use the model-agnostic derivative formula and unfold `FiniteGibbs.gibbs_pmf` back to `SpinGlass.gibbs_pmf`.
-      simpa [dgibbs_average_n, gibbs_average_n_det, SpinGlass.gibbs_pmf, SpinGlass.Z,
-        FiniteGibbs.gibbs_pmf, FiniteGibbs.Z] using
+      -- Use the model-agnostic derivative formula and rewrite `gibbs_pmf` via the bridge lemma.
+      simpa [dgibbs_average_n, gibbs_average_n_det, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
         (FiniteGibbs.fderiv_gibbs_average_n_det_apply (α := Config N) (n := n)
           (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w)
           (v := dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (f := f))

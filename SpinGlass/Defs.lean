@@ -56,6 +56,13 @@ abbrev Config := Fin N → Bool
 
 def spin (σ : Config N) (i : Fin N) : ℝ := if σ i then 1 else -1
 
+/--
+Energy Hilbert space for Hamiltonians.
+
+We use the \(ℓ^2\) norm on the *finite* configuration space `Config N` (`PiLp 2`), so `‖H‖` is the
+Euclidean norm on `ℝ^{Config N}` (dimension \(2^N\)). Any Lipschitz/derivative constants in the
+finite-volume calculus are with respect to this \(ℓ^2\) convention (not \(ℓ^\infty\)).
+-/
 abbrev EnergySpace := PiLp 2 (fun _ : Config N => ℝ)
 
 /-- Magnetization of a configuration: \( \sum_{i=1}^N \sigma_i \) (with `σ_i ∈ {±1}`). -/
@@ -113,6 +120,18 @@ def Z (H : EnergySpace N) : ℝ := ∑ σ, Real.exp (- H σ)
 
 def gibbs_pmf (H : EnergySpace N) (σ : Config N) : ℝ :=
   Real.exp (- H σ) / Z N H
+
+/-! #### Bridge lemmas to the model-agnostic `FiniteGibbs` layer -/
+
+/-- `Z` is definitionally `FiniteGibbs.Z` specialized to `α := Config N`. -/
+lemma Z_eq_FiniteGibbs_Z (H : EnergySpace N) :
+    Z (N := N) H = FiniteGibbs.Z (α := Config N) H := by
+  rfl
+
+/-- `gibbs_pmf` is definitionally `FiniteGibbs.gibbs_pmf` specialized to `α := Config N`. -/
+lemma gibbs_pmf_eq_FiniteGibbs_gibbs_pmf (H : EnergySpace N) (σ : Config N) :
+    gibbs_pmf (N := N) H σ = FiniteGibbs.gibbs_pmf (α := Config N) H σ := by
+  rfl
 
 /-! #### Vol II bridge lemmas (`Config N` specialization) -/
 
@@ -303,7 +322,7 @@ lemma fderiv_gibbs_pmf_apply (H h : EnergySpace N) (σ : Config N) :
       (gibbs_pmf N H σ) *
         ((∑ τ : Config N, (gibbs_pmf N H τ) * h τ) - h σ) := by
   -- Reuse the model-agnostic Vol II calculus on a finite configuration space.
-  simpa [Z, gibbs_pmf, FiniteGibbs.Z, FiniteGibbs.gibbs_pmf] using
+  simpa [gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
     (FiniteGibbs.fderiv_gibbs_pmf_apply (α := Config N) (H := H) (h := h) σ)
 
 lemma hasFDerivAt_grad_free_energy_density (H : EnergySpace N) :
@@ -344,8 +363,8 @@ lemma fderiv_Z_apply (H h : EnergySpace N) :
 lemma fderiv_free_energy_density_apply (H h : EnergySpace N) :
     fderiv ℝ (fun H : EnergySpace N => free_energy_density (N := N) H) H h =
       -(1 / (N : ℝ)) * ∑ σ : Config N, (gibbs_pmf N H σ) * h σ := by
-  simpa [free_energy_density, Z, gibbs_pmf, FiniteGibbs.free_energy_density, FiniteGibbs.Z,
-    FiniteGibbs.gibbs_pmf] using
+  simpa [free_energy_density, FiniteGibbs.free_energy_density, Z_eq_FiniteGibbs_Z,
+    gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
     (FiniteGibbs.fderiv_free_energy_density_apply (α := Config N) (n := N) (H := H) (h := h))
 
 lemma fderiv_free_energy_density_eq (H : EnergySpace N) :
@@ -412,8 +431,8 @@ theorem trace_formula (H : EnergySpace N) (Cov : Config N → Config N → ℝ) 
       (∑ σ, (gibbs_pmf N H σ) * Cov σ σ) -
       (∑ σ, ∑ τ, (gibbs_pmf N H σ) * (gibbs_pmf N H τ) * Cov σ τ)
     ) := by
-  simpa [hessian_free_energy, gibbs_pmf, Z, std_basis,
-    FiniteGibbs.hessian_free_energy, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z, FiniteGibbs.std_basis] using
+  simpa [hessian_free_energy, FiniteGibbs.hessian_free_energy, std_basis, FiniteGibbs.std_basis,
+    gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
     (FiniteGibbs.trace_formula (α := Config N) (n := N) (H := H) (Cov := Cov))
 
 /--
