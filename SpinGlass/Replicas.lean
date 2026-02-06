@@ -633,7 +633,8 @@ lemma fderiv_gibbs_average_n_det_apply (H v : EnergySpace N) (f : ReplicaFun N n
       (fun H' : EnergySpace N => gibbs_average_n_det (N := N) (n := n) H' f)
         = fun H' : EnergySpace N => ∑ σs ∈ u, A σs H' := by
     funext H'
-    simp [gibbs_average_n_det, u, A]
+    simp [gibbs_average_n_det, FiniteGibbs.gibbs_average_n_det, u, A,
+      SpinGlass.gibbs_pmf, SpinGlass.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z]
   rw [hrewrite]
   have : fderiv ℝ (fun H' : EnergySpace N => ∑ σs ∈ u, A σs H') H v =
       (∑ σs ∈ u, fderiv ℝ (A σs) H) v := by

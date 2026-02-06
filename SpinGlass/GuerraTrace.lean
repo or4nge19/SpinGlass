@@ -82,23 +82,8 @@ private lemma fderiv_gibbs_pmf_apply_std_basis
     fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H (std_basis N τ)
       =
       (gibbs_pmf N H σ) * ((gibbs_pmf N H τ) - (if σ = τ then 1 else 0)) := by
-  classical
-  -- plug `h = std_basis τ` into the general formula and simplify the Kronecker delta sums
-  have hsum :
-      (∑ ρ : Config N, (gibbs_pmf N H ρ) * (std_basis N τ) ρ) = gibbs_pmf N H τ := by
-    simp [std_basis]
-  have hKr : (std_basis N τ) σ = (if τ = σ then 1 else 0) := by
-    simp [std_basis]
-  calc
-    fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H (std_basis N τ)
-        =
-        (gibbs_pmf N H σ) *
-          ((∑ ρ : Config N, (gibbs_pmf N H ρ) * (std_basis N τ) ρ) - (std_basis N τ) σ) := by
-          simpa using
-            (SpinGlass.fderiv_gibbs_pmf_apply (N := N) (H := H) (h := std_basis N τ) σ)
-    _ = (gibbs_pmf N H σ) * ((gibbs_pmf N H τ) - (if σ = τ then 1 else 0)) := by
-          -- rewrite the Kronecker delta in symmetric form
-          simp [hsum, hKr, eq_comm]
+  simpa [Z, gibbs_pmf, std_basis, FiniteGibbs.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.std_basis, eq_comm] using
+    (FiniteGibbs.fderiv_gibbs_pmf_apply_std_basis (α := Config N) (H := H) (σ := σ) (τ := τ))
 
 private lemma hessian_free_energy_std_basis_eq_neg_fderiv_gibbs_pmf
     (H : EnergySpace N) (σ τ : Config N) :
@@ -176,11 +161,9 @@ private lemma hessian_free_energy_std_basis_eq
       =
       (1 / (N : ℝ)) *
         (gibbs_pmf N H σ * (if σ = τ then 1 else 0) - gibbs_pmf N H σ * gibbs_pmf N H τ) := by
-  classical
-  by_cases hστ : σ = τ
-  · subst hστ
-    simp [hessian_free_energy, std_basis, mul_comm]
-  · simp [hessian_free_energy, std_basis, hστ, mul_comm]
+  simpa [hessian_free_energy, Z, gibbs_pmf, std_basis, FiniteGibbs.hessian_free_energy, FiniteGibbs.Z,
+    FiniteGibbs.gibbs_pmf, FiniteGibbs.std_basis, eq_comm] using
+    (FiniteGibbs.hessian_free_energy_std_basis_eq (α := Config N) (n := N) (H := H) (σ := σ) (τ := τ))
 
 private lemma measurable_gibbs_pmf_disorder (t : ℝ) (σ : Config N) :
     Measurable (fun x : DisorderSpace (N := N) =>

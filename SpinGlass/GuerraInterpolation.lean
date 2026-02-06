@@ -38,48 +38,10 @@ noncomputable def guerraPhi (t : ℝ) : ℝ :=
 lemma abs_fderiv_free_energy_density_apply_le (H v : EnergySpace N) :
     |fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H') H v|
       ≤ (1 / (N : ℝ)) * ‖v‖ := by
-  classical
-  have hsum1 : (∑ σ : Config N, gibbs_pmf N H σ) = 1 :=
-    sum_gibbs_pmf (N := N) (H := H)
-  have hv_point : ∀ σ : Config N, |v σ| ≤ ‖v‖ := fun σ =>
-    abs_apply_le_norm (N := N) v σ
-  have hmain :
-      |∑ σ : Config N, gibbs_pmf N H σ * v σ| ≤ ‖v‖ := by
-    classical
-    calc
-      |∑ σ : Config N, gibbs_pmf N H σ * v σ|
-          ≤ ∑ σ : Config N, |gibbs_pmf N H σ * v σ| := by
-              simpa using
-                (Finset.abs_sum_le_sum_abs
-                  (f := fun σ : Config N => gibbs_pmf N H σ * v σ)
-                  (s := (Finset.univ : Finset (Config N))))
-      _ = ∑ σ : Config N, gibbs_pmf N H σ * |v σ| := by
-            refine Finset.sum_congr rfl (fun σ _hσ => ?_)
-            have hp : 0 ≤ gibbs_pmf N H σ :=
-              SpinGlass.gibbs_pmf_nonneg (N := N) (H := H) (σ := σ)
-            simp [abs_mul, abs_of_nonneg hp, mul_assoc]
-      _ ≤ ∑ σ : Config N, gibbs_pmf N H σ * ‖v‖ := by
-            refine Finset.sum_le_sum (fun σ _hσ => ?_)
-            have hp : 0 ≤ gibbs_pmf N H σ :=
-              SpinGlass.gibbs_pmf_nonneg (N := N) (H := H) (σ := σ)
-            exact mul_le_mul_of_nonneg_left (hv_point σ) hp
-      _ = (∑ σ : Config N, gibbs_pmf N H σ) * ‖v‖ := by
-            simpa using
-              (Finset.sum_mul (s := (Finset.univ : Finset (Config N)))
-                (f := fun σ : Config N => gibbs_pmf N H σ) (a := ‖v‖)).symm
-      _ = ‖v‖ := by simp [hsum1]
-  have hfderiv :
-      fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H') H v
-        = -(1 / (N : ℝ)) * ∑ σ : Config N, (gibbs_pmf N H σ) * v σ :=
-    fderiv_free_energy_density_apply (N := N) (H := H) (h := v)
-  calc
-    |fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H') H v|
-        = |-(1 / (N : ℝ)) * ∑ σ : Config N, (gibbs_pmf N H σ) * v σ| := by
-            simpa [hfderiv]
-    _ = (1 / (N : ℝ)) * |∑ σ : Config N, (gibbs_pmf N H σ) * v σ| := by
-            simp [abs_mul]
-    _ ≤ (1 / (N : ℝ)) * ‖v‖ := by
-            exact mul_le_mul_of_nonneg_left hmain (by positivity)
+  -- Vol II backend: specialize the model-agnostic directional derivative bound.
+  simpa [free_energy_density, Z, gibbs_pmf,
+    FiniteGibbs.free_energy_density, FiniteGibbs.Z, FiniteGibbs.gibbs_pmf] using
+    (FiniteGibbs.abs_fderiv_free_energy_density_apply_le (α := Config N) (n := N) (H := H) (v := v))
 
 /--
 Analytic derivative of the expected free energy along the smart path.
@@ -315,23 +277,13 @@ theorem hasDerivAt_guerraPhi (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
         (fun s => H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s ω)
         (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x ω) x :=
       hasDerivAt_H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x hxIoo ω
-    have hFe_diff :
-        DifferentiableAt ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
-          (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x ω) :=
-      by
-        have hdiff :
-            Differentiable ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H') :=
-          (ContDiff.differentiable (contDiff_free_energy_density (N := N)) (by simp))
-        exact hdiff (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x ω)
-    have hFe :
-        HasFDerivAt (fun H' : EnergySpace N => free_energy_density (N := N) H')
-          (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
-            (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x ω))
-          (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x ω) :=
-      hFe_diff.hasFDerivAt
-    have hcomp := hFe.comp x hHt.hasFDerivAt
-    have := hcomp.hasDerivAt
-    simpa [F, F', ContinuousLinearMap.one_apply] using this
+    -- Vol II backend: generic chain rule for the free energy density.
+    simpa [F, F', free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z,
+      ContinuousLinearMap.one_apply] using
+      (FiniteGibbs.hasDerivAt_free_energy_density_comp (α := Config N) (n := N) (t := x)
+        (H := fun s =>
+          H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s ω)
+        (H' := dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x ω) hHt)
 
   have hMain :=
     (hasDerivAt_integral_of_dominated_loc_of_deriv_le

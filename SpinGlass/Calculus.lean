@@ -1,4 +1,6 @@
 import SpinGlass.Defs
+import SpinGlass.FiniteGibbs.Calculus
+import SpinGlass.FiniteGibbs.Integrability
 import Mathlib.Analysis.Calculus.ContDiff.Operations
 import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
 
@@ -45,17 +47,8 @@ functional (Vol. I, Ch. 1, §1.3).
 -/
 lemma contDiff_Z (N : ℕ) : ContDiff ℝ (∞) (fun H : EnergySpace N => Z N H) := by
   classical
-  -- `Z(H) = ∑σ exp(-H σ)`. Each summand is smooth and the index set is finite.
-  have hterm :
-      ∀ σ : Config N, ContDiff ℝ (∞) (fun H : EnergySpace N => Real.exp (-H σ)) := by
-    intro σ
-    -- `H ↦ H σ` is smooth (continuous linear), so `H ↦ exp(-H σ)` is smooth by composition.
-    simpa using (contDiff_exp.comp (contDiff_neg.comp (evalCLM (N := N) σ).contDiff))
-  simpa [Z] using
-    (ContDiff.sum (𝕜 := ℝ) (n := (∞))
-      (s := (Finset.univ : Finset (Config N)))
-      (f := fun σ : Config N => fun H : EnergySpace N => Real.exp (-H σ))
-      (fun σ hσ => hterm σ))
+  -- Thin wrapper around the model-agnostic `FiniteGibbs` smoothness lemma.
+  simpa [Z, FiniteGibbs.Z] using (FiniteGibbs.contDiff_Z (α := Config N))
 
 /--
 `gibbs_pmf` is smooth (`C^∞`) as a quotient of smooth functions, since `Z(H) ≠ 0`.
@@ -63,13 +56,9 @@ lemma contDiff_Z (N : ℕ) : ContDiff ℝ (∞) (fun H : EnergySpace N => Z N H)
 lemma contDiff_gibbs_pmf (N : ℕ) (σ : Config N) :
     ContDiff ℝ (∞) (fun H : EnergySpace N => gibbs_pmf N H σ) := by
   classical
-  have hnum :
-      ContDiff ℝ (∞) (fun H : EnergySpace N => Real.exp (-H σ)) := by
-    simpa using (contDiff_exp.comp (contDiff_neg.comp (evalCLM (N := N) σ).contDiff))
-  have hZ : ContDiff ℝ (∞) (fun H : EnergySpace N => Z N H) := contDiff_Z (N := N)
-  have hZne : ∀ H : EnergySpace N, Z N H ≠ 0 := fun H =>
-    (Z_pos (N := N) (H := H)).ne'
-  simpa [gibbs_pmf] using hnum.div hZ hZne
+  -- Thin wrapper around the model-agnostic `FiniteGibbs` smoothness lemma.
+  simpa [gibbs_pmf, Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z] using
+    (FiniteGibbs.contDiff_gibbs_pmf (α := Config N) (σ := σ))
 
 /--
 `Z(H) > 0` for every Hamiltonian `H`.
@@ -88,11 +77,9 @@ Reference: Talagrand, Vol. I, Ch. 1, §1.3 (differentiation of the free energy).
 lemma contDiff_free_energy_density (N : ℕ) :
     ContDiff ℝ (∞) (fun H : EnergySpace N => free_energy_density (N := N) H) := by
   classical
-  have hZ : ContDiff ℝ (∞) (fun H : EnergySpace N => Z N H) := contDiff_Z (N := N)
-  have hlog : ContDiff ℝ (∞) (fun H : EnergySpace N => Real.log (Z N H)) :=
-    (hZ.log (fun H => (Z_pos_everywhere (N := N) (H := H)).ne'))
-  simpa [free_energy_density, smul_eq_mul, mul_assoc] using
-    (ContDiff.const_smul (𝕜 := ℝ) (n := (∞)) (R := ℝ) (c := (1 / (N : ℝ))) hlog)
+  -- Thin wrapper around the model-agnostic `FiniteGibbs` smoothness lemma.
+  simpa [free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z, smul_eq_mul, mul_assoc] using
+    (FiniteGibbs.contDiff_free_energy_density (α := Config N) (n := N))
 
 /-!
 ### First and second Fréchet derivatives (Talagrand: Gibbs averages and covariances)
@@ -115,6 +102,13 @@ lemma fderiv_free_energy_apply (H h : EnergySpace N) :
     fderiv ℝ (fun H : EnergySpace N => free_energy_density (N := N) H) H h =
       -(1 / (N : ℝ)) * ∑ σ : Config N, (gibbs_pmf N H σ) * h σ :=
   fderiv_free_energy_density_apply (N := N) (H := H) (h := h)
+
+/-- Global Lipschitz bound for the free energy density. -/
+lemma abs_free_energy_density_sub_le (H₁ H₂ : EnergySpace N) :
+    |free_energy_density (N := N) H₂ - free_energy_density (N := N) H₁|
+      ≤ (1 / (N : ℝ)) * ‖H₂ - H₁‖ := by
+  simpa [free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z] using
+    (FiniteGibbs.abs_free_energy_density_sub_le (α := Config N) (n := N) H₁ H₂)
 
 /--
 **Second derivative / Hessian equals Gibbs covariance** (Talagrand).
@@ -151,127 +145,24 @@ open scoped BigOperators
 variable (N)
 
 lemma abs_apply_le_norm (H : EnergySpace N) (σ : Config N) : |H σ| ≤ ‖H‖ := by
-  simpa [Real.norm_eq_abs] using
-    (PiLp.norm_apply_le (p := (2 : ENNReal)) (x := H) σ)
+  -- Vol II backend: the same statement holds for any finite configuration space.
+  simpa using (FiniteGibbs.abs_apply_le_norm (α := Config N) (H := H) (σ := σ))
 
 lemma Z_le_card_mul_exp_norm (H : EnergySpace N) :
     Z N H ≤ (Fintype.card (Config N) : ℝ) * Real.exp (‖H‖) := by
-  classical
-  have hterm : ∀ σ : Config N, Real.exp (-H σ) ≤ Real.exp (‖H‖) := by
-    intro σ
-    have hlin : -H σ ≤ ‖H‖ :=
-      (neg_le_abs (H σ)).trans (abs_apply_le_norm (N := N) H σ)
-    simpa using (Real.exp_le_exp.2 hlin)
-  simpa [Z] using
-    (calc
-      (∑ σ : Config N, Real.exp (-H σ))
-          ≤ ∑ σ : Config N, Real.exp (‖H‖) := by
-              simpa using
-                (Finset.sum_le_sum (s := (Finset.univ : Finset (Config N)))
-                  (fun σ _hσ => hterm σ))
-      _ = (Fintype.card (Config N) : ℝ) * Real.exp (‖H‖) := by
-            simp)
+  simpa [Z, FiniteGibbs.Z] using (FiniteGibbs.Z_le_card_mul_exp_norm (α := Config N) (H := H))
 
 lemma Z_ge_exp_neg_norm (H : EnergySpace N) :
     Real.exp (-‖H‖) ≤ Z N H := by
-  classical
-  let σ₀ : Config N := fun _ => false
-  have hlin0 : H σ₀ ≤ ‖H‖ :=
-    (le_abs_self (H σ₀)).trans (abs_apply_le_norm (N := N) H σ₀)
-  have hlin : -‖H‖ ≤ -H σ₀ := by
-    simpa using (neg_le_neg hlin0)
-  have hexp : Real.exp (-‖H‖) ≤ Real.exp (-H σ₀) := by
-    simpa using (Real.exp_le_exp.2 hlin)
-  have hterm_le_Z : Real.exp (-H σ₀) ≤ Z N H := by
-    have hnonneg : ∀ σ : Config N, 0 ≤ Real.exp (-H σ) := fun σ => (Real.exp_pos _).le
-    have :
-        Real.exp (-H σ₀) ≤
-          ∑ σ ∈ (Finset.univ : Finset (Config N)), Real.exp (-H σ) := by
-      exact Finset.single_le_sum (fun σ _hσ => hnonneg σ) (Finset.mem_univ σ₀)
-    simpa [Z] using this
-  exact le_trans hexp hterm_le_Z
+  simpa [Z, FiniteGibbs.Z] using (FiniteGibbs.Z_ge_exp_neg_norm (α := Config N) (H := H))
 
 lemma abs_free_energy_density_le
     (H : EnergySpace N) :
     |free_energy_density (N := N) H|
       ≤ (Real.log (Fintype.card (Config N)) + 1) * (1 + ‖H‖) := by
-  classical
-  let C : ℝ := Real.log (Fintype.card (Config N)) + 1
-  have hcard_pos : 0 < Fintype.card (Config N) := by
-    classical
-    have : Nonempty (Config N) := ⟨fun _ => false⟩
-    exact Fintype.card_pos
-  have hlog_nonneg : 0 ≤ Real.log (Fintype.card (Config N) : ℝ) := by
-    have h1le : (1 : ℝ) ≤ (Fintype.card (Config N) : ℝ) := by
-      exact_mod_cast (Nat.succ_le_iff.2 hcard_pos)
-    exact Real.log_nonneg h1le
-  have hZpos : 0 < Z N H := Z_pos (N := N) (H := H)
-  have hZ_le := Z_le_card_mul_exp_norm (N := N) H
-  have hZ_ge := Z_ge_exp_neg_norm (N := N) H
-  have hlog_upper :
-      Real.log (Z N H) ≤ Real.log (Fintype.card (Config N) : ℝ) + ‖H‖ := by
-    have hlog_le :
-        Real.log (Z N H) ≤ Real.log ((Fintype.card (Config N) : ℝ) * Real.exp (‖H‖)) :=
-      Real.log_le_log hZpos hZ_le
-    have hcard_ne : (Fintype.card (Config N) : ℝ) ≠ 0 := by
-      exact_mod_cast (Nat.ne_of_gt hcard_pos)
-    have : Real.log ((Fintype.card (Config N) : ℝ) * Real.exp (‖H‖))
-          = Real.log (Fintype.card (Config N) : ℝ) + ‖H‖ := by
-      have hexp_ne : Real.exp (‖H‖) ≠ 0 := Real.exp_ne_zero _
-      calc
-        Real.log ((Fintype.card (Config N) : ℝ) * Real.exp (‖H‖))
-            = Real.log (Fintype.card (Config N) : ℝ) + Real.log (Real.exp (‖H‖)) := by
-                simpa using (Real.log_mul hcard_ne hexp_ne)
-        _ = Real.log (Fintype.card (Config N) : ℝ) + ‖H‖ := by
-                rw [Real.log_exp]
-    rw [this] at hlog_le
-    exact hlog_le
-  have hlog_lower : -(Real.log (Fintype.card (Config N) : ℝ) + ‖H‖) ≤ Real.log (Z N H) := by
-    have h1 : -‖H‖ ≤ Real.log (Z N H) := by
-      have hlog_le : Real.log (Real.exp (-‖H‖)) ≤ Real.log (Z N H) := by
-        have hexp_pos : 0 < Real.exp (-‖H‖) := Real.exp_pos _
-        exact Real.log_le_log hexp_pos hZ_ge
-      simpa using hlog_le
-    have h2 : -(Real.log (Fintype.card (Config N) : ℝ) + ‖H‖) ≤ -‖H‖ := by
-      nlinarith [hlog_nonneg]
-    exact le_trans h2 h1
-  have habs_log :
-      |Real.log (Z N H)| ≤ Real.log (Fintype.card (Config N) : ℝ) + ‖H‖ :=
-    (abs_le.2 ⟨hlog_lower, hlog_upper⟩)
-  have hone_div_le : (1 / (N : ℝ)) ≤ 1 := by
-    cases N with
-    | zero => simp
-    | succ n =>
-        have : (1 : ℝ) ≤ (Nat.succ n : ℝ) := by exact_mod_cast (Nat.succ_pos n)
-        simpa [one_div] using (one_div_le_one_div_of_le (by linarith) this)
-  have hscale :
-      |free_energy_density (N := N) H|
-        ≤ (1 / (N : ℝ)) * (Real.log (Fintype.card (Config N) : ℝ) + ‖H‖) := by
-    have : |free_energy_density (N := N) H|
-          = |(1 / (N : ℝ)) * Real.log (Z N H)| := by
-              simp [free_energy_density]
-    calc
-      |free_energy_density (N := N) H|
-          = |(1 / (N : ℝ)) * Real.log (Z N H)| := this
-      _ = |(1 / (N : ℝ))| * |Real.log (Z N H)| := by simp [abs_mul]
-      _ = (1 / (N : ℝ)) * |Real.log (Z N H)| := by simp
-      _ ≤ (1 / (N : ℝ)) * (Real.log (Fintype.card (Config N) : ℝ) + ‖H‖) := by
-            exact mul_le_mul_of_nonneg_left habs_log (by positivity)
-  have hpoly :
-      (1 / (N : ℝ)) * (Real.log (Fintype.card (Config N) : ℝ) + ‖H‖)
-        ≤ C * (1 + ‖H‖) := by
-    have h1 :
-        (1 / (N : ℝ)) * (Real.log (Fintype.card (Config N) : ℝ) + ‖H‖)
-          ≤ (Real.log (Fintype.card (Config N) : ℝ) + ‖H‖) := by
-      have hnonneg : 0 ≤ (Real.log (Fintype.card (Config N) : ℝ) + ‖H‖) := by
-        nlinarith [hlog_nonneg, norm_nonneg H]
-      exact (mul_le_mul_of_nonneg_right hone_div_le hnonneg).trans_eq (by simp)
-    have h2 :
-        (Real.log (Fintype.card (Config N) : ℝ) + ‖H‖) ≤ C * (1 + ‖H‖) := by
-      dsimp [C]
-      nlinarith [hlog_nonneg, norm_nonneg H]
-    exact le_trans h1 h2
-  simpa [C] using le_trans hscale hpoly
+  -- Vol II backend: use the model-agnostic linear growth bound.
+  simpa [free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z] using
+    (FiniteGibbs.abs_free_energy_density_le (α := Config N) (n := N) (H := H))
 
 /-! A convenient integrability corollary for Gaussian disorder. -/
 lemma integrable_free_energy_density_of_isGaussian
@@ -279,41 +170,10 @@ lemma integrable_free_energy_density_of_isGaussian
     {g : Ω → EnergySpace N} (hg_meas : Measurable g)
     (hg_gauss : ProbabilityTheory.IsGaussian (P.map g)) :
     Integrable (fun w : Ω => free_energy_density (N := N) (g w)) P := by
-  classical
-  let μ : Measure (EnergySpace N) := P.map g
-  haveI : ProbabilityTheory.IsGaussian μ := hg_gauss
-  -- Integrability on the pushforward measure.
-  have hInt_on_μ : Integrable (fun x : EnergySpace N => free_energy_density (N := N) x) μ := by
-    -- linear growth bound + Gaussian moment finiteness
-    let C : ℝ := Real.log (Fintype.card (Config N)) + 1
-    have hbound : ∀ x, |free_energy_density (N := N) x| ≤ C * (1 + ‖x‖) := by
-      intro x
-      simpa [C] using (abs_free_energy_density_le (N := N) (H := x))
-    have hpoly : Integrable (fun x : EnergySpace N => (1 + ‖x‖) ^ (1 : ℕ)) μ :=
-      ProbabilityTheory.IsGaussian.integrable_one_add_norm_pow (μ := μ) 1
-    have hdom : Integrable (fun x : EnergySpace N => C * (1 + ‖x‖) ^ (1 : ℕ)) μ :=
-      hpoly.const_mul C
-    refine hdom.mono' (by
-      have : Measurable (fun x : EnergySpace N => free_energy_density (N := N) x) :=
-        (contDiff_free_energy_density (N := N)).continuous.measurable
-      exact this.aestronglyMeasurable)
-      (ae_of_all _ (fun x => ?_))
-    have hx := hbound x
-    have hnonneg : 0 ≤ (C * (1 + ‖x‖) ^ (1 : ℕ)) := by positivity
-    have : ‖free_energy_density (N := N) x‖ ≤ C * (1 + ‖x‖) ^ (1 : ℕ) := by
-      simpa [Real.norm_eq_abs] using hx
-    exact this
-  -- Pull back along `g`.
-  have hmeas : AEMeasurable g P := hg_meas.aemeasurable
-  have hpull :=
-    (integrable_map_measure (μ := P)
-    (f := g) (g := fun x : EnergySpace N => free_energy_density (N := N) x)
-    (by
-      have : Measurable (fun x : EnergySpace N => free_energy_density (N := N) x) :=
-        (contDiff_free_energy_density (N := N)).continuous.measurable
-      exact this.aestronglyMeasurable)
-    hmeas).1 hInt_on_μ
-  simpa [Function.comp] using hpull
+  -- Vol II backend: use the model-agnostic Gaussian integrability lemma.
+  simpa [free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z] using
+    (FiniteGibbs.integrable_free_energy_density_of_isGaussian_map (α := Config N) (P := P) (n := N)
+      (g := g) hg_meas hg_gauss)
 
 end GaussianIntegrability
 

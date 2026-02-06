@@ -239,6 +239,32 @@ lemma fderiv_gibbs_pmf_apply (H h : EnergySpace α) (σ : α) :
           ((∑ τ : α, (gibbs_pmf (α := α) H τ) * h τ) - h σ) := by
           simp [gibbs_pmf, hexp_sum]
 
+omit [Nonempty α] in
+lemma sum_gibbs_pmf_mul_std_basis (H : EnergySpace α) (τ : α) :
+    (∑ ρ : α, (gibbs_pmf (α := α) H ρ) * (std_basis (α := α) τ ρ)) =
+      gibbs_pmf (α := α) H τ := by
+  classical
+  simp [std_basis]
+
+lemma fderiv_gibbs_pmf_apply_std_basis (H : EnergySpace α) (σ τ : α) :
+    fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H (std_basis (α := α) τ)
+      =
+      (gibbs_pmf (α := α) H σ) * ((gibbs_pmf (α := α) H τ) - (std_basis (α := α) τ σ)) := by
+  classical
+  have hsum :
+      (∑ ρ : α, (gibbs_pmf (α := α) H ρ) * (std_basis (α := α) τ ρ)) = gibbs_pmf (α := α) H τ :=
+    sum_gibbs_pmf_mul_std_basis (α := α) (H := H) τ
+  calc
+    fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H (std_basis (α := α) τ)
+        =
+        (gibbs_pmf (α := α) H σ) *
+          ((∑ ρ : α, (gibbs_pmf (α := α) H ρ) * (std_basis (α := α) τ ρ)) -
+            (std_basis (α := α) τ) σ) := by
+          simpa using
+            (fderiv_gibbs_pmf_apply (α := α) (H := H) (h := std_basis (α := α) τ) σ)
+    _ = (gibbs_pmf (α := α) H σ) * ((gibbs_pmf (α := α) H τ) - (std_basis (α := α) τ σ)) := by
+          simp [hsum]
+
 noncomputable def hessian_free_energy_fderiv (n : ℕ) (H : EnergySpace α) :
     EnergySpace α →L[ℝ] EnergySpace α →L[ℝ] ℝ :=
   fderiv ℝ (fun H' => fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) H') H
@@ -249,6 +275,35 @@ def hessian_free_energy (n : ℕ) (H : EnergySpace α) (h k : EnergySpace α) : 
     (∑ σ, gibbs_pmf (α := α) H σ * h σ * k σ) -
     (∑ σ, gibbs_pmf (α := α) H σ * h σ) * (∑ τ, gibbs_pmf (α := α) H τ * k τ)
   )
+
+omit [Nonempty α] in
+lemma hessian_free_energy_std_basis_eq (n : ℕ) (H : EnergySpace α) (σ τ : α) :
+    hessian_free_energy (α := α) n H (std_basis (α := α) σ) (std_basis (α := α) τ)
+      =
+      (1 / (n : ℝ)) *
+        ((gibbs_pmf (α := α) H σ) * (std_basis (α := α) τ σ) -
+          (gibbs_pmf (α := α) H σ) * (gibbs_pmf (α := α) H τ)) := by
+  classical
+  let g : α → ℝ := fun ρ => gibbs_pmf (α := α) H ρ
+  have hb : ∀ σ, (∑ ρ : α, g ρ * std_basis (α := α) σ ρ) = g σ := by
+    intro σ
+    simp [g, std_basis]
+  have hc :
+      ∀ σ τ,
+        (∑ ρ : α, g ρ * (std_basis (α := α) σ ρ * std_basis (α := α) τ ρ)) =
+          g σ * std_basis (α := α) τ σ := by
+    intro σ τ
+    -- only the term `ρ = σ` survives since `std_basis σ ρ = 0` for `ρ ≠ σ`
+    simpa [mul_assoc, std_basis] using
+      (Finset.sum_eq_single_of_mem (s := (Finset.univ : Finset α)) (a := σ)
+        (f := fun ρ : α => g ρ * (std_basis (α := α) σ ρ * std_basis (α := α) τ ρ))
+        (by simp)
+        (fun ρ _hρ hne => by
+          have hne' : σ ≠ ρ := Ne.symm hne
+          simp [g, std_basis, hne']))
+  -- avoid `simp` cancelling the common prefactor `(1/n)`
+  refine congrArg (fun t : ℝ => (1 / (n : ℝ)) * t) ?_
+  simp [hb, hc, g, sub_eq_add_neg, mul_assoc]
 
 lemma fderiv_free_energy_density_apply (n : ℕ) (H h : EnergySpace α) :
     fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) H h =
@@ -487,7 +542,7 @@ theorem trace_formula (n : ℕ) (H : EnergySpace α) (Cov : α → α → ℝ) :
                       (∑ σ, ∑ τ, Cov σ τ * (if σ = τ then g σ else 0)) -
                         (∑ σ, ∑ τ, Cov σ τ * (g σ * g τ)) := by
                     -- distribute `*` over subtraction inside the finite sums
-                    simp [mul_sub, Finset.sum_sub_distrib, mul_assoc, mul_left_comm, mul_comm]
+                    simp [mul_sub, Finset.sum_sub_distrib]
                   -- now multiply both sides by the constant `(1/n)`
                   simpa using congrArg (fun t : ℝ => (1 / (n : ℝ)) * t) hinner
     _ = (1 / (n : ℝ)) *
@@ -503,7 +558,7 @@ theorem trace_formula (n : ℕ) (H : EnergySpace α) (Cov : α → α → ℝ) :
               (∑ σ, ∑ τ, Cov σ τ * (g σ * g τ))
                 =
               ∑ σ, ∑ τ, (gibbs_pmf (α := α) H σ) * (gibbs_pmf (α := α) H τ) * Cov σ τ := by
-            simp [g, mul_assoc, mul_left_comm, mul_comm]
+            simp [g, mul_comm]
           rw [hdiag', hprod']
 
 end

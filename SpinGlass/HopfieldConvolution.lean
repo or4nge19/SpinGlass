@@ -76,7 +76,8 @@ instance (Ξ : Patterns N M) : ProbabilityTheory.IsMarkovKernel (hopfieldOverlap
     hopfieldOverlapKernel (N := N) (M := M) Ξ H = hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H := by
   have hm : Measurable (hopfieldOverlapVec (N := N) (M := M) Ξ) := by fun_prop
   ext s hs
-  simp [hopfieldOverlapKernel, hopfieldOverlapImageMeasure, ProbabilityTheory.Kernel.map_apply, Kernel.map_apply, KernelBridge.gibbsKernel, hm, hs]
+  simp [hopfieldOverlapKernel, hopfieldOverlapImageMeasure, ProbabilityTheory.Kernel.map_apply,
+    Kernel.map_apply, KernelBridge.gibbsKernel, FiniteGibbs.gibbsKernel, gibbsMeasure, hm, hs]
 
 lemma hopfieldOverlapKernel_Icc_compl (Ξ : Patterns N M) (H : EnergySpace N) :
     hopfieldOverlapKernel (N := N) (M := M) Ξ H
@@ -123,7 +124,8 @@ instance (Ξ : Patterns N M) : ProbabilityTheory.IsMarkovKernel (hopfieldOverlap
   have hm : Measurable (hopfieldOverlapArray (N := N) (M := M) (n := n) Ξ) := by fun_prop
   ext s hs
   simp [hopfieldOverlapArrayKernel, hopfieldOverlapArrayImageMeasure,
-    ProbabilityTheory.Kernel.map_apply, Kernel.map_apply, KernelBridge.replicaGibbsKernel, hm, hs]
+    ProbabilityTheory.Kernel.map_apply, Kernel.map_apply, KernelBridge.replicaGibbsKernel,
+    FiniteGibbs.replicaGibbsKernel, replicaGibbsMeasure, hm, hs]
 
 /-! ## Convolution as a pushforward of a product measure -/
 
@@ -868,29 +870,9 @@ lemma lintegral_gibbsMeasure_ofReal
     (∫⁻ σ, ENNReal.ofReal (f σ) ∂gibbsMeasure (N := N) H)
       =
       ENNReal.ofReal (∑ σ : Config N, (gibbs_pmf N H σ) * f σ) := by
-  have h :=
-    lintegral_gibbsMeasure (N := N) (H := H) (f := fun σ => ENNReal.ofReal (f σ))
-  rw [h]
-  have hw : ∀ σ : Config N,
-      (gibbsWeightNNReal (N := N) H σ : ℝ≥0∞) = ENNReal.ofReal (gibbs_pmf N H σ) := by
-    intro σ
-    have hσ : 0 ≤ gibbs_pmf N H σ := gibbs_pmf_nonneg (N := N) (H := H) σ
-    simp [gibbsWeightNNReal, ENNReal.ofReal_eq_coe_nnreal hσ]
-  have hprod :
-      (∑ σ : Config N, (gibbsWeightNNReal (N := N) H σ : ℝ≥0∞) * ENNReal.ofReal (f σ))
-        =
-        ∑ σ : Config N, ENNReal.ofReal (gibbs_pmf N H σ * f σ) := by
-    apply Finset.sum_congr rfl
-    intro σ _hσ
-    have hσ : 0 ≤ gibbs_pmf N H σ := gibbs_pmf_nonneg (N := N) (H := H) σ
-    have hfσ : 0 ≤ f σ := hf σ
-    simpa [hw σ, mul_assoc] using (ENNReal.ofReal_mul (p := gibbs_pmf N H σ) (q := f σ) hσ).symm
-  have hnonneg : ∀ σ : Config N, 0 ≤ gibbs_pmf N H σ * f σ := by
-    intro σ; exact mul_nonneg (gibbs_pmf_nonneg (N := N) (H := H) σ) (hf σ)
-  simpa [hprod] using
-    (ENNReal.ofReal_sum_of_nonneg (s := (Finset.univ : Finset (Config N)))
-      (f := fun σ : Config N => gibbs_pmf N H σ * f σ)
-      (by intro σ _; exact hnonneg σ)).symm
+  -- Delegate to the generic finite-volume Gibbs measure lemma.
+  simpa [gibbsMeasure, FiniteGibbs.gibbsMeasure, gibbs_pmf, FiniteGibbs.gibbs_pmf, Z, FiniteGibbs.Z] using
+    (FiniteGibbs.lintegral_gibbsMeasure_ofReal (α := Config N) (H := H) (f := f) hf)
 
 lemma overlapImage_talagrandGaussianDensity_factor
     (N M : ℕ) (Ξ : Patterns N M) (H : EnergySpace N) (β : ℝ) (z : Fin M → ℝ) :
