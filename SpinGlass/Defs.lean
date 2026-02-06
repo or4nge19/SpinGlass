@@ -27,7 +27,7 @@ Most of the “thermodynamic” objects used throughout Talagrand Vol I/II (part
 Gibbs weights, free energy, covariance/Hessian identities) only depend on a **finite configuration
 space** `Σ` and an energy function `H : Σ → ℝ`.
 
-In this repo, concrete models use the Ising configuration space
+In this repository, concrete models use the Ising configuration space
 `Config N := Fin N → Bool` (spins in `{±1}`), and we keep that specialization as the default.
 But we also expose a configuration-agnostic API so that Vol I models become instances of the
 Vol II general framework (Gaussian processes indexed by `Σ`).
@@ -181,11 +181,26 @@ lemma overlap_eq_overlapOf (σ τ : Config N) :
     overlap N σ τ = overlapOf (N := N) isingSpin σ τ := by
   rfl
 
+/-- The overlap is symmetric in its two configuration arguments. -/
+lemma overlapOf_comm {S : Type} (spin : S → ℝ) (σ τ : Config N S) :
+    overlapOf (N := N) spin σ τ = overlapOf (N := N) spin τ σ := by
+  simp [overlapOf, mul_comm]
+
+/-- The Ising overlap is symmetric. -/
+lemma overlap_comm (σ τ : Config N) : overlap N σ τ = overlap N τ σ := by
+  simpa [overlap] using overlapOf_comm (N := N) (spin := isingSpin) σ τ
+
 /-! ### Covariance Kernels -/
 
 /-- SK covariance kernel induced by a single-site observable `spin : S → ℝ`. -/
 def sk_cov_kernelOf {S : Type} (spin : S → ℝ) (σ τ : Config N S) : ℝ :=
   (N * β^2 / 2) * (overlapOf (N := N) spin σ τ)^2
+
+/-- The SK covariance kernel induced by `spin` is symmetric. -/
+lemma sk_cov_kernelOf_comm {S : Type} (spin : S → ℝ) (σ τ : Config N S) :
+    sk_cov_kernelOf (N := N) (β := β) spin σ τ
+      = sk_cov_kernelOf (N := N) (β := β) spin τ σ := by
+  simp [sk_cov_kernelOf, overlapOf_comm]
 
 /-- The Ising SK covariance kernel (specialization of `sk_cov_kernelOf` to `isingSpin`). -/
 def sk_cov_kernel (σ τ : Config N) : ℝ :=
@@ -196,9 +211,20 @@ lemma sk_cov_kernel_eq_sk_cov_kernelOf (σ τ : Config N) :
     sk_cov_kernel N β σ τ = sk_cov_kernelOf (N := N) (β := β) isingSpin σ τ := by
   rfl
 
+/-- The Ising SK covariance kernel is symmetric. -/
+lemma sk_cov_kernel_comm (σ τ : Config N) :
+    sk_cov_kernel N β σ τ = sk_cov_kernel N β τ σ := by
+  simp [sk_cov_kernel, overlap_comm]
+
 /-- “Reference” covariance kernel induced by a single-site observable `spin : S → ℝ`. -/
 def simple_cov_kernelOf {S : Type} (xi : ℝ → ℝ) (spin : S → ℝ) (σ τ : Config N S) : ℝ :=
   N * β^2 * xi (overlapOf (N := N) spin σ τ)
+
+/-- The reference covariance kernel induced by `spin` is symmetric. -/
+lemma simple_cov_kernelOf_comm {S : Type} (xi : ℝ → ℝ) (spin : S → ℝ) (σ τ : Config N S) :
+    simple_cov_kernelOf (N := N) (β := β) xi spin σ τ
+      = simple_cov_kernelOf (N := N) (β := β) xi spin τ σ := by
+  simp [simple_cov_kernelOf, overlapOf_comm]
 
 /-- The Ising reference covariance kernel (specialization of `simple_cov_kernelOf` to `isingSpin`). -/
 def simple_cov_kernel (xi : ℝ → ℝ) (σ τ : Config N) : ℝ :=
@@ -209,6 +235,11 @@ lemma simple_cov_kernel_eq_simple_cov_kernelOf (xi : ℝ → ℝ) (σ τ : Confi
     simple_cov_kernel N β xi σ τ
       = simple_cov_kernelOf (N := N) (β := β) xi isingSpin σ τ := by
   rfl
+
+/-- The Ising reference covariance kernel is symmetric. -/
+lemma simple_cov_kernel_comm (xi : ℝ → ℝ) (σ τ : Config N) :
+    simple_cov_kernel N β xi σ τ = simple_cov_kernel N β xi τ σ := by
+  simp [simple_cov_kernel, overlap_comm]
 
 /-! ### Thermodynamic Quantities -/
 
