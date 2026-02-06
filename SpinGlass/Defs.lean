@@ -149,7 +149,6 @@ noncomputable instance : InnerProductSpace ℝ (EnergySpace N) :=
   PiLp.innerProductSpace (𝕜 := ℝ) (fun _ : Config N => ℝ)
 
 noncomputable instance : FiniteDimensional ℝ (EnergySpace N) := by
-  classical
   -- `EnergySpace N` is a type synonym of the finite product `∀ σ : Config N, ℝ`.
   infer_instance
 
@@ -307,7 +306,6 @@ noncomputable def hessian_free_energy_fderiv (H : EnergySpace N) :
   fderiv ℝ (fun H' => fderiv ℝ (free_energy_density (N := N)) H') H
 
 lemma Z_pos (H : EnergySpace N) : 0 < Z N H := by
-  classical
   have : 0 < ∑ σ : Config N, Real.exp (- H σ) := by
     refine Finset.sum_pos ?_ Finset.univ_nonempty
     intro σ _hσ
@@ -325,7 +323,6 @@ lemma gibbs_pmf_nonneg (H : EnergySpace N) (σ : Config N) : 0 ≤ gibbs_pmf N H
   le_of_lt (gibbs_pmf_pos (N := N) (H := H) σ)
 
 lemma gibbs_pmf_le_one (H : EnergySpace N) (σ : Config N) : gibbs_pmf N H σ ≤ 1 := by
-  classical
   have hZpos : 0 < Z N H := Z_pos (N := N) (H := H)
   have hterm_le :
       Real.exp (-H σ) ≤ Z N H := by
@@ -338,7 +335,6 @@ lemma gibbs_pmf_le_one (H : EnergySpace N) (σ : Config N) : gibbs_pmf N H σ �
   simpa [gibbs_pmf] using this
 
 lemma sum_gibbs_pmf (H : EnergySpace N) : (∑ σ, gibbs_pmf N H σ) = 1 := by
-  classical
   have hZ : Z N H ≠ 0 := Z_ne_zero (N := N) (H := H)
   calc
     (∑ σ, gibbs_pmf N H σ) = ∑ σ, Real.exp (- H σ) / Z N H := by rfl
@@ -363,7 +359,6 @@ noncomputable def grad_free_energy_density (H : EnergySpace N) : EnergySpace N �
 lemma hasFDerivAt_exp_neg_eval (H : EnergySpace N) (σ : Config N) :
     HasFDerivAt (fun H : EnergySpace N => Real.exp (-H σ))
       ((-(Real.exp (-H σ))) • evalCLM (N := N) σ) H := by
-  classical
   have heval :
       HasFDerivAt (fun H : EnergySpace N => H σ) (evalCLM (N := N) σ) H := by
     simpa [evalCLM] using
@@ -384,7 +379,6 @@ lemma hasFDerivAt_exp_neg_eval (H : EnergySpace N) (σ : Config N) :
 lemma hasFDerivAt_Z (H : EnergySpace N) :
     HasFDerivAt (fun H : EnergySpace N => Z N H)
       (∑ σ : Config N, (-(Real.exp (-H σ))) • evalCLM (N := N) σ) H := by
-  classical
   have hterm :
       ∀ σ : Config N,
         HasFDerivAt (fun H : EnergySpace N => Real.exp (-H σ))
@@ -402,7 +396,6 @@ lemma hasFDerivAt_inv_Z (H : EnergySpace N) :
     HasFDerivAt (fun H : EnergySpace N => (Z N H)⁻¹)
       ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z N H ^ 2)⁻¹)).comp
         (∑ σ : Config N, (-(Real.exp (-H σ))) • evalCLM (N := N) σ)) H := by
-  classical
   have hInv :
       HasFDerivAt (fun x : ℝ => x⁻¹)
         (ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z N H ^ 2)⁻¹) : ℝ →L[ℝ] ℝ)
@@ -416,7 +409,6 @@ lemma hasFDerivAt_gibbs_pmf (H : EnergySpace N) (σ : Config N) :
           (Real.exp (-H σ)) •
             ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z N H ^ 2)⁻¹)).comp
               (∑ τ : Config N, (-(Real.exp (-H τ))) • evalCLM (N := N) τ))) H := by
-  classical
   have hnum :
       HasFDerivAt (fun H : EnergySpace N => Real.exp (-H σ))
         ((-(Real.exp (-H σ))) • evalCLM (N := N) σ) H :=
@@ -457,7 +449,6 @@ lemma hasFDerivAt_grad_free_energy_density (H : EnergySpace N) :
           ∑ σ : Config N,
             (fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H).smulRight
               (evalCLM (N := N) σ))) H := by
-  classical
   have hterm :
       ∀ σ : Config N,
         HasFDerivAt (fun H : EnergySpace N => (gibbs_pmf N H σ) • evalCLM (N := N) σ)
@@ -482,7 +473,6 @@ lemma hasFDerivAt_grad_free_energy_density (H : EnergySpace N) :
 lemma fderiv_Z_apply (H h : EnergySpace N) :
     fderiv ℝ (fun H : EnergySpace N => Z N H) H h =
       - ∑ σ : Config N, Real.exp (-H σ) * h σ := by
-  classical
   have hZ' := (hasFDerivAt_Z (N := N) (H := H)).fderiv
   simp [hZ', evalCLM, ContinuousLinearMap.sum_apply, ContinuousLinearMap.smul_apply]
 
@@ -496,7 +486,6 @@ lemma fderiv_free_energy_density_apply (H h : EnergySpace N) :
 lemma fderiv_free_energy_density_eq (H : EnergySpace N) :
     fderiv ℝ (fun H : EnergySpace N => free_energy_density (N := N) H) H =
       grad_free_energy_density (N := N) H := by
-  classical
   ext h
   simp [grad_free_energy_density, fderiv_free_energy_density_apply, ContinuousLinearMap.sum_apply,
     ContinuousLinearMap.smul_apply, smul_eq_mul]
@@ -565,7 +554,6 @@ theorem trace_formula (H : EnergySpace N) (Cov : Config N → Config N → ℝ) 
 Self-overlap is always 1.
 -/
 theorem overlap_self (hN : 0 < N) (σ : Config N) : overlap N σ σ = 1 := by
-  classical
   unfold overlap overlapOf
   have hsum : (∑ i : Fin N, isingSpin (σ i) * isingSpin (σ i)) = (N : ℝ) := by
     calc
@@ -588,7 +576,6 @@ leading to Eq. (1.65)).
 theorem trace_sk (hN : 0 < N) (H : EnergySpace N) :
     (∑ σ, ∑ τ, sk_cov_kernel N β σ τ * hessian_free_energy N H (std_basis N σ) (std_basis N τ)) =
     (β^2 / 2) * (1 - ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ)^2) := by
-  classical
   let E_R2 : ℝ :=
     ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ)^2
   have hs1 : (∑ σ, gibbs_pmf N H σ) = 1 := sum_gibbs_pmf (N := N) (H := H)
@@ -640,7 +627,6 @@ Reference: Talagrand, Vol. I, Ch. 1, §1.3 (generalized for RSB).
 theorem trace_simple (hN : 0 < N) (H : EnergySpace N) (xi : ℝ → ℝ) :
     (∑ σ, ∑ τ, simple_cov_kernel N β xi σ τ * hessian_free_energy N H (std_basis N σ) (std_basis N τ)) =
     (β^2) * (xi 1 - ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * xi (overlap N σ τ)) := by
-  classical
   let E_xi : ℝ :=
     ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * xi (overlap N σ τ)
   have hs1 : (∑ σ, gibbs_pmf N H σ) = 1 := sum_gibbs_pmf (N := N) (H := H)
@@ -704,14 +690,13 @@ theorem guerra_derivative_bound_algebra
   rw [h_main]
   congr 1
   congr 1
-  classical
   simp [E_R2, E_xi]
   have hhalf :
       (2⁻¹ : ℝ) *
           (∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ) ^ 2)
         =
           ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * ((overlap N σ τ) ^ 2 / 2) := by
-    classical
+
     simp [div_eq_mul_inv]
     calc
       (2⁻¹ : ℝ) *
