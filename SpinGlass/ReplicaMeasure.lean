@@ -63,8 +63,7 @@ lemma sum_prod_gibbs_pmf_eq_one (N n : ℕ) (H : EnergySpace N) :
 
 lemma replicaGibbsMeasure_univ (N n : ℕ) (H : EnergySpace N) :
     replicaGibbsMeasure (N := N) (n := n) H Set.univ = 1 := by
-  simpa [replicaGibbsMeasure] using
-    (FiniteGibbs.replicaGibbsMeasure_univ (α := Config N) (n := n) (H := H))
+  simp [replicaGibbsMeasure, FiniteGibbs.replicaGibbsMeasure_univ]
 
 instance (N n : ℕ) (H : EnergySpace N) : IsProbabilityMeasure (replicaGibbsMeasure (N := N) (n := n) H) :=
   by

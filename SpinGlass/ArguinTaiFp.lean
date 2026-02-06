@@ -2018,7 +2018,7 @@ lemma nnnorm_DDF_p_le_M_F_p
 
   exact_mod_cast hsum_real
 
-/-! ### `FDerivLipschitz` for `F_p` and the IBP wrapper -/
+/-! ### `FDerivLipschitz` for `F_p` and the associated IBP lemma -/
 
 lemma FDerivLipschitz_F_p_of_bounded
     (β : ℝ) (p : ℕ) {Y : ℝ → ℝ} (hY : Measurable Y)

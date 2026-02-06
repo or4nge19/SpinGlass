@@ -81,14 +81,18 @@ noncomputable instance : FiniteDimensional ℝ (EnergySpace N) := by
   -- `EnergySpace N` is a type synonym of the finite product `∀ σ : Config N, ℝ`.
   infer_instance
 
-def std_basis (σ : Config N) : EnergySpace N :=
-  WithLp.toLp 2 (fun τ => if σ = τ then 1 else 0)
+/-! ### Vol II basis vector
+
+We deliberately define the concrete `Config N` basis vector by *delegating* to the model-agnostic
+`FiniteGibbs.std_basis` so that all derivative/Hessian lemmas (proved generically) apply without
+definitional mismatches (in particular, avoiding `Decidable`-instance noise inside `ite`). -/
+
+noncomputable def std_basis (σ : Config N) : EnergySpace N :=
+  FiniteGibbs.std_basis (α := Config N) σ
 
 lemma inner_std_basis_apply (σ : Config N) (H : EnergySpace N) :
     inner ℝ (std_basis N σ) H = H σ := by
-  classical
-  -- Expand the `PiLp 2` inner product and use the `if`-Kronecker delta.
-  simp [std_basis, PiLp.inner_apply]
+  simpa [std_basis] using (FiniteGibbs.inner_std_basis_apply (α := Config N) σ H)
 
 noncomputable section
 
@@ -179,7 +183,6 @@ lemma gibbs_pmf_le_one (H : EnergySpace N) (σ : Config N) : gibbs_pmf N H σ �
   have hZpos : 0 < Z N H := Z_pos (N := N) (H := H)
   have hterm_le :
       Real.exp (-H σ) ≤ Z N H := by
-    -- A single term is bounded by the full sum `Z`.
     simpa [Z] using
       (Finset.single_le_sum (s := (Finset.univ : Finset (Config N)))
         (f := fun τ => Real.exp (-H τ))
@@ -196,7 +199,6 @@ lemma sum_gibbs_pmf (H : EnergySpace N) : (∑ σ, gibbs_pmf N H σ) = 1 := by
     _ = ∑ σ, Real.exp (- H σ) * (Z N H)⁻¹ := by
       simp [div_eq_mul_inv]
     _ = (∑ σ, Real.exp (- H σ)) * (Z N H)⁻¹ := by
-      -- factor the constant `(Z N H)⁻¹` out of the sum
       simpa using
         (Finset.sum_mul (s := (Finset.univ : Finset (Config N)))
           (f := fun σ => Real.exp (- H σ)) (a := (Z N H)⁻¹)).symm
@@ -342,7 +344,6 @@ lemma fderiv_Z_apply (H h : EnergySpace N) :
 lemma fderiv_free_energy_density_apply (H h : EnergySpace N) :
     fderiv ℝ (fun H : EnergySpace N => free_energy_density (N := N) H) H h =
       -(1 / (N : ℝ)) * ∑ σ : Config N, (gibbs_pmf N H σ) * h σ := by
-  -- Reuse the model-agnostic Vol II calculus on a finite configuration space.
   simpa [free_energy_density, Z, gibbs_pmf, FiniteGibbs.free_energy_density, FiniteGibbs.Z,
     FiniteGibbs.gibbs_pmf] using
     (FiniteGibbs.fderiv_free_energy_density_apply (α := Config N) (n := N) (H := H) (h := h))
@@ -364,9 +365,6 @@ def hessian_free_energy (H : EnergySpace N) (h k : EnergySpace N) : ℝ :=
 lemma hessian_free_energy_fderiv_eq_hessian_free_energy
     (H h k : EnergySpace N) :
     (hessian_free_energy_fderiv (N := N) H) h k = hessian_free_energy N H h k := by
-  -- Vol II backend: specialize the generic `FiniteGibbs` Hessian = covariance identity.
-  -- Unfold the function-level definition of `free_energy_density` explicitly so it matches the
-  -- normal form used by `FiniteGibbs`.
   have hFE :
       (free_energy_density (N := N)) =
         fun H : EnergySpace N => (1 / (N : ℝ)) * Real.log (Z N H) := by
@@ -414,7 +412,6 @@ theorem trace_formula (H : EnergySpace N) (Cov : Config N → Config N → ℝ) 
       (∑ σ, (gibbs_pmf N H σ) * Cov σ σ) -
       (∑ σ, ∑ τ, (gibbs_pmf N H σ) * (gibbs_pmf N H τ) * Cov σ τ)
     ) := by
-  -- Vol II backend: reuse the model-agnostic trace identity from `FiniteGibbs`.
   simpa [hessian_free_energy, gibbs_pmf, Z, std_basis,
     FiniteGibbs.hessian_free_energy, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z, FiniteGibbs.std_basis] using
     (FiniteGibbs.trace_formula (α := Config N) (n := N) (H := H) (Cov := Cov))
@@ -437,7 +434,6 @@ theorem overlap_self (hN : 0 < N) (σ : Config N) : overlap N σ σ = 1 := by
               exact hterm i
       _ = (N : ℝ) := by simp
   have hN0 : (N : ℝ) ≠ 0 := by exact_mod_cast hN.ne'
-  -- `(1 / (N : ℝ)) * N = 1` for `N ≠ 0`
   simp [hsum, hN0, div_eq_mul_inv]
 
 /--

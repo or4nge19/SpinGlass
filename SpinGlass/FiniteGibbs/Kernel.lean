@@ -6,7 +6,7 @@ import Mathlib.Probability.Kernel.Basic
 /-!
 # Finite Gibbs kernels (model-agnostic)
 
-This file packages the finite-volume Gibbs sampler (and its replica version) as Markov kernels
+This file models the finite-volume Gibbs sampler (and its replica version) as Markov kernels
 in the **Vol II** style:
 
 - `H ↦ G_H` as a kernel `EnergySpace α ⟶ α`,
@@ -28,11 +28,9 @@ variable {α : Type*} [Fintype α] [Nonempty α] [MeasurableSpace α] [Measurabl
 /-! ## Measurability helpers -/
 
 lemma measurable_eval (σ : α) : Measurable fun H : EnergySpace α => H σ := by
-  -- evaluation is a continuous linear map (`PiLp.proj`)
   simpa [evalCLM] using (evalCLM σ).continuous.measurable
 
 lemma measurable_Z : Measurable fun H : EnergySpace α => Z H := by
-  classical
   have hmeas_term :
       ∀ σ ∈ (Finset.univ : Finset α),
         Measurable fun H : EnergySpace α => Real.exp (-H σ) := by
@@ -43,7 +41,6 @@ lemma measurable_Z : Measurable fun H : EnergySpace α => Z H := by
 
 lemma measurable_gibbs_pmf (σ : α) :
     Measurable fun H : EnergySpace α => gibbs_pmf H σ := by
-  classical
   have hmeas_num : Measurable fun H : EnergySpace α => Real.exp (-H σ) := by
     have : Measurable fun H : EnergySpace α => H σ := measurable_eval (σ := σ)
     fun_prop
@@ -65,13 +62,9 @@ noncomputable def gibbsKernel : Kernel (EnergySpace α) α where
     refine Measure.measurable_of_measurable_coe (fun H => gibbsMeasure (α := α) H) ?_
     intro s hs
     have hsum :
-        (fun H : EnergySpace α => gibbsMeasure (α := α) H s)
-          =
-        fun H =>
-          ∑ σ : α, (if σ ∈ s then ENNReal.ofReal (gibbs_pmf H σ) else 0) := by
+        (fun H : EnergySpace α => gibbsMeasure (α := α) H s)  =
+        fun H => ∑ σ : α, (if σ ∈ s then ENNReal.ofReal (gibbs_pmf H σ) else 0) := by
       funext H
-      classical
-      -- Expand the atomic sum-of-diracs and rewrite the weight via `gibbsWeightNNReal_coe_ennreal`.
       simp [gibbsMeasure, hs, Measure.dirac_apply', Set.indicator]
     have hterm :
         ∀ σ ∈ (Finset.univ : Finset α),
@@ -87,7 +80,6 @@ noncomputable def gibbsKernel : Kernel (EnergySpace α) α where
     gibbsKernel (α := α) H = gibbsMeasure (α := α) H := rfl
 
 instance : IsMarkovKernel (gibbsKernel (α := α)) := by
-  classical
   refine ⟨fun H => ?_⟩
   simpa [gibbsKernel] using
     (by infer_instance : IsProbabilityMeasure (gibbsMeasure (α := α) H))
@@ -163,4 +155,3 @@ end
 
 end FiniteGibbs
 end SpinGlass
-

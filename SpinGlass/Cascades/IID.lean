@@ -3,13 +3,13 @@ import Mathlib.Probability.Kernel.IonescuTulcea.PartialTraj
 import Mathlib.Probability.Kernel.Composition.Comp
 
 /-!
-# Vol II infrastructure: i.i.d. trajectories from a kernel (Ionescu–Tulcea)
+# Vol. II infrastructure: i.i.d. trajectories from a kernel (Ionescu–Tulcea)
 
 This file builds a **sequential kernel family** suitable for the Ionescu–Tulcea theorem from a
 single Markov kernel `K : Kernel α β`, by declaring that *each new coordinate* is sampled from `K`
 based only on the initial state.
 
-This is the clean “replicas as kernel composition” viewpoint needed in Talagrand Vol. II:
+This is the “replicas as kernel composition” viewpoint used in Talagrand Vol. II:
 
 - a finite `n`-replica sampler is a finite marginal of an Ionescu–Tulcea trajectory kernel;
 - later, cascades/RPCs are built by allowing later kernels to depend on the full past trajectory.

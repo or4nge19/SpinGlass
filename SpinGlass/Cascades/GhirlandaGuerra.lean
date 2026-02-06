@@ -338,10 +338,11 @@ lemma GG1_liftTest {n : ℕ} {μ : Measure (Fin (n + 1) → β)} {R : β → β 
   simpa [liftTest] using (hGG hn F hF hFbdd hRbdd)
 
 /--
-Kernel-level wrapper: GG₁ for the pushforward law `κ ∘ₘ μ₀`.
+Kernel-level formulation of GG₁ for the pushforward law `κ ∘ₘ μ₀`.
 
-This is the correct API boundary for later work: prove GG identities for a sampler `κ` and a law of
-environments `μ₀`, then transport along limits/mixtures without changing the statement shape.
+This is a convenient interface for downstream results: one proves GG identities for a sampler `κ`
+and an environment law `μ₀`, and then transports them along limits or mixtures without changing the
+statement.
 -/
 def GG1Kernel {α : Type*} [MeasurableSpace α]
     (n : ℕ) (μ₀ : Measure α) [IsProbabilityMeasure μ₀]

@@ -1,108 +1,172 @@
 # SpinGlass
 
-Lean 4 development of finite‑volume mean‑field spin glass calculus following vol 1 of Talagrand "Mean Field Models for Spin Glasses" 
-(with an additional `GibbsMeasure` library developing https://github.com/james18lpc/GibbsMeasure and relevant for the formalziation vol. 2).
+This repository contains two Lean 4 libraries developed against Mathlib:
 
+- `SpinGlass`: finite-volume mean-field spin glass calculus (Talagrand, Vol. I–II).
+- `GibbsMeasure`: DLR specifications and infinite-volume Gibbs measures (Georgii; Talagrand,
+  Vol. II). See `GibbsMeasure/README.md`.
+  Upstream: <https://github.com/james18lpc/GibbsMeasure>.
 
-## Main definitions (core finite‑`N` objects)
+Both are independent `lean_lib`s (see `lakefile.toml`).
 
-Defined in `SpinGlass/Defs.lean` (namespace `SpinGlass`):
+## Overview
 
-- **Configuration space**: `Config N := Fin N → Bool`.
-- **Spin variable**: `spin N σ i : ℝ` (values `±1`).
-- **Magnetization**: `magnetization N σ : ℝ`.
-- **Energy space**: `EnergySpace N := PiLp 2 (fun _ : Config N => ℝ)` with an `InnerProductSpace`
-  structure.
-- **Canonical basis**: `std_basis N σ : EnergySpace N` and `inner_std_basis_apply`.
-- **Overlap**: `overlap N σ τ : ℝ := (1/N) * ∑ i, spin σ i * spin τ i`.
-- **Covariance kernels**:
-  - `sk_cov_kernel N β σ τ : ℝ := (N * β^2 / 2) * (overlap N σ τ)^2`,
-  - `simple_cov_kernel N β xi σ τ : ℝ := N * β^2 * xi (overlap N σ τ)`.
-- **Partition function / Gibbs weights**:
-  - `Z N H : ℝ := ∑ σ, exp (-H σ)`,
-  - `gibbs_pmf N H σ : ℝ := exp (-H σ) / Z N H`.
-- **Free energy density**: `free_energy_density N H : ℝ := (1/N) * log (Z N H)`.
-- **Derivatives**:
-  - `grad_free_energy_density N H : EnergySpace N →L[ℝ] ℝ`,
-  - `hessian_free_energy N H h k : ℝ`,
-  - `hessian_free_energy_fderiv N H : EnergySpace N →L[ℝ] EnergySpace N →L[ℝ] ℝ`.
-- **Gibbs covariance**: `gibbs_covariance N H h k : ℝ`.
+Finite-volume thermodynamic functionals depend only on a finite configuration space `α`
+(typically assumed via `[Fintype α]`). In the namespace `SpinGlass.FiniteGibbs` we represent
+Hamiltonians as vectors in the Hilbert space
+`EnergySpace α := PiLp 2 (fun _ : α => ℝ)` and define:
 
-## Main statements (core identities and bounds)
+- `Z H := ∑ σ : α, Real.exp (-H σ)` (partition function),
+- `gibbs_pmf H σ := Real.exp (-H σ) / Z H` (Gibbs weight),
+- `free_energy_density n H := (1 / (n : ℝ)) * Real.log (Z H)`
+  (free energy density; explicit scaling `n : ℕ`).
 
-In `SpinGlass/Defs.lean`:
+The modules `SpinGlass.FiniteGibbs` and `SpinGlass.FiniteGibbs.*` develop the Fréchet calculus of
+`free_energy_density` and its Hessian/covariance identities, and export it for subsequent
+instantiations (`Config N`, cascades, …).
 
-- **Differentiation of partition function and Gibbs weights**:
-  `hasFDerivAt_Z`, `hasFDerivAt_gibbs_pmf`, `fderiv_free_energy_density_eq`, etc.
-- **Second derivative as covariance**:
-  `hessian_eq_covariance` and `hessian_free_energy_fderiv_eq_hessian_free_energy`.
-- **Trace formulas**:
-  `trace_formula`, `trace_sk`, `trace_simple`.
-- **Algebraic Guerra derivative identity** (finite‑`N`): `guerra_derivative_bound_algebra` and
-  its re-export `SpinGlass.GuerraBound.guerra_derivative_bound_algebra_core`.
+Gaussian integration by parts is used through an intrinsic Cameron–Martin interface
+(`ProbabilityTheory.IsGaussian μ`), with the Hilbert/covariance-operator formulation as the
+main entry point for interpolation arguments.
 
-In `SpinGlass/Algebra.lean` (namespace `SpinGlass.Algebra`):
+## Design choices
 
-- `square_completion`.
+- Finite-volume calculus is developed once (configuration-agnostic) in `SpinGlass.FiniteGibbs`.
+- Gaussian analysis is phrased intrinsically in terms of laws (`ProbabilityTheory.IsGaussian`)
+  and growth hypotheses; integrability is discharged via Fernique-type lemmas.
+- Random Hamiltonians are specified via covariance identities on the canonical basis, so that
+  comparison/interpolation statements are kernel-level.
+- Interpolation arguments are stratified into dominated differentiation, Gaussian IBP, and a
+  finite-dimensional algebraic reduction (trace/Hessian identities).
 
-## Disorder structures (Gaussian Hilbert)
+## Entry points
 
-In `SpinGlass/SKModel.lean`:
+- `import SpinGlass` re-exports the full development
+  (and currently also imports `GibbsMeasure`).
+- For the finite-configuration calculus: `import SpinGlass.FiniteGibbs`.
+- For the Guerra interpolation development: `import SpinGlass.GuerraPipeline`.
+- For the DLR/specification library: `import GibbsMeasure`.
 
-- `partition_function`, `gibbs_average`.
-- `SKDisorder (Ω := Ω) N β h`:
-  a centered Gaussian Hamiltonian `U : Ω → EnergySpace N` with covariance specified on `std_basis`
-  by `sk_cov_kernel`.
-- `SimpleDisorder (Ω := Ω) N β q`:
-  a centered Gaussian Hamiltonian `V : Ω → EnergySpace N` with covariance specified on `std_basis`
-  by `simple_cov_kernel`.
+Gaussian analysis entry points:
 
-## Replica calculus and interpolation
+- Banach/Cameron–Martin API:
+  `import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinAPI`.
+- Hilbert-space IBP (covariance operator):
+  `import Common.Mathlib.Probability.Distributions.Gaussian_IBP_HilbertAPI`.
+- One-dimensional corollaries for `gaussianReal`:
+  `import Common.Mathlib.Probability.Distributions.GaussianIntegrationByParts`.
 
-In `SpinGlass/Replicas.lean`:
+## Library map
 
-- **Replica spaces**: `ReplicaSpace N n := Fin n → Config N`, `ReplicaFun N n := ReplicaSpace N n → ℝ`.
-- **Interpolated Hamiltonian**:
-  `H_gauss`, `H_field := magnetic_field_vector`, `H_t`.
-- **Joint Gaussian input**:
-  `UV` and `isGaussianHilbert_UV` (Gaussian Hilbert structure on the product).
-- **Replica Gibbs averages**:
-  `gibbs_average_n_det`, `gibbs_average_n`.
-- **Interpolated expectation functional**:
-  `nu t f : ℝ` and its derivative statement `hasDerivAt_nu`.
+### Umbrella modules
 
-In `SpinGlass/Calculus.lean`:
+- `Common`: shared utilities (re-export module).
+- `SpinGlass`: main import for the full `SpinGlass` development
+  (currently also imports `GibbsMeasure`).
+- `GibbsMeasure`: main import for the full `GibbsMeasure` development.
 
-- `contDiff_Z`, `contDiff_free_energy_density`,
-- `hessian_free_energy_eq_variance`,
-- growth/integrability lemmas for Gaussian disorder (e.g. `integrable_free_energy_density_of_gaussian`).
+### Configuration-agnostic finite Gibbs calculus (`SpinGlass.FiniteGibbs`)
 
-In `SpinGlass/ComplexIBP.lean`:
+Namespace: `SpinGlass.FiniteGibbs`.
 
-- complex Wirtinger‑style auxiliaries `deriv_z`, `deriv_zbar`,
-- `approx_integral_by_parts_complex` (approximate complex integration by parts under a Lipschitz
-  derivative hypothesis).
+- `SpinGlass.FiniteGibbs`:
+  partition function `Z`, Gibbs weights `gibbs_pmf`,
+  free energy density `free_energy_density`, Fréchet derivatives,
+  Hessian/covariance identity, and `trace_formula`.
+- `SpinGlass.FiniteGibbs.Calculus`:
+  `ContDiff` regularity, chain rule, and derivative/Lipschitz bounds.
+- `SpinGlass.FiniteGibbs.Integrability`:
+  integrability of `free_energy_density` under Gaussian pushforward laws.
+- `SpinGlass.FiniteGibbs.GibbsMeasure`:
+  atomic Gibbs measure `gibbsMeasure` and integral formulas.
 
-In `SpinGlass/ArguinTaiFp.lean`: arithmetic detour
+### SK model and Guerra interpolation (finite `N`)
 
-- interval measure `μ01`, oscillatory factor `omega_p`,
-- Arguin–Tai weight `arguinTaiWeight` and linear map `L_p`,
-- moment and differentiability statements for `Z_p`, `N_p`, and `F_p`:
-  `hasFDerivAt_Z_p_of_bounded`, `hasFDerivAt_N_p_of_bounded`, `hasFDerivAt_F_p_of_bounded`.
+- `SpinGlass.Defs`:
+  specialization to `Config N := Fin N → Bool`, overlaps and covariance kernels,
+  trace computations, and the algebraic core identity of Guerra’s bound.
+- `SpinGlass.Calculus`:
+  specialization of the `FiniteGibbs` calculus to `Config N`
+  (smoothness, Hessian = covariance).
+- `SpinGlass.SKModel`:
+  Gaussian disorder structures `SKDisorder` and `SimpleDisorder`,
+  the product disorder space `DisorderSpace`, and the intrinsic law `disorderPairLaw`.
+- `SpinGlass.GuerraInterpolation`:
+  dominated differentiation for the expected free energy along the smart path.
+- `SpinGlass.GuerraIBP`:
+  Gaussian IBP rewrite of the derivative value on `disorderPairLaw`.
+- `SpinGlass.GuerraTrace`:
+  conversion of the IBP expression to Talagrand’s trace/Hessian form.
+- `SpinGlass.GuerraPipeline`:
+  a consolidated `HasDerivAt` theorem combining the previous steps.
+- `SpinGlass.Replicas`:
+  replica calculus and reusable IBP lemmas on `disorderPairLaw` in polynomial-growth form.
 
+### Hopfield
 
+- `SpinGlass.Hopfield`:
+  finite-volume Hopfield Hamiltonian and Hubbard–Stratonovich linearization.
+- `SpinGlass.HopfieldFixedPoint`:
+  existence and a canonical choice of a fixed point of `m ↦ tanh (β m + h)`.
+
+### Gaussian/Cameron–Martin toolkit (local Mathlib extensions)
+
+- `Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinAPI`:
+  public API for Cameron–Martin theorem, Fernique integrability, and IBP.
+- `Common.Mathlib.Probability.Distributions.Gaussian_IBP_HilbertAPI`:
+  Hilbert-space IBP in covariance-operator form.
 - `Common.Mathlib.Probability.Distributions.GaussianIntegrationByParts`:
-  one-dimensional Gaussian tilt calculus (`gaussianTilt`, `gaussianTilt_hasDerivAt_left`, etc.).
-- `Common.Mathlib.Probability.Distributions.Gaussian_IBP_Hilbert`:
-  finite-dimensional Hilbert-space Gaussian IBP; introduces `PhysLean.Probability.GaussianIBP.IsGaussianHilbert`,
-  `covOp`, and growth/integrability infrastructure (`HasModerateGrowth`).
-- `SpinGlass.Mathlib.ParametricDominatedConvergence` (and the measure-theory variant):
-  dominated convergence lemmas for parameter-dependent integrals.
+  one-dimensional Gaussian IBP corollaries for `gaussianReal`.
+
+### `GibbsMeasure` (DLR / infinite volume)
+
+See `GibbsMeasure/README.md` for entry points and a file map.
+
+## Selected results (as Lean declarations)
+
+- Finite Gibbs calculus:
+  `SpinGlass.FiniteGibbs.fderiv_free_energy_density_apply`,
+  `SpinGlass.FiniteGibbs.hessian_free_energy_fderiv_eq_hessian_free_energy`,
+  `SpinGlass.FiniteGibbs.trace_formula`.
+- Hilbert-space Gaussian IBP:
+  `ProbabilityTheory.IsGaussian.integral_inner_mul_eq_integral_fderiv_covarianceOperator_polyGrowth`.
+- Guerra interpolation (derivative in trace/Hessian form):
+  `SpinGlass.hasDerivAt_guerraPhi_eq_trace_integral`.
+- SK trace computations and algebraic core:
+  `SpinGlass.trace_sk`, `SpinGlass.trace_simple`,
+  `SpinGlass.guerra_derivative_bound_algebra_core`.
+- Hopfield prerequisites:
+  `SpinGlass.hubbardStratonovich_hopfield`,
+  `SpinGlass.hopfield_mStar_eq_tanh`.
+
+## Planned developments
+
+Targets and intended formal statements are tracked in `Notes/Vol1##.md`, `Notes/Vol2##.md`,
+and indexed in `SpinGlass.Talagrand.MainResults`. Near-term goals include:
+
+- Guerra–Toninelli: existence of the thermodynamic limit of the quenched free energy.
+- Concentration and replica identities (Ghirlanda–Guerra, etc.) in the intrinsic Gaussian
+  framework.
+- Parisi functional and comparison theorems in a covariance-first formulation.
+- Hopfield localization and related main theorems (Talagrand; Bovier–Gayrard).
+
+## References
+
+- M. Talagrand, *Mean Field Models for Spin Glasses*, Vol. I–II.
+- D. Panchenko, *The Sherrington–Kirkpatrick Model*.
+- H.-O. Georgii, *Gibbs Measures and Phase Transitions*.
+
+## Tags
+
+spin glass, SK, Hopfield, Guerra interpolation, Gaussian IBP, Cameron–Martin, DLR specification
 
 ## Build
 
-Toolchain: see `lean-toolchain` (currently `leanprover/lean4:v4.28.0-rc1`).
+Toolchain: see `lean-toolchain`.
 
 ```bash
 lake build
+# or:
+lake build SpinGlass
+lake build GibbsMeasure
 ```
