@@ -27,22 +27,19 @@ namespace KernelBridge
 /-! ## Measurability helpers for the finite Gibbs weights -/
 
 lemma measurable_eval (σ : Config N) : Measurable fun H : EnergySpace N => H σ := by
-  -- Delegate to the configuration-agnostic kernel layer.
   simpa using (FiniteGibbs.measurable_eval (α := Config N) σ)
 
 lemma measurable_Z : Measurable fun H : EnergySpace N => Z (N := N) H := by
-  -- `FiniteGibbs.measurable_Z` is phrased for `FiniteGibbs.Z`; unfold the two `Z`s.
-  simpa [SpinGlass.Z, FiniteGibbs.Z] using
-    (FiniteGibbs.measurable_Z (α := Config N))
+  simpa [Z_eq_FiniteGibbs_Z] using (FiniteGibbs.measurable_Z (α := Config N))
 
 lemma measurable_gibbs_pmf (σ : Config N) :
     Measurable fun H : EnergySpace N => gibbs_pmf N H σ := by
-  simpa [SpinGlass.gibbs_pmf, SpinGlass.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z] using
+  simpa [gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
     (FiniteGibbs.measurable_gibbs_pmf (α := Config N) σ)
 
 lemma measurable_gibbsWeightENNReal (σ : Config N) :
     Measurable fun H : EnergySpace N => ENNReal.ofReal (gibbs_pmf N H σ) := by
-  simpa [SpinGlass.gibbs_pmf, SpinGlass.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z] using
+  simpa [gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
     (FiniteGibbs.measurable_gibbsWeightENNReal (α := Config N) σ)
 
 /-! ## The Gibbs sampler as a Markov kernel -/
@@ -52,7 +49,6 @@ noncomputable def gibbsKernel : Kernel (EnergySpace N) (Config N) :=
   FiniteGibbs.gibbsKernel (α := Config N)
 
 instance : IsMarkovKernel (gibbsKernel (N := N)) := by
-  -- Inherit the generic Markov-kernel instance.
   simpa [gibbsKernel] using
     (by infer_instance : IsMarkovKernel (FiniteGibbs.gibbsKernel (α := Config N)))
 

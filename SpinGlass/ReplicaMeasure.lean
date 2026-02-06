@@ -57,20 +57,17 @@ copies of the one-replica Gibbs measure.
 -/
 lemma sum_prod_gibbs_pmf_eq_one (N n : ℕ) (H : EnergySpace N) :
     (∑ σs : ReplicaSpace N n, ∏ l, gibbs_pmf N H (σs l)) = 1 := by
-  -- Delegate to the configuration-agnostic replica calculus.
-  simpa [SpinGlass.gibbs_pmf, SpinGlass.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z, ReplicaSpace] using
+  simpa [ReplicaSpace, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
     (FiniteGibbs.sum_prod_gibbs_pmf_eq_one (α := Config N) (n := n) (H := H))
 
 lemma replicaGibbsMeasure_univ (N n : ℕ) (H : EnergySpace N) :
     replicaGibbsMeasure (N := N) (n := n) H Set.univ = 1 := by
-  simp [replicaGibbsMeasure, FiniteGibbs.replicaGibbsMeasure_univ]
+  simp [replicaGibbsMeasure]
 
-instance (N n : ℕ) (H : EnergySpace N) : IsProbabilityMeasure (replicaGibbsMeasure (N := N) (n := n) H) :=
-  by
-    -- Inherit from the generic instance.
-    simpa [replicaGibbsMeasure] using
-      (by infer_instance :
-        IsProbabilityMeasure (FiniteGibbs.replicaGibbsMeasure (α := Config N) (n := n) H))
+instance (N n : ℕ) (H : EnergySpace N) : IsProbabilityMeasure (replicaGibbsMeasure 
+    (N := N) (n := n) H) := by
+  simpa [replicaGibbsMeasure] using (by infer_instance :
+      IsProbabilityMeasure (FiniteGibbs.replicaGibbsMeasure (α := Config N) (n := n) H))
 
 /-- `gibbs_average_n_det` is the expectation of `f` under the `n`-replica Gibbs measure. -/
 lemma integral_replicaGibbsMeasure_eq_gibbs_average_n_det (N n : ℕ)
