@@ -1,10 +1,10 @@
+import Mathlib.Probability.Notation
 import Mathlib.Analysis.Calculus.MeanValue
 import Mathlib.Analysis.Calculus.FDeriv.Add
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Mathlib.MeasureTheory.Integral.Bochner.ContinuousLinearMap
 import Mathlib.MeasureTheory.Function.LpSeminorm.CompareExp
 import Mathlib.Topology.MetricSpace.Lipschitz
-import SpinGlass.Mathlib.Probability.Distributions.Gaussian_IBP_Hilbert
 
 /-!
 # Complex integration-by-parts tools (Arguin–Tai Lemma `lem: by parts`)

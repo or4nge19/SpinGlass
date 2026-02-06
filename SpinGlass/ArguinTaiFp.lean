@@ -1,7 +1,10 @@
 import SpinGlass.ComplexIBP
 import Mathlib.Analysis.Calculus.ParametricIntegral
 import Mathlib.Analysis.Calculus.MeanValue
+import Mathlib.Analysis.SpecialFunctions.ExpDeriv
+import Mathlib.Analysis.Calculus.Deriv.Inv
 import Mathlib.MeasureTheory.Measure.WithDensity
+import Mathlib.Topology.Metrizable.Uniformity
 
 /-!
 # Arguin–Tai (2018): the test function `F_p`
@@ -36,6 +39,29 @@ structure is available. We register the missing boundedness instance so that `Me
 be used below.
 -/
 
+-- We use the Borel σ-algebra coming from the norm topology on these CLM spaces.
+instance : MeasurableSpace (ℂ →L[ℝ] ℂ) := borel _
+instance : MeasurableSpace (ℂ →L[ℝ] ℝ) := borel _
+instance : MeasurableSpace (ℂ →L[ℝ] ℂ →L[ℝ] ℂ) := borel _
+instance : MeasurableSpace (ℂ →L[ℝ] ℂ →L[ℝ] ℝ) := borel _
+
+instance : BorelSpace (ℂ →L[ℝ] ℂ) := ⟨rfl⟩
+instance : BorelSpace (ℂ →L[ℝ] ℝ) := ⟨rfl⟩
+instance : BorelSpace (ℂ →L[ℝ] ℂ →L[ℝ] ℂ) := ⟨rfl⟩
+instance : BorelSpace (ℂ →L[ℝ] ℂ →L[ℝ] ℝ) := ⟨rfl⟩
+
+-- `PseudoMetrizableSpace` does not always infer for higher-order CLM spaces, so we register it
+-- explicitly via the induced (pseudo)metric structure coming from the operator norm.
+instance : TopologicalSpace.PseudoMetrizableSpace (ℂ →L[ℝ] ℂ →L[ℝ] ℝ) := by
+  classical
+  letI : PseudoMetricSpace (ℂ →L[ℝ] ℂ →L[ℝ] ℝ) := by infer_instance
+  infer_instance
+
+instance : TopologicalSpace.PseudoMetrizableSpace (ℂ →L[ℝ] ℂ →L[ℝ] ℂ) := by
+  classical
+  letI : PseudoMetricSpace (ℂ →L[ℝ] ℂ →L[ℝ] ℂ) := by infer_instance
+  infer_instance
+
 instance : IsBoundedSMul ℂ (ℂ →L[ℝ] ℂ →L[ℝ] ℂ) := by
   classical
   letI : NormedSpace ℂ (ℂ →L[ℝ] ℂ →L[ℝ] ℂ) := by infer_instance
@@ -49,7 +75,7 @@ instance : ContinuousSMul ℂ (ℂ →L[ℝ] ℂ →L[ℝ] ℂ) :=
   (IsBoundedSMul.continuousSMul (α := ℂ) (β := (ℂ →L[ℝ] ℂ →L[ℝ] ℂ)))
 
 instance : MeasurableSMul₂ ℂ (ℂ →L[ℝ] ℂ →L[ℝ] ℂ) := by
-  infer_instance
+  refine ⟨(continuous_smul : Continuous fun p : ℂ × (ℂ →L[ℝ] ℂ →L[ℝ] ℂ) => p.1 • p.2).measurable⟩
 
 /-! ## The base measure on `[0,1]` -/
 

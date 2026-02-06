@@ -101,12 +101,12 @@ lemma bind_restrict_eq_of_measurableSet_tail (hγ : γ.IsProper) (Λ : Finset S)
 
 /-- If `μ` is Gibbs for `γ`, then the restriction of `μ` to a tail event is also Gibbs. -/
 lemma isGibbsMeasure_restrict_of_measurableSet_tail
-    (hγ : γ.IsProper) {μ : Measure (S → E)} [IsFiniteMeasure μ]
+    (hγ : γ.IsProper) {μ : Measure (S → E)} [IsProbabilityMeasure μ]
     (hμ : _root_.Specification.IsGibbsMeasure (S := S) (E := E) γ μ)
     {A : Set (S → E)} (hA : MeasurableSet[@tailSigmaAlgebra S E _] A) :
     _root_.Specification.IsGibbsMeasure (S := S) (E := E) γ (μ.restrict A) := by
   have hfix : ∀ Λ : Finset S, μ.bind (γ Λ) = μ := by
-    simpa [_root_.Specification.isGibbsMeasure_iff_forall_bind_eq (γ := γ) hγ] using hμ
+    simpa [_root_.Specification.isGibbsMeasure_iff_forall_bind_eq_of_prob (γ := γ) hγ] using hμ
   have hfix_restrict : ∀ Λ : Finset S, (μ.restrict A).bind (γ Λ) = μ.restrict A := by
     intro Λ
     calc
@@ -114,8 +114,10 @@ lemma isGibbsMeasure_restrict_of_measurableSet_tail
           = (μ.bind (γ Λ)).restrict A :=
             bind_restrict_eq_of_measurableSet_tail (γ := γ) (hγ := hγ) (Λ := Λ) (hA := hA) μ
       _ = μ.restrict A := by simp [hfix Λ]
+  -- `μ.restrict A` is not a probability measure in general, so use the finite-measure fixed-point lemma.
+  haveI : IsFiniteMeasure μ := by infer_instance
   haveI : IsFiniteMeasure (μ.restrict A) := by infer_instance
-  simpa [_root_.Specification.isGibbsMeasure_iff_forall_bind_eq (γ := γ) hγ] using hfix_restrict
+  exact (_root_.Specification.isGibbsMeasure_iff_forall_bind_eq (γ := γ) (μ := μ.restrict A) hγ).2 hfix_restrict
 
 end Restrict
 
@@ -260,7 +262,7 @@ lemma isGibbsMeasure_normRestrict_of_tail (hγ : γ.IsProper)
   -- Use the fixed-point characterization `μ.bind (γ Λ) = μ`.
   have hfix : ∀ Λ : Finset S, μ.bind (γ Λ) = μ := by
     haveI : IsFiniteMeasure μ := by infer_instance
-    exact (_root_.Specification.isGibbsMeasure_iff_forall_bind_eq (γ := γ) hγ).1 hμ
+    exact (_root_.Specification.isGibbsMeasure_iff_forall_bind_eq_of_prob (γ := γ) hγ).1 hμ
   have hfix_restrict : ∀ Λ : Finset S, (μ.restrict A).bind (γ Λ) = μ.restrict A := by
     intro Λ
     calc
@@ -287,7 +289,7 @@ lemma isGibbsMeasure_normRestrict_of_tail (hγ : γ.IsProper)
     infer_instance
   haveI : IsProbabilityMeasure (normRestrict (μ := μ) A) :=
     isProbabilityMeasure_normRestrict (μ := μ) (A := A) hA0
-  exact (_root_.Specification.isGibbsMeasure_iff_forall_bind_eq (γ := γ) hγ).2 hfix_norm
+  exact (_root_.Specification.isGibbsMeasure_iff_forall_bind_eq_of_prob (γ := γ) hγ).2 hfix_norm
 
 /-! #### Conditioning a Gibbs probability measure on a tail event stays Gibbs -/
 
@@ -646,10 +648,10 @@ lemma exists_withDensity_of_absolutelyContinuous_gibbs
   have hμb : μb.withDensity g = νb := by
     simpa [g] using (Measure.withDensity_rnDeriv_eq (μ := νb) (ν := μb) hνbμb)
   have hbindμ : μ.bind (γ Λ) = μ := by
-    have := (_root_.Specification.isGibbsMeasure_iff_forall_bind_eq (S := S) (E := E) (γ := γ) hγ).1 hμ
+    have := (_root_.Specification.isGibbsMeasure_iff_forall_bind_eq (S := S) (E := E) (γ := γ) (μ := μ) hγ).1 hμ
     simpa using this Λ
   have hbindν : ν.bind (γ Λ) = ν := by
-    have := (_root_.Specification.isGibbsMeasure_iff_forall_bind_eq (S := S) (E := E) (γ := γ) hγ).1 hν
+    have := (_root_.Specification.isGibbsMeasure_iff_forall_bind_eq (S := S) (E := E) (γ := γ) (μ := ν) hγ).1 hν
     simpa using this Λ
   have hμb_bind : μb.bind (γ Λ) = μ := by
     ext A hA
@@ -689,8 +691,7 @@ lemma ae_eq_tailMeasurable_of_forall_boundary
       intro x hx
       exact hmonoΛ hab hx
     have hcompl : ((Λn b : Set S)ᶜ) ⊆ ((Λn a : Set S)ᶜ) := by
-      intro x hx
-      intro hxa
+      intro x hx hxa
       exact hx (hsub hxa)
     exact MeasureTheory.cylinderEvents_mono (X := fun _ : S ↦ E) (h := hcompl)
   choose g hgmeas hμg using

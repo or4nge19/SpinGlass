@@ -338,15 +338,16 @@ theorem isGibbsMeasure_of_isGibbsCore (hγ : γ.IsProper) {μ : Measure Ω}
     have hγmeas : Measurable fun ω : Ω => (γ Λ ω : Measure Ω) := by
       exact (Kernel.measurable (γ Λ)).mono
         (MeasureTheory.cylinderEvents_le_pi (X := fun _ : S ↦ E) (Δ := ((Λ : Set S)ᶜ))) le_rfl
-    have huniv : (μ.bind (γ Λ)) Set.univ = μ Set.univ := by
-      simp [MeasureTheory.Measure.bind_apply (m := μ) (f := fun ω : Ω => (γ Λ ω : Measure Ω))
-        (s := (Set.univ : Set Ω)) MeasurableSet.univ hγmeas.aemeasurable]
-    haveI : IsFiniteMeasure (μ.bind (γ Λ)) := by
-      refine ⟨?_⟩
-      have : (μ.bind (γ Λ)) Set.univ = 1 := by simpa [hμ_univ] using huniv
-      simp [this]
-    exact MeasureTheory.ext_of_generate_finite C hA hC (μ := (μ.bind (γ Λ))) (ν := μ) hμν huniv
-  exact (Specification.isGibbsMeasure_iff_forall_bind_eq (S := S) (E := E) (γ := γ) hγ).2 hfix
+    haveI : IsProbabilityMeasure (μ.bind (γ Λ)) := by
+      refine MeasureTheory.isProbabilityMeasure_bind (m := μ) (f := γ Λ) ?_ ?_
+      · exact hγmeas.aemeasurable
+      · refine Filter.Eventually.of_forall (fun ω => ?_)
+        -- `γ Λ` is a Markov kernel.
+        simpa using (ProbabilityTheory.IsMarkovKernel.isProbabilityMeasure (κ := γ Λ) ω)
+    exact
+      MeasureTheory.Measure.ext_of_generate_finite_of_isProbabilityMeasure (C := C)
+        (μ := (μ.bind (γ Λ))) (ν := μ) (hA := hA) (hC := hC) hμν
+  exact (Specification.isGibbsMeasure_iff_forall_bind_eq_of_prob (S := S) (E := E) (γ := γ) hγ).2 hfix
 
 theorem isGibbsCore_of_isGibbsMeasure (hγ : γ.IsProper) {μ : Measure Ω} [IsProbabilityMeasure μ]
     (hμ : _root_.Specification.IsGibbsMeasure (S := S) (E := E) γ μ) :
@@ -354,7 +355,7 @@ theorem isGibbsCore_of_isGibbsMeasure (hγ : γ.IsProper) {μ : Measure Ω} [IsP
   refine ⟨by simp, ?_⟩
   have hfix :
       ∀ Λ : Finset S, μ.bind (γ Λ) = μ := by
-    exact (Specification.isGibbsMeasure_iff_forall_bind_eq (S := S) (E := E) (γ := γ) hγ).1 hμ
+    exact (Specification.isGibbsMeasure_iff_forall_bind_eq_of_prob (S := S) (E := E) (γ := γ) hγ).1 hμ
   intro Λ t
   simpa using congrArg (fun m : Measure Ω => m (piNatGen (t := t))) (hfix Λ)
 
@@ -372,7 +373,6 @@ variable {γ : Specification S E} [γ.IsMarkov]
 variable (μ : Measure (S → E)) [IsProbabilityMeasure μ]
 
 -- The tail disintegration (and `tailKernelLaw`) is built under these standard assumptions.
-local instance : IsFiniteMeasure μ := by infer_instance
 
 variable
     [@MeasurableSpace.CountableOrCountablyGenerated (S → E) (S → E) (@tailSigmaAlgebra S E _)]
@@ -544,7 +544,6 @@ theorem choquetDecomposition_tailKernelLaw
     MeasureTheory.Measure.join (tailKernelLaw (S := S) (E := E) (μ := μ)) = μ
       ∧
     tailKernelLaw (S := S) (E := E) (μ := μ) (goodSet (S := S) (E := E) (γ := γ)) = 1 := by
-  haveI : IsFiniteMeasure μ := by infer_instance
   refine ⟨?_, ?_⟩
   · simpa using (join_tailKernelLaw (S := S) (E := E) (μ := μ))
   · exact tailKernelLaw_goodSet_eq_one (S := S) (E := E) (γ := γ) (μ := μ) hγ hμ
@@ -584,11 +583,9 @@ theorem ae_mem_extremePoints_G_tailKernelLawPM
 theorem choquetDecomposition_tailKernelLawPM
     (hγ : γ.IsProper) (hμ : γ.IsGibbsMeasure (μ : Measure (S → E))) :
     MeasureTheory.Measure.join (tailKernelLaw (S := S) (E := E) (μ := (μ : Measure (S → E))))
-        = (μ : Measure (S → E))
-      ∧
+        = (μ : Measure (S → E)) ∧
     (∀ᵐ ν ∂(tailKernelLawPM (S := S) (E := E) μ : Measure (Measure (S → E))),
       ν ∈ (G (γ := γ)).extremePoints ENNReal) := by
-  haveI : IsFiniteMeasure (μ : Measure (S → E)) := by infer_instance
   refine ⟨?_, ?_⟩
   · simpa using (join_tailKernelLaw (S := S) (E := E) (μ := (μ : Measure (S → E))))
   · exact ae_mem_extremePoints_G_tailKernelLawPM (S := S) (E := E) (γ := γ) (μ := μ) hγ hμ
@@ -601,8 +598,6 @@ theorem choquetDecomposition_tailKernelLawPM_goodSet
       ∧
     tailKernelLaw (S := S) (E := E) (μ := (μ : Measure (S → E)))
         (goodSet (S := S) (E := E) (γ := γ)) = 1 := by
-  haveI : IsProbabilityMeasure (μ : Measure (S → E)) := by infer_instance
-  haveI : IsFiniteMeasure (μ : Measure (S → E)) := by infer_instance
   refine ⟨?_, ?_⟩
   · simpa using (join_tailKernelLaw (S := S) (E := E) (μ := (μ : Measure (S → E))))
   · exact tailKernelLaw_goodSet_eq_one (S := S) (E := E) (γ := γ) (μ := (μ : Measure (S → E))) hγ hμ
@@ -737,16 +732,18 @@ theorem ae_tailKernel_eq_of_isTailTrivial
   have hae_eq :
       ∀ᵐ ω ∂μt, tailKernel (S := S) (E := E) (μ := μ) ω = μ := by
     filter_upwards [h_all] with ω hω
-    haveI : IsFiniteMeasure (tailKernel (S := S) (E := E) (μ := μ) ω) := by infer_instance
-    haveI : IsFiniteMeasure μ := by infer_instance
     have hμν : ∀ s ∈ C,
         (tailKernel (S := S) (E := E) (μ := μ) ω) s = μ s := by
       intro s hs
       rcases hs with ⟨t, rfl⟩
       simpa using hω t
-    have huniv : (tailKernel (S := S) (E := E) (μ := μ) ω) Set.univ = μ Set.univ := by simp
-    exact MeasureTheory.ext_of_generate_finite C hgen hPi
-      (μ := tailKernel (S := S) (E := E) (μ := μ) ω) (ν := μ) hμν huniv
+    haveI : IsProbabilityMeasure (tailKernel (S := S) (E := E) (μ := μ) ω) :=
+      ProbabilityTheory.IsMarkovKernel.isProbabilityMeasure
+        (κ := tailKernel (S := S) (E := E) μ) ω
+    exact
+      MeasureTheory.Measure.ext_of_generate_finite_of_isProbabilityMeasure (C := C)
+        (μ := tailKernel (S := S) (E := E) (μ := μ) ω) (ν := μ)
+        (hA := hgen) (hC := hPi) hμν
   exact MeasureTheory.ae_of_ae_trim (hm := hm) (μ := μ) hae_eq
 
 /-- Tail-triviality implies the representing law is a Dirac measure. -/
