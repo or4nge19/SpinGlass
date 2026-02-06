@@ -16,9 +16,9 @@ Hamiltonian `H : α → ℝ`. In `SpinGlass.FiniteGibbs` the basic objects are:
 - `free_energy_density n H := (1 / (n : ℝ)) * Real.log (Z H)`
   (free energy density; explicit scaling `n : ℕ`).
 
-The folder `SpinGlass/FiniteGibbs/*` develops the Fréchet calculus of `F_n` in the Hilbert space
-`EnergySpace α := PiLp 2 (fun _ : α => ℝ)` and exports it for subsequent instantiations
-(`Config N`, cascades, …).
+The modules `SpinGlass.FiniteGibbs` and `SpinGlass.FiniteGibbs.*` develop the Fréchet calculus of
+`free_energy_density` in the Hilbert space `EnergySpace α := PiLp 2 (fun _ : α => ℝ)` and export
+it for subsequent instantiations (`Config N`, cascades, …).
 
 Gaussian integration by parts is used through an intrinsic Cameron–Martin interface
 (`ProbabilityTheory.IsGaussian μ`), with the Hilbert/covariance-operator formulation as the
@@ -52,63 +52,64 @@ Gaussian analysis entry points:
 
 ## Library map
 
+### Umbrella modules
+
+- `Common`: shared utilities (re-export layer).
+- `SpinGlass`: main import for the full `SpinGlass` development
+  (currently also imports `GibbsMeasure`).
+- `GibbsMeasure`: main import for the full `GibbsMeasure` development.
+
 ### Configuration-agnostic finite Gibbs calculus (`SpinGlass.FiniteGibbs`)
 
-Namespace: `SpinGlass.FiniteGibbs`. Files:
+Namespace: `SpinGlass.FiniteGibbs`.
 
-- `SpinGlass/FiniteGibbs.lean`
-- `SpinGlass/FiniteGibbs/Calculus.lean`
-- `SpinGlass/FiniteGibbs/Integrability.lean`
-- `SpinGlass/FiniteGibbs/GibbsMeasure.lean`
-
-- `SpinGlass/FiniteGibbs.lean`:
-  partition function `FiniteGibbs.Z`, Gibbs weights `FiniteGibbs.gibbs_pmf`,
-  free energy density `FiniteGibbs.free_energy_density`, Fréchet derivatives,
-  Hessian/covariance identity, and `FiniteGibbs.trace_formula`.
-- `SpinGlass/FiniteGibbs/Calculus.lean`:
+- `SpinGlass.FiniteGibbs`:
+  partition function `Z`, Gibbs weights `gibbs_pmf`, free energy density `free_energy_density`,
+  Fréchet derivatives, Hessian/covariance identity, and `trace_formula`.
+- `SpinGlass.FiniteGibbs.Calculus`:
   `ContDiff` regularity, chain rule, and derivative/Lipschitz bounds.
-- `SpinGlass/FiniteGibbs/Integrability.lean`:
+- `SpinGlass.FiniteGibbs.Integrability`:
   integrability of `free_energy_density` under Gaussian pushforward laws.
-- `SpinGlass/FiniteGibbs/GibbsMeasure.lean`:
-  the atomic probability measure `FiniteGibbs.gibbsMeasure` and its integral lemmas.
+- `SpinGlass.FiniteGibbs.GibbsMeasure`:
+  atomic Gibbs measure `gibbsMeasure` and integral formulas.
 
 ### SK model and Guerra interpolation (finite `N`)
 
-- `SpinGlass/Defs.lean`:
+- `SpinGlass.Defs`:
   specialization to `Config N := Fin N → Bool`, overlaps and covariance kernels,
   trace computations, and the algebraic core identity of Guerra’s bound.
-- `SpinGlass/Calculus.lean`:
+- `SpinGlass.Calculus`:
   specialization of the `FiniteGibbs` calculus to `Config N`
   (smoothness, Hessian = covariance).
-- `SpinGlass/SKModel.lean`:
+- `SpinGlass.SKModel`:
   Gaussian disorder structures `SKDisorder` and `SimpleDisorder`,
   the product disorder space `DisorderSpace`, and the intrinsic law `disorderPairLaw`.
-- `SpinGlass/GuerraInterpolation.lean`:
+- `SpinGlass.GuerraInterpolation`:
   dominated differentiation for the expected free energy along the smart path.
-- `SpinGlass/GuerraIBP.lean`:
+- `SpinGlass.GuerraIBP`:
   Gaussian IBP rewrite of the derivative value on `disorderPairLaw`.
-- `SpinGlass/GuerraTrace.lean`:
+- `SpinGlass.GuerraTrace`:
   conversion of the IBP expression to Talagrand’s trace/Hessian form.
-- `SpinGlass/GuerraPipeline.lean`:
+- `SpinGlass.GuerraPipeline`:
   a packaged `HasDerivAt` theorem combining the previous steps.
-- `SpinGlass/Replicas.lean`:
+- `SpinGlass.Replicas`:
   replica calculus and reusable IBP lemmas on `disorderPairLaw` in polynomial-growth form.
 
 ### Hopfield
 
-- `SpinGlass/Hopfield.lean`:
+- `SpinGlass.Hopfield`:
   finite-volume Hopfield Hamiltonian and Hubbard–Stratonovich linearization.
-- `SpinGlass/HopfieldFixedPoint.lean`:
+- `SpinGlass.HopfieldFixedPoint`:
   existence and a canonical choice of a fixed point of `m ↦ tanh (β m + h)`.
 
 ### Gaussian/Cameron–Martin toolkit (local Mathlib extensions)
 
-- `Common/Mathlib/Probability/Distributions/Gaussian/CameronMartinAPI.lean`:
+- `Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinAPI`:
   public API for Cameron–Martin theorem, Fernique integrability, and IBP.
-- `Common/Mathlib/Probability/Distributions/Gaussian_IBP_HilbertAPI.lean`:
+- `Common.Mathlib.Probability.Distributions.Gaussian_IBP_HilbertAPI`:
   Hilbert-space IBP in covariance-operator form.
-- `Common/Mathlib/Probability/Distributions/GaussianIntegrationByParts.lean`:
-  one-dimensional Gaussian IBP corollaries.
+- `Common.Mathlib.Probability.Distributions.GaussianIntegrationByParts`:
+  one-dimensional Gaussian IBP corollaries for `gaussianReal`.
 
 ### `GibbsMeasure` (DLR / infinite volume)
 
