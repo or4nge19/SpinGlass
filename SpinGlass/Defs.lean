@@ -27,9 +27,10 @@ Most of the “thermodynamic” objects used throughout Talagrand Vol I/II (part
 Gibbs weights, free energy, covariance/Hessian identities) only depend on a **finite configuration
 space** `Σ` and an energy function `H : Σ → ℝ`.
 
-In this repo, concrete models fix `Σ := Config N := Fin N → Bool`, and we keep that specialization
-for compatibility. But we also expose a configuration-agnostic API so that Vol I models become
-instances of the Vol II general framework (Gaussian processes indexed by `Σ`).
+In this repo, concrete models use the Ising configuration space
+`Config N := Fin N → Bool` (spins in `{±1}`), and we keep that specialization as the default.
+But we also expose a configuration-agnostic API so that Vol I models become instances of the
+Vol II general framework (Gaussian processes indexed by `Σ`).
 -/
 
 /-- A generic finite configuration space. Concrete models will take `Σ := Config N`. -/
@@ -52,9 +53,62 @@ noncomputable def gibbs_pmf' {α : Type*} [Fintype α] (H : α → ℝ) (σ : α
 noncomputable def free_energy_density' {α : Type*} [Fintype α] (N : ℕ) (H : α → ℝ) : ℝ :=
   (1 / (N : ℝ)) * Real.log (Z' H)
 
-abbrev Config := Fin N → Bool
+/-!
+### Configuration space and “single-site spin” observables
 
-def spin (σ : Config N) (i : Fin N) : ℝ := if σ i then 1 else -1
+We parameterize configurations by a *single-site* type `S`.  The default choice `S := Bool`
+recovers the Ising case `Fin N → Bool`.  This small generalization is enough to reuse the
+finite-volume calculus (and the overlap-based covariance kernels) for e.g. Potts-type models by
+changing only the single-site space and the real-valued map `spin : S → ℝ`.
+-/
+
+/-- Configuration space on `N` sites with single-site space `S` (default: `Bool`). -/
+abbrev Config (N : ℕ) (S : Type := Bool) : Type := Fin N → S
+
+/-- The standard Ising single-site map `Bool → ℝ`, sending `true ↦ 1` and `false ↦ -1`. -/
+def isingSpin : Bool → ℝ := fun b => if b then 1 else -1
+
+/-- `isingSpin true = 1`. -/
+@[simp] lemma isingSpin_true : isingSpin true = (1 : ℝ) := by
+  simp [isingSpin]
+
+/-- `isingSpin false = -1`. -/
+@[simp] lemma isingSpin_false : isingSpin false = (-1 : ℝ) := by
+  simp [isingSpin]
+
+/-- `|isingSpin b| = 1` for all `b : Bool`. -/
+lemma abs_isingSpin_eq_one (b : Bool) : |isingSpin b| = (1 : ℝ) := by
+  cases b <;> simp [isingSpin]
+
+/-- `isingSpin b * isingSpin b = 1` for all `b : Bool`. -/
+lemma isingSpin_mul_self (b : Bool) : isingSpin b * isingSpin b = (1 : ℝ) := by
+  cases b <;> simp [isingSpin]
+
+/-- Spin at site `i` induced by a single-site observable `spin : S → ℝ`. -/
+def spinOf {S : Type} (spin : S → ℝ) (σ : Config N S) (i : Fin N) : ℝ :=
+  spin (σ i)
+
+/-- Unfolding lemma for `spinOf`. -/
+@[simp] lemma spinOf_apply {S : Type} (s : S → ℝ) (σ : Config N S) (i : Fin N) :
+    spinOf (N := N) s σ i = s (σ i) := by
+  rfl
+
+/-- The Ising spin at site `i` (specialization of `spinOf` to `isingSpin`). -/
+def spin (σ : Config N) (i : Fin N) : ℝ :=
+  spinOf (N := N) isingSpin σ i
+
+/-- `spin` is `spinOf` specialized to `isingSpin`. -/
+lemma spin_eq_spinOf (σ : Config N) (i : Fin N) :
+    spin N σ i = spinOf (N := N) isingSpin σ i := by
+  rfl
+
+/-- Ising spins satisfy `|spin N σ i| = 1`. -/
+lemma abs_spin_eq_one (σ : Config N) (i : Fin N) : |spin N σ i| = (1 : ℝ) := by
+  simpa [spin, spinOf] using abs_isingSpin_eq_one (σ i)
+
+/-- Ising spins satisfy `spin N σ i * spin N σ i = 1`. -/
+lemma spin_mul_self (σ : Config N) (i : Fin N) : spin N σ i * spin N σ i = (1 : ℝ) := by
+  simpa [spin, spinOf] using isingSpin_mul_self (σ i)
 
 /--
 Energy Hilbert space for Hamiltonians.
@@ -65,9 +119,20 @@ finite-volume calculus are with respect to this \(ℓ^2\) convention (not \(ℓ^
 -/
 abbrev EnergySpace := PiLp 2 (fun _ : Config N => ℝ)
 
-/-- Magnetization of a configuration: \( \sum_{i=1}^N \sigma_i \) (with `σ_i ∈ {±1}`). -/
+/-! #### Magnetization and overlap -/
+
+/-- Magnetization induced by a single-site observable `spin : S → ℝ`. -/
+def magnetizationOf {S : Type} (spin : S → ℝ) (σ : Config N S) : ℝ :=
+  ∑ i : Fin N, spinOf (N := N) spin σ i
+
+/-- Magnetization of an Ising configuration: \( \sum_{i=1}^N \sigma_i \) (with `σ_i ∈ {±1}`). -/
 def magnetization (σ : Config N) : ℝ :=
-  ∑ i : Fin N, spin N σ i
+  magnetizationOf (N := N) isingSpin σ
+
+/-- `magnetization` is `magnetizationOf` specialized to `isingSpin`. -/
+lemma magnetization_eq_magnetizationOf (σ : Config N) :
+    magnetization N σ = magnetizationOf (N := N) isingSpin σ := by
+  rfl
 
 /--
 External field energy term:
@@ -103,16 +168,47 @@ lemma inner_std_basis_apply (σ : Config N) (H : EnergySpace N) :
 
 noncomputable section
 
+/-- Overlap induced by a single-site observable `spin : S → ℝ`. -/
+def overlapOf {S : Type} (spin : S → ℝ) (σ τ : Config N S) : ℝ :=
+  (1 / (N : ℝ)) * ∑ i : Fin N, (spinOf (N := N) spin σ i) * (spinOf (N := N) spin τ i)
+
+/-- The Ising overlap (specialization of `overlapOf` to `isingSpin`). -/
 def overlap (σ τ : Config N) : ℝ :=
-  (1 / (N : ℝ)) * ∑ i, (spin N σ i) * (spin N τ i)
+  overlapOf (N := N) isingSpin σ τ
+
+/-- `overlap` is `overlapOf` specialized to `isingSpin`. -/
+lemma overlap_eq_overlapOf (σ τ : Config N) :
+    overlap N σ τ = overlapOf (N := N) isingSpin σ τ := by
+  rfl
 
 /-! ### Covariance Kernels -/
 
+/-- SK covariance kernel induced by a single-site observable `spin : S → ℝ`. -/
+def sk_cov_kernelOf {S : Type} (spin : S → ℝ) (σ τ : Config N S) : ℝ :=
+  (N * β^2 / 2) * (overlapOf (N := N) spin σ τ)^2
+
+/-- The Ising SK covariance kernel (specialization of `sk_cov_kernelOf` to `isingSpin`). -/
 def sk_cov_kernel (σ τ : Config N) : ℝ :=
   (N * β^2 / 2) * (overlap N σ τ)^2
 
+/-- `sk_cov_kernel` is `sk_cov_kernelOf` specialized to `isingSpin`. -/
+lemma sk_cov_kernel_eq_sk_cov_kernelOf (σ τ : Config N) :
+    sk_cov_kernel N β σ τ = sk_cov_kernelOf (N := N) (β := β) isingSpin σ τ := by
+  rfl
+
+/-- “Reference” covariance kernel induced by a single-site observable `spin : S → ℝ`. -/
+def simple_cov_kernelOf {S : Type} (xi : ℝ → ℝ) (spin : S → ℝ) (σ τ : Config N S) : ℝ :=
+  N * β^2 * xi (overlapOf (N := N) spin σ τ)
+
+/-- The Ising reference covariance kernel (specialization of `simple_cov_kernelOf` to `isingSpin`). -/
 def simple_cov_kernel (xi : ℝ → ℝ) (σ τ : Config N) : ℝ :=
   N * β^2 * xi (overlap N σ τ)
+
+/-- `simple_cov_kernel` is `simple_cov_kernelOf` specialized to `isingSpin`. -/
+lemma simple_cov_kernel_eq_simple_cov_kernelOf (xi : ℝ → ℝ) (σ τ : Config N) :
+    simple_cov_kernel N β xi σ τ
+      = simple_cov_kernelOf (N := N) (β := β) xi isingSpin σ τ := by
+  rfl
 
 /-! ### Thermodynamic Quantities -/
 
@@ -321,7 +417,6 @@ lemma fderiv_gibbs_pmf_apply (H h : EnergySpace N) (σ : Config N) :
     fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H h =
       (gibbs_pmf N H σ) *
         ((∑ τ : Config N, (gibbs_pmf N H τ) * h τ) - h σ) := by
-  -- Reuse the model-agnostic Vol II calculus on a finite configuration space.
   simpa [gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
     (FiniteGibbs.fderiv_gibbs_pmf_apply (α := Config N) (H := H) (h := h) σ)
 
@@ -440,20 +535,17 @@ Self-overlap is always 1.
 -/
 theorem overlap_self (hN : 0 < N) (σ : Config N) : overlap N σ σ = 1 := by
   classical
-  unfold overlap
-  have hterm : ∀ i : Fin N, spin N σ i * spin N σ i = (1 : ℝ) := by
-    intro i
-    cases hσ : σ i <;> simp [spin, hσ]
-  have hsum : (∑ i : Fin N, spin N σ i * spin N σ i) = (N : ℝ) := by
+  unfold overlap overlapOf
+  have hsum : (∑ i : Fin N, isingSpin (σ i) * isingSpin (σ i)) = (N : ℝ) := by
     calc
-      (∑ i : Fin N, spin N σ i * spin N σ i)
+      (∑ i : Fin N, isingSpin (σ i) * isingSpin (σ i))
           = ∑ _i : Fin N, (1 : ℝ) := by
               refine Finset.sum_congr rfl ?_
               intro i _hi
-              exact hterm i
+              simpa using isingSpin_mul_self (σ i)
       _ = (N : ℝ) := by simp
   have hN0 : (N : ℝ) ≠ 0 := by exact_mod_cast hN.ne'
-  simp [hsum, hN0, div_eq_mul_inv]
+  simp [spinOf, hsum, hN0, div_eq_mul_inv]
 
 /--
 Trace calculation for the SK model covariance.
