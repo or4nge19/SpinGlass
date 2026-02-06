@@ -39,8 +39,8 @@ noncomputable def gibbsMeasure (H : EnergySpace N) : Measure (Config N) :=
 lemma lintegral_gibbsMeasure
     (H : EnergySpace N) (f : Config N → ℝ≥0∞) : (∫⁻ σ, f σ ∂gibbsMeasure (N := N) H) = ∑ σ :
       Config N, (gibbsWeightNNReal (N := N) H σ : ℝ≥0∞) * f σ := by
-  simpa [gibbsMeasure, gibbsWeightNNReal, FiniteGibbs.gibbsMeasure, FiniteGibbs.gibbsWeightNNReal] using
-    (FiniteGibbs.lintegral_gibbsMeasure (α := Config N) (H := H) (f := f))
+  classical
+  simp [gibbsMeasure, gibbsWeightNNReal, FiniteGibbs.lintegral_gibbsMeasure]
 
 lemma gibbsMeasure_univ (H : EnergySpace N) : gibbsMeasure (N := N) H Set.univ = 1 := by
   simpa [gibbsMeasure, FiniteGibbs.gibbsMeasure] using (FiniteGibbs.gibbsMeasure_univ (α := Config N) (H := H))

@@ -1,13 +1,13 @@
 import SpinGlass.GuerraTrace
 
 /-!
-## Guerra interpolation: final analytic pipeline lemma
+# Guerra interpolation: combined derivative theorem
 
-`SpinGlass/GuerraTrace.lean` identifies the *derivative value* appearing in
-`hasDerivAt_guerraPhi` with Talagrand’s trace/Hessian expression under the intrinsic disorder law.
+`SpinGlass.GuerraTrace` identifies the derivative value appearing in `hasDerivAt_guerraPhi` with
+Talagrand’s trace/Hessian expression under the intrinsic disorder law.
 
-This file packages the combined statement as a single `HasDerivAt` theorem, so that downstream
-arguments (Guerra bound, Talagrand Vol I/II machinery) can use it directly.
+This file records the combined statement as `hasDerivAt_guerraPhi_eq_trace_integral`, so that
+downstream arguments (e.g. the Guerra bound) can use it directly.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology

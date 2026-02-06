@@ -2,6 +2,7 @@ import SpinGlass.SKModel
 import SpinGlass.GuerraBound
 import SpinGlass.Calculus
 import SpinGlass.ReplicaMeasure
+import SpinGlass.FiniteGibbs.ReplicaCalculus
 import Common.Mathlib.Probability.Distributions.Gaussian_IBP_HilbertAPI
 import Mathlib.Analysis.SpecialFunctions.Sqrt
 import Mathlib.Analysis.InnerProductSpace.ProdL2
@@ -99,58 +100,8 @@ These are used both for integrability and for “moderate growth” hypotheses i
 
 lemma abs_gibbs_average_n_det_le (H : EnergySpace N) (f : ReplicaFun N n) :
     |gibbs_average_n_det (N := N) (n := n) H f| ≤ ∑ σs : ReplicaSpace N n, |f σs| := by
-  classical
-  have hnonneg :
-      ∀ σs : ReplicaSpace N n, 0 ≤ ∏ l, gibbs_pmf N H (σs l) :=
-    fun σs => by
-      classical
-      refine Finset.prod_nonneg ?_
-      intro l _hl
-      exact SpinGlass.gibbs_pmf_nonneg (N := N) (H := H) (σ := σs l)
-  have hprod_le_one :
-      ∀ σs : ReplicaSpace N n, (∏ l, gibbs_pmf N H (σs l)) ≤ (1 : ℝ) :=
-    fun σs => by
-      classical
-      have hfac : ∀ l : Fin n, gibbs_pmf N H (σs l) ≤ 1 := by
-        intro l
-        have hZpos : 0 < Z N H := SpinGlass.Z_pos (N := N) (H := H)
-        have hterm_le : Real.exp (-H (σs l)) ≤ Z N H := by
-          have :=
-            Finset.single_le_sum
-              (s := (Finset.univ : Finset (Config N)))
-              (f := fun τ => Real.exp (-H τ))
-              (hf := fun τ _hτ => (Real.exp_pos _).le)
-              (a := σs l) (h := Finset.mem_univ (σs l))
-          simpa [Z] using this
-        have := (div_le_one hZpos).2 hterm_le
-        simpa [SpinGlass.gibbs_pmf] using this
-      simpa using
-        (Finset.prod_le_one (s := (Finset.univ : Finset (Fin n)))
-          (f := fun l => gibbs_pmf N H (σs l))
-          (fun l _hl => SpinGlass.gibbs_pmf_nonneg (N := N) (H := H) (σ := σs l))
-          (fun l _hl => hfac l))
-  calc
-    |gibbs_average_n_det (N := N) (n := n) H f|
-        = |∑ σs : ReplicaSpace N n, f σs * ∏ l, gibbs_pmf N H (σs l)| := by
-            rfl
-    _ ≤ ∑ σs : ReplicaSpace N n, |f σs * ∏ l, gibbs_pmf N H (σs l)| := by
-          simpa using
-            (Finset.abs_sum_le_sum_abs
-              (f := fun σs : ReplicaSpace N n => f σs * ∏ l, gibbs_pmf N H (σs l))
-              (s := (Finset.univ : Finset (ReplicaSpace N n))))
-    _ = ∑ σs : ReplicaSpace N n, (|f σs| * |∏ l, gibbs_pmf N H (σs l)|) := by
-          refine Finset.sum_congr rfl (fun σs _hσs => ?_)
-          simp [abs_mul]
-    _ ≤ ∑ σs : ReplicaSpace N n, |f σs| := by
-          refine Finset.sum_le_sum ?_
-          intro σs _hσs
-          have habs :
-              |∏ l, gibbs_pmf N H (σs l)| = ∏ l, gibbs_pmf N H (σs l) := by
-            have h0 : 0 ≤ ∏ l, gibbs_pmf N H (σs l) := hnonneg σs
-            simp [abs_of_nonneg h0]
-          have hle1 : |∏ l, gibbs_pmf N H (σs l)| ≤ 1 := by
-            simpa [habs] using hprod_le_one σs
-          simpa using (mul_le_mul_of_nonneg_left hle1 (abs_nonneg (f σs)))
+  simpa [gibbs_average_n_det] using
+    (FiniteGibbs.abs_gibbs_average_n_det_le_sum_abs (α := Config N) (n := n) (H := H) (f := f))
 
 /-- Expected Gibbs average: ν_t(f) = E[ ⟨f⟩_t ]. -/
 noncomputable def nu (t : ℝ) (f : ReplicaFun N n) : ℝ :=
@@ -172,100 +123,9 @@ omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma abs_gibbs_average_n_le (t : ℝ) (f : ReplicaFun N n) (w : Ω) :
     |gibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w|
       ≤ ∑ σs : ReplicaSpace N n, |f σs| := by
-  classical
-  have hnonneg :
-      ∀ σs : ReplicaSpace N n,
-        0 ≤ ∏ l, gibbs_pmf N (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l) :=
-    fun σs => by
-      classical
-      have : ∀ l : Fin n,
-          0 ≤ gibbs_pmf N (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l) :=
-        fun l => SpinGlass.gibbs_pmf_nonneg (N := N) (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σ := σs l)
-      simpa using Finset.prod_nonneg (fun l _hl => this l)
-  calc
-    |gibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w|
-        = |∑ σs : ReplicaSpace N n,
-            f σs * ∏ l,
-              gibbs_pmf N (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l)| := by
-            rfl
-    _ ≤ ∑ σs : ReplicaSpace N n,
-          |f σs * ∏ l,
-              gibbs_pmf N (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l)| := by
-          classical
-          simpa using
-            (Finset.abs_sum_le_sum_abs
-              (f := fun σs : ReplicaSpace N n =>
-                f σs * ∏ l, gibbs_pmf N
-                  (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l))
-              (s := (Finset.univ : Finset (ReplicaSpace N n))))
-    _ = ∑ σs : ReplicaSpace N n,
-          (|f σs| * |∏ l,
-              gibbs_pmf N (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l)|) := by
-          refine Finset.sum_congr rfl ?_
-          intro σs _hσs
-          simp [abs_mul]
-    _ ≤ ∑ σs : ReplicaSpace N n, |f σs| := by
-          classical
-          simpa using
-            (Finset.sum_le_sum (s := (Finset.univ : Finset (ReplicaSpace N n))) (fun σs _hσs => by
-              have hle1 : |∏ l,
-                  gibbs_pmf N (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l)| ≤ 1 := by
-                have hfac : ∀ l : Fin n,
-                    gibbs_pmf N (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l) ≤ 1 := by
-                  intro l
-                  have hZpos :
-                      0 < Z N (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) :=
-                    SpinGlass.Z_pos (N := N)
-                      (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w)
-                  have hterm_le :
-                      Real.exp (-(H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l))
-                        ≤ Z N (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) := by
-                    classical
-                    have :=
-                      Finset.single_le_sum
-                        (s := (Finset.univ : Finset (Config N)))
-                        (f := fun τ =>
-                          Real.exp (-(H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ))
-                        (hf := fun τ _hτ => (Real.exp_pos _).le)
-                        (a := (σs l)) (h := Finset.mem_univ (σs l))
-                    simpa [Z] using this
-                  have := (div_le_one hZpos).2 hterm_le
-                  simpa [SpinGlass.gibbs_pmf] using this
-                have habs :
-                    |∏ l,
-                        gibbs_pmf N
-                          (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l)|
-                      =
-                    ∏ l,
-                        gibbs_pmf N
-                          (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l) := by
-                  have hnonneg' : 0 ≤ ∏ l,
-                      gibbs_pmf N
-                        (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l) :=
-                    hnonneg σs
-                  simp [abs_of_nonneg hnonneg']
-                have hprod :
-                    ∏ l,
-                        gibbs_pmf N
-                          (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l)
-                      ≤ (1 : ℝ) := by
-                  classical
-                  simpa using
-                    (Finset.prod_le_one (s := (Finset.univ : Finset (Fin n)))
-                      (f := fun l =>
-                        gibbs_pmf N
-                          (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l))
-                      (fun l _hl => SpinGlass.gibbs_pmf_nonneg (N := N)
-                        (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w)
-                        (σ := σs l))
-                      (fun l _hl => hfac l))
-                simpa [habs] using hprod
-              have : |f σs| * |∏ l,
-                  gibbs_pmf N
-                    (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l)|
-                    ≤ |f σs| := by
-                simpa using (mul_le_mul_of_nonneg_left hle1 (abs_nonneg (f σs)))
-              simpa [mul_assoc] using this))
+  simpa [gibbs_average_n, gibbs_average_n_det] using
+    (FiniteGibbs.abs_gibbs_average_n_det_le_sum_abs (α := Config N) (n := n)
+      (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (f := f))
 
 -- From the above crude bound, integrability under the probability measure is immediate.
 lemma integrable_gibbs_average_n (t : ℝ) (f : ReplicaFun N n) :
@@ -510,181 +370,11 @@ theorem integral_disorderPairLaw_right_apply_mul_eq_integral_fderiv_covarianceOp
       hF_meas hF_c1 hC hF_growth hF'_growth)
 
 /-!
-### The Derivative of the Gibbs Average with respect to the Hamiltonian
+### The derivative of the Gibbs average with respect to the Hamiltonian
 
-This is an essential building block for deriving the replica‑derivative formula (Talagrand Lemma
-1.4.2). Given a function `f : ReplicaFun N n` and a test direction `v : EnergySpace N`, the
-directional derivative of the Gibbs average with respect to the Hamiltonian `H` in direction `v` is:
-
-  `∑_{σs} f(σs) * ∑_l p_l * (⟨v⟩ - v(σ^l))`
-
-where `p_l` is the product Gibbs weight over replicas **except** replica `l`.
+All purely finite-volume derivative formulas and uniform bounds for replica Gibbs averages have
+been factored out to `SpinGlass/FiniteGibbs/ReplicaCalculus.lean`.
 -/
-
-/--
-The derivative of the Gibbs weight `∏ l, gibbs_pmf N H (σs l)` with respect to `H` in direction `v`.
-Mathematically:
-\[
-  \frac{d}{dε}\bigg|_{ε=0} ∏_l p_{H + ε v}(σ^l)
-    = ∏_l p_H(σ^l) \cdot \sum_l \bigl(\langle v \rangle_H - v(σ^l)\bigr),
-\]
-where \(\langle v \rangle_H = \sum_\sigma p_H(\sigma) v(\sigma)\).
--/
-lemma fderiv_prod_gibbs_pmf_apply (H v : EnergySpace N) (σs : ReplicaSpace N n) :
-    fderiv ℝ (fun H' => ∏ l : Fin n, gibbs_pmf N H' (σs l)) H v =
-      (∏ l : Fin n, gibbs_pmf N H (σs l)) *
-        ∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l)) := by
-  classical
-  have hdiff : ∀ l : Fin n,
-      DifferentiableAt ℝ (fun H' => gibbs_pmf N H' (σs l)) H := by
-    intro l
-    exact SpinGlass.differentiableAt_gibbs_pmf (N := N) (H := H) (σ := σs l)
-  have h_fderiv_prod :=
-    fderiv_finset_prod
-      (𝕜 := ℝ) (E := EnergySpace N) (𝔸' := ℝ) (u := (Finset.univ : Finset (Fin n)))
-      (g := fun l H' => gibbs_pmf N H' (σs l))
-      (fun l _hl => hdiff l)
-  rw [h_fderiv_prod]
-  simp only [ContinuousLinearMap.sum_apply, ContinuousLinearMap.smul_apply]
-  have hterm : ∀ l : Fin n,
-      (∏ j ∈ (Finset.univ : Finset (Fin n)).erase l, gibbs_pmf N H (σs j)) *
-        fderiv ℝ (fun H' => gibbs_pmf N H' (σs l)) H v
-      = (∏ j ∈ (Finset.univ : Finset (Fin n)).erase l, gibbs_pmf N H (σs j)) *
-          (gibbs_pmf N H (σs l) *
-            ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l))) := by
-    intro l
-    simp [SpinGlass.fderiv_gibbs_pmf_apply]
-  calc
-    ∑ l ∈ (Finset.univ : Finset (Fin n)),
-        (∏ j ∈ (Finset.univ : Finset (Fin n)).erase l, gibbs_pmf N H (σs j)) *
-          fderiv ℝ (fun H' => gibbs_pmf N H' (σs l)) H v
-      = ∑ l ∈ (Finset.univ : Finset (Fin n)),
-          (∏ j ∈ (Finset.univ : Finset (Fin n)).erase l, gibbs_pmf N H (σs j)) *
-            (gibbs_pmf N H (σs l) *
-              ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l))) := by
-          refine Finset.sum_congr rfl (fun l _hl => ?_)
-          simpa using hterm l
-    _ = ∑ l ∈ (Finset.univ : Finset (Fin n)),
-          (∏ j ∈ (Finset.univ : Finset (Fin n)).erase l, gibbs_pmf N H (σs j)) *
-            (gibbs_pmf N H (σs l) *
-              ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l))) := by
-          rfl
-    _ = ∑ l ∈ (Finset.univ : Finset (Fin n)),
-          (∏ j : Fin n, gibbs_pmf N H (σs j)) *
-            ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l)) := by
-            refine Finset.sum_congr rfl (fun l _hl => ?_)
-            -- `(∏_{j ≠ l} p_j) * p_l = ∏_j p_j`
-            have herase : (∏ j ∈ (Finset.univ : Finset (Fin n)).erase l, gibbs_pmf N H (σs j)) *
-                gibbs_pmf N H (σs l)
-                = ∏ j : Fin n, gibbs_pmf N H (σs j) := by
-              classical
-              simpa using
-                (Finset.prod_erase_mul
-                  (s := (Finset.univ : Finset (Fin n)))
-                  (f := fun j => gibbs_pmf N H (σs j))
-                  (a := l) (Finset.mem_univ l))
-            have := congrArg (fun a => a * (((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l)))) herase
-            simpa [mul_assoc, mul_left_comm, mul_comm] using this
-    _ = (∏ j : Fin n, gibbs_pmf N H (σs j)) *
-          ∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l)) := by
-            simpa using
-              (Finset.mul_sum (s := (Finset.univ : Finset (Fin n)))
-                (f := fun l => (∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l))
-                (a := (∏ j : Fin n, gibbs_pmf N H (σs j)))).symm
-
-/-- Differentiability of the product Gibbs weight as a function of the Hamiltonian. -/
-lemma differentiableAt_prod_gibbs_pmf (H : EnergySpace N) (σs : ReplicaSpace N n) :
-    DifferentiableAt ℝ (fun H' => ∏ l : Fin n, gibbs_pmf N H' (σs l)) H := by
-  classical
-  have hg :
-      ∀ l ∈ (Finset.univ : Finset (Fin n)),
-        HasFDerivAt (fun H' => gibbs_pmf N H' (σs l))
-          (fderiv ℝ (fun H' => gibbs_pmf N H' (σs l)) H) H := by
-    intro l _hl
-    exact (SpinGlass.differentiableAt_gibbs_pmf (N := N) (H := H) (σ := σs l)).hasFDerivAt
-  have hHas :=
-    (HasFDerivAt.finset_prod (u := (Finset.univ : Finset (Fin n)))
-      (g := fun l H' => gibbs_pmf N H' (σs l))
-      (g' := fun l => fderiv ℝ (fun H' => gibbs_pmf N H' (σs l)) H)
-      (x := H) hg).differentiableAt
-  simpa using hHas
-
-/-- Directional derivative of `gibbs_average_n_det` with respect to the Hamiltonian. -/
-lemma fderiv_gibbs_average_n_det_apply (H v : EnergySpace N) (f : ReplicaFun N n) :
-    fderiv ℝ (fun H' => gibbs_average_n_det (N := N) (n := n) H' f) H v =
-      ∑ σs : ReplicaSpace N n,
-        f σs * (∏ l : Fin n, gibbs_pmf N H (σs l)) *
-          ∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l)) := by
-  classical
-  let u : Finset (ReplicaSpace N n) := Finset.univ
-  let A : ReplicaSpace N n → EnergySpace N → ℝ :=
-    fun σs H' => f σs * ∏ l : Fin n, gibbs_pmf N H' (σs l)
-  have hA_diff : ∀ σs ∈ u, DifferentiableAt ℝ (A σs) H := by
-    intro σs _hσs
-    have hprod :
-        DifferentiableAt ℝ (fun H' => ∏ l : Fin n, gibbs_pmf N H' (σs l)) H :=
-      differentiableAt_prod_gibbs_pmf (N := N) (n := n) (H := H) σs
-    simpa [A] using (DifferentiableAt.const_mul hprod (f σs))
-  have hfderiv_sum :
-      fderiv ℝ (fun H' : EnergySpace N => ∑ σs ∈ u, A σs H') H
-        = ∑ σs ∈ u, fderiv ℝ (A σs) H := by
-    simpa [u] using (fderiv_fun_sum (u := u) (A := A) (x := H) hA_diff)
-  have hrewrite :
-      (fun H' : EnergySpace N => gibbs_average_n_det (N := N) (n := n) H' f)
-        = fun H' : EnergySpace N => ∑ σs ∈ u, A σs H' := by
-    funext H'
-    simp [gibbs_average_n_det, FiniteGibbs.gibbs_average_n_det, u, A,
-      SpinGlass.gibbs_pmf, SpinGlass.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z]
-  rw [hrewrite]
-  have : fderiv ℝ (fun H' : EnergySpace N => ∑ σs ∈ u, A σs H') H v =
-      (∑ σs ∈ u, fderiv ℝ (A σs) H) v := by
-    simp [hfderiv_sum]
-  simp [this, u, A, fderiv_const_mul, differentiableAt_prod_gibbs_pmf,
-    fderiv_prod_gibbs_pmf_apply, mul_assoc, mul_left_comm, mul_comm, mul_add, sub_eq_add_neg,
-    Finset.mul_sum]
-
-omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
-/--
-Differentiability of the `gibbs_average_n` in the Hamiltonian `H`.
--/
-lemma differentiableAt_gibbs_average_n (t : ℝ) (f : ReplicaFun N n) (w : Ω) :
-    DifferentiableAt ℝ
-      (fun H' => ∑ σs : ReplicaSpace N n, f σs * ∏ l, gibbs_pmf N H' (σs l))
-      (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) := by
-  classical
-  let H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w
-  have hterm : ∀ σs : ReplicaSpace N n,
-      DifferentiableAt ℝ (fun H' => f σs * ∏ l, gibbs_pmf N H' (σs l)) H := by
-    intro σs
-    have hprod :
-        DifferentiableAt ℝ (fun H' => ∏ l : Fin n, gibbs_pmf N H' (σs l)) H := by
-      have hg :
-          ∀ l ∈ (Finset.univ : Finset (Fin n)),
-            HasFDerivAt (fun H' => gibbs_pmf N H' (σs l))
-              (fderiv ℝ (fun H' => gibbs_pmf N H' (σs l)) H) H := by
-        intro l _hl
-        exact
-          (SpinGlass.differentiableAt_gibbs_pmf (N := N) (H := H) (σ := σs l)).hasFDerivAt
-      have hHas :=
-        (HasFDerivAt.finset_prod (u := (Finset.univ : Finset (Fin n)))
-          (g := fun l H' => gibbs_pmf N H' (σs l))
-          (g' := fun l => fderiv ℝ (fun H' => gibbs_pmf N H' (σs l)) H)
-          (x := H) hg).differentiableAt
-      simpa using hHas
-    exact DifferentiableAt.const_mul hprod (f σs)
-  have hsum :
-      DifferentiableAt ℝ
-        (fun H' => ∑ σs ∈ (Finset.univ : Finset (ReplicaSpace N n)),
-          f σs * ∏ l, gibbs_pmf N H' (σs l)) H := by
-    refine
-      (DifferentiableAt.fun_sum (𝕜 := ℝ) (E := EnergySpace N) (F := ℝ)
-        (u := (Finset.univ : Finset (ReplicaSpace N n)))
-        (A := fun σs : ReplicaSpace N n => fun H' : EnergySpace N =>
-          f σs * ∏ l, gibbs_pmf N H' (σs l))
-        (x := H) ?_)
-    intro σs _hσs
-    simpa using hterm σs
-  simpa using hsum
 
 /-!
 ### Differentiation of `ν_t(f)` with respect to `t`
@@ -751,6 +441,7 @@ This is the bound used in the dominated-differentiation proofs: for `x` in a sma
 the singular coefficients `1/√x` and `1/√(1-x)` are controlled by constants depending only on `t`.
 -/
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma norm_dH_t_le_on_ball
     (t x : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1)
     (hx : x ∈ Metric.ball t ((min t (1 - t)) / 2)) (w : Ω) :
@@ -914,66 +605,6 @@ lemma opNorm_H_t_disorder_lin_le (t : ℝ) :
     _ ≤ |Real.sqrt t| * ‖x‖ + |Real.sqrt (1 - t)| * ‖x‖ := by gcongr
     _ = (|Real.sqrt t| + |Real.sqrt (1 - t)|) * ‖x‖ := by ring
 
-lemma norm_fderiv_gibbs_pmf_le_two (H : EnergySpace N) (σ : Config N) :
-    ‖fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ) H‖ ≤ 2 := by
-  classical
-  refine ContinuousLinearMap.opNorm_le_bound _ (by positivity) (fun v => ?_)
-  have hE : |∑ τ : Config N, gibbs_pmf N H τ * v τ| ≤ ‖v‖ := by
-    have hs1 : (∑ τ : Config N, gibbs_pmf N H τ) = 1 := sum_gibbs_pmf (N := N) (H := H)
-    calc
-      |∑ τ : Config N, gibbs_pmf N H τ * v τ|
-          ≤ ∑ τ : Config N, |gibbs_pmf N H τ * v τ| := by
-              classical
-              simpa using
-                (Finset.abs_sum_le_sum_abs
-                  (f := fun τ : Config N => gibbs_pmf N H τ * v τ)
-                  (s := (Finset.univ : Finset (Config N))))
-      _ = ∑ τ : Config N, (gibbs_pmf N H τ) * |v τ| := by
-              classical
-              refine Finset.sum_congr rfl (fun τ _ => ?_)
-              simp [abs_mul, abs_of_nonneg (gibbs_pmf_nonneg (N := N) (H := H) (σ := τ))]
-      _ ≤ ∑ τ : Config N, (gibbs_pmf N H τ) * ‖v‖ := by
-              refine Finset.sum_le_sum (fun τ _ => ?_)
-              gcongr
-              · exact gibbs_pmf_nonneg (N := N) (H := H) (σ := τ)
-              · simpa [Real.norm_eq_abs] using (SpinGlass.abs_apply_le_norm (N := N) v τ)
-      _ = ‖v‖ * ∑ τ : Config N, gibbs_pmf N H τ := by
-              classical
-              simp [Finset.sum_mul, mul_comm]
-      _ = ‖v‖ := by simp [hs1]
-  have hdiff : |(∑ τ : Config N, gibbs_pmf N H τ * v τ) - v σ| ≤ 2 * ‖v‖ := by
-    have hvσ : |v σ| ≤ ‖v‖ := by
-      simpa [Real.norm_eq_abs] using (SpinGlass.abs_apply_le_norm (N := N) v σ)
-    have : |(∑ τ : Config N, gibbs_pmf N H τ * v τ) - v σ|
-        ≤ |∑ τ : Config N, gibbs_pmf N H τ * v τ| + |v σ| := by
-          simpa using (abs_sub _ _)
-    calc
-      |(∑ τ : Config N, gibbs_pmf N H τ * v τ) - v σ|
-          ≤ |∑ τ : Config N, gibbs_pmf N H τ * v τ| + |v σ| := this
-      _ ≤ ‖v‖ + ‖v‖ := by gcongr
-      _ = 2 * ‖v‖ := by ring
-  have hformula :
-      fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ) H v
-        = (gibbs_pmf N H σ) * ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v σ) := by
-    simpa using (SpinGlass.fderiv_gibbs_pmf_apply (N := N) (H := H) (h := v) σ)
-  have hp : 0 ≤ gibbs_pmf N H σ := gibbs_pmf_nonneg (N := N) (H := H) (σ := σ)
-  have hp1 : gibbs_pmf N H σ ≤ 1 := gibbs_pmf_le_one (N := N) (H := H) (σ := σ)
-  have : ‖fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ) H v‖ ≤ 2 * ‖v‖ := by
-    have : |fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ) H v|
-          ≤ (gibbs_pmf N H σ) * (2 * ‖v‖) := by
-      -- bound the difference term
-      simp [hformula, abs_mul, abs_of_nonneg hp]
-      exact mul_le_mul_of_nonneg_left hdiff hp
-    have : |fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ) H v|
-          ≤ 2 * ‖v‖ := by
-      calc
-        |fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ) H v|
-            ≤ (gibbs_pmf N H σ) * (2 * ‖v‖) := this
-        _ ≤ 1 * (2 * ‖v‖) := by gcongr
-        _ = 2 * ‖v‖ := by ring
-    simpa [Real.norm_eq_abs] using this
-  simpa using this
-
 lemma norm_fderiv_gibbs_pmf_disorder_le (t : ℝ) (σ : Config N) (x : DisorderSpace (N := N)) :
     ‖fderiv ℝ (fun x : DisorderSpace (N := N) =>
         gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ) x‖
@@ -1007,7 +638,10 @@ lemma norm_fderiv_gibbs_pmf_disorder_le (t : ℝ) (σ : Config N) (x : DisorderS
   have hσ :
       ‖fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ)
             (H_t_disorder (N := N) (h := h) t x)‖ ≤ 2 :=
-    norm_fderiv_gibbs_pmf_le_two (N := N) (H := H_t_disorder (N := N) (h := h) t x) σ
+    by
+      simpa [SpinGlass.gibbs_pmf, SpinGlass.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z] using
+        (FiniteGibbs.norm_fderiv_gibbs_pmf_le_two (α := Config N)
+          (H := H_t_disorder (N := N) (h := h) t x) (σ := σ))
   have ht : ‖H_t_disorder_lin (N := N) t‖ ≤ |Real.sqrt t| + |Real.sqrt (1 - t)| :=
     opNorm_H_t_disorder_lin_le (N := N) t
   calc
@@ -1282,137 +916,56 @@ lemma norm_fderiv_prod_gibbs_pmf_disorder_le (t : ℝ) (σs : ReplicaSpace N n) 
     ‖fderiv ℝ (prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) t σs) x‖
       ≤ (n : ℝ) * (2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|)) := by
   classical
-  -- Use the explicit `fderiv` formula for a finite product.
-  have hdiff :
-      ∀ l : Fin n, DifferentiableAt ℝ (fun x : DisorderSpace (N := N) =>
-        gibbs_pmf_disorder (N := N) (h := h) t (σs l) x) x :=
-    fun l => by
-      -- `gibbs_pmf_disorder t σ = (fun H => gibbs_pmf N H σ) ∘ H_t_disorder t`
-      have hg :
-          DifferentiableAt ℝ (fun H : EnergySpace N => gibbs_pmf N H (σs l))
-            (H_t_disorder (N := N) (h := h) t x) :=
-        SpinGlass.differentiableAt_gibbs_pmf (N := N) (H := H_t_disorder (N := N) (h := h) t x) (σ := σs l)
-      have hH :
-          DifferentiableAt ℝ (H_t_disorder (N := N) (h := h) t) x :=
-        (hasFDerivAt_H_t_disorder (N := N) (h := h) t x).differentiableAt
-      simpa [gibbs_pmf_disorder, Function.comp] using hg.comp x hH
-  -- Rewrite `prod_gibbs_pmf_disorder` as a `Finset` product.
-  have hprod :
-      fderiv ℝ (prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) t σs) x
+  -- Treat the product as a composition `F ∘ H_t_disorder`.
+  let F : EnergySpace N → ℝ := fun H => ∏ l : Fin n, gibbs_pmf N H (σs l)
+  have hF_diff :
+      DifferentiableAt ℝ F (H_t_disorder (N := N) (h := h) t x) := by
+    -- Delegate to the configuration-agnostic lemma.
+    simpa [F, SpinGlass.gibbs_pmf, SpinGlass.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z] using
+      (FiniteGibbs.differentiableAt_prod_gibbs_pmf (α := Config N) (n := n)
+        (H := H_t_disorder (N := N) (h := h) t x) (σs := σs))
+  have hF :
+      HasFDerivAt F (fderiv ℝ F (H_t_disorder (N := N) (h := h) t x))
+        (H_t_disorder (N := N) (h := h) t x) :=
+    hF_diff.hasFDerivAt
+  have hcomp :
+      HasFDerivAt (fun x : DisorderSpace (N := N) => F (H_t_disorder (N := N) (h := h) t x))
+        ((fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)).comp (H_t_disorder_lin (N := N) t)) x := by
+    simpa [Function.comp] using hF.comp x (hasFDerivAt_H_t_disorder (N := N) (h := h) t x)
+  have hfderiv :
+      fderiv ℝ (fun x : DisorderSpace (N := N) => F (H_t_disorder (N := N) (h := h) t x)) x
         =
-        ∑ l : Fin n,
-          (∏ j ∈ (Finset.univ : Finset (Fin n)).erase l,
-              gibbs_pmf_disorder (N := N) (h := h) t (σs j) x) •
-            fderiv ℝ (fun x : DisorderSpace (N := N) =>
-              gibbs_pmf_disorder (N := N) (h := h) t (σs l) x) x := by
-    -- `fderiv_finset_prod` applies to `∏ l ∈ univ, g l ·`.
-    simpa [prod_gibbs_pmf_disorder, Finset.prod_attach] using
-      (fderiv_finset_prod (𝕜 := ℝ) (E := DisorderSpace (N := N)) (u := (Finset.univ : Finset (Fin n)))
-        (g := fun l => fun x : DisorderSpace (N := N) =>
-          gibbs_pmf_disorder (N := N) (h := h) t (σs l) x) (x := x)
-        (hg := fun l hl => hdiff l))
-  -- Bound the operator norm by bounding each summand.
-  -- Each Gibbs pmf factor is in `[0,1]`, so the product has abs ≤ 1.
-  -- Each `‖fderiv gibbs_pmf_disorder‖` is bounded by `2 * (|√t| + |√(1-t)|)`.
-  have hderiv_one :
-      ∀ l : Fin n,
-        ‖fderiv ℝ (fun x : DisorderSpace (N := N) =>
-            gibbs_pmf_disorder (N := N) (h := h) t (σs l) x) x‖
-          ≤ 2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|) := by
-    intro l
-    simpa [gibbs_pmf_disorder] using
-      (norm_fderiv_gibbs_pmf_disorder_le (N := N) (h := h) (t := t) (σ := σs l) x)
-  -- Finish with a crude sum bound: `∑ l, ‖...‖ ≤ n * C`.
-  -- We only need a coarse constant for polynomial-growth IBP hypotheses.
-  rw [hprod]
-  -- `‖∑ l, ...‖ ≤ ∑ l, ‖...‖`.
-  have : ‖∑ l : Fin n,
-        (∏ j ∈ (Finset.univ : Finset (Fin n)).erase l,
-              gibbs_pmf_disorder (N := N) (h := h) t (σs j) x) •
-          fderiv ℝ (fun x : DisorderSpace (N := N) =>
-            gibbs_pmf_disorder (N := N) (h := h) t (σs l) x) x‖
-      ≤ ∑ l : Fin n,
-          ‖(∏ j ∈ (Finset.univ : Finset (Fin n)).erase l,
-              gibbs_pmf_disorder (N := N) (h := h) t (σs j) x) •
-            fderiv ℝ (fun x : DisorderSpace (N := N) =>
-              gibbs_pmf_disorder (N := N) (h := h) t (σs l) x) x‖ := by
-    -- interpret both sides as `Finset.univ.sum`
-    simpa using
-      (norm_sum_le (s := (Finset.univ : Finset (Fin n)))
-        (f := fun l : Fin n =>
-          (∏ j ∈ (Finset.univ : Finset (Fin n)).erase l,
-                gibbs_pmf_disorder (N := N) (h := h) t (σs j) x) •
-            fderiv ℝ (fun x : DisorderSpace (N := N) =>
-              gibbs_pmf_disorder (N := N) (h := h) t (σs l) x) x))
-  refine le_trans this ?_
-  -- Bound each summand by `‖fderiv‖`, since `|product| ≤ 1`.
-  have hsummand :
-      ∀ l : Fin n,
-        ‖(∏ j ∈ (Finset.univ : Finset (Fin n)).erase l,
-              gibbs_pmf_disorder (N := N) (h := h) t (σs j) x) •
-            fderiv ℝ (fun x : DisorderSpace (N := N) =>
-              gibbs_pmf_disorder (N := N) (h := h) t (σs l) x) x‖
-          ≤ 2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|) := by
-    intro l
-    have hprod_le : ‖∏ j ∈ (Finset.univ : Finset (Fin n)).erase l,
-        gibbs_pmf_disorder (N := N) (h := h) t (σs j) x‖ ≤ 1 := by
-      -- Each factor is in `[0,1]`, hence the product is in `[0,1]`.
-      have hfac0 :
-          ∀ j ∈ (Finset.univ : Finset (Fin n)).erase l,
-            0 ≤ gibbs_pmf_disorder (N := N) (h := h) t (σs j) x := by
-        intro j _hj
-        exact gibbs_pmf_nonneg (N := N) (H := H_t_disorder (N := N) (h := h) t x) (σ := σs j)
-      have hfac1 :
-          ∀ j ∈ (Finset.univ : Finset (Fin n)).erase l,
-            gibbs_pmf_disorder (N := N) (h := h) t (σs j) x ≤ 1 := by
-        intro j _hj
-        exact gibbs_pmf_le_one (N := N) (H := H_t_disorder (N := N) (h := h) t x) (σ := σs j)
-      have hfac_abs1 :
-          ∀ j ∈ (Finset.univ : Finset (Fin n)).erase l,
-            |gibbs_pmf_disorder (N := N) (h := h) t (σs j) x| ≤ 1 := by
-        intro j hj
-        have hn : 0 ≤ gibbs_pmf_disorder (N := N) (h := h) t (σs j) x := hfac0 j hj
-        have h1 : gibbs_pmf_disorder (N := N) (h := h) t (σs j) x ≤ 1 := hfac1 j hj
-        simpa [abs_of_nonneg hn] using h1
-      have hprod_abs1 :
-          (∏ j ∈ (Finset.univ : Finset (Fin n)).erase l,
-              |gibbs_pmf_disorder (N := N) (h := h) t (σs j) x|) ≤ 1 := by
-        exact Finset.prod_le_one (s := (Finset.univ : Finset (Fin n)).erase l)
-          (f := fun j => |gibbs_pmf_disorder (N := N) (h := h) t (σs j) x|)
-          (h0 := fun j hj => abs_nonneg _)
-          (h1 := hfac_abs1)
-      -- turn this into a norm bound
-      -- `‖∏ g_j‖ = |∏ g_j| = ∏ |g_j|`.
-      simpa [Real.norm_eq_abs, Finset.abs_prod] using hprod_abs1
-    -- `‖c • L‖ = ‖c‖ * ‖L‖` for scalar smul on `→L`.
-    calc
-      ‖(∏ j ∈ (Finset.univ : Finset (Fin n)).erase l,
-            gibbs_pmf_disorder (N := N) (h := h) t (σs j) x) •
-          fderiv ℝ (fun x : DisorderSpace (N := N) =>
-            gibbs_pmf_disorder (N := N) (h := h) t (σs l) x) x‖
-          = ‖∏ j ∈ (Finset.univ : Finset (Fin n)).erase l,
-                gibbs_pmf_disorder (N := N) (h := h) t (σs j) x‖ *
-              ‖fderiv ℝ (fun x : DisorderSpace (N := N) =>
-                  gibbs_pmf_disorder (N := N) (h := h) t (σs l) x) x‖ := by
-              simp [norm_smul]
-      _ ≤ 1 * (2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|)) := by
-              gcongr
-              exact hderiv_one l
-      _ = 2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|) := by ring
-  -- Sum the bounds.
+        (fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)).comp (H_t_disorder_lin (N := N) t) := by
+    simpa using hcomp.fderiv
+  have hF_norm :
+      ‖fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)‖ ≤ 2 * (n : ℝ) := by
+    simpa [F, SpinGlass.gibbs_pmf, SpinGlass.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z] using
+      (FiniteGibbs.norm_fderiv_prod_gibbs_pmf_le (α := Config N) (n := n)
+        (H := H_t_disorder (N := N) (h := h) t x) (σs := σs))
+  have hH_norm : ‖H_t_disorder_lin (N := N) t‖ ≤ |Real.sqrt t| + |Real.sqrt (1 - t)| :=
+    opNorm_H_t_disorder_lin_le (N := N) t
+  -- Unfold `prod_gibbs_pmf_disorder` and apply the chain rule bound.
+  have hrew :
+      prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) t σs
+        = fun x : DisorderSpace (N := N) => F (H_t_disorder (N := N) (h := h) t x) := by
+    funext x
+    simp [prod_gibbs_pmf_disorder, gibbs_pmf_disorder, F]
+  -- Now bound the operator norm.
+  -- `‖(L.comp M)‖ ≤ ‖L‖ * ‖M‖`.
+  have hcomp_norm :
+      ‖(fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)).comp (H_t_disorder_lin (N := N) t)‖
+        ≤ ‖fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)‖ * ‖H_t_disorder_lin (N := N) t‖ :=
+    ContinuousLinearMap.opNorm_comp_le _ (H_t_disorder_lin (N := N) t)
   calc
-    (∑ l : Fin n,
-        ‖(∏ j ∈ (Finset.univ : Finset (Fin n)).erase l,
-              gibbs_pmf_disorder (N := N) (h := h) t (σs j) x) •
-            fderiv ℝ (fun x : DisorderSpace (N := N) =>
-              gibbs_pmf_disorder (N := N) (h := h) t (σs l) x) x‖)
-        ≤ ∑ _l : Fin n, (2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|)) := by
-            refine Finset.sum_le_sum ?_
-            intro l _hl
-            exact hsummand l
-    _ = (n : ℝ) * (2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|)) := by
-          -- sum of a constant over `Fin n`
-          simp [Fintype.card_fin]
+    ‖fderiv ℝ (prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) t σs) x‖
+        = ‖fderiv ℝ (fun x : DisorderSpace (N := N) => F (H_t_disorder (N := N) (h := h) t x)) x‖ := by
+            simp [hrew]
+    _ = ‖(fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)).comp (H_t_disorder_lin (N := N) t)‖ := by
+            simp [hfderiv]
+    _ ≤ ‖fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)‖ * ‖H_t_disorder_lin (N := N) t‖ := hcomp_norm
+    _ ≤ (2 * (n : ℝ)) * (|Real.sqrt t| + |Real.sqrt (1 - t)|) := by
+            gcongr
+    _ = (n : ℝ) * (2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|)) := by ring
 
 /-!
 `A_disorder t f τ x` is the **directional derivative** of the replica functional
@@ -2016,9 +1569,44 @@ lemma A_disorder_eq_explicit (t : ℝ) (f : ReplicaFun N n) (τ : Config N) (x :
     intro σs
     classical
     simp [eq_comm]
-  simpa [A_disorder_explicit, hcard] using (by
-    simp [A_disorder, fderiv_gibbs_average_n_det_apply, gibbs_pmf_disorder,
-      prod_gibbs_pmf_disorder, std_basis, mul_assoc, mul_comm])
+  have hcount (σs : ReplicaSpace N n) :
+      (∑ l : Fin n, (if τ = σs l then (1 : ℝ) else 0))
+        = ((Finset.univ.filter fun l : Fin n => τ = σs l).card : ℝ) := by
+    classical
+    have hNat :
+        (Finset.univ.filter (fun l : Fin n => τ = σs l)).card
+          = ∑ l ∈ (Finset.univ : Finset (Fin n)), ite (τ = σs l) 1 0 := by
+      simpa using
+        (Finset.card_filter (p := fun l : Fin n => τ = σs l) (s := (Finset.univ : Finset (Fin n))))
+    have hCast :
+        ((Finset.univ.filter (fun l : Fin n => τ = σs l)).card : ℝ)
+          = ∑ l ∈ (Finset.univ : Finset (Fin n)), (if τ = σs l then (1 : ℝ) else 0) := by
+      -- Cast the `Nat` identity and simplify the resulting sum.
+      have := congrArg (fun m : Nat => (m : ℝ)) hNat
+      simpa [Nat.cast_sum] using this
+    simpa using hCast.symm
+  -- Unfold `A_disorder` via the generic derivative formula, then rewrite the counting term using `hcount`.
+  simp [A_disorder, A_disorder_explicit, gibbs_average_n_det, hcard,
+    FiniteGibbs.fderiv_gibbs_average_n_det_apply, FiniteGibbs.std_basis,
+    SpinGlass.gibbs_pmf, SpinGlass.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.Z,
+    gibbs_pmf_disorder, prod_gibbs_pmf_disorder, std_basis, mul_assoc, mul_comm]
+  apply Fintype.sum_congr
+  intro σs
+  -- The summands differ only by rewriting the counting term.
+  rw [← hcount σs]
+  -- The remaining mismatch is only the choice of `Decidable` instance in the `if`.
+  have hite (x : Fin n) :
+      @ite ℝ (τ = σs x) (Classical.propDecidable (τ = σs x)) 1 0
+        = @ite ℝ (τ = σs x) (Fintype.decidablePiFintype τ (σs x)) 1 0 := by
+    by_cases hx : τ = σs x <;> simp [hx]
+  have hsum :
+      (∑ x : Fin n, @ite ℝ (τ = σs x) (Classical.propDecidable (τ = σs x)) 1 0)
+        =
+        ∑ x : Fin n, @ite ℝ (τ = σs x) (Fintype.decidablePiFintype τ (σs x)) 1 0 := by
+    refine Fintype.sum_congr _ _ (fun x => hite x)
+  rw [← hsum]
+
+
 
 lemma dgibbs_average_n_disorder_eq_sum_A (t : ℝ) (f : ReplicaFun N n) (x : DisorderSpace (N := N)) :
     dgibbs_average_n_disorder (N := N) (n := n) (h := h) t f x
@@ -2035,7 +1623,7 @@ lemma dgibbs_average_n_disorder_eq_sum_A (t : ℝ) (f : ReplicaFun N n) (x : Dis
   have hv : v = ∑ τ : Config N, (v τ) • std_basis N τ := by
     classical
     ext σ
-    simp [std_basis]
+    simp [std_basis, FiniteGibbs.std_basis]
   -- Start from the definition, then expand `v` in the `std_basis` and use linearity.
   have hdg : dgibbs_average_n_disorder (N := N) (n := n) (h := h) t f x = T v := by
     simp [dgibbs_average_n_disorder, G, H, v, T]
@@ -2551,8 +2139,8 @@ lemma hasDerivAt_gibbs_average_n (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : Rep
       DifferentiableAt ℝ G
         (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) := by
     simpa [G, gibbs_average_n_det] using
-      differentiableAt_gibbs_average_n (N := N) (β := β) (h := h) (q := q)
-        (sk := sk) (sim := sim) (n := n) (t := t) (f := f) w
+      (FiniteGibbs.differentiableAt_gibbs_average_n_det (α := Config N) (n := n)
+        (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (f := f))
   have hG : HasFDerivAt G (fderiv ℝ G (H_t (N := N) (β := β) (h := h) (q := q)
         (sk := sk) (sim := sim) t w))
         (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) :=
@@ -2577,154 +2165,6 @@ The only nontrivial analytic inputs are:
 - pointwise differentiability of `t ↦ ⟨f⟩_t(ω)`,
 - an integrable uniform (in `t` near `t₀`) bound on the derivative.
 -/
-
-lemma norm_fderiv_gibbs_average_n_det_le (H : EnergySpace N) (f : ReplicaFun N n) :
-    ‖fderiv ℝ (fun H' => gibbs_average_n_det (N := N) (n := n) H' f) H‖
-      ≤ (2 * (n : ℝ)) * (∑ σs : ReplicaSpace N n, ‖f σs‖) := by
-  classical
-  refine ContinuousLinearMap.opNorm_le_bound _ ?_ (fun v => ?_)
-  · have : 0 ≤ (2 : ℝ) * (n : ℝ) := by positivity
-    exact mul_nonneg this (by
-      exact Finset.sum_nonneg (fun _ _ => norm_nonneg _))
-  · have hv_formula :
-        fderiv ℝ (fun H' => gibbs_average_n_det (N := N) (n := n) H' f) H v =
-          ∑ σs : ReplicaSpace N n,
-            f σs * (∏ l : Fin n, gibbs_pmf N H (σs l)) *
-              ∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l)) := by
-      simpa using
-        fderiv_gibbs_average_n_det_apply (N := N) (n := n) (H := H) (v := v) f
-    have hprod_le_one :
-        ∀ σs : ReplicaSpace N n, (∏ l : Fin n, gibbs_pmf N H (σs l)) ≤ (1 : ℝ) := by
-      intro σs
-      classical
-      have hfac : ∀ l : Fin n, gibbs_pmf N H (σs l) ≤ 1 := by
-        intro l
-        exact SpinGlass.gibbs_pmf_le_one (N := N) (H := H) (σ := σs l)
-      have hnonneg : ∀ l : Fin n, 0 ≤ gibbs_pmf N H (σs l) := by
-        intro l
-        exact SpinGlass.gibbs_pmf_nonneg (N := N) (H := H) (σ := σs l)
-      simpa using
-        (Finset.prod_le_one (s := (Finset.univ : Finset (Fin n)))
-          (f := fun l => gibbs_pmf N H (σs l))
-          (fun l _hl => hnonneg l) (fun l _hl => hfac l))
-    have hEval_le : ∀ τ : Config N, |v τ| ≤ ‖v‖ := by
-      intro τ
-      simpa [Real.norm_eq_abs] using
-        (SpinGlass.abs_apply_le_norm (N := N) v τ)
-    have hE_le : |∑ τ : Config N, gibbs_pmf N H τ * v τ| ≤ ‖v‖ := by
-      classical
-      have hsum1 : (∑ τ : Config N, gibbs_pmf N H τ) = 1 := by
-        simpa using SpinGlass.sum_gibbs_pmf (N := N) (H := H)
-      calc
-        |∑ τ : Config N, gibbs_pmf N H τ * v τ|
-            ≤ ∑ τ : Config N, |gibbs_pmf N H τ * v τ| := by
-                simpa using
-                  (Finset.abs_sum_le_sum_abs
-                    (f := fun τ : Config N => gibbs_pmf N H τ * v τ)
-                    (s := (Finset.univ : Finset (Config N))))
-        _ = ∑ τ : Config N, (gibbs_pmf N H τ) * |v τ| := by
-              refine Finset.sum_congr rfl (fun τ _ => ?_)
-              rw [abs_mul]
-              congr 1
-              exact abs_of_nonneg (SpinGlass.gibbs_pmf_nonneg (N := N) (H := H) (σ := τ))
-        _ ≤ ∑ τ : Config N, (gibbs_pmf N H τ) * ‖v‖ := by
-              refine Finset.sum_le_sum (fun τ _ => ?_)
-              gcongr; exact gibbs_pmf_nonneg N H τ; exact hEval_le τ
-        _ = ‖v‖ * ∑ τ : Config N, gibbs_pmf N H τ := by
-              rw [← Finset.sum_mul]
-              exact CommMonoid.mul_comm (∑ i, gibbs_pmf N H i) ‖v‖ --refine Finset.sum_congr rfl (fun τ _ => ?_)
-        _ = ‖v‖ := by simp [hsum1]
-    have hdiff_le : ∀ σs : ReplicaSpace N n, ∀ l : Fin n,
-        |(∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l)| ≤ 2 * ‖v‖ := by
-      intro σs l
-      -- `|a - b| ≤ |a| + |b|`.
-      have : |(∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l)|
-          ≤ |∑ τ : Config N, gibbs_pmf N H τ * v τ| + |v (σs l)| := by
-        simpa [sub_eq_add_neg, abs_add_le] using (abs_sub _ _)
-      have hvσ : |v (σs l)| ≤ ‖v‖ := by
-        simpa using hEval_le (σs l)
-      calc
-        |(∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l)|
-            ≤ |∑ τ : Config N, gibbs_pmf N H τ * v τ| + |v (σs l)| := this
-        _ ≤ ‖v‖ + ‖v‖ := by gcongr
-        _ = 2 * ‖v‖ := by ring
-    rw [hv_formula]
-    simp only [Real.norm_eq_abs]
-    calc
-      |∑ σs : ReplicaSpace N n,
-          (f σs * (∏ l : Fin n, gibbs_pmf N H (σs l)) *
-            ∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l)))|
-          ≤ ∑ σs : ReplicaSpace N n,
-              |f σs * (∏ l : Fin n, gibbs_pmf N H (σs l)) *
-                ∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l))| := by
-                simpa using
-                  (Finset.abs_sum_le_sum_abs
-                    (f := fun σs : ReplicaSpace N n =>
-                      f σs * (∏ l : Fin n, gibbs_pmf N H (σs l)) *
-                        ∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l)))
-                    (s := (Finset.univ : Finset (ReplicaSpace N n))))
-      _ = ∑ σs : ReplicaSpace N n,
-            (‖f σs‖ * |∏ l : Fin n, gibbs_pmf N H (σs l)| *
-              |∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l))|) := by
-            refine Finset.sum_congr rfl (fun σs _ => ?_)
-            simp [abs_mul, Real.norm_eq_abs, mul_assoc]
-      _ ≤ ∑ σs : ReplicaSpace N n,
-            (‖f σs‖ * (1 : ℝ) * ((2 * (n : ℝ)) * ‖v‖)) := by
-            refine Finset.sum_le_sum (fun σs _ => ?_)
-            have hprod_abs : |∏ l : Fin n, gibbs_pmf N H (σs l)|
-                ≤ (1 : ℝ) := by
-              have hnonneg : 0 ≤ ∏ l : Fin n, gibbs_pmf N H (σs l) := by
-                classical
-                refine Finset.prod_nonneg ?_
-                intro l _hl
-                exact SpinGlass.gibbs_pmf_nonneg (N := N) (H := H) (σ := σs l)
-              have hle1 : (∏ l : Fin n, gibbs_pmf N H (σs l)) ≤ (1 : ℝ) := hprod_le_one σs
-              simpa [abs_of_nonneg hnonneg] using hle1
-            have hsum_abs :
-                |∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l))|
-                  ≤ (2 * (n : ℝ)) * ‖v‖ := by
-              classical
-              calc
-                |∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l))|
-                    ≤ ∑ l : Fin n,
-                        |(∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l)| := by
-                          simpa using
-                            (Finset.abs_sum_le_sum_abs
-                              (f := fun l : Fin n =>
-                                (∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l))
-                              (s := (Finset.univ : Finset (Fin n))))
-                _ ≤ ∑ l : Fin n, (2 * ‖v‖) := by
-                      refine Finset.sum_le_sum (fun l _ => ?_)
-                      exact hdiff_le σs l
-                _ = (2 * ‖v‖) * (n : ℝ) := by
-                      -- `∑_{Fin n} c = c * n`
-                      simp [Finset.card_univ, mul_comm]
-              simp [mul_assoc, mul_comm]
-            have : ‖f σs‖ * |∏ l : Fin n, gibbs_pmf N H (σs l)| *
-                |∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l))|
-                ≤ ‖f σs‖ * (1 : ℝ) * ((2 * (n : ℝ)) * ‖v‖) := by
-              have h1 : |∏ l : Fin n, gibbs_pmf N H (σs l)| ≤ 1 := hprod_abs
-              have h2 : |∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l))| ≤ (2 * (n : ℝ)) * ‖v‖ := hsum_abs
-              have h3 : 0 ≤ ‖f σs‖ := norm_nonneg (f σs)
-              have h4 : 0 ≤ |∏ l : Fin n, gibbs_pmf N H (σs l)| := abs_nonneg _
-              have h5 : 0 ≤ |∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l))| := abs_nonneg _
-              calc ‖f σs‖ * |∏ l : Fin n, gibbs_pmf N H (σs l)| *
-                      |∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l))|
-                  ≤ ‖f σs‖ * 1 * |∑ l : Fin n, ((∑ τ : Config N, gibbs_pmf N H τ * v τ) - v (σs l))| := by
-                    apply mul_le_mul_of_nonneg_right
-                    · apply mul_le_mul_of_nonneg_left h1 h3
-                    · exact h5
-                _ ≤ ‖f σs‖ * 1 * ((2 * (n : ℝ)) * ‖v‖) := by
-                    apply mul_le_mul_of_nonneg_left h2
-                    apply mul_nonneg h3
-                    norm_num
-            simpa [mul_assoc] using this
-      _ = ((2 * (n : ℝ)) * ‖v‖) * (∑ σs : ReplicaSpace N n, ‖f σs‖) := by
-            rw [Finset.mul_sum]
-            refine Finset.sum_congr rfl (fun σs _ => ?_)
-            ring
-      _ = (2 * (n : ℝ)) * (∑ σs : ReplicaSpace N n, ‖f σs‖) * ‖v‖ := by
-            ring
 
 set_option maxHeartbeats 600000 in
 theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n) :
@@ -2945,7 +2385,12 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
                         (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ) -
                     (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l))) := by
       funext w
-      simp [dgibbs_average_n, fderiv_gibbs_average_n_det_apply]
+      -- Use the model-agnostic derivative formula and unfold `FiniteGibbs.gibbs_pmf` back to `SpinGlass.gibbs_pmf`.
+      simpa [dgibbs_average_n, gibbs_average_n_det, SpinGlass.gibbs_pmf, SpinGlass.Z,
+        FiniteGibbs.gibbs_pmf, FiniteGibbs.Z] using
+        (FiniteGibbs.fderiv_gibbs_average_n_det_apply (α := Config N) (n := n)
+          (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w)
+          (v := dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (f := f))
     simpa [F', this] using hderiv_meas.aestronglyMeasurable
   have h_bound :
       ∀ᵐ w ∂(ℙ : Measure Ω), ∀ x ∈ Metric.ball t ε, ‖F' x w‖ ≤ bound w := by
@@ -2955,8 +2400,8 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
     have hL :
         ‖fderiv ℝ (fun H' => gibbs_average_n_det (N := N) (n := n) H' f)
             (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x w)‖ ≤ Cf := by
-      simpa [Cf] using
-        (norm_fderiv_gibbs_average_n_det_le (N := N) (n := n)
+      simpa [Cf, gibbs_average_n_det] using
+        (FiniteGibbs.norm_fderiv_gibbs_average_n_det_le (α := Config N) (n := n)
           (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x w) (f := f))
     have hCoeffU :
         |1 / (2 * Real.sqrt x)| ≤ cU := by

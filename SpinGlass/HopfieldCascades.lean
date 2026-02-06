@@ -48,7 +48,7 @@ instance (Ξ : Patterns N M) (μH : Measure (EnergySpace N)) [IsProbabilityMeasu
   dsimp [hopfieldOverlapReplicaLaw]
   infer_instance
 
-/-! ## GG₁ wrappers (Hopfield overlap-vector version) -/
+/-! ## GG₁ statements for Hopfield overlap-vector laws -/
 
 /-- GG₁ for the Hopfield overlap-vector replica law. -/
 def Hopfield_GG1 (Ξ : Patterns N M)
@@ -56,7 +56,7 @@ def Hopfield_GG1 (Ξ : Patterns N M)
     (R : (Fin M → ℝ) → (Fin M → ℝ) → ℝ) : Prop :=
   GG1 (β := (Fin M → ℝ)) n (hopfieldOverlapReplicaLaw (N := N) (M := M) (n := n) Ξ μH) R
 
-/-- Kernel-level GG₁ wrapper (the preferred Vol II statement shape). -/
+/-- GG₁ stated at kernel level for Hopfield overlap-vector laws. -/
 def Hopfield_GG1Kernel (Ξ : Patterns N M)
     (μH : Measure (EnergySpace N)) [IsProbabilityMeasure μH]
     (R : (Fin M → ℝ) → (Fin M → ℝ) → ℝ) : Prop :=

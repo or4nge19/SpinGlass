@@ -46,7 +46,7 @@ namespace SpinGlass
 --
 -- Note: model-specific proofs of GG₁ identities will live in dedicated files (e.g. SK via Gaussian IBP).
 
-/-! ## Guerra interpolation / Vol I Chapter 1 engine -/
+/-! ## Guerra interpolation (Talagrand, Vol. I Chapter 1) -/
 
 -- Differentiation under the disorder expectation for the replica functional `nu`:
 -- `SpinGlass.hasDerivAt_nu` in `SpinGlass/Replicas.lean`.
@@ -55,4 +55,3 @@ namespace SpinGlass
 -- `SpinGlass.guerra_derivative_bound_algebra_core` in `SpinGlass/GuerraBound.lean`.
 
 end SpinGlass
-

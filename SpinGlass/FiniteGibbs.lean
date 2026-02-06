@@ -318,8 +318,7 @@ lemma neg_one_div_n_mul_fderiv_gibbs_pmf_apply_std_basis_eq_hessian_free_energy_
       hessian_free_energy (α := α) n H (std_basis (α := α) σ) (std_basis (α := α) τ) := by
   classical
   -- Expand both sides using the explicit basis formulae, then ring.
-  simp [fderiv_gibbs_pmf_apply_std_basis, hessian_free_energy_std_basis_eq, mul_assoc, mul_comm,
-    mul_left_comm, sub_eq_add_neg]
+  simp [fderiv_gibbs_pmf_apply_std_basis, hessian_free_energy_std_basis_eq, sub_eq_add_neg]
   ring
 
 lemma fderiv_free_energy_density_apply (n : ℕ) (H h : EnergySpace α) :

@@ -1249,9 +1249,9 @@ theorem hopfieldConvolutionTalagrandKernel_eq_withDensity_psi
 
 /-- Normalization identity obtained by integrating the `ψ`-density formula over `volume`.
 
-This is the “partition function consistency” statement: if the Gaussian input measure is a
-probability measure, then the RHS density integrates to `1`. This lemma is the clean bridge
-from Talagrand’s exact finite-volume `ψ`-representation to later asymptotic analysis. -/
+This is the partition-function consistency statement: if the Gaussian input measure is a
+probability measure, then the right-hand-side density integrates to `1`. This lemma is used to
+pass from Talagrand’s exact finite-volume `ψ`-representation to subsequent asymptotic arguments. -/
 theorem lintegral_hopfieldPsi_density_eq_one
     (N M : ℕ) (Ξ : Patterns N M) (β h : ℝ) (k0 : Fin M)
     (hΞ : IsConstantPattern (N := N) Ξ k0)

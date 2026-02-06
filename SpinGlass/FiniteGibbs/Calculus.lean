@@ -121,7 +121,7 @@ lemma abs_fderiv_free_energy_density_apply_le (n : ℕ) (H v : EnergySpace α) :
             refine Finset.sum_congr rfl (fun σ _hσ => ?_)
             have hp : 0 ≤ gibbs_pmf (α := α) H σ :=
               gibbs_pmf_nonneg (α := α) (H := H) (σ := σ)
-            simp [abs_mul, abs_of_nonneg hp, mul_assoc]
+            simp [abs_mul, abs_of_nonneg hp]
       _ ≤ ∑ σ : α, gibbs_pmf (α := α) H σ * ‖v‖ := by
             refine Finset.sum_le_sum (fun σ _hσ => ?_)
             have hp : 0 ≤ gibbs_pmf (α := α) H σ :=
@@ -139,7 +139,7 @@ lemma abs_fderiv_free_energy_density_apply_le (n : ℕ) (H v : EnergySpace α) :
   calc
     |fderiv ℝ (fun H' : EnergySpace α => free_energy_density (α := α) n H') H v|
         = |-(1 / (n : ℝ)) * ∑ σ : α, (gibbs_pmf (α := α) H σ) * v σ| := by
-            simpa [hfderiv]
+            simp [hfderiv]
     _ = (1 / (n : ℝ)) * |∑ σ : α, (gibbs_pmf (α := α) H σ) * v σ| := by
             simp [abs_mul]
     _ ≤ (1 / (n : ℝ)) * ‖v‖ := by

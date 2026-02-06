@@ -1,14 +1,14 @@
 import SpinGlass.GuerraInterpolation
 
 /-!
-## Guerra interpolation: the Gaussian IBP rewriting step
+# Guerra interpolation: Gaussian integration by parts
 
-Starting from the analytic derivative identity in `SpinGlass/GuerraInterpolation.lean`,
-we rewrite the derivative value into an expression over the intrinsic Gaussian disorder law
-`disorderPairLaw` and then apply Hilbert-space Gaussian integration by parts term-by-term.
+Starting from the derivative identity in `SpinGlass.GuerraInterpolation`, this file rewrites the
+derivative value as an integral against the intrinsic disorder law `disorderPairLaw` and applies
+Hilbert-space Gaussian integration by parts term-by-term.
 
-This file does **not** yet convert the IBP output into Talagrand’s overlap/Hessian trace form;
-it packages the clean “IBP-ready” expression.
+The main statement is `derivative_value_guerraPhi_eq_ibp`. It is not yet converted into
+Talagrand’s trace/Hessian form; that reduction is carried out in `SpinGlass.GuerraTrace`.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology

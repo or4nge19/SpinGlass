@@ -16,8 +16,9 @@ This is the **abstract Georgii/Talagrand Vol II interface** for cascades:
 - `trajMeasure μ₀ κ` is the induced measure on full trajectories when `X₀ ~ μ₀`;
 - the “DLR/consistency” theorem is `condDistrib_trajMeasure`.
 
-Everything here is a thin, explicit wrapper around Mathlib, but living in `SpinGlass.Cascades`
-lets later RPC work refer to these objects without importing all of Mathlib’s internal file layout.
+Everything here is obtained by specialising and re-exporting Mathlib’s trajectory-kernel API;
+keeping it in `SpinGlass.Cascades` provides stable names and a controlled import surface for
+downstream cascade/RPC developments.
 -/
 
 open MeasureTheory ProbabilityTheory
