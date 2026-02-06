@@ -8,7 +8,7 @@ import SpinGlass.GibbsBridge
 import SpinGlass.GuerraBound
 import SpinGlass.GuerraInterpolation
 import SpinGlass.GuerraIBP
-import SpinGlass.GuerraPipeline
+--import SpinGlass.GuerraPipeline
 import SpinGlass.Hopfield
 import SpinGlass.HopfieldPsiDeriv
 import SpinGlass.HopfieldFixedPoint
