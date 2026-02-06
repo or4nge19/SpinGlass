@@ -65,14 +65,11 @@ private lemma fderiv_gibbs_pmf_disorder_eq
 
 private lemma H_t_disorder_lin_std_basis_left (t : ℝ) (σ : Config N) :
     H_t_disorder_lin (N := N) t (std_basis_left (N := N) σ) = (Real.sqrt t) • (std_basis N σ) := by
-  classical
-  -- `fstL (toLp (basis,0)) = basis`, `sndL (...) = 0`
   simp [H_t_disorder_lin, std_basis_left, std_basis_right, add_comm, add_left_comm, add_assoc]
 
 private lemma H_t_disorder_lin_std_basis_right (t : ℝ) (σ : Config N) :
     H_t_disorder_lin (N := N) t (std_basis_right (N := N) σ) =
       (Real.sqrt (1 - t)) • (std_basis N σ) := by
-  classical
   simp [H_t_disorder_lin, std_basis_left, std_basis_right, add_comm, add_left_comm, add_assoc]
 
 /-! ### Relating `fderiv gibbs_pmf` on basis directions to `hessian_free_energy` -/
@@ -94,7 +91,6 @@ private lemma hessian_free_energy_std_basis_eq_neg_fderiv_gibbs_pmf
   classical
   by_cases hστ : σ = τ
   · subst hστ
-    -- rewrite the `fderiv` term *before* unfolding `std_basis`
     have hf :
         fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H (std_basis N σ)
           =
@@ -103,9 +99,7 @@ private lemma hessian_free_energy_std_basis_eq_neg_fderiv_gibbs_pmf
     rw [hf]
     simp [hessian_free_energy, std_basis, FiniteGibbs.std_basis]
     ring_nf
-  · -- off-diagonal: the covariance is `-(gσ*gτ)`
-    -- rewrite the `fderiv` term *before* unfolding `std_basis`
-    have hf :
+  · have hf :
         fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H (std_basis N τ)
           =
           (gibbs_pmf N H σ) * ((gibbs_pmf N H τ) - (if σ = τ then 1 else 0)) :=
@@ -114,7 +108,7 @@ private lemma hessian_free_energy_std_basis_eq_neg_fderiv_gibbs_pmf
     simp [hessian_free_energy, std_basis, FiniteGibbs.std_basis, hστ]
 
 /-!
-### Bookkeeping lemmas for the trace/Hessian step
+### Lemmas for the trace/Hessian step
 
 These isolate the last-mile steps after `derivative_value_guerraPhi_eq_ibp`:
 
@@ -136,8 +130,6 @@ private lemma sum_integral_eq_integral_sum
     (f : Config N → α → ℝ)
     (hf : ∀ i : Config N, Integrable (f i) μ) :
     (∑ i : Config N, ∫ a, f i a ∂μ) = ∫ a, (∑ i : Config N, f i a) ∂μ := by
-  classical
-  -- `integral_finset_sum` is the Mathlib lemma; we use it with `Finset.univ`.
   simpa using
     (MeasureTheory.integral_finset_sum (μ := μ) (s := (Finset.univ : Finset (Config N)))
       (f := fun i : Config N => fun a : α => f i a)
@@ -181,7 +173,6 @@ private lemma aestronglyMeasurable_hessian_std_basis_disorder (t : ℝ) (σ τ :
   have hmeas :
       Measurable (fun x : DisorderSpace (N := N) =>
         hessian_free_energy N (H_t_disorder (N := N) (h := h) t x) (std_basis N σ) (std_basis N τ)) := by
-    -- rewrite via the explicit basis formula
     simpa [hessian_free_energy_std_basis_eq (N := N) (σ := σ) (τ := τ),
       sub_eq_add_neg, mul_add, mul_assoc, mul_left_comm, mul_comm] using
       (measurable_const.mul ((hσ.mul hδ).sub (hσ.mul hτ)))
@@ -219,7 +210,6 @@ private lemma abs_hessian_std_basis_le (H : EnergySpace N) (σ τ : Config N) :
       simpa [sub_eq_add_neg, add_assoc, add_comm, add_left_comm] using
         (abs_sub_le (gσ * (if σ = τ then (1 : ℝ) else 0)) 0 (gσ * gτ))
     exact le_trans h' (by nlinarith [h1, h2])
-  -- finish via the explicit formula
   simpa [hessian_free_energy_std_basis_eq (N := N) (H := H), gσ, gτ, abs_mul, mul_assoc, mul_comm, mul_left_comm]
     using (mul_le_mul_of_nonneg_left hins (abs_nonneg (1 / (N : ℝ))))
 
@@ -239,7 +229,6 @@ private lemma integrable_kernel_mul_hessian
   refine Filter.Eventually.of_forall (fun x => ?_)
   have hhess :=
     abs_hessian_std_basis_le (N := N) (H := H_t_disorder (N := N) (h := h) t x) (σ := σ) (τ := τ)
-  -- multiply the bound by `|K σ τ|` and rewrite `‖·‖ = |·|` in `ℝ`
   have : |(K σ τ) *
         hessian_free_energy N (H_t_disorder (N := N) (h := h) t x) (std_basis N σ) (std_basis N τ)|
       ≤ |K σ τ| * (|1 / (N : ℝ)| * 2) := by
@@ -287,7 +276,6 @@ private lemma left_pointwise_trace
             hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
               (std_basis N τ) (std_basis N σ)) := by
   classical
-  -- Expand the covariance operator on the `std_basis_left` vector.
   have hcov :
       ProbabilityTheory.covarianceOperator
           (μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim)
@@ -297,7 +285,6 @@ private lemma left_pointwise_trace
     simpa [μ] using
       (covarianceOperator_disorderPairLaw_std_basis_left_eq_sum_sk
         (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) (hindep := hindep) τ)
-  -- Abbreviate the Fréchet derivative on the disorder space.
   let L :
       DisorderSpace (N := N) →L[ℝ] ℝ :=
     fderiv ℝ (fun x : DisorderSpace (N := N) =>
@@ -313,19 +300,14 @@ private lemma left_pointwise_trace
         (Real.sqrt t) *
           fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H τ)
             (H_t_disorder (N := N) (h := h) t x) (std_basis N σ) := by
-    -- Chain rule: `fderiv` on disorder equals energy-`fderiv` composed with `H_t_disorder_lin`.
     have hchain :=
       fderiv_gibbs_pmf_disorder_eq (N := N) (h := h) (t := t) (σ := τ) (x := x)
-    -- evaluate both sides at `std_basis_left σ`
     have :=
       congrArg (fun M =>
         M (std_basis_left (N := N) σ)) hchain
-    -- simplify the composition and apply the basis evaluation lemma
     simpa [L, ContinuousLinearMap.comp_apply, H_t_disorder_lin_std_basis_left (N := N) (t := t),
       smul_eq_mul, mul_assoc, mul_left_comm, mul_comm] using this
-  -- Start from the statement, rewrite `covarianceOperator`, and expand `L` over the finite sum.
   rw [hcov]
-  -- turn the application to the covariance sum into a sum of applications
   have happly :
       (fderiv ℝ (fun x : DisorderSpace (N := N) =>
             gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) τ) x)
@@ -336,18 +318,11 @@ private lemma left_pointwise_trace
             ((Real.sqrt t) *
               fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H τ)
                 (H_t_disorder (N := N) (h := h) t x) (std_basis N σ)) := by
-    -- replace the `fderiv` by `L`
     simp [L, hL_sum, hL_basis, smul_eq_mul, mul_assoc, mul_left_comm, mul_comm]
-  -- Use the explicit expression for the application.
-  -- Now cancel the `√t` factor and convert `-(1/N) * fderiv` into the Hessian entry.
   rw [happly]
-  -- The key scalar identity is `(1 / (2 * √t)) * √t = 1/2`.
   have hsqt' : (2 * Real.sqrt t) ≠ 0 := mul_ne_zero (by norm_num) hsqt
   have hcancel : (1 / (2 * Real.sqrt t) : ℝ) * Real.sqrt t = (1 / 2 : ℝ) := by
     field_simp [hsqt, hsqt']
-  -- Rewrite both sides as sums, then prove termwise equality.
-  -- (All sums are over `Finset.univ` since `Config N` is finite.)
-  -- LHS: distribute the scalar across the sum.
   have hL :
       (-(1 / (N : ℝ))) * (1 / (2 * Real.sqrt t)) *
           (∑ σ : Config N,
@@ -362,9 +337,7 @@ private lemma left_pointwise_trace
               (Real.sqrt t *
                 fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H τ)
                   (H_t_disorder (N := N) (h := h) t x) (std_basis N σ))) := by
-    -- turn `a*b*sum` into `(a*b) * sum` then apply `Finset.mul_sum`
     simp [mul_assoc, Finset.mul_sum, mul_left_comm, mul_comm]
-  -- RHS: distribute `(1/2)` across the sum.
   have hR :
       (1 / 2 : ℝ) *
           (∑ σ : Config N,
@@ -378,12 +351,8 @@ private lemma left_pointwise_trace
               hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
                 (std_basis N τ) (std_basis N σ)) := by
     simp [mul_assoc, Finset.mul_sum, mul_left_comm, mul_comm]
-  -- Apply these rewrites and prove termwise equality.
-  -- (We rewrite the goal rather than `rw` to keep the expression stable.)
-  -- `rw` in both directions:
   rw [hL, hR]
   refine Finset.sum_congr rfl (fun σ _hσ => ?_)
-  -- One σ-summand: cancel `√t`, then convert `-(1/N) * fderiv` into the Hessian entry.
   have hconv :
       (-(1 / (N : ℝ))) *
           fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H τ)
@@ -393,7 +362,6 @@ private lemma left_pointwise_trace
           (std_basis N τ) (std_basis N σ) :=
     neg_one_div_N_mul_fderiv_eq_hessian (N := N)
       (H := H_t_disorder (N := N) (h := h) t x) (σ := τ) (τ := σ)
-  -- finish by scalar rearrangement
   calc
     (-(1 / (N : ℝ))) * (1 / (2 * Real.sqrt t)) *
         (sk_cov_kernel N β τ σ *
@@ -406,8 +374,6 @@ private lemma left_pointwise_trace
             ((-(1 / (N : ℝ))) *
               fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H τ)
                 (H_t_disorder (N := N) (h := h) t x) (std_basis N σ))) := by
-      -- cancel `√t` using `hcancel` and reorder scalars
-      -- (pure commutative algebra, no measure-theory content)
       calc
         (-(1 / (N : ℝ))) * (1 / (2 * Real.sqrt t)) *
             (sk_cov_kernel N β τ σ *
@@ -425,7 +391,6 @@ private lemma left_pointwise_trace
               (sk_cov_kernel N β τ σ *
                 fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H τ)
                   (H_t_disorder (N := N) (h := h) t x) (std_basis N σ)) := by
-          -- multiply the scalar identity `hcancel` by the remaining factors
           simpa [mul_assoc, mul_left_comm, mul_comm] using
             congrArg (fun c =>
                 (-(1 / (N : ℝ))) * c *
