@@ -8,6 +8,7 @@ import SpinGlass.GibbsBridge
 import SpinGlass.GuerraBound
 import SpinGlass.GuerraInterpolation
 import SpinGlass.GuerraIBP
+import SpinGlass.GuerraPipeline
 import SpinGlass.Hopfield
 import SpinGlass.HopfieldPsiDeriv
 import SpinGlass.HopfieldFixedPoint
@@ -15,6 +16,7 @@ import SpinGlass.HopfieldConvolution
 import SpinGlass.HopfieldCascades
 import SpinGlass.HopfieldLocalization
 import SpinGlass.Talagrand.MainResults
+import SpinGlass.FiniteGibbs.Marginal
 import Common.Mathlib.MeasureTheory.ParametricDominatedConvergence
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinAPI
 import Common.Mathlib.Probability.Distributions.Gaussian_IBP_HilbertAPI

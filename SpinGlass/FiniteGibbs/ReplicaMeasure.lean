@@ -44,7 +44,6 @@ noncomputable def gibbs_average_n_det (n : ℕ) (H : EnergySpace α) (f : Replic
 /-- The `n`-replica Gibbs weight (as `ℝ≥0`). -/
 noncomputable def replicaGibbsWeightNNReal (n : ℕ) (H : EnergySpace α) (σs : ReplicaSpace (α := α) n) : ℝ≥0 :=
   ⟨∏ l, gibbs_pmf (α := α) H (σs l), by
-    classical
     refine Finset.prod_nonneg ?_
     intro l _hl
     exact gibbs_pmf_nonneg (α := α) (H := H) (σ := σs l)⟩
@@ -61,7 +60,6 @@ The product Gibbs weights on `n` replicas sum to `1`.
 -/
 lemma sum_prod_gibbs_pmf_eq_one (n : ℕ) (H : EnergySpace α) :
     (∑ σs : ReplicaSpace (α := α) n, ∏ l, gibbs_pmf (α := α) H (σs l)) = 1 := by
-  classical
   induction n with
   | zero =>
       simp
@@ -121,8 +119,6 @@ lemma integral_replicaGibbsMeasure_eq_gibbs_average_n_det (n : ℕ)
     (H : EnergySpace α) (f : ReplicaFun (α := α) n) :
     (∫ σs, f σs ∂(replicaGibbsMeasure (α := α) (n := n) H)) =
       gibbs_average_n_det (α := α) (n := n) H f := by
-  classical
-  -- Decompose the atomic measure and integrate term-by-term.
   let μatom : ReplicaSpace (α := α) n → Measure (ReplicaSpace (α := α) n) :=
     fun σs =>
       ((replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) • Measure.dirac σs)
@@ -146,4 +142,3 @@ end
 end FiniteGibbs
 
 end SpinGlass
-

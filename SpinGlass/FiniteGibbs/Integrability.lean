@@ -32,20 +32,17 @@ lemma integrable_free_energy_density_of_integrable_norm
     [IsFiniteMeasure P] (n : ℕ) {g : Ω → EnergySpace α} (hg_meas : Measurable g)
     (hg_int : Integrable (fun ω : Ω => ‖g ω‖) P) :
     Integrable (fun ω : Ω => free_energy_density (α := α) n (g ω)) P := by
-  classical
   let C : ℝ := Real.log (Fintype.card α) + 1
   have hdom : Integrable (fun ω : Ω => C * (1 + ‖g ω‖)) P := by
     have : Integrable (fun ω : Ω => (1 : ℝ) + ‖g ω‖) P :=
       (integrable_const (μ := P) (c := (1 : ℝ))).add hg_int
     exact this.const_mul C
   refine hdom.mono' ?_ (ae_of_all _ (fun ω => ?_))
-  · -- measurability of `ω ↦ free_energy_density n (g ω)`
-    have hF : Measurable (fun x : EnergySpace α => free_energy_density (α := α) n x) :=
+  · have hF : Measurable (fun x : EnergySpace α => free_energy_density (α := α) n x) :=
       (contDiff_free_energy_density (α := α) (n := n)).continuous.measurable
     exact (hF.comp hg_meas).aestronglyMeasurable
   · have hgrowth := abs_free_energy_density_le (α := α) (n := n) (H := g ω)
     have hnonneg : 0 ≤ C * (1 + ‖g ω‖) := by positivity
-    -- convert `abs` bound to a `norm` bound
     simpa [C, Real.norm_eq_abs, abs_of_nonneg hnonneg] using hgrowth
 
 lemma integrable_free_energy_density_of_isGaussian_map
@@ -56,15 +53,12 @@ lemma integrable_free_energy_density_of_isGaussian_map
   let μ : Measure (EnergySpace α) := P.map g
   haveI : ProbabilityTheory.IsGaussian μ := hg_gauss
   have hIntμ : Integrable (fun x : EnergySpace α => free_energy_density (α := α) n x) μ := by
-    -- Use the generic Gaussian domination lemma (polynomial growth).
     refine ProbabilityTheory.IsGaussian.integrable_of_abs_le_mul_one_add_norm_pow
       (μ := μ)
       (F := fun x : EnergySpace α => free_energy_density (α := α) n x)
       ?_ (hC := by positivity) (m := 1) (C := Real.log (Fintype.card α) + 1) ?_
-    · -- measurability
-      exact (contDiff_free_energy_density (α := α) (n := n)).continuous.measurable
+    · exact (contDiff_free_energy_density (α := α) (n := n)).continuous.measurable
     · intro x
-      -- rewrite the linear-growth bound as a degree-1 polynomial growth bound
       simpa [one_pow] using (abs_free_energy_density_le (α := α) (n := n) (H := x))
   have hpull :=
     (integrable_map_measure (μ := P) (f := g)
@@ -83,4 +77,3 @@ end
 end FiniteGibbs
 
 end SpinGlass
-

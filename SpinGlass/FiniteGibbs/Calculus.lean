@@ -35,11 +35,9 @@ lemma abs_apply_le_norm (H : EnergySpace α) (σ : α) : |H σ| ≤ ‖H‖ := b
 omit [Nonempty α] in
 /-- `Z` is smooth (`C^∞`) as a finite sum of exponentials of linear forms. -/
 lemma contDiff_Z : ContDiff ℝ (∞) (fun H : EnergySpace α => Z (α := α) H) := by
-  classical
   have hterm :
       ∀ σ : α, ContDiff ℝ (∞) (fun H : EnergySpace α => Real.exp (-H σ)) := by
     intro σ
-    -- `H ↦ H σ` is smooth (continuous linear), so `H ↦ exp(-H σ)` is smooth by composition.
     simpa using (contDiff_exp.comp (contDiff_neg.comp (evalCLM (α := α) σ).contDiff))
   simpa [Z] using
     (ContDiff.sum (𝕜 := ℝ) (n := (∞)) (s := (Finset.univ : Finset α))
@@ -49,7 +47,6 @@ lemma contDiff_Z : ContDiff ℝ (∞) (fun H : EnergySpace α => Z (α := α) H)
 /-- `gibbs_pmf` is smooth (`C^∞`) as a quotient of smooth functions, since `Z(H) ≠ 0`. -/
 lemma contDiff_gibbs_pmf (σ : α) :
     ContDiff ℝ (∞) (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) := by
-  classical
   have hnum :
       ContDiff ℝ (∞) (fun H : EnergySpace α => Real.exp (-H σ)) := by
     simpa using (contDiff_exp.comp (contDiff_neg.comp (evalCLM (α := α) σ).contDiff))
@@ -62,7 +59,6 @@ lemma contDiff_gibbs_pmf (σ : α) :
 /-- The free energy density `H ↦ (1/n) * log (Z H)` is smooth. -/
 lemma contDiff_free_energy_density (n : ℕ) :
     ContDiff ℝ (∞) (fun H : EnergySpace α => free_energy_density (α := α) n H) := by
-  classical
   have hZ : ContDiff ℝ (∞) (fun H : EnergySpace α => Z (α := α) H) :=
     contDiff_Z (α := α)
   have hlog : ContDiff ℝ (∞) (fun H : EnergySpace α => Real.log (Z (α := α) H)) :=
@@ -107,14 +103,13 @@ This is used as a dominated differentiation hypothesis in interpolation argument
 lemma abs_fderiv_free_energy_density_apply_le (n : ℕ) (H v : EnergySpace α) :
     |fderiv ℝ (fun H' : EnergySpace α => free_energy_density (α := α) n H') H v|
       ≤ (1 / (n : ℝ)) * ‖v‖ := by
-  classical
   have hsum1 : (∑ σ : α, gibbs_pmf (α := α) H σ) = 1 :=
     sum_gibbs_pmf (α := α) (H := H)
   have hv_point : ∀ σ : α, |v σ| ≤ ‖v‖ := fun σ =>
     (abs_apply_le_norm (α := α) v σ)
   have hmain :
       |∑ σ : α, gibbs_pmf (α := α) H σ * v σ| ≤ ‖v‖ := by
-    classical
+
     calc
       |∑ σ : α, gibbs_pmf (α := α) H σ * v σ|
           ≤ ∑ σ : α, |gibbs_pmf (α := α) H σ * v σ| := by
@@ -152,7 +147,6 @@ lemma abs_fderiv_free_energy_density_apply_le (n : ℕ) (H v : EnergySpace α) :
 
 lemma norm_fderiv_free_energy_density_le (n : ℕ) (H : EnergySpace α) :
     ‖fderiv ℝ (fun H' : EnergySpace α => free_energy_density (α := α) n H') H‖ ≤ (1 / (n : ℝ)) := by
-  classical
   refine ContinuousLinearMap.opNorm_le_bound _ (by positivity) (fun v => ?_)
   have habs :=
     abs_fderiv_free_energy_density_apply_le (α := α) (n := n) (H := H) (v := v)
@@ -170,8 +164,6 @@ interpolation arguments).
 lemma abs_free_energy_density_sub_le (n : ℕ) (H₁ H₂ : EnergySpace α) :
     |free_energy_density (α := α) n H₂ - free_energy_density (α := α) n H₁|
       ≤ (1 / (n : ℝ)) * ‖H₂ - H₁‖ := by
-  classical
-  -- Mean value inequality on the convex set `univ`.
   have hdiff :
       ∀ x : EnergySpace α,
         DifferentiableAt ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) x := by
@@ -188,7 +180,6 @@ lemma abs_free_energy_density_sub_le (n : ℕ) (H₁ H₂ : EnergySpace α) :
       (s := (Set.univ : Set (EnergySpace α))) (x := H₁) (y := H₂)
       (hf := fun x _hx => hdiff x)
       (bound := fun x _hx => hbound x) (hs := convex_univ) (xs := by trivial) (ys := by trivial))
-  -- Convert `‖·‖` on `ℝ` to `|·|`.
   simpa [Real.norm_eq_abs] using hmv
 
 /-! ### Growth bounds for `Z` and `free_energy_density` -/
@@ -196,7 +187,6 @@ lemma abs_free_energy_density_sub_le (n : ℕ) (H₁ H₂ : EnergySpace α) :
 omit [Nonempty α] in
 lemma Z_le_card_mul_exp_norm (H : EnergySpace α) :
     Z (α := α) H ≤ (Fintype.card α : ℝ) * Real.exp (‖H‖) := by
-  classical
   have hterm : ∀ σ : α, Real.exp (-H σ) ≤ Real.exp (‖H‖) := by
     intro σ
     have hlin : -H σ ≤ ‖H‖ :=
@@ -211,7 +201,6 @@ lemma Z_le_card_mul_exp_norm (H : EnergySpace α) :
 
 lemma Z_ge_exp_neg_norm (H : EnergySpace α) :
     Real.exp (-‖H‖) ≤ Z (α := α) H := by
-  classical
   let σ₀ : α := Classical.choice (‹Nonempty α›)
   have hlin0 : H σ₀ ≤ ‖H‖ :=
     (le_abs_self (H σ₀)).trans (abs_apply_le_norm (α := α) H σ₀)
@@ -228,7 +217,6 @@ lemma Z_ge_exp_neg_norm (H : EnergySpace α) :
   exact le_trans hexp hterm_le_Z
 
 lemma log_card_nonneg : 0 ≤ Real.log (Fintype.card α : ℝ) := by
-  classical
   have hcard_pos : 0 < Fintype.card α := Fintype.card_pos
   have h1le : (1 : ℝ) ≤ (Fintype.card α : ℝ) := by
     exact_mod_cast (Nat.succ_le_iff.2 hcard_pos)
@@ -236,7 +224,6 @@ lemma log_card_nonneg : 0 ≤ Real.log (Fintype.card α : ℝ) := by
 
 lemma logZ_le_log_card_add_norm (H : EnergySpace α) :
     Real.log (Z (α := α) H) ≤ Real.log (Fintype.card α : ℝ) + ‖H‖ := by
-  classical
   have hZpos : 0 < Z (α := α) H := Z_pos (α := α) (H := H)
   have hZ_le : Z (α := α) H ≤ (Fintype.card α : ℝ) * Real.exp (‖H‖) :=
     Z_le_card_mul_exp_norm (α := α) H
@@ -268,7 +255,6 @@ lemma abs_logZ_le_log_card_add_norm (H : EnergySpace α) :
 lemma abs_free_energy_density_le (n : ℕ) (H : EnergySpace α) :
     |free_energy_density (α := α) n H|
       ≤ (Real.log (Fintype.card α) + 1) * (1 + ‖H‖) := by
-  classical
   let C : ℝ := Real.log (Fintype.card α) + 1
   have hone_div_le : (1 / (n : ℝ)) ≤ 1 := by
     cases n with
@@ -297,7 +283,6 @@ lemma abs_free_energy_density_le (n : ℕ) (H : EnergySpace α) :
     have : (1 / (n : ℝ)) * (Real.log (Fintype.card α : ℝ) + ‖H‖)
           ≤ (Real.log (Fintype.card α : ℝ) + ‖H‖) := by simpa using this
     have haux : (Real.log (Fintype.card α : ℝ) + ‖H‖) ≤ C * (1 + ‖H‖) := by
-      -- `log(card) + ‖H‖ ≤ (log(card)+1) * (1+‖H‖)`
       have ha : 0 ≤ Real.log (Fintype.card α : ℝ) := log_card_nonneg (α := α)
       have hx : 0 ≤ ‖H‖ := norm_nonneg H
       have : Real.log (Fintype.card α : ℝ) + ‖H‖ ≤ (Real.log (Fintype.card α : ℝ) + 1) * (1 + ‖H‖) := by
@@ -311,4 +296,3 @@ end
 end FiniteGibbs
 
 end SpinGlass
-

@@ -305,6 +305,23 @@ lemma hessian_free_energy_std_basis_eq (n : ℕ) (H : EnergySpace α) (σ τ : �
   refine congrArg (fun t : ℝ => (1 / (n : ℝ)) * t) ?_
   simp [hb, hc, g, sub_eq_add_neg, mul_assoc]
 
+/-- The `std_basis` entries of the free energy Hessian are `-(1/n)` times the `std_basis`-directional
+derivatives of `gibbs_pmf`.
+
+This is the key “Hessian = Gibbs covariance” identity used to pass from Gaussian IBP expressions
+to Talagrand’s trace/Hessian form in Guerra-type interpolations. -/
+lemma neg_one_div_n_mul_fderiv_gibbs_pmf_apply_std_basis_eq_hessian_free_energy_std_basis
+    (n : ℕ) (H : EnergySpace α) (σ τ : α) :
+    (-(1 / (n : ℝ))) *
+        fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H (std_basis (α := α) τ)
+      =
+      hessian_free_energy (α := α) n H (std_basis (α := α) σ) (std_basis (α := α) τ) := by
+  classical
+  -- Expand both sides using the explicit basis formulae, then ring.
+  simp [fderiv_gibbs_pmf_apply_std_basis, hessian_free_energy_std_basis_eq, mul_assoc, mul_comm,
+    mul_left_comm, sub_eq_add_neg]
+  ring
+
 lemma fderiv_free_energy_density_apply (n : ℕ) (H h : EnergySpace α) :
     fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) H h =
       -(1 / (n : ℝ)) * ∑ σ : α, (gibbs_pmf (α := α) H σ) * h σ := by

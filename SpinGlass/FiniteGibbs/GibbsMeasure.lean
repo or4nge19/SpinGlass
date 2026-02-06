@@ -9,7 +9,7 @@ Talagrand (Vol. I/II) frequently treats the finite-volume Gibbs distribution as 
 measure on the configuration space.  This file provides the model-agnostic construction for an
 arbitrary finite type `α`, bundling the weights `gibbs_pmf` into an explicit atomic measure.
 
-This is part of the “Vol II abstraction boundary”: everything here depends only on a finite
+Everything here depends only on a finite
 configuration space and a Hamiltonian `H : EnergySpace α`.
 -/
 
@@ -43,7 +43,7 @@ noncomputable def gibbsWeightNNReal (H : EnergySpace α) (σ : α) : ℝ≥0 :=
         ⟨gibbs_pmf (α := α) H σ, hσ⟩ := by
     ext
     simp [gibbsWeightNNReal]
-  simpa [ENNReal.ofReal_eq_coe_nnreal hσ, hnn]
+  simp [ENNReal.ofReal_eq_coe_nnreal hσ, hnn]
 
 variable [MeasurableSpace α]
 
@@ -55,24 +55,18 @@ noncomputable def gibbsMeasure (H : EnergySpace α) : Measure α :=
 lemma lintegral_gibbsMeasure (H : EnergySpace α) (f : α → ℝ≥0∞) [MeasurableSingletonClass α] :
     (∫⁻ σ, f σ ∂gibbsMeasure (α := α) H) =
       ∑ σ : α, (gibbsWeightNNReal (α := α) H σ : ℝ≥0∞) * f σ := by
-  classical
   simp [gibbsMeasure, gibbsWeightNNReal, lintegral_finset_sum_measure, mul_comm]
 
 /-- `lintegral` of a nonnegative real-valued function under the Gibbs measure. -/
 lemma lintegral_gibbsMeasure_ofReal
     (H : EnergySpace α) (f : α → ℝ) (hf : ∀ σ, 0 ≤ f σ) [MeasurableSingletonClass α] :
-    (∫⁻ σ, ENNReal.ofReal (f σ) ∂gibbsMeasure (α := α) H)
-      =
+    (∫⁻ σ, ENNReal.ofReal (f σ) ∂gibbsMeasure (α := α) H) =
       ENNReal.ofReal (∑ σ : α, (gibbs_pmf (α := α) H σ) * f σ) := by
-  classical
   have h :=
     lintegral_gibbsMeasure (α := α) (H := H) (f := fun σ => ENNReal.ofReal (f σ))
-  -- rewrite the weights as `ENNReal.ofReal (gibbs_pmf ...)`
   simp [gibbsWeightNNReal_coe_ennreal (α := α) (H := H)] at h
-  -- move the products inside `ENNReal.ofReal` and then factor the sum
   have hprod :
-      (∑ σ : α, ENNReal.ofReal (gibbs_pmf (α := α) H σ) * ENNReal.ofReal (f σ))
-        =
+      (∑ σ : α, ENNReal.ofReal (gibbs_pmf (α := α) H σ) * ENNReal.ofReal (f σ)) =
         ∑ σ : α, ENNReal.ofReal (gibbs_pmf (α := α) H σ * f σ) := by
     refine Finset.sum_congr rfl (fun σ _hσ => ?_)
     have hσ : 0 ≤ gibbs_pmf (α := α) H σ := gibbs_pmf_nonneg (α := α) (H := H) σ
@@ -82,7 +76,6 @@ lemma lintegral_gibbsMeasure_ofReal
   have hnonneg : ∀ σ : α, 0 ≤ gibbs_pmf (α := α) H σ * f σ := by
     intro σ
     exact mul_nonneg (gibbs_pmf_nonneg (α := α) (H := H) σ) (hf σ)
-  -- finish: rewrite the RHS using `hprod`, then pull `ENNReal.ofReal` out of the sum
   calc
     (∫⁻ σ, ENNReal.ofReal (f σ) ∂gibbsMeasure (α := α) H)
         =
@@ -97,11 +90,8 @@ lemma lintegral_gibbsMeasure_ofReal
 /-- `integral` of a real-valued function under the Gibbs measure. -/
 lemma integral_gibbsMeasure
     (H : EnergySpace α) (f : α → ℝ) [MeasurableSingletonClass α] :
-    (∫ σ, f σ ∂gibbsMeasure (α := α) H)
-      =
+    (∫ σ, f σ ∂gibbsMeasure (α := α) H)  =
       ∑ σ : α, (gibbs_pmf (α := α) H σ) * f σ := by
-  classical
-  -- Decompose the atomic measure and integrate term-by-term.
   let μatom : α → Measure α :=
     fun σ =>
       ((gibbsWeightNNReal (α := α) H σ : ℝ≥0∞) • Measure.dirac σ)
@@ -120,7 +110,6 @@ lemma integral_gibbsMeasure
   simpa [gibbsMeasure, μatom, gibbsWeightNNReal, gibbs_pmf, mul_comm, mul_left_comm, mul_assoc] using hsum
 
 lemma gibbsMeasure_univ (H : EnergySpace α) : gibbsMeasure (α := α) H Set.univ = 1 := by
-  classical
   have h_univ :
       gibbsMeasure (α := α) H Set.univ = ∑ σ : α, (gibbsWeightNNReal (α := α) H σ : ℝ≥0∞) := by
     simp [gibbsMeasure, gibbsWeightNNReal]
