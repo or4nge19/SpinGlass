@@ -96,7 +96,7 @@ open scoped CompactlySupported
 
 variable {d : ℕ}
 
-/-- The paper’s “no spontaneous magnetization / clustering” hypothesis `Φ_even` (Eq. `Phi_even`). -/
+/-- The paper assumes a “no spontaneous magnetization / clustering” hypothesis `Φ_even` (Eq. `Phi_even`). -/
 def PhiEven (μ : Measure (ZLattice d → ℝ)) (spin : ℝ → ℝ := fun x => x) : Prop :=
   Tendsto (fun x : ZLattice d => twoPoint (d := d) (spin := spin) (μ := μ) 0 x) (cocompact _)
     (𝓝 0)
@@ -107,21 +107,50 @@ variable {Ω : Type*} [MeasurableSpace Ω]
 Finite-dimensional convergence of the scaled observables `T_{f,L}` (paper’s notion of convergence
 in distribution for the smeared field).
 
-We phrase it using convergence of integrals against bounded continuous test functions, avoiding any
-explicit mention of the `ProbabilityMeasure` topology.
+We follow mathlib’s standard design pattern:
+convergence in distribution is weak convergence of the induced laws, i.e. `Tendsto` in
+`MeasureTheory.ProbabilityMeasure`.
+
+Implementation note: the definition uses the subsequence `L ↦ L+1` (a harmless finite shift for
+`atTop`) to avoid the degenerate scale `L = 0`, for which the summability/measurability API for `Tf`
+is not available.
 -/
 def HasFiniteDimensionalScalingLimit
     (μL : ℕ → Measure (ZLattice d → ℝ)) [∀ L, IsProbabilityMeasure (μL L)]
     (P : Measure Ω) [IsProbabilityMeasure P]
     (Tlim : C_c(Fin d → ℝ, ℝ) → Ω → ℝ) : Prop :=
   ∀ n : ℕ, ∀ f : Fin n → C_c(Fin d → ℝ, ℝ),
-    let lawL (L : ℕ) : Measure (Fin n → ℝ) :=
-      (μL L).map (fun φ => fun i : Fin n =>
-        Tf (d := d) (S := ℝ) (spin := (fun x : ℝ => x)) (μ := μL L) (f := f i) L φ)
-    let law : Measure (Fin n → ℝ) :=
-      P.map (fun ω => fun i : Fin n => Tlim (f i) ω)
-    ∀ g : BoundedContinuousFunction (Fin n → ℝ) ℝ,
-      Tendsto (fun L : ℕ => ∫ x, g x ∂(lawL L)) atTop (𝓝 (∫ x, g x ∂law))
+    let lawL : ℕ → ProbabilityMeasure (Fin n → ℝ) :=
+      fun L =>
+        let L' : ℕ := L + 1
+        let F : (ZLattice d → ℝ) → (Fin n → ℝ) := fun φ i =>
+          Tf (d := d) (S := ℝ) (spin := (fun x : ℝ => x)) (μ := μL L') (f := f i) L' φ
+        have hF : Measurable F := by
+          refine (measurable_pi_iff).2 ?_
+          intro i
+          simpa [F] using
+            (measurable_Tf (d := d) (S := ℝ) (spin := (fun x : ℝ => x)) (μ := μL L') (f := f i)
+              (L := L') (Nat.succ_pos L) (measurable_id))
+        ⟨(μL L').map F, Measure.isProbabilityMeasure_map (μ := μL L') hF.aemeasurable⟩
+    let ωmap : Ω → (Fin n → ℝ) := fun ω i => Tlim (f i) ω
+    ∃ hω : Measurable ωmap,
+      Tendsto lawL atTop
+        (𝓝
+          (⟨P.map ωmap, Measure.isProbabilityMeasure_map (μ := P) hω.aemeasurable⟩ :
+            ProbabilityMeasure (Fin n → ℝ)))
+
+lemma HasFiniteDimensionalScalingLimit.measurable_Tlim
+    (μL : ℕ → Measure (ZLattice d → ℝ)) [∀ L, IsProbabilityMeasure (μL L)]
+    (P : Measure Ω) [IsProbabilityMeasure P]
+    (Tlim : C_c(Fin d → ℝ, ℝ) → Ω → ℝ)
+    (h : HasFiniteDimensionalScalingLimit (d := d) (Ω := Ω) μL P Tlim)
+    (f : C_c(Fin d → ℝ, ℝ)) :
+    Measurable (Tlim f) := by
+  let f1 : Fin 1 → C_c(Fin d → ℝ, ℝ) := fun _ => f
+  rcases h 1 f1 with ⟨hω, _ht⟩
+  have h0 : Measurable (fun ω : Ω => (fun i : Fin 1 => Tlim (f1 i) ω) 0) :=
+    (measurable_pi_iff).1 hω 0
+  simpa [f1] using h0
 
 lemma HasFiniteDimensionalScalingLimit.tendsto_integral
     (μL : ℕ → Measure (ZLattice d → ℝ)) [∀ L, IsProbabilityMeasure (μL L)]
@@ -129,13 +158,50 @@ lemma HasFiniteDimensionalScalingLimit.tendsto_integral
     (Tlim : C_c(Fin d → ℝ, ℝ) → Ω → ℝ)
     (h : HasFiniteDimensionalScalingLimit (d := d) (Ω := Ω) μL P Tlim)
     (n : ℕ) (f : Fin n → C_c(Fin d → ℝ, ℝ)) (g : BoundedContinuousFunction (Fin n → ℝ) ℝ) :
-    let lawL (L : ℕ) : Measure (Fin n → ℝ) :=
-      (μL L).map (fun φ => fun i : Fin n =>
-        Tf (d := d) (S := ℝ) (spin := (fun x : ℝ => x)) (μ := μL L) (f := f i) L φ)
-    let law : Measure (Fin n → ℝ) :=
-      P.map (fun ω => fun i : Fin n => Tlim (f i) ω)
-    Tendsto (fun L : ℕ => ∫ x, g x ∂(lawL L)) atTop (𝓝 (∫ x, g x ∂law)) := by
-  simpa [HasFiniteDimensionalScalingLimit] using (h n f g)
+    ∃ hω : Measurable (fun ω : Ω => fun i : Fin n => Tlim (f i) ω),
+      let lawL : ℕ → ProbabilityMeasure (Fin n → ℝ) :=
+        fun L =>
+          let L' : ℕ := L + 1
+          let F : (ZLattice d → ℝ) → (Fin n → ℝ) := fun φ i =>
+            Tf (d := d) (S := ℝ) (spin := (fun x : ℝ => x)) (μ := μL L') (f := f i) L' φ
+          have hF : Measurable F := by
+            refine (measurable_pi_iff).2 ?_
+            intro i
+            simpa [F] using
+              (measurable_Tf (d := d) (S := ℝ) (spin := (fun x : ℝ => x)) (μ := μL L') (f := f i)
+                (L := L') (Nat.succ_pos L) (measurable_id))
+          ⟨(μL L').map F, Measure.isProbabilityMeasure_map (μ := μL L') hF.aemeasurable⟩
+      let ωmap : Ω → (Fin n → ℝ) := fun ω i => Tlim (f i) ω
+      let law : ProbabilityMeasure (Fin n → ℝ) :=
+        (⟨P.map ωmap, Measure.isProbabilityMeasure_map (μ := P) hω.aemeasurable⟩ :
+          ProbabilityMeasure (Fin n → ℝ))
+      Tendsto (fun L : ℕ => ∫ x, g x ∂(lawL L : Measure (Fin n → ℝ)))
+        atTop (𝓝 (∫ x, g x ∂(law : Measure (Fin n → ℝ)))) := by
+  rcases h n f with ⟨hω, ht⟩
+  refine ⟨hω, ?_⟩
+  let lawL : ℕ → ProbabilityMeasure (Fin n → ℝ) := fun L =>
+    let L' : ℕ := L + 1
+    let F : (ZLattice d → ℝ) → (Fin n → ℝ) := fun φ i =>
+      Tf (d := d) (S := ℝ) (spin := (fun x : ℝ => x)) (μ := μL L') (f := f i) L' φ
+    have hF : Measurable F := by
+      refine (measurable_pi_iff).2 ?_
+      intro i
+      simpa [F] using
+        (measurable_Tf (d := d) (S := ℝ) (spin := (fun x : ℝ => x)) (μ := μL L') (f := f i)
+          (L := L') (Nat.succ_pos L) (measurable_id))
+    ⟨(μL L').map F, Measure.isProbabilityMeasure_map (μ := μL L') hF.aemeasurable⟩
+  let ωmap : Ω → (Fin n → ℝ) := fun ω i => Tlim (f i) ω
+  let law : ProbabilityMeasure (Fin n → ℝ) :=
+    (⟨P.map ωmap, Measure.isProbabilityMeasure_map (μ := P) hω.aemeasurable⟩ :
+      ProbabilityMeasure (Fin n → ℝ))
+  have ht_int :
+      Tendsto (fun L : ℕ => ∫ x, g x ∂(lawL L : Measure (Fin n → ℝ)))
+        atTop (𝓝 (∫ x, g x ∂(law : Measure (Fin n → ℝ)))) := by
+    have ht' :=
+      (ProbabilityMeasure.tendsto_iff_forall_integral_tendsto (μs := lawL) (μ := law)).1 (by
+        simpa [lawL, ωmap, law] using ht)
+    simpa using ht' g
+  simpa [lawL, ωmap, law] using ht_int
 
 /--
 **Gaussianity of `Φ⁴₄`** (paper Theorem 1.1, qualitative interface statement).

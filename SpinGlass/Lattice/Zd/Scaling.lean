@@ -23,7 +23,7 @@ We expose:
 
 open scoped BigOperators CompactlySupported ProbabilityTheory
 
-open MeasureTheory Topology
+open MeasureTheory Topology GibbsMeasure.Observables.Correlations
 
 namespace SpinGlass
 namespace Lattice
@@ -63,18 +63,18 @@ lemma sigmaL_eq_sum_twoPoint
     sigmaL (d := d) (spin := spin) μ L
       =
       ∑ x ∈ box d L, ∑ y ∈ box d L,
-        GibbsMeasure.Observables.Correlations.twoPoint (ι := ZLattice d) spin μ x y := by
+        twoPoint (ι := ZLattice d) spin μ x y := by
   have hI' :
       ∀ x ∈ box d L, ∀ y ∈ box d L,
         Integrable (fun η : ZLattice d → S =>
-          GibbsMeasure.Observables.Correlations.spinAt (ι := ZLattice d) spin x η *
-            GibbsMeasure.Observables.Correlations.spinAt (ι := ZLattice d) spin y η) μ := by
+          spinAt (ι := ZLattice d) spin x η *
+            spinAt (ι := ZLattice d) spin y η) μ := by
     intro x hx y hy
-    simpa [GibbsMeasure.Observables.Correlations.spinAt] using hI x hx y hy
+    simpa [spinAt] using hI x hx y hy
   unfold sigmaL
-  simpa [GibbsMeasure.Observables.Correlations.linComb,
-    GibbsMeasure.Observables.Correlations.spinAt, one_mul] using
-    (GibbsMeasure.Observables.Correlations.integral_linComb_sq_eq_sum_twoPoint
+  simpa [linComb,
+    spinAt, one_mul] using
+    (integral_linComb_sq_eq_sum_twoPoint
       (ι := ZLattice d) (S := S) (spin := spin) (μ := μ)
       (Λ := box d L) (a := fun _ : ZLattice d => (1 : ℝ)) hI')
 
@@ -322,17 +322,17 @@ lemma integral_Tf_sq_eq_sum_twoPoint
           (∑ x ∈ box d N, ∑ y ∈ box d N,
             (f (scalePoint (d := d) (L := (L : ℝ)) x)) *
               (f (scalePoint (d := d) (L := (L : ℝ)) y)) *
-              GibbsMeasure.Observables.Correlations.twoPoint (ι := ZLattice d) spin μ x y) := by
+              twoPoint (ι := ZLattice d) spin μ x y) := by
   rcases Tf_tsum_eq_sum_box_uniform (d := d) (S := S) (spin := spin) (μ := μ) (f := f) hL with
     ⟨N, hN⟩
   refine ⟨N, ?_⟩
   let a : ZLattice d → ℝ := fun x => f (scalePoint (d := d) (L := (L : ℝ)) x)
   have hI' : ∀ x ∈ box d N, ∀ y ∈ box d N,
       Integrable (fun η : ZLattice d → S =>
-        GibbsMeasure.Observables.Correlations.spinAt (ι := ZLattice d) spin x η *
-          GibbsMeasure.Observables.Correlations.spinAt (ι := ZLattice d) spin y η) μ := by
+        spinAt (ι := ZLattice d) spin x η *
+          spinAt (ι := ZLattice d) spin y η) μ := by
     intro x _hx y _hy
-    simpa [GibbsMeasure.Observables.Correlations.spinAt] using hI x y
+    simpa [spinAt] using hI x y
   have hTf : ∀ η : ZLattice d → S,
       Tf (d := d) (S := S) (spin := spin) (μ := μ) (f := f) L η
         =
@@ -353,17 +353,17 @@ lemma integral_Tf_sq_eq_sum_twoPoint
     _ = (1 / Real.sqrt (sigmaL (d := d) (spin := spin) μ L)) ^ (2 : ℕ) *
           (∑ x ∈ box d N, ∑ y ∈ box d N,
             a x * a y *
-              GibbsMeasure.Observables.Correlations.twoPoint (ι := ZLattice d) spin μ x y) := by
+              twoPoint (ι := ZLattice d) spin μ x y) := by
           have hLin :
               (∫ η, (∑ x ∈ box d N, a x * spin (η x)) ^ (2 : ℕ) ∂μ)
                 =
               (∑ x ∈ box d N, ∑ y ∈ box d N,
                 a x * a y *
-                  GibbsMeasure.Observables.Correlations.twoPoint (ι := ZLattice d) spin μ x y) := by
-            simpa [a, GibbsMeasure.Observables.Correlations.linComb,
-              GibbsMeasure.Observables.Correlations.spinAt, one_mul, mul_assoc, mul_left_comm, mul_comm]
+                  twoPoint (ι := ZLattice d) spin μ x y) := by
+            simpa [a, linComb,
+              spinAt, one_mul, mul_assoc, mul_left_comm, mul_comm]
               using
-                (GibbsMeasure.Observables.Correlations.integral_linComb_sq_eq_sum_twoPoint
+                (integral_linComb_sq_eq_sum_twoPoint
                   (ι := ZLattice d) (S := S) (spin := spin) (μ := μ)
                   (Λ := box d N) (a := a) hI')
           simpa [mul_assoc] using congrArg (fun t =>
@@ -372,7 +372,7 @@ lemma integral_Tf_sq_eq_sum_twoPoint
           (∑ x ∈ box d N, ∑ y ∈ box d N,
             (f (scalePoint (d := d) (L := (L : ℝ)) x)) *
               (f (scalePoint (d := d) (L := (L : ℝ)) y)) *
-              GibbsMeasure.Observables.Correlations.twoPoint (ι := ZLattice d) spin μ x y) := by
+              twoPoint (ι := ZLattice d) spin μ x y) := by
           simp [a, mul_comm]
 
 lemma integral_Tf_pow_four_eq_sum_fourPoint
@@ -389,19 +389,19 @@ lemma integral_Tf_pow_four_eq_sum_fourPoint
               (f (scalePoint (d := d) (L := (L : ℝ)) y)) *
               (f (scalePoint (d := d) (L := (L : ℝ)) z)) *
               (f (scalePoint (d := d) (L := (L : ℝ)) t)) *
-              GibbsMeasure.Observables.Correlations.fourPoint (ι := ZLattice d) spin μ x y z t) := by
+              fourPoint (ι := ZLattice d) spin μ x y z t) := by
   rcases Tf_tsum_eq_sum_box_uniform (d := d) (S := S) (spin := spin) (μ := μ) (f := f) hL with
     ⟨N, hN⟩
   refine ⟨N, ?_⟩
   let a : ZLattice d → ℝ := fun x => f (scalePoint (d := d) (L := (L : ℝ)) x)
   have hI' : ∀ x ∈ box d N, ∀ y ∈ box d N, ∀ z ∈ box d N, ∀ t ∈ box d N,
       Integrable (fun η : ZLattice d → S =>
-        GibbsMeasure.Observables.Correlations.spinAt (ι := ZLattice d) spin x η *
-          GibbsMeasure.Observables.Correlations.spinAt (ι := ZLattice d) spin y η *
-          GibbsMeasure.Observables.Correlations.spinAt (ι := ZLattice d) spin z η *
-          GibbsMeasure.Observables.Correlations.spinAt (ι := ZLattice d) spin t η) μ := by
+        spinAt (ι := ZLattice d) spin x η *
+          spinAt (ι := ZLattice d) spin y η *
+          spinAt (ι := ZLattice d) spin z η *
+          spinAt (ι := ZLattice d) spin t η) μ := by
     intro x _hx y _hy z _hz t _ht
-    simpa [GibbsMeasure.Observables.Correlations.spinAt, mul_assoc, mul_left_comm, mul_comm] using hI x y z t
+    simpa [spinAt, mul_assoc, mul_left_comm, mul_comm] using hI x y z t
   have hTf : ∀ η : ZLattice d → S,
       Tf (d := d) (S := S) (spin := spin) (μ := μ) (f := f) L η
         =
@@ -422,17 +422,17 @@ lemma integral_Tf_pow_four_eq_sum_fourPoint
     _ = (1 / Real.sqrt (sigmaL (d := d) (spin := spin) μ L)) ^ (4 : ℕ) *
           (∑ x ∈ box d N, ∑ y ∈ box d N, ∑ z ∈ box d N, ∑ t ∈ box d N,
             a x * a y * a z * a t *
-              GibbsMeasure.Observables.Correlations.fourPoint (ι := ZLattice d) spin μ x y z t) := by
+              fourPoint (ι := ZLattice d) spin μ x y z t) := by
           have hLin :
               (∫ η, (∑ x ∈ box d N, a x * spin (η x)) ^ (4 : ℕ) ∂μ)
                 =
               (∑ x ∈ box d N, ∑ y ∈ box d N, ∑ z ∈ box d N, ∑ t ∈ box d N,
                 a x * a y * a z * a t *
-                  GibbsMeasure.Observables.Correlations.fourPoint (ι := ZLattice d) spin μ x y z t) := by
-            simpa [a, GibbsMeasure.Observables.Correlations.linComb,
-              GibbsMeasure.Observables.Correlations.spinAt, one_mul, mul_assoc, mul_left_comm, mul_comm]
+                  fourPoint (ι := ZLattice d) spin μ x y z t) := by
+            simpa [a, linComb,
+              spinAt, one_mul, mul_assoc, mul_left_comm, mul_comm]
               using
-                (GibbsMeasure.Observables.Correlations.integral_linComb_pow_four_eq_sum_fourPoint
+                (integral_linComb_pow_four_eq_sum_fourPoint
                   (ι := ZLattice d) (S := S) (spin := spin) (μ := μ)
                   (Λ := box d N) (a := a) hI')
           simpa [mul_assoc] using congrArg (fun t =>
@@ -443,8 +443,114 @@ lemma integral_Tf_pow_four_eq_sum_fourPoint
               (f (scalePoint (d := d) (L := (L : ℝ)) y)) *
               (f (scalePoint (d := d) (L := (L : ℝ)) z)) *
               (f (scalePoint (d := d) (L := (L : ℝ)) t)) *
-              GibbsMeasure.Observables.Correlations.fourPoint (ι := ZLattice d) spin μ x y z t) := by
+              fourPoint (ι := ZLattice d) spin μ x y z t) := by
           simp [a, mul_left_comm, mul_comm]
+
+lemma integral_Tf_pow_four_sub_three_mul_sq_integral_Tf_sq_eq_sum_ursell4
+    {L : ℕ} (hL : 0 < L)
+    (hI2 : ∀ x y : ZLattice d,
+      Integrable (fun η : ZLattice d → S => spin (η x) * spin (η y)) μ)
+    (hI4 : ∀ x y z t : ZLattice d,
+      Integrable (fun η : ZLattice d → S =>
+        spin (η x) * spin (η y) * spin (η z) * spin (η t)) μ) :
+    ∃ N : ℕ,
+      (∫ η, (Tf (d := d) (S := S) (spin := spin) (μ := μ) (f := f) L η) ^ (4 : ℕ) ∂μ)
+          - 3 * (∫ η, (Tf (d := d) (S := S) (spin := spin) (μ := μ) (f := f) L η) ^ (2 : ℕ) ∂μ) ^ (2 : ℕ)
+        =
+        (1 / Real.sqrt (sigmaL (d := d) (spin := spin) μ L)) ^ (4 : ℕ) *
+          (∑ x ∈ box d N, ∑ y ∈ box d N, ∑ z ∈ box d N, ∑ t ∈ box d N,
+            (f (scalePoint (d := d) (L := (L : ℝ)) x)) *
+              (f (scalePoint (d := d) (L := (L : ℝ)) y)) *
+              (f (scalePoint (d := d) (L := (L : ℝ)) z)) *
+              (f (scalePoint (d := d) (L := (L : ℝ)) t)) *
+              ursell4 (ι := ZLattice d) spin μ x y z t) := by
+  rcases Tf_tsum_eq_sum_box_uniform (d := d) (S := S) (spin := spin) (μ := μ) (f := f) hL with
+    ⟨N, hN⟩
+  refine ⟨N, ?_⟩
+  let c : ℝ := (1 / Real.sqrt (sigmaL (d := d) (spin := spin) μ L))
+  let a : ZLattice d → ℝ := fun x => f (scalePoint (d := d) (L := (L : ℝ)) x)
+  let X : (ZLattice d → S) → ℝ :=
+    linComb (ι := ZLattice d) (spin := spin) (Λ := box d N) (a := a)
+  have hTf : ∀ η : ZLattice d → S,
+      Tf (d := d) (S := S) (spin := spin) (μ := μ) (f := f) L η = c * X η := by
+    intro η
+    simpa [c, a, X, linComb,
+      spinAt, mul_assoc] using hN η
+  have hI2' : ∀ x ∈ box d N, ∀ y ∈ box d N,
+      Integrable (fun η : ZLattice d → S =>
+        spinAt (ι := ZLattice d) spin x η *
+          spinAt (ι := ZLattice d) spin y η) μ := by
+    intro x _hx y _hy
+    simpa [spinAt] using hI2 x y
+  have hI4' : ∀ x ∈ box d N, ∀ y ∈ box d N, ∀ z ∈ box d N, ∀ t ∈ box d N,
+      Integrable (fun η : ZLattice d → S =>
+        spinAt (ι := ZLattice d) spin x η *
+          spinAt (ι := ZLattice d) spin y η *
+          spinAt (ι := ZLattice d) spin z η *
+          spinAt (ι := ZLattice d) spin t η) μ := by
+    intro x _hx y _hy z _hz t _ht
+    simpa [spinAt, mul_assoc, mul_left_comm, mul_comm] using hI4 x y z t
+  have hCumulX :
+      (∫ η, (X η) ^ (4 : ℕ) ∂μ) - 3 * (∫ η, (X η) ^ (2 : ℕ) ∂μ) ^ (2 : ℕ)
+        =
+        ∑ x ∈ box d N, ∑ y ∈ box d N, ∑ z ∈ box d N, ∑ t ∈ box d N,
+          a x * a y * a z * a t *
+            ursell4 (ι := ZLattice d) spin μ x y z t := by
+    simpa [X] using
+      (integral_linComb_pow_four_sub_three_mul_sq_integral_linComb_sq_eq_sum_ursell4
+        (ι := ZLattice d) (S := S) (spin := spin) (μ := μ)
+        (Λ := box d N) (a := a) hI2' hI4')
+  have hE4 :
+      (∫ η, (Tf (d := d) (S := S) (spin := spin) (μ := μ) (f := f) L η) ^ (4 : ℕ) ∂μ)
+        =
+        c ^ (4 : ℕ) * (∫ η, (X η) ^ (4 : ℕ) ∂μ) := by
+    calc
+      (∫ η, (Tf (d := d) (S := S) (spin := spin) (μ := μ) (f := f) L η) ^ (4 : ℕ) ∂μ)
+          = ∫ η, (c * X η) ^ (4 : ℕ) ∂μ := by
+                refine integral_congr_ae ?_
+                filter_upwards with η
+                simp [hTf η]
+      _ = ∫ η, (c ^ (4 : ℕ)) * (X η) ^ (4 : ℕ) ∂μ := by
+            simp [mul_pow]
+      _ = c ^ (4 : ℕ) * (∫ η, (X η) ^ (4 : ℕ) ∂μ) := by
+            simpa [mul_assoc] using (integral_const_mul (μ := μ) (c ^ (4 : ℕ)) fun η => (X η) ^ (4 : ℕ))
+  have hE2 :
+      (∫ η, (Tf (d := d) (S := S) (spin := spin) (μ := μ) (f := f) L η) ^ (2 : ℕ) ∂μ)
+        =
+        c ^ (2 : ℕ) * (∫ η, (X η) ^ (2 : ℕ) ∂μ) := by
+    calc
+      (∫ η, (Tf (d := d) (S := S) (spin := spin) (μ := μ) (f := f) L η) ^ (2 : ℕ) ∂μ)
+          = ∫ η, (c * X η) ^ (2 : ℕ) ∂μ := by
+                refine integral_congr_ae ?_
+                filter_upwards with η
+                simp [hTf η]
+      _ = ∫ η, (c ^ (2 : ℕ)) * (X η) ^ (2 : ℕ) ∂μ := by
+            simp [mul_pow]
+      _ = c ^ (2 : ℕ) * (∫ η, (X η) ^ (2 : ℕ) ∂μ) := by
+            simpa [mul_assoc] using (integral_const_mul (μ := μ) (c ^ (2 : ℕ)) fun η => (X η) ^ (2 : ℕ))
+  calc
+    (∫ η, (Tf (d := d) (S := S) (spin := spin) (μ := μ) (f := f) L η) ^ (4 : ℕ) ∂μ)
+        - 3 * (∫ η, (Tf (d := d) (S := S) (spin := spin) (μ := μ) (f := f) L η) ^ (2 : ℕ) ∂μ) ^ (2 : ℕ)
+        =
+        c ^ (4 : ℕ) *
+          ((∫ η, (X η) ^ (4 : ℕ) ∂μ) - 3 * (∫ η, (X η) ^ (2 : ℕ) ∂μ) ^ (2 : ℕ)) := by
+          simp [hE4, hE2]
+          ring_nf
+    _ =
+        c ^ (4 : ℕ) *
+          (∑ x ∈ box d N, ∑ y ∈ box d N, ∑ z ∈ box d N, ∑ t ∈ box d N,
+            a x * a y * a z * a t *
+              ursell4 (ι := ZLattice d) spin μ x y z t) := by
+          simp [hCumulX]
+    _ =
+        (1 / Real.sqrt (sigmaL (d := d) (spin := spin) μ L)) ^ (4 : ℕ) *
+          (∑ x ∈ box d N, ∑ y ∈ box d N, ∑ z ∈ box d N, ∑ t ∈ box d N,
+            (f (scalePoint (d := d) (L := (L : ℝ)) x)) *
+              (f (scalePoint (d := d) (L := (L : ℝ)) y)) *
+              (f (scalePoint (d := d) (L := (L : ℝ)) z)) *
+              (f (scalePoint (d := d) (L := (L : ℝ)) t)) *
+              ursell4 (ι := ZLattice d) spin μ x y z t) := by
+          simp [c, a]
 
 end SigmaTf
 

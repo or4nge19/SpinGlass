@@ -1,4 +1,6 @@
 import Mathlib.MeasureTheory.MeasurableSpace.Pi
+import Mathlib.Algebra.BigOperators.Group.Finset.Sigma
+import Mathlib.Algebra.BigOperators.Ring.Finset
 import Mathlib.Probability.Distributions.Gaussian.Basic
 
 /-!
@@ -210,11 +212,7 @@ lemma integral_linComb_pow_four_eq_sum_fourPoint
       =
       ∑ x ∈ Λ, ∑ y ∈ Λ, ∑ z ∈ Λ, ∑ t ∈ Λ,
         a x * a y * a z * a t * fourPoint (ι := ι) spin μ x y z t := by
-  classical
-  -- Write `linComb` as a sum of single-site terms.
   let A : ι → (ι → S) → ℝ := fun x η => a x * spinAt (ι := ι) spin x η
-
-  -- Pointwise expansion of the 4th power of a finite sum.
   have hpow4 :
       (fun η : ι → S => (linComb (ι := ι) (spin := spin) Λ a η) ^ (4 : ℕ))
         =
@@ -222,7 +220,6 @@ lemma integral_linComb_pow_four_eq_sum_fourPoint
         ∑ x ∈ Λ, ∑ y ∈ Λ, ∑ z ∈ Λ, ∑ t ∈ Λ,
           (A x η) * (A y η) * (A z η) * (A t η)) := by
     funext η
-    -- Use the standard product-trick expansion for `(^4)`.
     have hpow :
         (∑ x ∈ Λ, A x η) ^ (4 : ℕ)
           =
@@ -247,8 +244,6 @@ lemma integral_linComb_pow_four_eq_sum_fourPoint
         _ = ∑ x ∈ Λ, ∑ y ∈ Λ, ∑ z ∈ Λ, ∑ t ∈ Λ, A x η * A y η * A z η * A t η := by
               simp [mul_assoc]
     simpa [linComb, A, spinAt, mul_assoc, mul_left_comm, mul_comm] using hpow
-
-  -- Integrability of each quadruple term.
   have hInt : ∀ x ∈ Λ, ∀ y ∈ Λ, ∀ z ∈ Λ, ∀ t ∈ Λ,
       Integrable (fun η : ι → S => (A x η) * (A y η) * (A z η) * (A t η)) μ := by
     intro x hx y hy z hz t ht
@@ -264,8 +259,6 @@ lemma integral_linComb_pow_four_eq_sum_fourPoint
               spinAt (ι := ι) spin z η * spinAt (ι := ι) spin t η)) μ :=
       hxyzt.const_mul (a x * a y * a z * a t)
     simpa [A, mul_assoc, mul_left_comm, mul_comm] using this
-
-  -- Integrability of nested finite sums so that we can commute the integral with sums.
   have hInner3 : ∀ x ∈ Λ, ∀ y ∈ Λ, ∀ z ∈ Λ,
       Integrable (fun η : ι → S =>
         ∑ t ∈ Λ, (A x η) * (A y η) * (A z η) * (A t η)) μ := by
@@ -358,7 +351,6 @@ lemma integral_linComb_pow_four_eq_sum_fourPoint
           intro z hz
           refine Finset.sum_congr rfl ?_
           intro t ht
-          -- Pull out the constant coefficient product and recognize `fourPoint`.
           have :
               (∫ η, (A x η) * (A y η) * (A z η) * (A t η) ∂μ)
                 =
@@ -367,6 +359,148 @@ lemma integral_linComb_pow_four_eq_sum_fourPoint
                   spinAt (ι := ι) spin z η * spinAt (ι := ι) spin t η ∂μ) := by
             simp [A, mul_assoc, mul_left_comm, mul_comm, integral_const_mul]
           simpa [fourPoint, mul_assoc, mul_left_comm, mul_comm] using this
+
+lemma sum_ursell4_eq_sum_fourPoint_sub_three_mul_sq_sum_twoPoint :
+    (∑ x ∈ Λ, ∑ y ∈ Λ, ∑ z ∈ Λ, ∑ t ∈ Λ,
+        a x * a y * a z * a t * ursell4 (ι := ι) spin μ x y z t)
+      =
+      (∑ x ∈ Λ, ∑ y ∈ Λ, ∑ z ∈ Λ, ∑ t ∈ Λ,
+        a x * a y * a z * a t * fourPoint (ι := ι) spin μ x y z t)
+        - 3 * (∑ x ∈ Λ, ∑ y ∈ Λ, a x * a y * twoPoint (ι := ι) spin μ x y) ^ (2 : ℕ) := by
+  let sum4 : (ι → ι → ι → ι → ℝ) → ℝ := fun F =>
+    ∑ x ∈ Λ, ∑ y ∈ Λ, ∑ z ∈ Λ, ∑ t ∈ Λ, F x y z t
+  have sum4_add (F G : ι → ι → ι → ι → ℝ) :
+      sum4 (fun x y z t => F x y z t + G x y z t) = sum4 F + sum4 G := by
+    simp [sum4, Finset.sum_add_distrib]
+  have sum4_sub (F G : ι → ι → ι → ι → ℝ) :
+      sum4 (fun x y z t => F x y z t - G x y z t) = sum4 F - sum4 G := by
+    simp [sum4, Finset.sum_sub_distrib]
+  -- Abbreviations: the weighted 2-point sum and the three pairing kernels.
+  let S2 : ℝ := ∑ x ∈ Λ, ∑ y ∈ Λ, a x * a y * twoPoint (ι := ι) spin μ x y
+  let F4 : ι → ι → ι → ι → ℝ := fun x y z t =>
+    a x * a y * a z * a t * fourPoint (ι := ι) spin μ x y z t
+  let Pxyzt : ι → ι → ι → ι → ℝ := fun x y z t =>
+    a x * a y * a z * a t * (twoPoint (ι := ι) spin μ x y * twoPoint (ι := ι) spin μ z t)
+  let Pxzyt : ι → ι → ι → ι → ℝ := fun x y z t =>
+    a x * a y * a z * a t * (twoPoint (ι := ι) spin μ x z * twoPoint (ι := ι) spin μ y t)
+  let Pxtyz : ι → ι → ι → ι → ℝ := fun x y z t =>
+    a x * a y * a z * a t * (twoPoint (ι := ι) spin μ x t * twoPoint (ι := ι) spin μ y z)
+  have hPxzyt : sum4 Pxzyt = S2 ^ (2 : ℕ) := by
+    simp [sum4, Pxzyt, S2, pow_two, Finset.sum_mul_sum, mul_assoc, mul_left_comm]
+  have hPxyzt : sum4 Pxyzt = sum4 Pxzyt := by
+    unfold sum4 Pxyzt Pxzyt
+    refine Finset.sum_congr rfl ?_
+    intro x hx
+    simpa [mul_assoc, mul_left_comm, mul_comm] using
+      (Finset.sum_comm (s := Λ) (t := Λ)
+        (f := fun y z =>
+          ∑ t ∈ Λ,
+            a x * a y * a z * a t *
+              (twoPoint (ι := ι) spin μ x z * twoPoint (ι := ι) spin μ y t))).symm
+  have hPxtyz : sum4 Pxtyz = sum4 Pxzyt := by
+    unfold sum4 Pxtyz Pxzyt
+    refine Finset.sum_congr rfl ?_
+    intro x hx
+    refine Finset.sum_congr rfl ?_
+    intro y hy
+    simpa [mul_assoc, mul_left_comm, mul_comm] using
+      (Finset.sum_comm (s := Λ) (t := Λ)
+        (f := fun z t =>
+          a x * a y * a z * a t *
+            (twoPoint (ι := ι) spin μ x t * twoPoint (ι := ι) spin μ y z)))
+  have hU :
+      sum4 (fun x y z t => a x * a y * a z * a t * ursell4 (ι := ι) spin μ x y z t)
+        =
+        sum4 F4 - (sum4 Pxyzt + sum4 Pxzyt + sum4 Pxtyz) := by
+    have hfun :
+        (fun x y z t => a x * a y * a z * a t * ursell4 (ι := ι) spin μ x y z t)
+          =
+        (fun x y z t =>
+          F4 x y z t - (Pxyzt x y z t + Pxzyt x y z t + Pxtyz x y z t)) := by
+      funext x y z t
+      simp [ursell4, F4, Pxyzt, Pxzyt, Pxtyz, mul_add, sub_eq_add_neg, add_assoc,
+        mul_assoc, mul_left_comm, mul_comm]
+    rw [hfun]
+    rw [sum4_sub (F := F4) (G := fun x y z t => Pxyzt x y z t + Pxzyt x y z t + Pxtyz x y z t)]
+    have hG1 :
+        sum4 (fun x y z t => Pxyzt x y z t + (Pxzyt x y z t + Pxtyz x y z t))
+          =
+          sum4 Pxyzt + sum4 (fun x y z t => Pxzyt x y z t + Pxtyz x y z t) := by
+      simpa [add_assoc] using
+        (sum4_add (F := Pxyzt) (G := fun x y z t => Pxzyt x y z t + Pxtyz x y z t))
+    have hG2 :
+        sum4 (fun x y z t => Pxzyt x y z t + Pxtyz x y z t)
+          =
+          sum4 Pxzyt + sum4 Pxtyz :=
+      sum4_add (F := Pxzyt) (G := Pxtyz)
+    calc
+      sum4 F4 - sum4 (fun x y z t => Pxyzt x y z t + Pxzyt x y z t + Pxtyz x y z t)
+          =
+          sum4 F4 - sum4 (fun x y z t => Pxyzt x y z t + (Pxzyt x y z t + Pxtyz x y z t)) := by
+            simp [add_assoc]
+      _ = sum4 F4 - (sum4 Pxyzt + sum4 (fun x y z t => Pxzyt x y z t + Pxtyz x y z t)) := by
+            simp [hG1]
+      _ = sum4 F4 - (sum4 Pxyzt + (sum4 Pxzyt + sum4 Pxtyz)) := by
+            simp [hG2]
+      _ = sum4 F4 - (sum4 Pxyzt + sum4 Pxzyt + sum4 Pxtyz) := by
+            ring_nf
+  have hPair : (sum4 Pxyzt + sum4 Pxzyt + sum4 Pxtyz) = 3 * (S2 ^ (2 : ℕ)) := by
+    calc
+      (sum4 Pxyzt + sum4 Pxzyt + sum4 Pxtyz)
+          = (sum4 Pxzyt + sum4 Pxzyt + sum4 Pxzyt) := by
+              simp [hPxyzt, hPxtyz, add_assoc]
+      _ = (S2 ^ (2 : ℕ) + (S2 ^ (2 : ℕ) + S2 ^ (2 : ℕ))) := by
+              simp [hPxzyt, add_assoc]
+      _ = 3 * (S2 ^ (2 : ℕ)) := by
+              ring_nf
+  calc
+    (∑ x ∈ Λ, ∑ y ∈ Λ, ∑ z ∈ Λ, ∑ t ∈ Λ,
+        a x * a y * a z * a t * ursell4 (ι := ι) spin μ x y z t)
+        = sum4 (fun x y z t => a x * a y * a z * a t * ursell4 (ι := ι) spin μ x y z t) := by
+          rfl
+    _ = sum4 F4 - (sum4 Pxyzt + sum4 Pxzyt + sum4 Pxtyz) := hU
+    _ = sum4 F4 - 3 * (S2 ^ (2 : ℕ)) := by
+          simp [hPair]
+    _ =
+        (∑ x ∈ Λ, ∑ y ∈ Λ, ∑ z ∈ Λ, ∑ t ∈ Λ,
+          a x * a y * a z * a t * fourPoint (ι := ι) spin μ x y z t)
+          - 3 * (∑ x ∈ Λ, ∑ y ∈ Λ, a x * a y * twoPoint (ι := ι) spin μ x y) ^ (2 : ℕ) := by
+          simp [sum4, F4, S2]
+
+lemma integral_linComb_pow_four_sub_three_mul_sq_integral_linComb_sq_eq_sum_ursell4
+    (hI2 : ∀ x ∈ Λ, ∀ y ∈ Λ,
+      Integrable (fun η : ι → S =>
+        spinAt (ι := ι) spin x η * spinAt (ι := ι) spin y η) μ)
+    (hI4 : ∀ x ∈ Λ, ∀ y ∈ Λ, ∀ z ∈ Λ, ∀ t ∈ Λ,
+      Integrable (fun η : ι → S =>
+        spinAt (ι := ι) spin x η * spinAt (ι := ι) spin y η *
+          spinAt (ι := ι) spin z η * spinAt (ι := ι) spin t η) μ) :
+    (∫ η, (linComb (ι := ι) (spin := spin) Λ a η) ^ (4 : ℕ) ∂μ)
+        - 3 * (∫ η, (linComb (ι := ι) (spin := spin) Λ a η) ^ (2 : ℕ) ∂μ) ^ (2 : ℕ)
+      =
+      ∑ x ∈ Λ, ∑ y ∈ Λ, ∑ z ∈ Λ, ∑ t ∈ Λ,
+        a x * a y * a z * a t * ursell4 (ι := ι) spin μ x y z t := by
+  have h2 :=
+    integral_linComb_sq_eq_sum_twoPoint (ι := ι) (S := S) (spin := spin) (μ := μ)
+      (Λ := Λ) (a := a) hI2
+  have h4 :=
+    integral_linComb_pow_four_eq_sum_fourPoint (ι := ι) (S := S) (spin := spin) (μ := μ)
+      (Λ := Λ) (a := a) hI4
+  -- rewrite both integrals as correlation sums, then apply the algebraic cumulant identity
+  calc
+    (∫ η, (linComb (ι := ι) (spin := spin) Λ a η) ^ (4 : ℕ) ∂μ)
+        - 3 * (∫ η, (linComb (ι := ι) (spin := spin) Λ a η) ^ (2 : ℕ) ∂μ) ^ (2 : ℕ)
+        =
+        (∑ x ∈ Λ, ∑ y ∈ Λ, ∑ z ∈ Λ, ∑ t ∈ Λ,
+            a x * a y * a z * a t * fourPoint (ι := ι) spin μ x y z t)
+          - 3 * (∑ x ∈ Λ, ∑ y ∈ Λ, a x * a y * twoPoint (ι := ι) spin μ x y) ^ (2 : ℕ) := by
+          simp [h4, h2]
+    _ =
+        (∑ x ∈ Λ, ∑ y ∈ Λ, ∑ z ∈ Λ, ∑ t ∈ Λ,
+          a x * a y * a z * a t * ursell4 (ι := ι) spin μ x y z t) := by
+          simpa using
+            (sum_ursell4_eq_sum_fourPoint_sub_three_mul_sq_sum_twoPoint
+              (ι := ι) (S := S) (spin := spin) (μ := μ) (Λ := Λ) (a := a)).symm
 
 end LinearCombination
 
