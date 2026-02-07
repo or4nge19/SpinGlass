@@ -3,6 +3,7 @@ import SpinGlass.ArguinTaiFp
 import SpinGlass.Calculus
 import SpinGlass.ComplexIBP
 import SpinGlass.Defs
+import SpinGlass.Poincare
 import SpinGlass.Example
 import SpinGlass.GibbsBridge
 import SpinGlass.GuerraBound

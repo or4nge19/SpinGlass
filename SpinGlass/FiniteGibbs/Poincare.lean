@@ -115,25 +115,19 @@ lemma gaussMix_gaussMixOrtho_involutive {t : ℝ} (ht : t ∈ Set.Icc (0 : ℝ) 
     (gaussMix (H := H) t (gaussMix (H := H) t p, gaussMixOrtho (H := H) t p),
       gaussMixOrtho (H := H) t (gaussMix (H := H) t p, gaussMixOrtho (H := H) t p))
       = p := by
-  -- This is the matrix identity `M(t)^2 = I` with `M(t) = [[√t, √(1-t)], [√(1-t), -√t]]`.
   rcases p with ⟨x, y⟩
   have hsqt : (Real.sqrt t) ^ 2 = t := sq_sqrt_of_mem_Icc (t := t) ht
   have hsq1t : (Real.sqrt (1 - t)) ^ 2 = 1 - t := sq_sqrt_one_sub_of_mem_Icc (t := t) ht
-  -- Expand both coordinates and simplify using `t + (1-t) = 1`.
   ext <;>
-    -- turn nested `smul` into scalar multiplication and collect coefficients
     simp [gaussMix, gaussMixOrtho, sub_eq_add_neg, add_assoc, add_left_comm, add_comm, smul_add,
       add_smul, sub_smul, smul_sub, smul_smul, mul_assoc, mul_left_comm, mul_comm] <;>
-    -- finish the scalar algebra on the common factor
     · have h1 : Real.sqrt t * Real.sqrt t = t := by
         simpa [pow_two] using hsqt
       have h2 : Real.sqrt (-t + 1) * Real.sqrt (-t + 1) = 1 - t := by
-        -- rewrite `-t + 1` as `1 - t` and use `hsq1t`
         have : (Real.sqrt (-t + 1)) ^ 2 = 1 - t := by
           simpa [sub_eq_add_neg, add_comm, add_left_comm, add_assoc] using hsq1t
         simpa [pow_two] using this
-      -- factor and simplify
-      simp [← add_smul, h1, h2, sub_eq_add_neg, add_assoc]
+      simp [← add_smul, h1, h2, sub_eq_add_neg]
 
 /-!
 ### A smoother (cos/sin) Gaussian mixing map
@@ -182,29 +176,26 @@ noncomputable def gaussRotMap (θ : ℝ) : (H × H) →L[ℝ] (H × H) :=
 private lemma gaussRot_gaussRotMap_neg (θ : ℝ) (p : H × H) :
     gaussRot (H := H) θ (gaussRotMap (H := H) (-θ) p) = p.1 := by
   rcases p with ⟨x, y⟩
-  -- Expand the definitions and use the rotation matrix identity.
-  simp [gaussRotMap_apply, gaussRot, gaussRotOrtho, sub_eq_add_neg, add_assoc, add_left_comm,
-    add_comm, smul_add, add_smul, smul_smul, mul_assoc, mul_left_comm, mul_comm, Real.cos_neg,
-    Real.sin_neg, pow_two]
+  simp [gaussRotMap_apply, gaussRot, gaussRotOrtho, add_assoc, add_left_comm,
+    add_comm, smul_add, smul_smul, mul_left_comm, mul_comm, Real.cos_neg,
+    Real.sin_neg]
   have hcos : Real.cos θ * Real.cos θ + Real.sin θ * Real.sin θ = (1 : ℝ) := by
     have : (Real.cos θ) ^ 2 + (Real.sin θ) ^ 2 = (1 : ℝ) := by simp
     simpa [pow_two] using this
   have hcross : -(Real.cos θ * Real.sin θ) + Real.sin θ * Real.cos θ = (0 : ℝ) := by ring
-  -- Collect like terms and simplify the scalar coefficients.
-  simp [add_assoc, add_add_add_comm, ← add_smul, hcos, hcross]
+  simp [← add_smul, hcos, hcross]
 
 private lemma gaussRotOrtho_gaussRotMap_neg (θ : ℝ) (p : H × H) :
     gaussRotOrtho (H := H) θ (gaussRotMap (H := H) (-θ) p) = p.2 := by
   rcases p with ⟨x, y⟩
-  simp [gaussRotMap_apply, gaussRot, gaussRotOrtho, sub_eq_add_neg, add_assoc, add_left_comm,
-    add_comm, smul_add, add_smul, smul_smul, mul_assoc, mul_left_comm, mul_comm, Real.cos_neg,
-    Real.sin_neg, pow_two]
+  simp [gaussRotMap_apply, gaussRot, gaussRotOrtho, add_assoc,
+    add_comm, smul_add, smul_smul, mul_comm, Real.cos_neg,
+    Real.sin_neg]
   have hcos : Real.cos θ * Real.cos θ + Real.sin θ * Real.sin θ = (1 : ℝ) := by
     have : (Real.cos θ) ^ 2 + (Real.sin θ) ^ 2 = (1 : ℝ) := by simp
     simpa [pow_two] using this
   have hcross : -(Real.sin θ * Real.cos θ) + Real.cos θ * Real.sin θ = (0 : ℝ) := by ring
-  -- Collect like terms and simplify the scalar coefficients.
-  simp [add_assoc, add_add_add_comm, ← add_smul, hcos, hcross]
+  simp [← add_smul, hcos]
 
 private lemma variance_gaussRot_components (θ : ℝ) (L₁ L₂ : StrongDual ℝ H) :
     Var[(Real.cos θ) • L₁ + (Real.sin θ) • L₂; μ]
@@ -245,7 +236,6 @@ private lemma variance_gaussRot_components (θ : ℝ) (L₁ L₂ : StrongDual �
 /-- The rotation map preserves the product Gaussian law (centered case). -/
 lemma map_gaussRotMap_prod (hmean0 : (∫ x : H, x ∂μ) = 0) (θ : ℝ) :
     (μ.prod μ).map (gaussRotMap (H := H) θ) = μ.prod μ := by
-  classical
   let P : Measure (H × H) := μ.prod μ
   let Q : Measure (H × H) := P.map (gaussRotMap (H := H) θ)
   haveI : IsGaussian P := by infer_instance
@@ -343,7 +333,7 @@ lemma map_gaussRotMap_prod (hmean0 : (∫ x : H, x ∂μ) = 0) (θ : ℝ) :
             calc
               L (0, -(Real.sin θ • x)) = L₂ (-(Real.sin θ • x)) := by simp [L₂]
               _ = -(L₂ (Real.sin θ • x)) := by simp
-              _ = -(Real.sin θ * L₂ x) := by simp [map_smul, smul_eq_mul, mul_assoc]
+              _ = -(Real.sin θ * L₂ x) := by simp [map_smul, smul_eq_mul]
               _ = -(Real.sin θ * L (0, x)) := by simp [L₂]
           simp [L₁, L₂, gaussRotMap_apply, gaussRot, gaussRotOrtho,
             ContinuousLinearMap.comp_apply, Real.cos_neg, Real.sin_neg, hdecomp, hL0,
@@ -387,31 +377,24 @@ the second moment of any `L : StrongDual ℝ F` is controlled by `‖covarianceO
 lemma integral_sq_dual_le_opNorm_covarianceOperator (hmean0 : (∫ x : F, x ∂ν) = 0)
     (L : StrongDual ℝ F) :
     (∫ x : F, (L x) ^ 2 ∂ν) ≤ ‖covarianceOperator ν‖ * ‖L‖ ^ 2 := by
-  classical
-  -- Let `h` be the Riesz representative of `L`.
   let h : F := (InnerProductSpace.toDual ℝ F).symm L
   have hL : ∀ x : F, L x = ⟪h, x⟫ := by
     intro x
-    simpa [h] using
-      (InnerProductSpace.toDual_symm_apply (𝕜 := ℝ) (E := F) (x := x) (y := L)).symm
-  -- `ν[L] = 0` for centered Gaussians.
+    simp [h]
   have hInt : Integrable (id : F → F) ν := IsGaussian.integrable_id (μ := ν)
   have hmeanL : ν[L] = 0 := by
     have : ν[L] = L (∫ x : F, x ∂ν) := by
       simpa using (L.integral_comp_comm hInt)
     simpa [hmean0] using this
-  -- Identify the second moment with `⟪covarianceOperator ν h, h⟫`.
   have hLp2 : MemLp (id : F → F) 2 ν := IsGaussian.memLp_two_id (μ := ν)
   have hEq : (∫ x : F, (L x) ^ 2 ∂ν) = ⟪covarianceOperator ν h, h⟫ := by
     calc
       (∫ x : F, (L x) ^ 2 ∂ν) = ∫ x : F, ⟪h, x⟫ ^ 2 ∂ν := by
         simp [hL]
       _ = ⟪covarianceOperator ν h, h⟫ := by
-        -- `covarianceOperator_inner` gives the uncentered second moment; the centering uses `hmeanL`.
         have : ⟪covarianceOperator ν h, h⟫ = ∫ x : F, ⟪h, x⟫ ^ 2 ∂ν := by
           simpa [pow_two] using (covarianceOperator_inner (μ := ν) hLp2 h h)
-        simpa [this]  -- just flip sides
-  -- Bound the quadratic form by the operator norm.
+        simp [this]
   calc
     (∫ x : F, (L x) ^ 2 ∂ν) = ⟪covarianceOperator ν h, h⟫ := hEq
     _ ≤ ‖covarianceOperator ν h‖ * ‖h‖ := real_inner_le_norm _ _
@@ -420,9 +403,7 @@ lemma integral_sq_dual_le_opNorm_covarianceOperator (hmean0 : (∫ x : F, x ∂�
           exact (covarianceOperator ν).le_opNorm h
     _ = ‖covarianceOperator ν‖ * ‖h‖ ^ 2 := by ring
     _ = ‖covarianceOperator ν‖ * ‖L‖ ^ 2 := by
-          -- `toDual` is an isometry.
-          simpa [h] using congrArg (fun r : ℝ => ‖covarianceOperator ν‖ * r ^ 2)
-            ((InnerProductSpace.toDual ℝ F).norm_symm_apply L)
+          simp [h]
 
 end PoincareAux
 
@@ -986,6 +967,41 @@ open scoped BigOperators
 variable {α : Type*} [Fintype α] [Nonempty α]
 
 variable {μ : Measure (EnergySpace α)} [ProbabilityTheory.IsGaussian μ]
+
+/-- The free energy density is square-integrable (`L²`) under any Gaussian law on `EnergySpace α`. -/
+theorem memLp_free_energy_density (n : ℕ) :
+    MemLp (fun H : EnergySpace α => free_energy_density (α := α) n H) 2 μ := by
+  classical
+  have hmeas :
+      AEStronglyMeasurable (fun H : EnergySpace α => free_energy_density (α := α) n H) μ := by
+    have hF : Measurable (fun H : EnergySpace α => free_energy_density (α := α) n H) :=
+      (contDiff_free_energy_density (α := α) (n := n)).continuous.measurable
+    exact hF.aestronglyMeasurable
+  have hIntSq :
+      Integrable (fun H : EnergySpace α => (free_energy_density (α := α) n H) ^ 2) μ := by
+    -- Polynomial growth + Fernique moments.
+    let C0 : ℝ := Real.log (Fintype.card α) + 1
+    have hF_sq_meas :
+        Measurable (fun H : EnergySpace α => (free_energy_density (α := α) n H) ^ 2) := by
+      have hF : Measurable (fun H : EnergySpace α => free_energy_density (α := α) n H) :=
+        (contDiff_free_energy_density (α := α) (n := n)).continuous.measurable
+      simpa using (hF.pow_const 2)
+    refine ProbabilityTheory.IsGaussian.integrable_of_abs_le_mul_one_add_norm_pow (μ := μ)
+      (E := EnergySpace α)
+      (F := fun H : EnergySpace α => (free_energy_density (α := α) n H) ^ 2)
+      hF_sq_meas (C := C0 ^ 2) (m := 2) (hC := by positivity) ?_
+    intro H
+    have habs : |free_energy_density (α := α) n H| ≤ C0 * (1 + ‖H‖) := by
+      simpa [C0] using (abs_free_energy_density_le (α := α) (n := n) (H := H))
+    have hpow :
+        |free_energy_density (α := α) n H| ^ 2 ≤ (C0 * (1 + ‖H‖)) ^ 2 :=
+      pow_le_pow_left₀ (abs_nonneg _) habs 2
+    calc
+      |(free_energy_density (α := α) n H) ^ 2|
+          = |free_energy_density (α := α) n H| ^ 2 := by simp
+      _ ≤ (C0 * (1 + ‖H‖)) ^ 2 := hpow
+      _ = (C0 ^ 2) * (1 + ‖H‖) ^ 2 := by ring
+  exact (memLp_two_iff_integrable_sq hmeas).2 hIntSq
 
 /-- **Gaussian `L²` self-averaging for the free energy density.**
 
