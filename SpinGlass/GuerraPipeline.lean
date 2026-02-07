@@ -50,14 +50,39 @@ theorem hasDerivAt_guerraPhi_eq_trace_integral
                   hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
                     (std_basis N σ) (std_basis N τ)) )
         ∂(μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim)) t := by
-  -- Start from the dominated differentiation step.
+  -- (B1) dominated differentiation.
   have hder :=
     hasDerivAt_guerraPhi (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim t ht
-  -- Rewrite the derivative value using the trace/Hessian identity.
-  simpa [μ,
-    derivative_value_guerraPhi_eq_trace_integral (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
-      (sk := sk) (sim := sim) hindep t ht]
-    using hder
+  -- (B2) IBP rewrite of the derivative value.
+  have hIBP :=
+    derivative_value_guerraPhi_eq_ibp (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
+      (sk := sk) (sim := sim) hindep t
+  -- (B3) trace/kernel reduction of the IBP expression.
+  have hTrace :=
+    ibp_value_guerraPhi_eq_trace_integral (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
+      (sk := sk) (sim := sim) hindep t ht
+  -- Rewrite the derivative value using (B2) then (B3), without letting simp normalize scalars.
+  have hderiv_value :
+      (∫ ω,
+          (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
+              (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω))
+            (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω)
+          ∂ℙ)
+        =
+        (∫ x : DisorderSpace (N := N),
+            (1 / 2 : ℝ) *
+              ( (∑ σ : Config N, ∑ τ : Config N,
+                    sk_cov_kernel N β σ τ *
+                      hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+                        (std_basis N σ) (std_basis N τ))
+                -
+                (∑ σ : Config N, ∑ τ : Config N,
+                    simple_cov_kernel N β (fun r => q * r) σ τ *
+                      hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+                        (std_basis N σ) (std_basis N τ)) )
+          ∂(μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim)) := by
+    exact hIBP.trans hTrace
+  simpa [hderiv_value] using hder
 
 end
 

@@ -1,5 +1,6 @@
 import Mathlib.Probability.Moments.SubGaussian
 import Mathlib.Probability.Distributions.Gaussian.Basic
+import Mathlib.Probability.Distributions.Gaussian.HasGaussianLaw.Basic
 
 /-!
 # Gaussian measures are sub-Gaussian (linear functionals)
@@ -44,7 +45,7 @@ theorem hasSubgaussianMGF_centered_dual (L : StrongDual ℝ E) :
       μ.map (fun x : E => L x - m)
           = μ.map ((fun y : ℝ => y - m) ∘ L) := by simp [hcomp]
       _ = (μ.map L).map (fun y : ℝ => y - m) := by
-            simpa using (Measure.map_map hsub_meas hL_meas).symm
+            exact (Measure.map_map hsub_meas hL_meas).symm
       _ = (ProbabilityTheory.gaussianReal m v).map (fun y : ℝ => y - m) := by
             simpa [m, v] using congrArg (fun ν => ν.map (fun y : ℝ => y - m)) hmapL
       _ = ProbabilityTheory.gaussianReal 0 v := by
@@ -70,6 +71,115 @@ theorem hasSubgaussianMGF_centered_dual (L : StrongDual ℝ E) :
       simpa [zero_mul, zero_add, add_assoc] using hmgf
     simp [m, v, hmgf']
 
+/-- Chernoff (one-sided) tail bound for a centered Gaussian linear functional. -/
+theorem measure_ge_le_centered_dual (L : StrongDual ℝ E) {ε : ℝ} (hε : 0 ≤ ε) :
+    μ.real {x : E | ε ≤ L x - μ[L]} ≤ rexp (-ε ^ 2 / (2 * (Var[L; μ]).toNNReal)) := by
+  simpa using (hasSubgaussianMGF_centered_dual (μ := μ) L).measure_ge_le hε
+
+/-- Two-sided tail bound for a centered Gaussian linear functional. -/
+theorem measure_ge_le_abs_centered_dual (L : StrongDual ℝ E) {ε : ℝ} (hε : 0 ≤ ε) :
+    μ.real {x : E | ε ≤ |L x - μ[L]|}
+      ≤ (2 : ℝ) * rexp (-ε ^ 2 / (2 * (Var[L; μ]).toNNReal)) := by
+  let X : E → ℝ := fun x => L x - μ[L]
+  have hX : ProbabilityTheory.HasSubgaussianMGF X (Var[L; μ]).toNNReal μ := by
+    simpa [X] using hasSubgaussianMGF_centered_dual (μ := μ) L
+  have hpos : μ.real {x : E | ε ≤ X x} ≤ rexp (-ε ^ 2 / (2 * (Var[L; μ]).toNNReal)) := by
+    simpa [X] using hX.measure_ge_le hε
+  have hneg : μ.real {x : E | ε ≤ -X x} ≤ rexp (-ε ^ 2 / (2 * (Var[L; μ]).toNNReal)) := by
+    simpa [X] using (hX.neg.measure_ge_le hε)
+  have hset :
+      {x : E | ε ≤ |X x|} = {x : E | ε ≤ X x} ∪ {x : E | ε ≤ -X x} := by
+    ext x
+    simp [le_abs]
+  calc
+    μ.real {x : E | ε ≤ |L x - μ[L]|}
+        = μ.real {x : E | ε ≤ |X x|} := by simp [X]
+    _ = μ.real ({x : E | ε ≤ X x} ∪ {x : E | ε ≤ -X x}) := by simp [hset]
+    _ ≤ μ.real {x : E | ε ≤ X x} + μ.real {x : E | ε ≤ -X x} := by
+          simpa using (MeasureTheory.measureReal_union_le (μ := μ)
+            ({x : E | ε ≤ X x}) ({x : E | ε ≤ -X x}))
+    _ ≤ rexp (-ε ^ 2 / (2 * (Var[L; μ]).toNNReal))
+          + rexp (-ε ^ 2 / (2 * (Var[L; μ]).toNNReal)) := by
+          gcongr
+    _ = (2 : ℝ) * rexp (-ε ^ 2 / (2 * (Var[L; μ]).toNNReal)) := by
+          simpa using (two_mul (rexp (-ε ^ 2 / (2 * (Var[L; μ]).toNNReal)))).symm
+
 end IsGaussian
+
+namespace HasGaussianLaw
+
+variable {Ω E : Type*} [MeasurableSpace Ω] {P : Measure Ω}
+variable [NormedAddCommGroup E] [NormedSpace ℝ E] [MeasurableSpace E] [BorelSpace E]
+variable {X : Ω → E}
+
+/-- A Gaussian random variable has sub-Gaussian mgf after applying a linear functional and centering. -/
+theorem hasSubgaussianMGF_centered_dual (hX : ProbabilityTheory.HasGaussianLaw X P) (L : StrongDual ℝ E) :
+    ProbabilityTheory.HasSubgaussianMGF
+        (fun ω : Ω => L (X ω) - P[fun ω : Ω => L (X ω)])
+        (Var[fun ω : Ω => L (X ω); P]).toNNReal P := by
+  let μ : Measure E := P.map X
+  haveI : ProbabilityTheory.IsGaussian μ := ProbabilityTheory.HasGaussianLaw.isGaussian_map hX
+  have hμ :
+      ProbabilityTheory.HasSubgaussianMGF (fun x : E => L x - μ[L]) (Var[L; μ]).toNNReal μ :=
+    ProbabilityTheory.IsGaussian.hasSubgaussianMGF_centered_dual (μ := μ) L
+  have hPull :
+      ProbabilityTheory.HasSubgaussianMGF (fun ω : Ω => (fun x : E => L x - μ[L]) (X ω))
+          (Var[L; μ]).toNNReal P :=
+    ProbabilityTheory.HasSubgaussianMGF.of_map (ProbabilityTheory.HasGaussianLaw.aemeasurable hX) hμ
+  have hmean : μ[L] = P[fun ω : Ω => L (X ω)] := by
+    simpa [μ] using
+      (MeasureTheory.integral_map (μ := P) (φ := X) (f := L)
+        (ProbabilityTheory.HasGaussianLaw.aemeasurable hX) (by fun_prop))
+  have hVar : Var[L; μ] = Var[fun ω : Ω => L (X ω); P] := by
+    simpa [μ, Function.comp] using
+      (ProbabilityTheory.variance_map (μ := P) (Y := X) (X := L) (hX := by fun_prop)
+        (ProbabilityTheory.HasGaussianLaw.aemeasurable hX))
+  have hPull' :
+      ProbabilityTheory.HasSubgaussianMGF
+          (fun ω : Ω => L (X ω) - P[fun ω : Ω => L (X ω)]) (Var[L; μ]).toNNReal P := by
+    refine hPull.congr ?_
+    filter_upwards [] with ω
+    simp [hmean, μ]
+  simpa [hVar] using hPull'
+
+/-- Chernoff (one-sided) tail bound for a centered Gaussian linear functional of a Gaussian RV. -/
+theorem measure_ge_le_centered_dual (hX : ProbabilityTheory.HasGaussianLaw X P) (L : StrongDual ℝ E)
+    {ε : ℝ} (hε : 0 ≤ ε) :
+    P.real {ω : Ω | ε ≤ L (X ω) - P[fun ω : Ω => L (X ω)]}
+      ≤ rexp (-ε ^ 2 / (2 * (Var[fun ω : Ω => L (X ω); P]).toNNReal)) := by
+  simpa using (hasSubgaussianMGF_centered_dual (X := X) (P := P) hX L).measure_ge_le hε
+
+/-- Two-sided tail bound for a centered Gaussian linear functional of a Gaussian RV. -/
+theorem measure_ge_le_abs_centered_dual (hX : ProbabilityTheory.HasGaussianLaw X P) (L : StrongDual ℝ E)
+    {ε : ℝ} (hε : 0 ≤ ε) :
+    P.real {ω : Ω | ε ≤ |L (X ω) - P[fun ω : Ω => L (X ω)]|}
+      ≤ (2 : ℝ) * rexp (-ε ^ 2 / (2 * (Var[fun ω : Ω => L (X ω); P]).toNNReal)) := by
+  let Y : Ω → ℝ := fun ω : Ω => L (X ω) - P[fun ω : Ω => L (X ω)]
+  have hY : ProbabilityTheory.HasSubgaussianMGF Y (Var[fun ω : Ω => L (X ω); P]).toNNReal P :=
+    hasSubgaussianMGF_centered_dual (X := X) (P := P) hX L
+  have hpos : P.real {ω : Ω | ε ≤ Y ω}
+      ≤ rexp (-ε ^ 2 / (2 * (Var[fun ω : Ω => L (X ω); P]).toNNReal)) := by
+    simpa [Y] using hY.measure_ge_le hε
+  have hneg : P.real {ω : Ω | ε ≤ -Y ω}
+      ≤ rexp (-ε ^ 2 / (2 * (Var[fun ω : Ω => L (X ω); P]).toNNReal)) := by
+    simpa [Y] using (hY.neg.measure_ge_le hε)
+  have hset : {ω : Ω | ε ≤ |Y ω|} = {ω : Ω | ε ≤ Y ω} ∪ {ω : Ω | ε ≤ -Y ω} := by
+    ext ω
+    simp [le_abs]
+  calc
+    P.real {ω : Ω | ε ≤ |L (X ω) - P[fun ω : Ω => L (X ω)]|}
+        = P.real {ω : Ω | ε ≤ |Y ω|} := by simp [Y]
+    _ = P.real ({ω : Ω | ε ≤ Y ω} ∪ {ω : Ω | ε ≤ -Y ω}) := by simp [hset]
+    _ ≤ P.real {ω : Ω | ε ≤ Y ω} + P.real {ω : Ω | ε ≤ -Y ω} := by
+          simpa using
+            (MeasureTheory.measureReal_union_le (μ := P) ({ω : Ω | ε ≤ Y ω}) ({ω : Ω | ε ≤ -Y ω}))
+    _ ≤ rexp (-ε ^ 2 / (2 * (Var[fun ω : Ω => L (X ω); P]).toNNReal))
+          + rexp (-ε ^ 2 / (2 * (Var[fun ω : Ω => L (X ω); P]).toNNReal)) := by
+          gcongr
+    _ = (2 : ℝ) * rexp (-ε ^ 2 / (2 * (Var[fun ω : Ω => L (X ω); P]).toNNReal)) := by
+          simpa using
+            (two_mul (rexp (-ε ^ 2 / (2 * (Var[fun ω : Ω => L (X ω); P]).toNNReal)))).symm
+
+end HasGaussianLaw
 
 end ProbabilityTheory
