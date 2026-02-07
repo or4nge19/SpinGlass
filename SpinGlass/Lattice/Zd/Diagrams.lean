@@ -81,7 +81,6 @@ lemma bubbleRaw_zero (d : ℕ) (spin : S → ℝ) (μ : Measure (ZLattice d → 
     bubbleRaw (d := d) spin μ 0 =
       (GibbsMeasure.Observables.Correlations.twoPoint
         (ι := ZLattice d) spin μ (0 : ZLattice d) (0 : ZLattice d)) ^ (2 : ℕ) := by
-  classical
   simp [bubbleRaw, GibbsMeasure.Observables.Correlations.Diagrams.bubbleRaw, box_zero]
 
 @[simp]
@@ -89,7 +88,6 @@ lemma bubble_zero (d : ℕ) (spin : S → ℝ) (μ : Measure (ZLattice d → S))
     bubble (d := d) spin μ 0 =
       GibbsMeasure.Observables.Correlations.twoPoint
         (ι := ZLattice d) spin μ (0 : ZLattice d) (0 : ZLattice d) := by
-  classical
   by_cases h00 :
       GibbsMeasure.Observables.Correlations.twoPoint
         (ι := ZLattice d) spin μ (0 : ZLattice d) (0 : ZLattice d) = 0
@@ -103,8 +101,7 @@ lemma bubble_eq_bubbleRaw_of_twoPoint00_eq_one
     (h00 :
       GibbsMeasure.Observables.Correlations.twoPoint
         (ι := ZLattice d) spin μ (0 : ZLattice d) (0 : ZLattice d) = 1)
-    (L : ℕ) :
-    bubble (d := d) spin μ L = bubbleRaw (d := d) spin μ L := by
+    (L : ℕ) : bubble (d := d) spin μ L = bubbleRaw (d := d) spin μ L := by
   simpa [bubble, bubbleRaw] using
     (GibbsMeasure.Observables.Correlations.Diagrams.bubble_eq_bubbleRaw_of_twoPoint00_eq_one
       (ι := ZLattice d) (spin := spin) (μ := μ) (Λ := box d L) (o := (0 : ZLattice d)) h00)
@@ -116,7 +113,6 @@ lemma chi_zero (d : ℕ) (spin : S → ℝ) (μ : Measure (ZLattice d → S)) :
     chi (d := d) spin μ 0 =
       GibbsMeasure.Observables.Correlations.twoPoint
         (ι := ZLattice d) spin μ (0 : ZLattice d) (0 : ZLattice d) := by
-  classical
   simp [chi, GibbsMeasure.Observables.Correlations.Diagrams.chi, box_zero]
 
 lemma chi_mono {d : ℕ} {S : Type*} [MeasurableSpace S] (spin : S → ℝ)
@@ -126,7 +122,6 @@ lemma chi_mono {d : ℕ} {S : Type*} [MeasurableSpace S] (spin : S → ℝ)
         0 ≤ GibbsMeasure.Observables.Correlations.twoPoint
           (ι := ZLattice d) spin μ (0 : ZLattice d) x) :
     chi (d := d) spin μ L ≤ chi (d := d) spin μ L' := by
-  classical
   have hsub : box d L ⊆ box d L' := box_mono (d := d) hLL'
   simpa [chi] using
     (GibbsMeasure.Observables.Correlations.Diagrams.chi_mono
@@ -140,4 +135,3 @@ end Zd
 end Lattice
 
 end SpinGlass
-
