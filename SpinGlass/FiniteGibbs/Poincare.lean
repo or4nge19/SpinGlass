@@ -362,7 +362,7 @@ lemma map_gaussRotMap_prod (hmean0 : (∫ x : H, x ∂μ) = 0) (θ : ℝ) :
     simpa using hdiag
   simpa [P, Q] using (ProbabilityTheory.IsGaussian.ext_covarianceBilinDual (μ := P) (ν := Q) hm hv).symm
 
-/-! ### (WIP) Main variance bound will go here. -/
+/-! ### Main variance bound will go here. -/
 
 section PoincareAux
 
@@ -417,7 +417,6 @@ variable (hmean0 : (∫ x : H, x ∂μ) = 0)
 
 private lemma hasDerivAt_gaussRot (θ : ℝ) (p : H × H) :
     HasDerivAt (fun t : ℝ => gaussRot (H := H) t p) (gaussRotOrtho (H := H) θ p) θ := by
-  -- Differentiate the explicit `cos/sin` formula.
   simpa [gaussRot, gaussRotOrtho, add_comm, add_left_comm, add_assoc, sub_eq_add_neg, smul_add] using
     ((Real.hasDerivAt_cos θ).smul_const p.1).add ((Real.hasDerivAt_sin θ).smul_const p.2)
 
@@ -428,7 +427,6 @@ private lemma hasDerivAt_comp_gaussRot {f : H → ℝ} (hf : ContDiff ℝ 1 f) (
     (hf.differentiable (by simp)).differentiableAt
   have hF : HasFDerivAt f (fderiv ℝ f (gaussRot (H := H) θ p)) (gaussRot (H := H) θ p) :=
     hf'.hasFDerivAt
-  -- Chain rule: `f ∘ gaussRot`.
   simpa using (hF.comp_hasDerivAt θ (hasDerivAt_gaussRot (H := H) θ p))
 
 /-!
@@ -443,11 +441,11 @@ private lemma sq_intervalIntegral_le_sub_mul_integral_sq {a b : ℝ} (hab : a �
     {g : ℝ → ℝ} (hg : MemLp g 2 (volume.restrict (Set.Ioc a b))) :
     (∫ t in a..b, g t) ^ 2 ≤ (b - a) * ∫ t in a..b, (g t) ^ 2 := by
   have hI : (∫ t in a..b, g t) = ∫ t in Set.Ioc a b, g t ∂volume := by
-    simpa [intervalIntegral.integral_of_le hab]
+    simp [intervalIntegral.integral_of_le hab]
   have hI2 : (∫ t in a..b, (g t) ^ 2) = ∫ t in Set.Ioc a b, (g t) ^ 2 ∂volume := by
-    simpa [intervalIntegral.integral_of_le hab]
+    simp [intervalIntegral.integral_of_le hab]
   have hvol : (volume (Set.Ioc a b)) < ∞ := by
-    simpa [volume_Ioc] using (ENNReal.ofReal_lt_top (b - a))
+    simp [volume_Ioc]
   haveI : Fact ((volume : Measure ℝ) (Set.Ioc a b) < ∞) := ⟨hvol⟩
   haveI : IsFiniteMeasure (volume.restrict (Set.Ioc a b)) := by infer_instance
   have h1 :
@@ -479,7 +477,7 @@ private lemma sq_intervalIntegral_le_sub_mul_integral_sq {a b : ℝ} (hab : a �
       (∫ t in Set.Ioc a b, |g t| ^ (2 : ℝ) ∂volume) = ∫ t in Set.Ioc a b, (g t) ^ 2 ∂volume := by
     refine integral_congr_ae ?_
     filter_upwards with t
-    simp [Real.rpow_two]
+    simp
   have hset :
       |∫ t in Set.Ioc a b, g t ∂volume| ^ 2
         ≤ (b - a) * ∫ t in Set.Ioc a b, (g t) ^ 2 ∂volume := by
@@ -582,7 +580,7 @@ theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
           ∫ p : H × H, (f p.1 - f p.2) ^ 2 ∂P = 2 * Var[f; μ] := by
         calc
           ∫ p : H × H, (f p.1 - f p.2) ^ 2 ∂P
-              = Var[(fun p : H × H => f p.1 - f p.2); P] := by simpa [hVarDiffInt]
+              = Var[(fun p : H × H => f p.1 - f p.2); P] := by simp [hVarDiffInt]
           _ = 2 * Var[f; μ] := hVarDiff
       calc
         Var[f; μ] = (1 / (2 : ℝ)) * (2 * Var[f; μ]) := by ring
@@ -684,8 +682,7 @@ theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
       calc
         (f p.1 - f p.2) ^ 2 = (f p.2 - f p.1) ^ 2 := by ring
         _ ≤ b * ∫ θ in 0..b, (d θ p) ^ 2 := this
-    have hvol_u : (volume (Set.uIoc (0 : ℝ) b)) < ∞ := by
-      simpa [volume_uIoc] using (ENNReal.ofReal_lt_top (|b - (0 : ℝ)|))
+    have hvol_u : (volume (Set.uIoc (0 : ℝ) b)) < ∞ := by simp [volume_uIoc]
     haveI : Fact ((volume : Measure ℝ) (Set.uIoc (0 : ℝ) b) < ∞) := ⟨hvol_u⟩
     haveI : IsFiniteMeasure (volume.restrict (Set.uIoc (0 : ℝ) b)) := by infer_instance
     have hIdLp2 : MemLp (id : H → H) 2 μ := IsGaussian.memLp_two_id (μ := μ)
@@ -913,7 +910,7 @@ theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
                 simpa [φ] using hFub
         _ ≤ ∫ _x : H, ‖covarianceOperator μ‖ * K ^ 2 ∂μ := hInt_le
         _ = ‖covarianceOperator μ‖ * K ^ 2 := by
-              simp [probReal_univ, mul_assoc]
+              simp [probReal_univ]
     have hInt_final :
         ∫ p : H × H, (f p.1 - f p.2) ^ 2 ∂P
           ≤ (Real.pi ^ 2 / 4) * (‖covarianceOperator μ‖ * K ^ 2) := by
@@ -979,7 +976,6 @@ theorem memLp_free_energy_density (n : ℕ) :
     exact hF.aestronglyMeasurable
   have hIntSq :
       Integrable (fun H : EnergySpace α => (free_energy_density (α := α) n H) ^ 2) μ := by
-    -- Polynomial growth + Fernique moments.
     let C0 : ℝ := Real.log (Fintype.card α) + 1
     have hF_sq_meas :
         Measurable (fun H : EnergySpace α => (free_energy_density (α := α) n H) ^ 2) := by
@@ -1028,6 +1024,53 @@ theorem variance_free_energy_density_le_pi_sq_div_eight_mul_opNorm_covarianceOpe
   simpa using
     (ProbabilityTheory.IsGaussian.variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
       (H := EnergySpace α) (μ := μ) hmean0 hf (K := (1 / (n : ℝ))) (hK := by positivity) hderiv)
+
+/-- An `L²`-form of self-averaging: the centered second moment is bounded by the same RHS. -/
+theorem integral_sub_mean_sq_free_energy_density_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_div_n_sq
+    (hmean0 : (∫ x : EnergySpace α, x ∂μ) = 0) (n : ℕ) :
+    (∫ H : EnergySpace α,
+        (free_energy_density (α := α) n H -
+            μ[fun H : EnergySpace α => free_energy_density (α := α) n H]) ^ 2 ∂μ)
+      ≤ (Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (n : ℝ)) ^ 2 := by
+  let F : EnergySpace α → ℝ := fun H => free_energy_density (α := α) n H
+  have hF_mem : MemLp F 2 μ := memLp_free_energy_density (μ := μ) (α := α) n
+  have hF_meas : AEMeasurable F μ := hF_mem.1.aemeasurable
+  have hVarEq : Var[F; μ] = ∫ H, (F H - μ[F]) ^ 2 ∂μ :=
+    ProbabilityTheory.variance_eq_integral (μ := μ) hF_meas
+  have hVar :
+      Var[F; μ] ≤ (Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (n : ℝ)) ^ 2 :=
+    variance_free_energy_density_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_div_n_sq
+      (α := α) (μ := μ) hmean0 n
+  simpa [F, hVarEq] using hVar
+
+/-- A Chebyshev-type tail bound for the free energy density under a Gaussian law. -/
+theorem meas_ge_le_free_energy_density_sub_mean_div_sq
+    (hmean0 : (∫ x : EnergySpace α, x ∂μ) = 0) (n : ℕ) {c : ℝ} (hc : 0 < c) :
+    μ {H : EnergySpace α |
+        c ≤
+          |free_energy_density (α := α) n H
+            - μ[fun H : EnergySpace α => free_energy_density (α := α) n H]|}
+      ≤ ENNReal.ofReal
+          (((Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (n : ℝ)) ^ 2) /
+            c ^ 2) := by
+  let F : EnergySpace α → ℝ := fun H => free_energy_density (α := α) n H
+  let C : ℝ :=
+    (Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (n : ℝ)) ^ 2
+  have hF_mem : MemLp F 2 μ := memLp_free_energy_density (μ := μ) (α := α) n
+  have hCheb :
+      μ {H : EnergySpace α | c ≤ |F H - μ[F]|}
+        ≤ ENNReal.ofReal (Var[F; μ] / c ^ 2) :=
+    ProbabilityTheory.meas_ge_le_variance_div_sq (μ := μ) (X := F) hF_mem hc
+  have hVar : Var[F; μ] ≤ C :=
+    (variance_free_energy_density_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_div_n_sq
+      (α := α) (μ := μ) hmean0 n)
+  have hDiv : Var[F; μ] / c ^ 2 ≤ C / c ^ 2 :=
+    div_le_div_of_nonneg_right hVar (sq_nonneg c)
+  have hOfReal : ENNReal.ofReal (Var[F; μ] / c ^ 2) ≤ ENNReal.ofReal (C / c ^ 2) :=
+    ENNReal.ofReal_le_ofReal hDiv
+  have htail : μ {H : EnergySpace α | c ≤ |F H - μ[F]|} ≤ ENNReal.ofReal (C / c ^ 2) :=
+    le_trans hCheb hOfReal
+  simpa [F, C] using htail
 
 end
 
