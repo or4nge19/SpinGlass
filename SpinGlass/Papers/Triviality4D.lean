@@ -19,6 +19,27 @@ Reusable definitions/layers live in:
 - `GibbsMeasure.Observables.Correlations` (model-agnostic correlations/diagrams),
 - `SpinGlass.Lattice.Zd.Correlations` and `SpinGlass.Lattice.Zd.BoxDiagrams` (the `ℤ^d`-specialized adapters).
 - `SpinGlass.Lattice.Zd.Scaling` (scaling observables `scalePoint`, `sigmaL`, `Tf`).
+
+## Roadmap / formalization status (peer-review triage)
+
+This file is currently an **interface/skeleton**: it states theorems and supplies the reusable
+algebraic/scaling API needed to *prove* them, but it does not yet formalize the model-specific
+machinery of the paper (random currents, Lee–Yang, infrared bounds, etc.).
+
+The following items are **intentionally missing** and should be added as separate modules once we
+move from “stating” to “proving” the paper:
+
+- **Ising Gibbs states on `ℤ^4`**: Hamiltonian/DLR formulation, n.n. ferromagnetism, existence of
+  infinite-volume Gibbs measures, and the critical point `βc`.
+- **Griffiths–Simon (GS) class**: a predicate on single-site measures (and the induced lattice
+  models), including the sub-Gaussian growth condition from Definition 2.1.
+- **Reflection positivity and infrared bounds** (including the sliding-scale form used in Section 3).
+- **Random current representation + switching lemma** (Sections 1.5, 3–5).
+- **Mixing/intersection-clustering bounds** (Proposition 4.1, Theorem 4.5).
+
+For now, the main results are stated for abstract measure families `μβ` satisfying the explicit
+analytic hypotheses that appear in the statements (e.g. nonnegativity of `twoPoint`), so that later
+we can instantiate them with the actual Ising/GS models once that infrastructure exists.
 -/
 
 open scoped BigOperators CompactlySupported
@@ -67,15 +88,70 @@ This matches the paper’s “generalized Gaussian process” conclusion in Theo
 def IsGeneralizedGaussianProcess
     {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
     {Test : Type*} (T : Test → Ω → ℝ) : Prop :=
-  ∀ n : ℕ, ∀ f : Fin n → Test,
-    ProbabilityTheory.IsGaussian (P.map (fun ω => fun i : Fin n => T (f i) ω))
+  (∀ f : Test, Measurable (T f)) ∧
+    ∀ n : ℕ, ∀ f : Fin n → Test,
+      ProbabilityTheory.IsGaussian (P.map (fun ω => fun i : Fin n => T (f i) ω))
 
 lemma IsGeneralizedGaussianProcess.isGaussian
     {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
     {Test : Type*} {T : Test → Ω → ℝ} (h : IsGeneralizedGaussianProcess (P := P) (T := T))
     (n : ℕ) (f : Fin n → Test) :
     ProbabilityTheory.IsGaussian (P.map (fun ω => fun i : Fin n => T (f i) ω)) :=
-  h n f
+  h.2 n f
+
+lemma IsGeneralizedGaussianProcess.measurable
+    {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+    {Test : Type*} {T : Test → Ω → ℝ} (h : IsGeneralizedGaussianProcess (P := P) (T := T))
+    (f : Test) :
+    Measurable (T f) :=
+  h.1 f
+
+lemma IsGeneralizedGaussianProcess.measurable_vec
+    {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+    {Test : Type*} {T : Test → Ω → ℝ} (h : IsGeneralizedGaussianProcess (P := P) (T := T))
+    (n : ℕ) (f : Fin n → Test) :
+    Measurable (fun ω : Ω => fun i : Fin n => T (f i) ω) := by
+  classical
+  refine (measurable_pi_iff).2 ?_
+  intro i
+  simpa using h.measurable (f i)
+
+lemma IsGeneralizedGaussianProcess.isProbabilityMeasure_law
+    {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+    {Test : Type*} {T : Test → Ω → ℝ} (h : IsGeneralizedGaussianProcess (P := P) (T := T))
+    (n : ℕ) (f : Fin n → Test) :
+    IsProbabilityMeasure (P.map (fun ω : Ω => fun i : Fin n => T (f i) ω)) := by
+  have hω : Measurable (fun ω : Ω => fun i : Fin n => T (f i) ω) :=
+    h.measurable_vec (n := n) f
+  exact Measure.isProbabilityMeasure_map (μ := P) hω.aemeasurable
+
+lemma IsGeneralizedGaussianProcess.map_eq_gaussianReal
+    {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+    {Test : Type*} {T : Test → Ω → ℝ} (h : IsGeneralizedGaussianProcess (P := P) (T := T))
+    (n : ℕ) (f : Fin n → Test) (L : StrongDual ℝ (Fin n → ℝ)) :
+    (P.map (fun ω : Ω => fun i : Fin n => T (f i) ω)).map L
+      =
+      gaussianReal (∫ x, L x ∂(P.map (fun ω : Ω => fun i : Fin n => T (f i) ω)))
+        (Var[⇑L; P.map (fun ω : Ω => fun i : Fin n => T (f i) ω)]).toNNReal := by
+  letI : ProbabilityTheory.IsGaussian (P.map (fun ω : Ω => fun i : Fin n => T (f i) ω)) :=
+    h.isGaussian n f
+  simpa using (ProbabilityTheory.IsGaussian.map_eq_gaussianReal (μ := P.map (fun ω : Ω =>
+    fun i : Fin n => T (f i) ω)) L)
+
+lemma IsGeneralizedGaussianProcess.charFunDual_eq
+    {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+    {Test : Type*} {T : Test → Ω → ℝ} (h : IsGeneralizedGaussianProcess (P := P) (T := T))
+    (n : ℕ) (f : Fin n → Test) (L : StrongDual ℝ (Fin n → ℝ)) :
+    MeasureTheory.charFunDual (P.map (fun ω : Ω => fun i : Fin n => T (f i) ω)) L
+      =
+      Complex.exp
+        ((∫ x, (L x : ℝ) ∂(P.map (fun ω : Ω => fun i : Fin n => T (f i) ω)) : ℂ) * Complex.I
+          - (Var[⇑L; P.map (fun ω : Ω => fun i : Fin n => T (f i) ω)] : ℝ) / 2) := by
+  letI : ProbabilityTheory.IsGaussian (P.map (fun ω : Ω => fun i : Fin n => T (f i) ω)) :=
+    h.isGaussian n f
+  simpa using
+    (ProbabilityTheory.IsGaussian.charFunDual_eq (μ := P.map (fun ω : Ω => fun i : Fin n =>
+      T (f i) ω)) L)
 
 end GaussianProcess
 
@@ -216,6 +292,9 @@ theorem Gaussianity_phi4_4D
     (hPhiEven : ∀ L : ℕ, PhiEven (d := 4) (μ := μL L)) :
     HasFiniteDimensionalScalingLimit (d := 4) (Ω := Ω) μL P Tlim →
     IsGeneralizedGaussianProcess (P := P) (T := Tlim) := by
+  -- TODO: combine (i) Proposition 1.3 (characteristic-function bound),
+  -- (ii) tightness/projective limit machinery, and
+  -- (iii) `IsGaussian` characterization via `charFunDual`.
   sorry
 
 end Phi4Gaussianity
@@ -228,6 +307,11 @@ section Statements
 
 /--
 **Theorem (Improved tree diagram bound inequality)** (paper Theorem 1.2 / Theorem 1.3 in the TeX).
+
+Implementation note: we state the inequality in `ENNReal` using `ENNReal.ofReal` so that the
+infinite sum on the right-hand side is always meaningful (it may take the value `∞`), avoiding
+auxiliary `Summable` side-conditions. One can recover a real-valued statement by applying
+`ENNReal.toReal` once finiteness is established.
 -/
 theorem ImprovedTreeDiagramBound_Ising4
     (μβ : ℝ → Measure (Z4 → Bool))
@@ -248,6 +332,7 @@ theorem ImprovedTreeDiagramBound_Ising4
                         twoPoint (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) u y *
                         twoPoint (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) u z *
                         twoPoint (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) u t)) := by
+  -- TODO: random current representation + switching lemma + scale bookkeeping (TeX Sections 3–5).
   sorry
 
 /-! ### Proposition 1.3 (quantitative Gaussian characteristic-function bound, Ising) -/
@@ -283,6 +368,62 @@ theorem gaussianCharFnBound_Ising4
                   - 1| ≤
                 (C * (M ^ (4 : ℕ)) * (supportDiameter f) ^ (12 : ℕ)) /
                     (Real.log (L : ℝ)) ^ c * z ^ (4 : ℕ) := by
+  -- TODO: implement TeX Proposition `prop:gaussian b` (Section 4.3),
+  -- using the cumulant/Ursell bridge for `Tf` from `SpinGlass.Lattice.Zd.Scaling`.
+  sorry
+
+/-!
+### Structural dependency: Proposition 1.3 from Theorem 1.2
+
+The paper derives Proposition `prop:gaussian b` from the improved tree diagram bound
+(Theorem 1.2 / 1.3 in the TeX) combined with a Lee–Yang/Newman moment comparison
+inequality.  We record this dependency as an explicit lemma so that the eventual proof
+can be filled in modularly.
+-/
+
+theorem gaussianCharFnBound_Ising4_of_ImprovedTreeDiagramBound_Ising4
+    (μβ : ℝ → Measure (Z4 → Bool)) (βc : ℝ) (ξ : ℝ → ℝ≥0∞) :
+    (∃ c C : ℝ, 0 < c ∧ 0 < C ∧
+      ∀ β : ℝ, β ≤ βc →
+        IsProbabilityMeasure (μβ β) →
+        (∀ u v : Z4,
+          0 ≤ twoPoint (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) u v) →
+        ∀ L : ℕ, (L : ℝ≥0∞) ≤ ξ β →
+          0 < bubbleRaw (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) L →
+          ∀ x y z t : Z4, pairwiseFar 4 L x y z t →
+            ENNReal.ofReal (|ursell4 (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) x y z t|)
+              ≤ ENNReal.ofReal (C / (bubbleRaw (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) L) ^ c) *
+                  (∑' u : Z4,
+                    ENNReal.ofReal
+                      (twoPoint (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) u x *
+                        twoPoint (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) u y *
+                        twoPoint (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) u z *
+                        twoPoint (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) u t))) →
+    ∃ c C : ℝ, 0 < c ∧ 0 < C ∧
+      ∀ β : ℝ, β ≤ βc →
+        IsProbabilityMeasure (μβ β) →
+        ∀ L : ℕ, (L : ℝ≥0∞) ≤ ξ β →
+          (2 ≤ L) →
+          ∀ f : C_c(Fin 4 → ℝ, ℝ),
+            ∀ M : ℝ, (∀ x : Fin 4 → ℝ, |f x| ≤ M) →
+            ∀ z : ℝ,
+              |(μβ β)[fun σ =>
+                    Real.exp
+                      (z * Tf (d := 4) (S := Bool) (spin := SpinGlass.isingSpin) (μ := μβ β) (f := f) L σ
+                        - (z ^ (2 : ℕ)) / 2 *
+                            (μβ β)[fun σ' =>
+                              (Tf (d := 4) (S := Bool) (spin := SpinGlass.isingSpin) (μ := μβ β)
+                                    (f := f) L σ') ^ (2 : ℕ)])]
+                  - 1| ≤
+                (C * (M ^ (4 : ℕ)) * (supportDiameter f) ^ (12 : ℕ)) /
+                    (Real.log (L : ℝ)) ^ c * z ^ (4 : ℕ) := by
+  intro _hTree
+  -- The proof will combine:
+  -- (1) a Lee–Yang/Newman moment comparison inequality (Aizenman switching),
+  -- (2) the improved tree diagram bound for `ursell4`,
+  -- (3) the cumulant/ursell identity for `Tf` from `SpinGlass.Lattice.Zd.Scaling`.
+  --
+  -- TODO: implement the full chain as in TeX Section 4.3.
   sorry
 
 /-! ### Theorem 6.1 (Improved tree diagram bound for the GS class, d=4) -/
@@ -319,6 +460,7 @@ theorem ImprovedTreeDiagramBound_GS4
                         ENNReal.ofReal
                           ((β * J) *
                             twoPoint (d := 4) (spin := (fun x : ℝ => x)) (μ := μβ β) u'' t))) := by
+  -- TODO: formalize GS class + Griffiths–Simon reduction, then lift the Ising bound.
   sorry
 
 end Statements

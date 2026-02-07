@@ -115,6 +115,19 @@ def pairwiseFar (d : ℕ) (L : ℕ) (x y z t : ZLattice d) : Prop :=
   L < distInf d y z ∧ L < distInf d y t ∧
   L < distInf d z t
 
+/-- Minimal `ℓ∞` distance among the six pairs of four points. -/
+noncomputable def minDist4 (d : ℕ) (x y z t : ZLattice d) : ℕ :=
+  min (distInf d x y)
+    (min (distInf d x z)
+      (min (distInf d x t)
+        (min (distInf d y z)
+          (min (distInf d y t) (distInf d z t)))))
+
+lemma pairwiseFar_iff_lt_minDist4 {d : ℕ} {L : ℕ} {x y z t : ZLattice d} :
+    pairwiseFar d L x y z t ↔ L < minDist4 d x y z t := by
+  -- expand the nested `min` structure
+  simp [pairwiseFar, minDist4]
+
 /-!
 ### boxes/annuli
 
