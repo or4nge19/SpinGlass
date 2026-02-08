@@ -40,7 +40,6 @@ theorem tsum_pi_currTerm_eq_prod_tsum
     (f : E → ℕ → ℝ) (hf : ∀ e, Summable fun k : ℕ => ‖f e k‖) :
     (Summable (fun n : E → ℕ => ‖currTerm (E := E) f n‖)) ∧
       (∑' n : E → ℕ, currTerm (E := E) f n) = ∏ e : E, (∑' k : ℕ, f e k) := by
-  classical
   refine (Fintype.induction_empty_option
     (P := fun E _ =>
       ∀ (f : E → ℕ → ℝ), (∀ e, Summable fun k : ℕ => ‖f e k‖) →
@@ -180,7 +179,6 @@ variable (h : ι → Bool → ℝ)
 /-- Finite sum over all functions `ι → Bool` factorizes into a product of single-site sums. -/
 lemma sum_all_bool_functions_prod :
     (∑ σ : (ι → Bool), ∏ i : ι, h i (σ i)) = ∏ i : ι, (∑ b : Bool, h i b) := by
-  classical
   have hR :
       (∏ i : ι, (∑ b : Bool, h i b))
         = ∏ i ∈ (Finset.univ : Finset ι), ∑ b ∈ (Finset.univ : Finset Bool), h i b := by
@@ -261,7 +259,6 @@ section ProdIndicatorTwo
 variable {α : Type*} [Fintype α] [DecidableEq α]
 
 noncomputable def orEqEquivBool (a b : α) (hab : a ≠ b) : {x : α // x = a ∨ x = b} ≃ Bool := by
-  classical
   have hba : b ≠ a := by
     intro h
     exact hab h.symm
@@ -287,7 +284,6 @@ variable {M : Type*} [CommMonoid M]
 
 lemma prod_indicator_two (s : α → M) (a b : α) (hab : a ≠ b) (k : ℕ) :
     (∏ x : α, (s x) ^ (if x = a ∨ x = b then k else 0)) = (s a) ^ k * (s b) ^ k := by
-  classical
   have hprod :
       (∏ x : α, (s x) ^ (if x = a ∨ x = b then k else 0))
         = ∏ x : α, dite (x = a ∨ x = b) (fun _ => (s x) ^ k) (fun _ => (1 : M)) := by
@@ -329,7 +325,6 @@ lemma prod_indicator_two (s : α → M) (a b : α) (hab : a ≠ b) (k : ℕ) :
 /-- Rewrite a product over a finset as a product over all indices with an indicator exponent. -/
 lemma prod_mem_eq_prod_pow_indicator (A : Finset α) (s : α → M) :
     (∏ x ∈ A, s x) = ∏ x : α, (s x) ^ (if x ∈ A then (1 : ℕ) else 0) := by
-  classical
   -- rewrite the RHS as an `if`-product
   have hpow :
       (∏ x : α, (s x) ^ (if x ∈ A then (1 : ℕ) else 0)) = ∏ x : α, (if x ∈ A then s x else (1 : M)) := by
@@ -363,7 +358,6 @@ end ProdIndicatorTwo
 lemma edge_factor_eq_vertex_prod (σ : ↥Λ → Bool) (n : Current (V := V) Λ) (e : Edge (V := V) Λ) :
     (edgeSpin (V := V) (Λ := Λ) σ e) ^ (n e)
       = ∏ x : ↥Λ, (spinVal (Λ := Λ) σ x) ^ (if x ∈ (e.1 : Sym2 (↥Λ)) then n e else 0) := by
-  classical
   rcases e with ⟨m, hm⟩
   -- reduce to `m = s(a,b)` using `Sym2.ind`, but quantify the off-diagonal proof
   have hP :
@@ -408,7 +402,6 @@ lemma edge_factor_eq_vertex_prod (σ : ↥Λ → Bool) (n : Current (V := V) Λ)
 
 lemma edgeMonomial_eq_vertexMonomial (σ : ↥Λ → Bool) (n : Current (V := V) Λ) :
     edgeMonomial (V := V) (Λ := Λ) σ n = vertexMonomial (V := V) (Λ := Λ) σ n := by
-  classical
   -- expand each edge factor into a product over vertices
   have h1 :
       (∏ e : Edge (V := V) Λ, (edgeSpin (V := V) (Λ := Λ) σ e) ^ (n e))
@@ -509,7 +502,6 @@ lemma isingBoltzmann_eq_tsum_current (β : ℝ) (J : Edge (V := V) Λ → ℝ) (
       =
       ∑' n : Current (V := V) Λ,
         weightReal (V := V) (Λ := Λ) β J n * edgeMonomial (V := V) (Λ := Λ) σ n := by
-  classical
   -- apply the finite-product-of-series lemma on the edge set
   let f : Edge (V := V) Λ → ℕ → ℝ :=
     fun e k => (β * J e * edgeSpin (V := V) (Λ := Λ) σ e) ^ k / (k.factorial : ℝ)
@@ -587,7 +579,6 @@ lemma isingBoltzmann_eq_tsum_current (β : ℝ) (J : Edge (V := V) Λ → ℝ) (
 
 lemma sum_bool_isingSpin_pow (m : ℕ) :
     (∑ b : Bool, SpinGlass.isingSpin b ^ m) = if Even m then (2 : ℝ) else 0 := by
-  classical
   by_cases h : Even m
   · -- sum over Bool = value at `true` plus value at `false`
     simp [Fintype.sum_bool, SpinGlass.isingSpin, h, neg_one_pow_eq_ite, one_add_one_eq_two]
@@ -599,7 +590,6 @@ lemma sum_sigma_vertexMonomial_withSpin
     (∑ σ : (↥Λ → Bool), (∏ x ∈ A, spinVal (Λ := Λ) σ x) * vertexMonomial (V := V) (Λ := Λ) σ n)
       =
       if sources (V := V) n = A then (2 : ℝ) ^ Λ.card else 0 := by
-  classical
   -- rewrite the integrand as a product over all vertices with modified exponents
   have hintegrand :
       (fun σ : (↥Λ → Bool) =>
@@ -625,7 +615,7 @@ lemma sum_sigma_vertexMonomial_withSpin
           ∏ x : ↥Λ,
             (spinVal (Λ := Λ) σ x) ^ (degree (V := V) n x) *
               (spinVal (Λ := Λ) σ x) ^ (if x ∈ A then 1 else 0) := by
-      classical
+
       -- swap the two products, then use `Finset.prod_mul_distrib` on `Finset.univ`
       have hswap :
           (∏ x : ↥Λ, (spinVal (Λ := Λ) σ x) ^ (if x ∈ A then 1 else 0)) *
@@ -729,7 +719,7 @@ lemma sum_sigma_vertexMonomial_withSpin
       -- compute product of a constant
       -- `Fintype.card (↥Λ) = Λ.card`
       have hconst : (∏ _x : ↥Λ, (2 : ℝ)) = (2 : ℝ) ^ Λ.card := by
-        classical
+
         have h' : (∏ _x : ↥Λ, (2 : ℝ)) = (2 : ℝ) ^ Fintype.card (↥Λ) := by
           simpa [Finset.prod_const] using
             (Finset.prod_const (s := (Finset.univ : Finset (↥Λ))) (b := (2 : ℝ)))
@@ -774,7 +764,7 @@ lemma sum_sigma_vertexMonomial_withSpin
           (∏ x : ↥Λ, (∑ b : Bool,
             SpinGlass.isingSpin b ^ (degree (V := V) n x + if x ∈ A then 1 else 0))) = 0 := by
         -- use `Finset.prod_eq_zero` on `univ`
-        classical
+
         simpa using
           (Finset.prod_eq_zero (s := (Finset.univ : Finset (↥Λ)))
             (f := fun x : ↥Λ =>
@@ -797,7 +787,6 @@ lemma sum_sigma_vertexMonomial_withSpin
 theorem isingZWithSpin_eq_ZReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : Finset (↥Λ)) :
     isingZWithSpin (V := V) (Λ := Λ) β J A
       = (2 : ℝ) ^ Λ.card * ZReal (V := V) (Λ := Λ) β J A := by
-  classical
   -- expand `isingBoltzmann` as a `tsum` over currents
   have hboltz :
       ∀ σ : (↥Λ → Bool),
@@ -819,7 +808,7 @@ theorem isingZWithSpin_eq_ZReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : F
             (∏ x ∈ A, spinVal (Λ := Λ) σ x) *
               (weightReal (V := V) (Λ := Λ) β J n * edgeMonomial (V := V) (Λ := Λ) σ n) := by
     -- use `Summable.tsum_finsetSum` with `s = univ` and then rewrite `∑ σ` back
-    classical
+
     -- summability in `n` for each fixed `σ` follows from `tsum_pi_currTerm_eq_prod_tsum`
     have hsumm :
         ∀ σ : (↥Λ → Bool),
@@ -903,7 +892,7 @@ theorem isingZWithSpin_eq_ZReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : F
             ∑' n : Current (V := V) Λ,
               (∏ x ∈ A, spinVal (Λ := Λ) σ x) *
                 (weightReal (V := V) (Λ := Λ) β J n * edgeMonomial (V := V) (Λ := Λ) σ n) := by
-      classical
+
       refine Fintype.sum_congr
         (f := fun σ : (↥Λ → Bool) =>
           (∏ x ∈ A, spinVal (Λ := Λ) σ x) *
@@ -930,7 +919,7 @@ theorem isingZWithSpin_eq_ZReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : F
             ∑ σ : (↥Λ → Bool),
               (∏ x ∈ A, spinVal (Λ := Λ) σ x) *
                 (weightReal (V := V) (Λ := Λ) β J n * edgeMonomial (V := V) (Λ := Λ) σ n) := by
-      classical
+
       have h :=
         (Summable.tsum_finsetSum
           (L := SummationFilter.unconditional (Current (V := V) Λ))
@@ -982,7 +971,7 @@ theorem isingZWithSpin_eq_ZReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : F
           (∏ x ∈ A, spinVal (Λ := Λ) σ x) *
             (∑' n : Current (V := V) Λ,
               weightReal (V := V) (Λ := Λ) β J n * edgeMonomial (V := V) (Λ := Λ) σ n)) := by
-            classical
+
             refine Fintype.sum_congr
               (f := fun σ : (↥Λ → Bool) =>
                 (∏ x ∈ A, spinVal (Λ := Λ) σ x) *
@@ -1001,7 +990,7 @@ theorem isingZWithSpin_eq_ZReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : F
                     weightReal (V := V) (Λ := Λ) β J n *
                       edgeMonomial (V := V) (Λ := Λ) σ n := by
               simpa [isingBoltzmann] using hboltz σ
-            simpa [hb]
+            simp [hb]
     _ = ∑' n : Current (V := V) Λ,
           ∑ σ : (↥Λ → Bool),
             (∏ x ∈ A, spinVal (Λ := Λ) σ x) *
@@ -1013,7 +1002,6 @@ theorem isingZWithSpin_eq_ZReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : F
             simpa using hspin n
     _ = (2 : ℝ) ^ Λ.card * ∑' n : Current (V := V) Λ,
           (if sources (V := V) n = A then weightReal (V := V) (Λ := Λ) β J n else 0) := by
-            -- pull out the constant factor
             simpa using
               (tsum_mul_left (L := SummationFilter.unconditional (Current (V := V) Λ))
                 (f := fun n : Current (V := V) Λ =>
