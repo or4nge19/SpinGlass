@@ -618,8 +618,6 @@ lemma norm_fderiv_gibbs_pmf_disorder_le (t : ℝ) (σ : Config N) (x : DisorderS
         gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ) x‖
       ≤ 2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|) := by
   classical
-  -- Use the chain rule with the canonical derivative `fderiv` (no need to expose the explicit
-  -- derivative map from `hasFDerivAt_gibbs_pmf`).
   have hdiff :
       DifferentiableAt ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ)
         (H_t_disorder (N := N) (h := h) t x) :=
@@ -1968,8 +1966,6 @@ theorem integral_dgibbs_average_n_disorder_eq_ibp
       refine Finset.sum_congr rfl (fun τ _ => ?_)
       refine MeasureTheory.integral_congr_ae ?_
       filter_upwards with x
-      -- `WithLp.fst x = (WithLp.ofLp x).1`
-      -- avoid `simp` loops on `WithLp.fst/ofLp_fst`
       rfl
     simpa [hL] using hIBP_left
   have hIBP_right_snd :
@@ -1998,7 +1994,6 @@ theorem integral_dgibbs_average_n_disorder_eq_ibp
       filter_upwards with x
       rfl
     simpa [hL] using hIBP_right
-  -- Finish with linearity of the integral and the IBP rewrites.
   simp [MeasureTheory.integral_const_mul, hSleft, hSright, hIBP_left_fst, hIBP_right_snd, μ]
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
@@ -2259,7 +2254,6 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
                         (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ) -
                     (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l))) := by
       funext w
-      -- Use the model-agnostic derivative formula and rewrite `gibbs_pmf` via the bridge lemma.
       simpa [dgibbs_average_n, gibbs_average_n_det, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
         (FiniteGibbs.fderiv_gibbs_average_n_det_apply (α := Config N) (n := n)
           (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w)
@@ -2427,7 +2421,6 @@ theorem hasDerivAt_nu_ibp (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)
                     (std_basis_right (N := N) τ))
                 ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
                     (sk := sk) (sim := sim)) ) t := by
-  -- Start from the outer derivative formula, then rewrite the derivative value using the packaged IBP lemmas.
   have hder :=
     hasDerivAt_nu (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) (n := n) t ht f
   refine hder.congr_deriv ?_
@@ -2504,17 +2497,13 @@ theorem hasDerivAt_nu_kernel (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)
                       (std_basis_right (N := N) σ)
                 ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
                     (sk := sk) (sim := sim)) ) t := by
-  -- Start from the covariance-operator form, then expand the covariance-operator vectors.
   have hder := hasDerivAt_nu_ibp (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
     (sk := sk) (sim := sim) (n := n) (hindep := hindep) t ht f
   refine hder.congr_deriv ?_
-  -- Rewrite the covariance-operator vectors into explicit kernel sums.
   simp_rw [covarianceOperator_disorderPairLaw_std_basis_left_eq_sum_sk
     (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) (hindep := hindep)]
   simp_rw [covarianceOperator_disorderPairLaw_std_basis_right_eq_sum_simple
     (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) (hindep := hindep)]
-  -- Then use linearity of `fderiv ℝ (A_disorder_explicit ...) x` to push through the finite sums.
-  -- (`smul` on `ℝ`-valued linear maps becomes multiplication.)
   simp [mul_assoc, mul_comm, Finset.mul_sum]
 
 end ReplicaCalculus

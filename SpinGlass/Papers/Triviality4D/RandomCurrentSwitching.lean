@@ -647,6 +647,327 @@ lemma summable_norm_weightReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) :
   intro n
   simp [currTerm, weightReal, f]
 
+/-! ## Per-total-current switching identity (combinatorial core) -/
+
+lemma hasSubCurrent_of_assignSources
+    (n : Current (V := V) Λ) (A B : Finset (↥Λ)) (hn : sources (V := V) n = symmDiff A B) :
+    AssignSources (V := V) (Λ := Λ) n A → HasSubCurrent (V := V) (Λ := Λ) n B := by
+  classical
+  intro S
+  let n1 : Current (V := V) Λ :=
+    currentOfEdgeAssign (V := V) (Λ := Λ) n S.1
+  let n2 : Current (V := V) Λ :=
+    currentOfEdgeAssignCompl (V := V) (Λ := Λ) n S.1
+  have hsum : n1 + n2 = n := by
+    simpa [n1, n2] using
+      (currentOfEdgeAssign_add_currentOfEdgeAssignCompl (V := V) (Λ := Λ) (n := n) S.1)
+  have hadd :
+      sources (V := V) n = symmDiff (sources (V := V) n1) (sources (V := V) n2) := by
+    simpa [hsum] using (sources_add (V := V) (Λ := Λ) (n1 := n1) (n2 := n2))
+  have hsrc1 : sources (V := V) n1 = A := by
+    simpa [n1] using S.2
+  have hsolve :
+      symmDiff (sources (V := V) n1) (sources (V := V) n) = sources (V := V) n2 := by
+    -- apply `symmDiff (sources n1)` to `hadd` and cancel
+    have := congrArg (fun t => symmDiff (sources (V := V) n1) t) hadd
+    simpa [symmDiff_symmDiff_cancel_left] using this
+  have hsrc2 : sources (V := V) n2 = B := by
+    calc
+      sources (V := V) n2
+          = symmDiff (sources (V := V) n1) (sources (V := V) n) := by
+              simpa using hsolve.symm
+      _ = symmDiff A (symmDiff A B) := by
+              simp [hsrc1, hn]
+      _ = B := by
+              simpa using (symmDiff_symmDiff_cancel_left (a := A) (b := B))
+  have hle : CurrentLE (V := V) n2 n := by
+    intro e
+    -- `n2 e = n e - (S e).card ≤ n e`
+    simpa [n2, currentOfEdgeAssignCompl] using (Nat.sub_le (n e) ((S.1 e).card))
+  exact ⟨n2, hle, hsrc2⟩
+
+lemma card_assignSources_eq_of_hasSubCurrent
+    (n : Current (V := V) Λ) (A B : Finset (↥Λ)) (hsub : HasSubCurrent (V := V) (Λ := Λ) n B) :
+    (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ) =
+      (Fintype.card (AssignSources (V := V) (Λ := Λ) n (symmDiff A B)) : ℝ) := by
+  classical
+  rcases (exists_edgeAssign_sources_of_hasSubCurrent (V := V) (Λ := Λ) (n := n) (B := B) hsub) with ⟨M, hM⟩
+  have hcard :
+      Fintype.card (AssignSources (V := V) (Λ := Λ) n (symmDiff A B)) =
+        Fintype.card (AssignSources (V := V) (Λ := Λ) n A) := by
+    -- toggle gives an equivalence between the two assignment subtypes
+    simpa [AssignSources] using
+      (Fintype.card_congr
+        (toggleEdgeAssignEquiv_sources (V := V) (Λ := Λ) (n := n) (A := A) (B := B) (M := M) hM))
+  exact_mod_cast hcard.symm
+
+lemma card_assignSources_eq_zero_of_not_hasSubCurrent
+    (n : Current (V := V) Λ) (A B : Finset (↥Λ)) (hn : sources (V := V) n = symmDiff A B)
+    (hsub : ¬ HasSubCurrent (V := V) (Λ := Λ) n B) :
+    (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ) = 0 := by
+  classical
+  have hempty : IsEmpty (AssignSources (V := V) (Λ := Λ) n A) := by
+    refine ⟨fun S => hsub (hasSubCurrent_of_assignSources (V := V) (Λ := Λ) (n := n) (A := A) (B := B) hn S)⟩
+  have : Fintype.card (AssignSources (V := V) (Λ := Λ) n A) = 0 := by
+    letI : IsEmpty (AssignSources (V := V) (Λ := Λ) n A) := hempty
+    exact Fintype.card_eq_zero
+  exact_mod_cast this
+
+lemma sum_choose_eq_card_assignSources (n : Current (V := V) Λ) (A : Finset (↥Λ)) :
+    (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+        if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A then
+          (∏ e : Edge (V := V) Λ,
+              ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ))
+        else 0)
+      =
+      (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ) := by
+  classical
+  have hcard :
+      (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ)
+        =
+        ∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+          if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A then
+            (Fintype.card (EdgeAssignSplitFiber (V := V) (Λ := Λ) n s) : ℝ)
+          else 0 := by
+    have h := card_assignSources (V := V) (Λ := Λ) n A
+    have h' :
+        (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ)
+          =
+          (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+              if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A then
+                Fintype.card (EdgeAssignSplitFiber (V := V) (Λ := Λ) n s)
+              else 0 : ℕ) := by
+      exact_mod_cast h
+    simpa using h'
+  have hfiber :
+      ∀ s : SplitCurrent (V := V) (Λ := Λ) n,
+        (Fintype.card (EdgeAssignSplitFiber (V := V) (Λ := Λ) n s) : ℝ)
+          =
+          ∏ e : Edge (V := V) Λ,
+            ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ) := by
+    intro s
+    have h := card_edgeAssignSplitFiber (V := V) (Λ := Λ) n s
+    have h' :
+        (Fintype.card (EdgeAssignSplitFiber (V := V) (Λ := Λ) n s) : ℝ)
+          =
+          (∏ e : Edge (V := V) Λ,
+              (n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℕ) := by
+      exact_mod_cast h
+    simpa using h'
+  -- substitute the fiber-card formula into `hcard`
+  have hsum :
+      (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+          if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A then
+            (∏ e : Edge (V := V) Λ,
+                ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ))
+          else 0)
+        =
+        ∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+          if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A then
+            (Fintype.card (EdgeAssignSplitFiber (V := V) (Λ := Λ) n s) : ℝ)
+          else 0 := by
+    refine Fintype.sum_congr _ _ ?_
+    intro s
+    by_cases hs :
+        sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A
+    · simp [hs, hfiber (s := s)]
+    · simp [hs]
+  simpa [hsum] using hcard.symm
+
+lemma sum_choose_sources_eq_card_assignSources
+    (n : Current (V := V) Λ) (A B : Finset (↥Λ)) :
+    (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+        if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A ∧
+            sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = B then
+          (∏ e : Edge (V := V) Λ,
+              ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ))
+        else 0)
+      =
+      if sources (V := V) n = symmDiff A B then
+        (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ)
+      else 0 := by
+  classical
+  by_cases hn : sources (V := V) n = symmDiff A B
+  · -- `sources n2 = B` is forced by `sources n1 = A`.
+    have hforce :
+        ∀ s : SplitCurrent (V := V) (Λ := Λ) n,
+          sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A →
+            sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = B := by
+      intro s hA
+      let n1 : Current (V := V) Λ := splitCurrentToCurrent (V := V) (Λ := Λ) n s
+      let n2 : Current (V := V) Λ := splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s
+      have hsum : n1 + n2 = n := by
+        simpa [n1, n2] using (splitCurrent_add (V := V) (Λ := Λ) n s)
+      have hadd :
+          sources (V := V) n = symmDiff (sources (V := V) n1) (sources (V := V) n2) := by
+        simpa [hsum] using (sources_add (V := V) (Λ := Λ) (n1 := n1) (n2 := n2))
+      have hsolve :
+          symmDiff (sources (V := V) n1) (sources (V := V) n) = sources (V := V) n2 := by
+        have := congrArg (fun t => symmDiff (sources (V := V) n1) t) hadd
+        simpa [symmDiff_symmDiff_cancel_left] using this
+      calc
+        sources (V := V) n2
+            = symmDiff (sources (V := V) n1) (sources (V := V) n) := by
+                simpa using hsolve.symm
+        _ = symmDiff A (symmDiff A B) := by
+                simp [n1, hA, hn]
+        _ = B := by
+                simpa using (symmDiff_symmDiff_cancel_left (a := A) (b := B))
+    have hterm :
+        ∀ s : SplitCurrent (V := V) (Λ := Λ) n,
+          (if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A ∧
+                sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = B then
+              (∏ e : Edge (V := V) Λ,
+                  ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ))
+            else 0)
+            =
+            (if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A then
+              (∏ e : Edge (V := V) Λ,
+                  ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ))
+            else 0) := by
+      intro s
+      by_cases hA :
+          sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A
+      · have hB := hforce (s := s) hA
+        simp [hA, hB]
+      · simp [hA]
+    have hsum :
+        (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+            if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A ∧
+                  sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = B then
+                (∏ e : Edge (V := V) Λ,
+                    ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ))
+              else 0)
+          =
+          ∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+            if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A then
+              (∏ e : Edge (V := V) Λ,
+                  ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ))
+            else 0 := by
+      exact Fintype.sum_congr _ _ hterm
+    simp [hn, hsum, sum_choose_eq_card_assignSources (V := V) (Λ := Λ) (n := n) (A := A)]
+  · -- no such pair can exist, hence the sum is zero
+    have hz :
+        (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+            if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A ∧
+                  sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = B then
+                (∏ e : Edge (V := V) Λ,
+                    ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ))
+              else 0)
+          = 0 := by
+      refine Fintype.sum_eq_zero _ ?_
+      intro s
+      by_cases hAB :
+          sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A ∧
+            sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = B
+      · -- derive `sources n = A Δ B`, contradiction
+        let n1 : Current (V := V) Λ := splitCurrentToCurrent (V := V) (Λ := Λ) n s
+        let n2 : Current (V := V) Λ := splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s
+        have hsum : n1 + n2 = n := by
+          simpa [n1, n2] using (splitCurrent_add (V := V) (Λ := Λ) n s)
+        have hadd :
+            sources (V := V) n = symmDiff (sources (V := V) n1) (sources (V := V) n2) := by
+          simpa [hsum] using (sources_add (V := V) (Λ := Λ) (n1 := n1) (n2 := n2))
+        have : sources (V := V) n = symmDiff A B := by
+          simpa [n1, n2, hAB.1, hAB.2] using hadd
+        exact (hn this).elim
+      · simp [hAB]
+    simp [hn, hz]
+
+lemma sum_choose_sources_symmDiff_empty_eq_card_assignSources
+    (n : Current (V := V) Λ) (A B : Finset (↥Λ)) :
+    (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+        if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = symmDiff A B ∧
+            sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = (∅ : Finset (↥Λ)) then
+          (∏ e : Edge (V := V) Λ,
+              ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ))
+        else 0)
+      =
+      if sources (V := V) n = symmDiff A B then
+        (Fintype.card (AssignSources (V := V) (Λ := Λ) n (symmDiff A B)) : ℝ)
+      else 0 := by
+  classical
+  by_cases hn : sources (V := V) n = symmDiff A B
+  · have hforce :
+        ∀ s : SplitCurrent (V := V) (Λ := Λ) n,
+          sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = symmDiff A B →
+            sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = (∅ : Finset (↥Λ)) := by
+      intro s hsrc
+      let n1 : Current (V := V) Λ := splitCurrentToCurrent (V := V) (Λ := Λ) n s
+      let n2 : Current (V := V) Λ := splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s
+      have hsum : n1 + n2 = n := by
+        simpa [n1, n2] using (splitCurrent_add (V := V) (Λ := Λ) n s)
+      have hadd :
+          sources (V := V) n = symmDiff (sources (V := V) n1) (sources (V := V) n2) := by
+        simpa [hsum] using (sources_add (V := V) (Λ := Λ) (n1 := n1) (n2 := n2))
+      -- with `sources n = sources n1`, we get `sources n2 = ∅`
+      have hEq : symmDiff (sources (V := V) n1) (sources (V := V) n2) = sources (V := V) n1 := by
+        -- rewrite `sources n` and `sources n1` by `hn` and `hsrc`
+        simpa [n1, hn, hsrc] using hadd.symm
+      have hb : sources (V := V) n2 = (⊥ : Finset (↥Λ)) := (symmDiff_eq_left).1 hEq
+      simpa using hb
+    have hterm :
+        ∀ s : SplitCurrent (V := V) (Λ := Λ) n,
+          (if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = symmDiff A B ∧
+                sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = (∅ : Finset (↥Λ)) then
+              (∏ e : Edge (V := V) Λ,
+                  ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ))
+            else 0)
+            =
+            (if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = symmDiff A B then
+              (∏ e : Edge (V := V) Λ,
+                  ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ))
+            else 0) := by
+      intro s
+      by_cases hsrc :
+          sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = symmDiff A B
+      · have hemp := hforce (s := s) hsrc
+        simp [hsrc, hemp]
+      · simp [hsrc]
+    have hsum :
+        (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+            if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = symmDiff A B ∧
+                  sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = (∅ : Finset (↥Λ)) then
+                (∏ e : Edge (V := V) Λ,
+                    ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ))
+              else 0)
+          =
+          ∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+            if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = symmDiff A B then
+              (∏ e : Edge (V := V) Λ,
+                  ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ))
+            else 0 := by
+      exact Fintype.sum_congr _ _ hterm
+    simp [hn, hsum, sum_choose_eq_card_assignSources (V := V) (Λ := Λ) (n := n) (A := symmDiff A B)]
+  · have hz :
+        (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+            if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = symmDiff A B ∧
+                  sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = (∅ : Finset (↥Λ)) then
+                (∏ e : Edge (V := V) Λ,
+                    ((n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℝ))
+              else 0)
+          = 0 := by
+      refine Fintype.sum_eq_zero _ ?_
+      intro s
+      by_cases hAB :
+          sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = symmDiff A B ∧
+            sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = (∅ : Finset (↥Λ))
+      · let n1 : Current (V := V) Λ := splitCurrentToCurrent (V := V) (Λ := Λ) n s
+        let n2 : Current (V := V) Λ := splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s
+        have hsum : n1 + n2 = n := by
+          simpa [n1, n2] using (splitCurrent_add (V := V) (Λ := Λ) n s)
+        have hadd :
+            sources (V := V) n = symmDiff (sources (V := V) n1) (sources (V := V) n2) := by
+          simpa [hsum] using (sources_add (V := V) (Λ := Λ) (n1 := n1) (n2 := n2))
+        have h' : sources (V := V) n = symmDiff (symmDiff A B) (∅ : Finset (↥Λ)) := by
+          simpa [n1, n2, hAB.1, hAB.2] using hadd
+        have hbot : symmDiff (symmDiff A B) (∅ : Finset (↥Λ)) = symmDiff A B := by simp
+        have : sources (V := V) n = symmDiff A B := by
+          simpa [hbot] using h'
+        exact (hn this).elim
+      · simp [hAB]
+    simp [hn, hz]
+
 end RandomCurrent
 
 end SpinGlass.Papers.Triviality4D
