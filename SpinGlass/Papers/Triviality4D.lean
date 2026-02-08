@@ -35,7 +35,7 @@ statements by introducing concrete model predicates:
 - `SpinGlass.Papers.Triviality4D.GSModel`: a concrete n.n. quadratic Gibbs specification on `ZLattice d`
   with prior `ρ`, plus the predicate “model in the GS class”.
 - `SpinGlass.Papers.Triviality4D.RandomCurrent`: the combinatorial objects of random currents (finite volume).
-- `SpinGlass.Papers.Triviality4D.InfraredBound`: paper-facing predicates for x-space infrared bounds.
+- `SpinGlass.Papers.Triviality4D.InfraredBound`: paper-specific predicates for x-space infrared bounds.
 
 What is still missing are the **core theorems** connecting these layers:
 

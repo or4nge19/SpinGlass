@@ -4,7 +4,7 @@ import SpinGlass.Lattice.Zd.Correlations
 /-!
 # Infrared bounds (interface layer)
 
-This file provides paper-facing *predicates* for infrared-type bounds on two-point functions.
+This file provides paper-specific *predicates* for infrared-type bounds on two-point functions.
 
 In the TeX, the x-space Infrared Bound (Eq. `\label{eq:IB}`) has the form
 \[
@@ -64,4 +64,3 @@ def HasInfraredBound_GS : Prop :=
 end InfraredBound
 
 end SpinGlass.Papers.Triviality4D
-

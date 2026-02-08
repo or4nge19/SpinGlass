@@ -4,7 +4,7 @@ import SpinGlass.Lattice.Zd
 /-!
 # Nearest-neighbour Ising Gibbs states on `ℤ^d` (DLR/specification layer)
 
-This file ties the paper-facing lattice `ZLattice d` to the `GibbsMeasure` DLR framework.
+This file ties the paper-specific lattice `ZLattice d` to the `GibbsMeasure` DLR framework.
 
 It provides:
 
@@ -114,14 +114,14 @@ lemma IsIsingNNGibbsState.isGibbsMeasure
   hμ.isGibbs
 
 /-!
-## Paper-facing wrapper (existential finiteness witness)
+## Paper-specific existential finiteness witness
 
 `Potential.gibbsSpecification` requires a finiteness witness `hZ : Z ≠ ⊤`.
 For finite-spin models this should be provable, but we keep it existential at the interface level
 to avoid blocking theorems on analytic bookkeeping.
 -/
 
-/-- A paper-facing “Ising Gibbs state” predicate with canonical single-site prior `prior`. -/
+/-- A paper-specific “Ising Gibbs state” predicate with canonical single-site prior `prior`. -/
 def IsIsingNNGibbsState'
     (d : ℕ) (J β : ℝ) (μ : Measure (ZLattice d → Bool)) : Prop :=
   IsProbabilityMeasure μ ∧

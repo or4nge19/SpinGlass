@@ -4,7 +4,7 @@ import GibbsMeasure.Observables.Correlations
 /-!
 # Correlation functions on `ℤ^d` configuration spaces
 
-This file is a thin adapter layer: it specializes the model-agnostic correlation API from
+This file specializes the model-agnostic correlation API from
 `GibbsMeasure.Observables.Correlations` to configuration spaces of the form `ZLattice d → S`.
 
 It exists so lattice-based papers can write `twoPoint (d := d) spin μ x y` etc. without threading
@@ -37,7 +37,7 @@ lemma spinAt_apply (x : ZLattice d) (η : ZLattice d → S) :
 
 attribute [simp] spinAt_apply
 
-/-! ### Core API: measurability -/
+/-! ### Measurability -/
 
 lemma measurable_spinAt {spin : S → ℝ} (hspin : Measurable spin) (x : ZLattice d) :
     Measurable (spinAt (d := d) spin x) := by
@@ -103,4 +103,3 @@ end Zd
 end Lattice
 
 end SpinGlass
-

@@ -8,12 +8,11 @@ import SpinGlass.Papers.Triviality4D.Ising
 This file defines a concrete `GibbsMeasure.Specification` for a nearest-neighbour *quadratic* pair
 interaction on `ZLattice d` with real-valued spins and a given single-site a priori measure `ρ`.
 
-It then packages the corresponding “Gibbs state” predicate and ties it to the GS class predicate
+It then provides the corresponding “Gibbs state” predicate and ties it to the GS class predicate
 (`SpinGlass.Papers.Triviality4D.GSClass.IsGSClass`).
 
-This avoids the vacuity criticized in the peer review: the GS-class theorem statements should
-quantify over measures that are *actually* Gibbs measures for a ferromagnetic n.n. model, not over
-arbitrary probability measures on fields.
+The GS-class theorem statements should quantify over measures that are *actually* Gibbs measures
+for a ferromagnetic n.n. model, not over arbitrary probability measures on fields.
 -/
 
 open scoped BigOperators
@@ -157,8 +156,7 @@ instance : Potential.IsPotential (nnQuadraticPotential (d := d) J) where
       change Measurable[μ] (nnQuadraticPotential (d := d) J Δ)
       rw [hrewrite]
       exact hfinal
-    ·
-      have hzero : nnQuadraticPotential (d := d) J Δ = 0 := by
+    · have hzero : nnQuadraticPotential (d := d) J Δ = 0 := by
         funext η
         simp [nnQuadraticPotential, hcard]
       rw [hzero]
@@ -187,12 +185,10 @@ instance : Potential.IsLocallyFinitary (nnQuadraticPotential (d := d) J) where
       simpa using hw.2
     have hw_cases : w = x ∨ w = y := by
       simpa [Finset.mem_insert, Finset.mem_singleton] using hwΔ
-    -- If the neighbour relation fails, the potential is identically `0`, contradicting `hΔne0`.
     have hxyNN : (Ising.zdNeighborSystem d).IsNN x y := by
       by_contra hnot
       have hz : nnQuadraticPotential (d := d) J ({x, y} : Finset (ZLattice d)) = 0 := by
         funext η
-        -- For a 2-set, only the two ordered pairs contribute; if neither is a neighbour, sum is `0`.
         have hnot' : ¬ (Ising.zdNeighborSystem d).IsNN y x := by
           intro hyx
           exact hnot ((Ising.zdNeighborSystem d).isNN_comm.1 hyx)
@@ -234,7 +230,7 @@ noncomputable def nnQuadraticSpecification
     Specification (ZLattice d) ℝ :=
   Potential.gibbsSpecification (nnQuadraticPotential (d := d) J) β ρ hZ
 
-/-- A paper-facing Gibbs-state predicate (probability + DLR) for the n.n. quadratic model. -/
+/-- A paper-specific Gibbs-state predicate (probability + DLR) for the n.n. quadratic model. -/
 def IsNNQuadraticGibbsState
     (d : ℕ) (J β : ℝ) (ρ : ProbabilityMeasure ℝ) (μ : Measure (ZLattice d → ℝ)) : Prop :=
   IsProbabilityMeasure μ ∧

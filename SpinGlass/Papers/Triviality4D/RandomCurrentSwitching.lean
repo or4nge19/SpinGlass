@@ -452,7 +452,7 @@ lemma card_edgeAssignSplitFiber (n : Current (V := V) Λ) (s : SplitCurrent (V :
               (n1 := splitCurrentToCurrent (V := V) (Λ := Λ) n s))
 
 /-!
-A small bookkeeping lemma: summing over a subtype `{x // P x}` equals summing over all `x` with an
+Summing over a subtype `{x // P x}` equals summing over all `x` with an
 indicator.
 -/
 lemma sum_subtype_eq_sum_if {α : Type*} {M : Type*} [Fintype α] [AddCommMonoid M]
