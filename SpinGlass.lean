@@ -3,12 +3,13 @@ import SpinGlass.ArguinTaiFp
 import SpinGlass.Calculus
 import SpinGlass.ComplexIBP
 import SpinGlass.Defs
+import SpinGlass.Poincare
 import SpinGlass.Example
 import SpinGlass.GibbsBridge
 import SpinGlass.GuerraBound
 import SpinGlass.GuerraInterpolation
 import SpinGlass.GuerraIBP
---import SpinGlass.GuerraPipeline
+import SpinGlass.GuerraPipeline
 import SpinGlass.Hopfield
 import SpinGlass.HopfieldPsiDeriv
 import SpinGlass.HopfieldFixedPoint

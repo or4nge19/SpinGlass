@@ -1,6 +1,7 @@
 import SpinGlass.Hopfield
 import SpinGlass.GibbsBridge
 import SpinGlass.ReplicaKernel
+import SpinGlass.FiniteGibbs.OrderParameter
 import Mathlib.Probability.Kernel.Composition.MapComap
 import Mathlib.Probability.Kernel.Composition.CompMap
 import Mathlib.MeasureTheory.Measure.Typeclasses.SFinite
@@ -65,20 +66,20 @@ also package the overlap pushforward as a `Kernel (EnergySpace N) (Fin M → ℝ
 /-- Kernel sending an energy function `H` to the overlap-image law `(gibbsMeasure H).map m`. -/
 noncomputable def hopfieldOverlapKernel (Ξ : Patterns N M) :
     ProbabilityTheory.Kernel (EnergySpace N) (Fin M → ℝ) :=
-  (KernelBridge.gibbsKernel (N := N)).map (hopfieldOverlapVec (N := N) (M := M) Ξ)
+  FiniteGibbs.orderKernel (α := Config N) (β := Fin M → ℝ) (hopfieldOverlapVec (N := N) (M := M) Ξ)
 
 instance (Ξ : Patterns N M) : ProbabilityTheory.IsMarkovKernel (hopfieldOverlapKernel (N := N) (M := M) Ξ) := by
   have hm : Measurable (hopfieldOverlapVec (N := N) (M := M) Ξ) := by fun_prop
   simpa [hopfieldOverlapKernel] using
-    (ProbabilityTheory.Kernel.IsMarkovKernel.map
-      (κ := KernelBridge.gibbsKernel (N := N)) (f := hopfieldOverlapVec (N := N) (M := M) Ξ) hm)
+    (FiniteGibbs.orderKernel_isMarkovKernel (α := Config N) (β := Fin M → ℝ)
+      (u := hopfieldOverlapVec (N := N) (M := M) Ξ) hm)
 
 @[simp] lemma hopfieldOverlapKernel_apply (Ξ : Patterns N M) (H : EnergySpace N) :
     hopfieldOverlapKernel (N := N) (M := M) Ξ H = hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H := by
   have hm : Measurable (hopfieldOverlapVec (N := N) (M := M) Ξ) := by fun_prop
-  ext s hs
-  simp [hopfieldOverlapKernel, hopfieldOverlapImageMeasure, ProbabilityTheory.Kernel.map_apply,
-    Kernel.map_apply, KernelBridge.gibbsKernel, FiniteGibbs.gibbsKernel, gibbsMeasure, hm, hs]
+  simpa [hopfieldOverlapKernel, hopfieldOverlapImageMeasure, gibbsMeasure, hm] using
+    (FiniteGibbs.orderKernel_apply (α := Config N) (β := Fin M → ℝ)
+      (u := hopfieldOverlapVec (N := N) (M := M) Ξ) hm H)
 
 lemma hopfieldOverlapKernel_Icc_compl (Ξ : Patterns N M) (H : EnergySpace N) :
     hopfieldOverlapKernel (N := N) (M := M) Ξ H
@@ -109,24 +110,24 @@ noncomputable def hopfieldOverlapArrayImageMeasure (Ξ : Patterns N M) (H : Ener
 /-- Kernel sending an energy function `H` to the overlap-array law on `n` replicas. -/
 noncomputable def hopfieldOverlapArrayKernel (Ξ : Patterns N M) :
     ProbabilityTheory.Kernel (EnergySpace N) (Fin n → (Fin M → ℝ)) :=
-  (KernelBridge.replicaGibbsKernel (N := N) (n := n)).map (hopfieldOverlapArray (N := N) (M := M) (n := n) Ξ)
+  FiniteGibbs.orderArrayKernel (α := Config N) (β := Fin M → ℝ)
+    (hopfieldOverlapVec (N := N) (M := M) Ξ) n
 
 instance (Ξ : Patterns N M) : ProbabilityTheory.IsMarkovKernel (hopfieldOverlapArrayKernel (N := N) (M := M) (n := n) Ξ) := by
-  have hm : Measurable (hopfieldOverlapArray (N := N) (M := M) (n := n) Ξ) := by fun_prop
+  have hm : Measurable (hopfieldOverlapVec (N := N) (M := M) Ξ) := by fun_prop
   simpa [hopfieldOverlapArrayKernel] using
-    (ProbabilityTheory.Kernel.IsMarkovKernel.map
-      (κ := KernelBridge.replicaGibbsKernel (N := N) (n := n))
-      (f := hopfieldOverlapArray (N := N) (M := M) (n := n) Ξ) hm)
+    (FiniteGibbs.orderArrayKernel_isMarkovKernel (α := Config N) (β := Fin M → ℝ)
+      (u := hopfieldOverlapVec (N := N) (M := M) Ξ) (n := n) hm)
 
 @[simp] lemma hopfieldOverlapArrayKernel_apply (Ξ : Patterns N M) (H : EnergySpace N) :
     hopfieldOverlapArrayKernel (N := N) (M := M) (n := n) Ξ H
       =
       hopfieldOverlapArrayImageMeasure (N := N) (M := M) (n := n) Ξ H := by
-  have hm : Measurable (hopfieldOverlapArray (N := N) (M := M) (n := n) Ξ) := by fun_prop
-  ext s hs
-  simp [hopfieldOverlapArrayKernel, hopfieldOverlapArrayImageMeasure,
-    ProbabilityTheory.Kernel.map_apply, Kernel.map_apply, KernelBridge.replicaGibbsKernel,
-    FiniteGibbs.replicaGibbsKernel, replicaGibbsMeasure, hm, hs]
+  have hm : Measurable (hopfieldOverlapVec (N := N) (M := M) Ξ) := by fun_prop
+  -- `orderArray` specialized to `u := hopfieldOverlapVec` is definitionally `hopfieldOverlapArray`.
+  simpa [hopfieldOverlapArrayKernel, hopfieldOverlapArrayImageMeasure, hopfieldOverlapArray, replicaGibbsMeasure, hm]
+    using (FiniteGibbs.orderArrayKernel_apply (α := Config N) (β := Fin M → ℝ)
+      (u := hopfieldOverlapVec (N := N) (M := M) Ξ) (n := n) hm H)
 
 /-! ## Convolution as a pushforward of a product measure -/
 

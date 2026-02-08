@@ -779,11 +779,9 @@ theorem integral_disorderPairLaw_right_apply_mul_gibbs_pmf_eq_integral_fderiv_co
   have hmean0 : (∫ x : DisorderSpace (N := N), x ∂μ) = 0 :=
     disorderPairLaw_mean0 (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
   haveI : ProbabilityTheory.IsGaussian μ := hgauss
-  -- Regularity and growth hypotheses for IBP.
   have hF_c1 :
       ContDiff ℝ 1 (fun x : DisorderSpace (N := N) =>
         gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ) := by
-    -- Smoothness of `gibbs_pmf` and affineness of `H_t_disorder`.
     let nTop : WithTop ℕ∞ := (↑(⊤ : ℕ∞))
     have hlin_inf :
         ContDiff ℝ nTop (H_t_disorder_lin (N := N) t) := by
@@ -803,7 +801,6 @@ theorem integral_disorderPairLaw_right_apply_mul_gibbs_pmf_eq_integral_fderiv_co
       Measurable (fun x : DisorderSpace (N := N) =>
         gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ) :=
     hF_c1.continuous.measurable
-  -- Use a single constant `C` for both bounds, with `m = 0`.
   let C : ℝ := max 1 (2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|))
   have hC : 0 ≤ C := by
     have : (0 : ℝ) ≤ 1 := by norm_num
@@ -832,7 +829,6 @@ theorem integral_disorderPairLaw_right_apply_mul_gibbs_pmf_eq_integral_fderiv_co
     have hleC : 2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|) ≤ C := by
       exact le_max_right _ _
     simpa [C, pow_zero] using le_trans hder (by nlinarith [hleC] : 2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|) ≤ C)
-  -- Apply the previously packaged IBP lemma.
   simpa [μ] using
     (integral_disorderPairLaw_right_apply_mul_eq_integral_fderiv_covarianceOperator_polyGrowth
       (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
@@ -840,7 +836,6 @@ theorem integral_disorderPairLaw_right_apply_mul_gibbs_pmf_eq_integral_fderiv_co
       (F := fun x : DisorderSpace (N := N) =>
         gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ)
       hF_meas hF_c1 hC hF_growth hF'_growth)
-
 
 noncomputable def dH_t_disorder (t : ℝ) (x : DisorderSpace (N := N)) : EnergySpace N :=
   (1 / (2 * Real.sqrt t)) • (WithLp.ofLp x).1
@@ -887,7 +882,6 @@ noncomputable def gibbs_pmf_disorder (t : ℝ) (σ : Config N) : DisorderSpace (
 
 lemma contDiff_gibbs_pmf_disorder (t : ℝ) (σ : Config N) :
     ContDiff ℝ 1 (gibbs_pmf_disorder (N := N) (h := h) t σ) := by
-  -- Smoothness of `gibbs_pmf` and affineness of `H_t_disorder`.
   let nTop : WithTop ℕ∞ := (↑(⊤ : ℕ∞))
   have hlin_inf : ContDiff ℝ nTop (H_t_disorder_lin (N := N) t) := by
     simpa [nTop] using (H_t_disorder_lin (N := N) t).contDiff (n := nTop)
@@ -910,8 +904,6 @@ noncomputable def prod_gibbs_pmf_disorder (t : ℝ) (σs : ReplicaSpace N n) :
 lemma contDiff_prod_gibbs_pmf_disorder (t : ℝ) (σs : ReplicaSpace N n) :
     ContDiff ℝ 1 (prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) t σs) := by
   classical
-  -- Finite product of `C^1` functions.
-  -- `prod_gibbs_pmf_disorder` is definitionaly a `Finset.univ.prod`.
   simpa [prod_gibbs_pmf_disorder] using
     (contDiff_prod (𝕜 := ℝ) (n := (1 : ℕ))
       (t := (Finset.univ : Finset (Fin n)))
@@ -924,11 +916,9 @@ lemma norm_fderiv_prod_gibbs_pmf_disorder_le (t : ℝ) (σs : ReplicaSpace N n) 
     ‖fderiv ℝ (prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) t σs) x‖
       ≤ (n : ℝ) * (2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|)) := by
   classical
-  -- Treat the product as a composition `F ∘ H_t_disorder`.
   let F : EnergySpace N → ℝ := fun H => ∏ l : Fin n, gibbs_pmf N H (σs l)
   have hF_diff :
       DifferentiableAt ℝ F (H_t_disorder (N := N) (h := h) t x) := by
-    -- Delegate to the configuration-agnostic lemma.
     simpa [F, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
       (FiniteGibbs.differentiableAt_prod_gibbs_pmf (α := Config N) (n := n)
         (H := H_t_disorder (N := N) (h := h) t x) (σs := σs))
@@ -952,14 +942,11 @@ lemma norm_fderiv_prod_gibbs_pmf_disorder_le (t : ℝ) (σs : ReplicaSpace N n) 
         (H := H_t_disorder (N := N) (h := h) t x) (σs := σs))
   have hH_norm : ‖H_t_disorder_lin (N := N) t‖ ≤ |Real.sqrt t| + |Real.sqrt (1 - t)| :=
     opNorm_H_t_disorder_lin_le (N := N) t
-  -- Unfold `prod_gibbs_pmf_disorder` and apply the chain rule bound.
   have hrew :
       prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) t σs
         = fun x : DisorderSpace (N := N) => F (H_t_disorder (N := N) (h := h) t x) := by
     funext x
     simp [prod_gibbs_pmf_disorder, gibbs_pmf_disorder, F]
-  -- Now bound the operator norm.
-  -- `‖(L.comp M)‖ ≤ ‖L‖ * ‖M‖`.
   have hcomp_norm :
       ‖(fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)).comp (H_t_disorder_lin (N := N) t)‖
         ≤ ‖fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)‖ * ‖H_t_disorder_lin (N := N) t‖ :=
@@ -1051,7 +1038,6 @@ lemma abs_n_mul_gibbs_pmf_sub_card_le (t : ℝ) (τ : Config N) (σs : ReplicaSp
     |(n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
         - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ)|
       ≤ (2 * (n : ℝ)) := by
-  -- Expand `gibbs_pmf_disorder` and apply the model-agnostic bound.
   simpa [gibbs_pmf_disorder, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
     (FiniteGibbs.abs_n_mul_gibbs_pmf_sub_card_le (α := Config N) (n := n)
       (H := H_t_disorder (N := N) (h := h) t x) (τ := τ) (σs := σs))
@@ -1074,17 +1060,14 @@ lemma norm_fderiv_A_disorder_explicit_le (t : ℝ) (f : ReplicaFun N n) (τ : Co
             (2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|))) *
           (∑ σs : ReplicaSpace N n, |f σs|) := by
   classical
-  -- View `A_disorder_explicit` as a finite sum and use triangle inequality on the derivative.
   let μC : ℝ := 2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|)
   have hμC : 0 ≤ μC := by
     have : (0 : ℝ) ≤ |Real.sqrt t| + |Real.sqrt (1 - t)| := by positivity
     nlinarith [this]
   have hfderivG :
       ‖fderiv ℝ (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ)) x‖ ≤ μC := by
-    -- This is exactly `norm_fderiv_gibbs_pmf_disorder_le`.
     simpa [gibbs_pmf_disorder, μC] using
       (norm_fderiv_gibbs_pmf_disorder_le (N := N) (h := h) (t := t) (σ := τ) x)
-  -- Rewrite `fderiv` of the sum as the sum of `fderiv`s.
   have hsum :
       fderiv ℝ (A_disorder_explicit (N := N) (n := n) (h := h) t f τ) x
         =
@@ -1094,7 +1077,6 @@ lemma norm_fderiv_A_disorder_explicit_le (t : ℝ) (f : ReplicaFun N n) (τ : Co
               (prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) (t := t) σs x) *
               ((n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
                 - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))) x := by
-    -- `fderiv` of a `Finset` sum.
     have hdiff :
         ∀ σs : ReplicaSpace N n,
           DifferentiableAt ℝ (fun x : DisorderSpace (N := N) =>
@@ -1103,14 +1085,12 @@ lemma norm_fderiv_A_disorder_explicit_le (t : ℝ) (f : ReplicaFun N n) (τ : Co
               ((n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
                 - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))) x := by
       intro σs
-      -- `C^1` implies differentiable.
       have hC1 :
           ContDiff ℝ 1 (fun x : DisorderSpace (N := N) =>
             f σs *
               (prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) (t := t) σs x) *
               ((n : ℝ) * (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ) x)
                 - ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ))) := by
-        -- This is one summand of `A_disorder_explicit`; reuse the ingredients from `contDiff_A_disorder_explicit`.
         have hP : ContDiff ℝ 1 (prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) t σs) :=
           contDiff_prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) (t := t) σs
         have hG : ContDiff ℝ 1 (gibbs_pmf_disorder (N := N) (h := h) (t := t) (σ := τ)) :=
