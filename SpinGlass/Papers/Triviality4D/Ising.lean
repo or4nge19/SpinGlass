@@ -35,7 +35,6 @@ noncomputable def prior : Measure Bool :=
   ProbabilityTheory.uniformOn (Set.univ : Set Bool)
 
 instance : IsProbabilityMeasure (prior) := by
-  -- `Bool` is finite and nonempty, so `uniformOn univ` is a probability measure.
   simpa [prior] using (ProbabilityTheory.instIsProbabilityMeasure_uniformOn_univ (Ω := Bool))
 
 /-- The nearest-neighbour system on `ZLattice d`. -/
@@ -136,4 +135,3 @@ def IsIsingNNGibbsState'
 end Ising
 
 end SpinGlass.Papers.Triviality4D
-

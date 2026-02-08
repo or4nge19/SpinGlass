@@ -2,6 +2,10 @@ import SpinGlass.Defs
 import SpinGlass.Lattice.Zd.Correlations
 import SpinGlass.Lattice.Zd.Diagrams
 import SpinGlass.Lattice.Zd.Scaling
+import SpinGlass.Papers.Triviality4D.Ising
+import SpinGlass.Papers.Triviality4D.GSClass
+import SpinGlass.Papers.Triviality4D.GSModel
+import SpinGlass.Papers.Triviality4D.InfraredBound
 import Mathlib.Algebra.BigOperators.Group.Finset.Basic
 import Mathlib.MeasureTheory.Constructions.BorelSpace.Basic
 import Mathlib.MeasureTheory.Function.ConvergenceInDistribution
@@ -22,24 +26,23 @@ Reusable definitions/layers live in:
 
 ## Roadmap / formalization status (peer-review triage)
 
-This file is currently an **interface/skeleton**: it states theorems and supplies the reusable
-algebraic/scaling API needed to *prove* them, but it does not yet formalize the model-specific
-machinery of the paper (random currents, Lee–Yang, infrared bounds, etc.).
+This file is currently an **interface/skeleton**: it states the paper’s main theorems and supplies
+the reusable algebraic/scaling API needed to *prove* them.  We have started to de-vacuify the
+statements by introducing concrete model predicates:
 
-The following items are **intentionally missing** and should be added as separate modules once we
-move from “stating” to “proving” the paper:
+- `SpinGlass.Papers.Triviality4D.Ising`: nearest-neighbour Ising DLR specification/Gibbs-state predicate.
+- `SpinGlass.Papers.Triviality4D.GSClass`: Definition 2.1 (GS class) on single-site laws `ρ : ProbabilityMeasure ℝ`.
+- `SpinGlass.Papers.Triviality4D.GSModel`: a concrete n.n. quadratic Gibbs specification on `ZLattice d`
+  with prior `ρ`, plus the predicate “model in the GS class”.
+- `SpinGlass.Papers.Triviality4D.RandomCurrent`: the combinatorial objects of random currents (finite volume).
+- `SpinGlass.Papers.Triviality4D.InfraredBound`: paper-facing predicates for x-space infrared bounds.
 
-- **Ising Gibbs states on `ℤ^4`**: Hamiltonian/DLR formulation, n.n. ferromagnetism, existence of
-  infinite-volume Gibbs measures, and the critical point `βc`.
-- **Griffiths–Simon (GS) class**: a predicate on single-site measures (and the induced lattice
-  models), including the sub-Gaussian growth condition from Definition 2.1.
-- **Reflection positivity and infrared bounds** (including the sliding-scale form used in Section 3).
-- **Random current representation + switching lemma** (Sections 1.5, 3–5).
-- **Mixing/intersection-clustering bounds** (Proposition 4.1, Theorem 4.5).
+What is still missing are the **core theorems** connecting these layers:
 
-For now, the main results are stated for abstract measure families `μβ` satisfying the explicit
-analytic hypotheses that appear in the statements (e.g. nonnegativity of `twoPoint`), so that later
-we can instantiate them with the actual Ising/GS models once that infrastructure exists.
+- existence/uniqueness/translation invariance of infinite-volume Gibbs states and the critical point `βc`,
+- reflection positivity and the (sliding-scale) infrared bound proofs (Section 3),
+- the random current representation identities and **switching lemma** (Section 1.5),
+- the **mixing** and **intersection-clustering** bounds (Section 4).
 -/
 
 open scoped BigOperators CompactlySupported
@@ -314,11 +317,11 @@ auxiliary `Summable` side-conditions. One can recover a real-valued statement by
 `ENNReal.toReal` once finiteness is established.
 -/
 theorem ImprovedTreeDiagramBound_Ising4
-    (μβ : ℝ → Measure (Z4 → Bool))
+    (J : ℝ) (μβ : ℝ → Measure (Z4 → Bool))
     (βc : ℝ) (ξ : ℝ → ℝ≥0∞) :
     ∃ c C : ℝ, 0 < c ∧ 0 < C ∧
       ∀ β : ℝ, β ≤ βc →
-        IsProbabilityMeasure (μβ β) →
+        Ising.IsIsingNNGibbsState' (d := 4) (J := J) (β := β) (μ := μβ β) →
         (∀ u v : Z4,
           0 ≤ twoPoint (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) u v) →
         ∀ L : ℕ, (L : ℝ≥0∞) ≤ ξ β →
@@ -349,10 +352,10 @@ lemma supportDiameter_nonneg {d : ℕ} (f : C_c(Fin d → ℝ, ℝ)) : 0 ≤ sup
 **Proposition (Gaussian characteristic-function bound)** (paper Proposition `prop:gaussian b`).
 -/
 theorem gaussianCharFnBound_Ising4
-    (μβ : ℝ → Measure (Z4 → Bool)) (βc : ℝ) (ξ : ℝ → ℝ≥0∞) :
+    (J : ℝ) (μβ : ℝ → Measure (Z4 → Bool)) (βc : ℝ) (ξ : ℝ → ℝ≥0∞) :
     ∃ c C : ℝ, 0 < c ∧ 0 < C ∧
       ∀ β : ℝ, β ≤ βc →
-        IsProbabilityMeasure (μβ β) →
+        Ising.IsIsingNNGibbsState' (d := 4) (J := J) (β := β) (μ := μβ β) →
         ∀ L : ℕ, (L : ℝ≥0∞) ≤ ξ β →
           (2 ≤ L) →
           ∀ f : C_c(Fin 4 → ℝ, ℝ),
@@ -382,10 +385,10 @@ can be filled in modularly.
 -/
 
 theorem gaussianCharFnBound_Ising4_of_ImprovedTreeDiagramBound_Ising4
-    (μβ : ℝ → Measure (Z4 → Bool)) (βc : ℝ) (ξ : ℝ → ℝ≥0∞) :
+    (J : ℝ) (μβ : ℝ → Measure (Z4 → Bool)) (βc : ℝ) (ξ : ℝ → ℝ≥0∞) :
     (∃ c C : ℝ, 0 < c ∧ 0 < C ∧
       ∀ β : ℝ, β ≤ βc →
-        IsProbabilityMeasure (μβ β) →
+        Ising.IsIsingNNGibbsState' (d := 4) (J := J) (β := β) (μ := μβ β) →
         (∀ u v : Z4,
           0 ≤ twoPoint (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) u v) →
         ∀ L : ℕ, (L : ℝ≥0∞) ≤ ξ β →
@@ -401,7 +404,7 @@ theorem gaussianCharFnBound_Ising4_of_ImprovedTreeDiagramBound_Ising4
                         twoPoint (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) u t))) →
     ∃ c C : ℝ, 0 < c ∧ 0 < C ∧
       ∀ β : ℝ, β ≤ βc →
-        IsProbabilityMeasure (μβ β) →
+        Ising.IsIsingNNGibbsState' (d := 4) (J := J) (β := β) (μ := μβ β) →
         ∀ L : ℕ, (L : ℝ≥0∞) ≤ ξ β →
           (2 ≤ L) →
           ∀ f : C_c(Fin 4 → ℝ, ℝ),
@@ -432,11 +435,11 @@ theorem gaussianCharFnBound_Ising4_of_ImprovedTreeDiagramBound_Ising4
 **Theorem (Improved tree diagram bound for the GS class)** (paper Theorem 6.1).
 -/
 theorem ImprovedTreeDiagramBound_GS4
-    (J : ℝ) (μβ : ℝ → Measure (Z4 → ℝ))
+    (ρ : ProbabilityMeasure ℝ) (J : ℝ) (μβ : ℝ → Measure (Z4 → ℝ))
     (βc : ℝ) (ξ : ℝ → ℝ≥0∞) :
     ∃ c C : ℝ, 0 < c ∧ 0 < C ∧
       ∀ β : ℝ, β ≤ βc →
-        IsProbabilityMeasure (μβ β) →
+        GSModel.IsGSNNQuadraticModel (d := 4) (J := J) (β := β) ρ (μβ β) →
         0 ≤ β →
         0 ≤ J →
         (∀ u v : Z4, 0 ≤ twoPoint (d := 4) (spin := (fun x : ℝ => x)) (μ := μβ β) u v) →

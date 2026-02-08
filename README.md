@@ -46,6 +46,8 @@ main entry point for interpolation arguments.
 - For the finite-configuration calculus: `import SpinGlass.FiniteGibbs`.
 - For the Guerra interpolation development: `import SpinGlass.GuerraPipeline`.
 - For the DLR/specification library: `import GibbsMeasure`.
+- For the 4D triviality paper interface: `import SpinGlass.Papers.Triviality4D`
+  (with supporting modules under `SpinGlass/Papers/Triviality4D/`).
 
 Gaussian analysis entry points:
 

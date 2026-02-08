@@ -34,13 +34,28 @@ namespace RandomCurrent
 
 universe u
 
-variable {V : Type u}
+variable {V : Type u} [DecidableEq V]
 
 /-! ## Currents on a finite vertex set -/
 
-/-- A (finite-volume) current on the vertex set `Λ`: an `ℕ`-valued function on unordered pairs. -/
+/-- An unordered **off-diagonal** edge in `Λ`, i.e. an element of `Sym2 (↥Λ)` not on the diagonal. -/
+abbrev Edge (Λ : Finset V) : Type u :=
+  {e : Sym2 (↥Λ) // ¬ Sym2.IsDiag e}
+
+/--
+A (finite-volume) current on the vertex set `Λ`: an `ℕ`-valued function on unordered **off-diagonal**
+edges.
+
+This matches the paper convention where currents live on unordered pairs `{x,y}` with `x ≠ y`.
+-/
 abbrev Current (Λ : Finset V) : Type u :=
-  Sym2 (↥Λ) → ℕ
+  Edge (V := V) Λ → ℕ
+
+/-- The off-diagonal edge `{x,y}` as an element of `Edge Λ`. -/
+def edge {Λ : Finset V} (x y : ↥Λ) (hxy : x ≠ y) : Edge (V := V) Λ :=
+  ⟨s(x, y), by
+    -- `Sym2.IsDiag (s(x,y)) ↔ x = y`
+    simpa [Sym2.mk_isDiag_iff] using hxy⟩
 
 /-- Pointwise order on currents (sub-current relation). -/
 def CurrentLE {Λ : Finset V} (m n : Current (V := V) Λ) : Prop :=
@@ -48,9 +63,9 @@ def CurrentLE {Λ : Finset V} (m n : Current (V := V) Λ) : Prop :=
 
 /-! ## Sources `∂n` -/
 
-/-- The total current incident to a vertex `x`. -/
+/-- The total current incident to a vertex `x` (sum of `n(e)` over edges `e` incident to `x`). -/
 def degree {Λ : Finset V} (n : Current (V := V) Λ) (x : ↥Λ) : ℕ :=
-  ∑ y : ↥Λ, n (s(x, y))
+  ∑ e : Edge (V := V) Λ, if x ∈ (e.1 : Sym2 (↥Λ)) then n e else 0
 
 /-- The source predicate (odd incident degree). -/
 def IsSource {Λ : Finset V} (n : Current (V := V) Λ) (x : ↥Λ) : Prop :=
@@ -73,20 +88,32 @@ lemma mem_sources_iff {Λ : Finset V} (n : Current (V := V) Λ) (x : ↥Λ) :
 
 /-! ## Connectivity in the trace graph -/
 
-/-- Adjacency relation induced by a current: `x ~ y` iff `n(s(x,y)) > 0`. -/
+/-- Adjacency relation induced by a current: `x ~ y` iff `x ≠ y` and `n({x,y}) > 0`. -/
 def Adj {Λ : Finset V} (n : Current (V := V) Λ) (x y : ↥Λ) : Prop :=
-  0 < n (s(x, y))
+  ∃ hxy : x ≠ y, 0 < n (edge (V := V) x y hxy)
 
+omit [DecidableEq V] in
 lemma Adj_comm {Λ : Finset V} (n : Current (V := V) Λ) {x y : ↥Λ} :
     Adj (V := V) n x y ↔ Adj (V := V) n y x := by
-  have hs : (s(y, x) : Sym2 (↥Λ)) = s(x, y) := by
-    simp
-  constructor <;> intro h <;> simpa [Adj, hs] using h
+  constructor
+  · rintro ⟨hxy, h⟩
+    refine ⟨hxy.symm, ?_⟩
+    have he : edge (V := V) y x hxy.symm = edge (V := V) x y hxy := by
+      apply Subtype.ext
+      simp [edge]
+    simpa [he] using h
+  · rintro ⟨hyx, h⟩
+    refine ⟨hyx.symm, ?_⟩
+    have he : edge (V := V) x y hyx.symm = edge (V := V) y x hyx := by
+      apply Subtype.ext
+      simp [edge]
+    simpa [he] using h
 
 /-- Connectivity (existence of a path of positive-current edges). -/
 def Connected {Λ : Finset V} (n : Current (V := V) Λ) (x y : ↥Λ) : Prop :=
   Relation.ReflTransGen (Adj (V := V) n) x y
 
+omit [DecidableEq V] in
 lemma Connected.refl {Λ : Finset V} (n : Current (V := V) Λ) (x : ↥Λ) :
     Connected (V := V) n x x :=
   Relation.ReflTransGen.refl
@@ -104,10 +131,17 @@ well-typed.
 -/
 noncomputable def weight
     (β : ℝ) (J : V → V → ℝ) {Λ : Finset V} (n : Current (V := V) Λ) : ℝ≥0∞ :=
-  ∏ e : Sym2 (↥Λ),
+  ∏ e : Edge (V := V) Λ,
     ENNReal.ofReal
-      (((β * J (e.out.1 : V) (e.out.2 : V)) ^ (n e)) /
+      (((β * J (e.1.out.1 : V) (e.1.out.2 : V)) ^ (n e)) /
         ((Nat.factorial (n e) : ℕ) : ℝ))
+
+/-- Edge-coupling version of `weight`, avoiding the arbitrary `out` ordering at the API boundary. -/
+noncomputable def weightEdge
+    (β : ℝ) {Λ : Finset V} (J : Edge (V := V) Λ → ℝ) (n : Current (V := V) Λ) : ℝ≥0∞ :=
+  ∏ e : Edge (V := V) Λ,
+    ENNReal.ofReal
+      (((β * J e) ^ (n e)) / ((Nat.factorial (n e) : ℕ) : ℝ))
 
 /-- The source-constrained partition function `Z_B = ∑_{n : ∂n = B} w(n)` (as `ℝ≥0∞`). -/
 noncomputable def Z
@@ -115,6 +149,13 @@ noncomputable def Z
 by
   classical
   exact ∑' n : Current (V := V) Λ, if sources (V := V) n = B then weight (V := V) β J n else 0
+
+/-- Edge-coupling version of `Z`, using `weightEdge`. -/
+noncomputable def ZEdge
+    (β : ℝ) {Λ : Finset V} (J : Edge (V := V) Λ → ℝ) (B : Finset (↥Λ)) : ℝ≥0∞ :=
+by
+  classical
+  exact ∑' n : Current (V := V) Λ, if sources (V := V) n = B then weightEdge (V := V) β J n else 0
 
 /--
 “Probability” of an event under the source-constrained random current law, as a ratio of weights.
@@ -134,4 +175,3 @@ by
 end RandomCurrent
 
 end SpinGlass.Papers.Triviality4D
-
