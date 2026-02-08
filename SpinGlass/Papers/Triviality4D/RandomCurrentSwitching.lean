@@ -11,7 +11,7 @@ We work in finite volume `Λ` with currents `n : Edge Λ → ℕ` and the real-v
 `weightReal` introduced in `RandomCurrentRepresentation.lean`.
 -/
 
-open scoped BigOperators
+open scoped BigOperators Topology
 
 namespace SpinGlass.Papers.Triviality4D
 
@@ -55,8 +55,7 @@ abbrev EdgeAssignFiber (n n1 : Current (V := V) Λ) : Type u :=
 noncomputable def edgeAssignFiberEquiv
     (n n1 : Current (V := V) Λ) :
     EdgeAssignFiber (V := V) (Λ := Λ) n n1 ≃
-      (∀ e : Edge (V := V) Λ, {s : Finset (Fin (n e)) // s.card = n1 e}) :=
-by
+      (∀ e : Edge (V := V) Λ, {s : Finset (Fin (n e)) // s.card = n1 e}) := by
   refine
     { toFun := fun S => fun e => ⟨S.1 e, ?_⟩
       invFun := fun T => ⟨fun e => (T e).1, by
@@ -345,7 +344,7 @@ lemma degree_toggle_add_two_inter (n : Current (V := V) Λ)
   refine Finset.sum_congr rfl ?_
   intro e _
   by_cases hx : x ∈ (e.1 : Sym2 (↥Λ))
-  · simp [hx, card_symmDiff_add_two_inter (s := S e) (t := M e), add_assoc, add_left_comm, add_comm]
+  · simp [hx, card_symmDiff_add_two_inter (s := S e) (t := M e)]
   · simp [hx]
 
 lemma sources_toggleEdgeAssign (n : Current (V := V) Λ)
@@ -400,8 +399,7 @@ noncomputable def toggleEdgeAssignEquiv_sources (n : Current (V := V) Λ)
     {S : EdgeAssign (V := V) (Λ := Λ) n //
         sources (V := V) (currentOfEdgeAssign (V := V) (Λ := Λ) n S) = symmDiff A B} ≃
       {S : EdgeAssign (V := V) (Λ := Λ) n //
-        sources (V := V) (currentOfEdgeAssign (V := V) (Λ := Λ) n S) = A} :=
-by
+        sources (V := V) (currentOfEdgeAssign (V := V) (Λ := Λ) n S) = A} := by
   refine
     { toFun := fun S =>
         ⟨toggleEdgeAssign (V := V) (Λ := Λ) n M S.1, ?_⟩
@@ -439,7 +437,6 @@ lemma splitCurrentToCurrentCompl_edgeAssignToSplitCurrent (n : Current (V := V) 
 lemma card_edgeAssignSplitFiber (n : Current (V := V) Λ) (s : SplitCurrent (V := V) (Λ := Λ) n) :
     Fintype.card (EdgeAssignSplitFiber (V := V) (Λ := Λ) n s) =
       ∏ e : Edge (V := V) Λ, (n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) := by
-  classical
   calc
     Fintype.card (EdgeAssignSplitFiber (V := V) (Λ := Λ) n s)
         =
@@ -491,9 +488,7 @@ noncomputable def assignSourcesEquivSigma (n : Current (V := V) Λ) (A : Finset 
     AssignSources (V := V) (Λ := Λ) n A ≃
       (s : {s : SplitCurrent (V := V) (Λ := Λ) n //
         sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A}) ×
-        EdgeAssignSplitFiber (V := V) (Λ := Λ) n s.1 :=
-by
-  classical
+        EdgeAssignSplitFiber (V := V) (Λ := Λ) n s.1 := by
   let toFun :
       AssignSources (V := V) (Λ := Λ) n A →
         (s : {s : SplitCurrent (V := V) (Λ := Λ) n //
@@ -551,7 +546,6 @@ lemma card_assignSources (n : Current (V := V) Λ) (A : Finset (↥Λ)) :
         if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A then
           Fintype.card (EdgeAssignSplitFiber (V := V) (Λ := Λ) n s)
         else 0 := by
-  classical
   let P : SplitCurrent (V := V) (Λ := Λ) n → Prop :=
     fun s => sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A
   have hdecomp :
@@ -566,21 +560,92 @@ lemma card_assignSources (n : Current (V := V) Λ) (A : Finset (↥Λ)) :
                 (Fintype.card_congr (assignSourcesEquivSigma (V := V) (Λ := Λ) (n := n) A))
       _ = ∑ s : {s : SplitCurrent (V := V) (Λ := Λ) n // P s},
             Fintype.card (EdgeAssignSplitFiber (V := V) (Λ := Λ) n s.1) := by
-            simpa using
-              (Fintype.card_sigma (ι := {s : SplitCurrent (V := V) (Λ := Λ) n // P s})
-                (α := fun s => EdgeAssignSplitFiber (V := V) (Λ := Λ) n s.1))
-  -- rewrite the sum over the subtype as a sum over all `s` with an indicator
+            simp
   have hsum :
       (∑ s : {s : SplitCurrent (V := V) (Λ := Λ) n // P s},
           Fintype.card (EdgeAssignSplitFiber (V := V) (Λ := Λ) n s.1))
         =
         ∑ s : SplitCurrent (V := V) (Λ := Λ) n,
           if P s then Fintype.card (EdgeAssignSplitFiber (V := V) (Λ := Λ) n s) else 0 := by
-    -- apply the general lemma with `f s = card (fiber s)`
     simpa [P] using
       (sum_subtype_eq_sum_if (α := SplitCurrent (V := V) (Λ := Λ) n) (M := ℕ) (P := P)
         (f := fun s => Fintype.card (EdgeAssignSplitFiber (V := V) (Λ := Λ) n s)))
   simpa [P] using hdecomp.trans hsum
+
+/-! ## Switching lemma: reindexing over a fixed total current -/
+
+lemma hasSubCurrent_of_exists_edgeAssign_sources (n : Current (V := V) Λ) (B : Finset (↥Λ)) :
+    (∃ M : EdgeAssign (V := V) (Λ := Λ) n,
+        sources (V := V) (currentOfEdgeAssign (V := V) (Λ := Λ) n M) = B) →
+      HasSubCurrent (V := V) (Λ := Λ) n B := by
+  rintro ⟨M, hM⟩
+  refine ⟨currentOfEdgeAssign (V := V) (Λ := Λ) n M, ?_, hM⟩
+  intro e
+  have hle : (M e).card ≤ n e := by
+    simpa using (Finset.card_le_univ (s := M e))
+  simpa [currentOfEdgeAssign] using hle
+
+lemma hasSubCurrent_iff_exists_edgeAssign_sources (n : Current (V := V) Λ) (B : Finset (↥Λ)) :
+    HasSubCurrent (V := V) (Λ := Λ) n B ↔
+      ∃ M : EdgeAssign (V := V) (Λ := Λ) n,
+        sources (V := V) (currentOfEdgeAssign (V := V) (Λ := Λ) n M) = B := by
+  constructor
+  · exact exists_edgeAssign_sources_of_hasSubCurrent (V := V) (Λ := Λ) (n := n) (B := B)
+  · exact hasSubCurrent_of_exists_edgeAssign_sources (V := V) (Λ := Λ) (n := n) (B := B)
+
+/-- Pairs of currents whose sum is a fixed total current `n`. -/
+abbrev AddFiber (n : Current (V := V) Λ) : Type u :=
+  {p : Current (V := V) Λ × Current (V := V) Λ // p.1 + p.2 = n}
+
+/--
+Equivalence between split parameters `s : SplitCurrent n` and pairs `(n₁,n₂)` with `n₁+n₂=n`.
+-/
+noncomputable def splitCurrentEquivAddFiber (n : Current (V := V) Λ) :
+    SplitCurrent (V := V) (Λ := Λ) n ≃ AddFiber (V := V) (Λ := Λ) n := by
+  classical
+  refine
+    { toFun := fun s =>
+        ⟨⟨splitCurrentToCurrent (V := V) (Λ := Λ) n s,
+            splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s⟩,
+          splitCurrent_add (V := V) (Λ := Λ) n s⟩
+      invFun := fun p =>
+        let n1 : Current (V := V) Λ := p.1.1
+        let n2 : Current (V := V) Λ := p.1.2
+        fun e =>
+          ⟨n1 e,
+            Nat.lt_succ_of_le
+              (Nat.le.intro (k := n2 e) (by
+                have h := congrArg (fun m : Current (V := V) Λ => m e) p.2
+                simpa using h))⟩
+      left_inv := ?_
+      right_inv := ?_ }
+  · intro s
+    funext e
+    apply Fin.ext
+    rfl
+  · intro p
+    apply Subtype.ext
+    ext e
+    · rfl
+    · have h := congrArg (fun m : Current (V := V) Λ => m e) p.2
+      have h' : p.1.1 e + p.1.2 e = n e := by
+        simpa using h
+      have hn : n e = p.1.1 e + p.1.2 e := h'.symm
+      simp [splitCurrentToCurrentCompl, hn]
+
+/-! ## Summability of the absolute current weights -/
+
+lemma summable_norm_weightReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) :
+    Summable (fun n : Current (V := V) Λ => ‖weightReal (V := V) (Λ := Λ) β J n‖) := by
+  let f : Edge (V := V) Λ → ℕ → ℝ := fun e k => (β * J e) ^ k / (k.factorial : ℝ)
+  have hf : ∀ e, Summable fun k : ℕ => ‖f e k‖ := by
+    intro e
+    simpa [f] using summable_norm_pow_div_factorial (x := β * J e)
+  have hsum : Summable (fun n : Current (V := V) Λ => ‖currTerm (E := Edge (V := V) Λ) f n‖) :=
+    (tsum_pi_currTerm_eq_prod_tsum (E := Edge (V := V) Λ) f hf).1
+  refine Summable.congr hsum ?_
+  intro n
+  simp [currTerm, weightReal, f]
 
 end RandomCurrent
 
