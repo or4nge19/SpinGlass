@@ -16,7 +16,7 @@ This is a possibe principled bridge between:
 
 - Boltzmann machines / RBMs (joint Gibbs law on visible+hidden),
 - Hopfield-type low-rank energies (visible marginal after Gaussian hidden integration),
-- Talagrand’s “structure first” Vol II viewpoint (kernels / pushforwards).
+- Talagrand’s Vol II viewpoint (kernels / pushforwards).
 -/
 
 open MeasureTheory Real BigOperators
@@ -105,6 +105,7 @@ theorem map_fst_gibbsMeasure_eq_gibbsMeasure_marginalEnergy (H : EnergySpace (α
     (gibbsMeasure (α := α × β) H).map Prod.fst
       =
       gibbsMeasure (α := α) (marginalEnergy (α := α) (β := β) H) := by
+  classical
   refine Measure.ext (fun s hs => ?_)
   have hLHS :
       (gibbsMeasure (α := α × β) H).map Prod.fst s
