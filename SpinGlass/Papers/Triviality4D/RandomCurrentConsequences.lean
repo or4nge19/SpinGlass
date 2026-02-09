@@ -540,7 +540,7 @@ For distinct vertices `x ≠ y`, the event `Connected n x y` for the **total** c
 independent sourceless currents has normalized weight ratio equal to the square of the two-point
 correlation.
 
-This is the classical “random current connectivity” identity
+The “random current connectivity” identity
 \[
  \langle \sigma_x\sigma_y\rangle^2 = \mathbb P^{\varnothing,\varnothing}(x \leftrightarrow y),
 \]
