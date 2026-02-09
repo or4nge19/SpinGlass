@@ -530,7 +530,7 @@ lemma PPairReal_mem_Icc_of_nonneg
     PPairReal_le_one_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) (A := A) (B := B) (S := S) hβJ⟩
 
 /--
-Switching lemma, packaged as a normalized weight ratio: the total-current event `ℱ_B` (existence of a
+Switching lemma as a normalized weight ratio: the total-current event `ℱ_B` (existence of a
 `B`-sourced subcurrent) under sources `(AΔB, ∅)` has weight ratio
 \[
 \frac{Z_A Z_B}{Z_{A\Delta B} Z_{\emptyset}}.
