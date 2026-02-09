@@ -27,7 +27,7 @@ Reusable definitions/layers live in:
 - `SpinGlass.Lattice.Zd.Correlations` and `SpinGlass.Lattice.Zd.BoxDiagrams` (the `ℤ^d`-specialized adapters).
 - `SpinGlass.Lattice.Zd.Scaling` (scaling observables `scalePoint`, `sigmaL`, `Tf`).
 
-## Roadmap / formalization status (peer-review triage)
+## Roadmap / formalization status
 
 This file states the paper’s main theorems and supplies
 the reusable algebraic/scaling API needed to *prove* them.  We have started to de-vacuify the
@@ -40,7 +40,7 @@ statements by introducing concrete model predicates:
 - `SpinGlass.Papers.Triviality4D.RandomCurrent`: the combinatorial objects of random currents (finite volume).
 - `SpinGlass.Papers.Triviality4D.InfraredBound`: paper-specific predicates for x-space infrared bounds.
 
-What is still missing are the **core theorems** connecting these layers:
+What is still missing are the core theorems connecting these layers:
 
 - existence/uniqueness/translation invariance of infinite-volume Gibbs states and the critical point `βc`,
 - reflection positivity and the (sliding-scale) infrared bound proofs (Section 3),
