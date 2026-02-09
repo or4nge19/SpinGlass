@@ -105,6 +105,7 @@ theorem map_fst_gibbsMeasure_eq_gibbsMeasure_marginalEnergy (H : EnergySpace (α
     (gibbsMeasure (α := α × β) H).map Prod.fst
       =
       gibbsMeasure (α := α) (marginalEnergy (α := α) (β := β) H) := by
+  classical
   refine Measure.ext (fun s hs => ?_)
   have hLHS :
       (gibbsMeasure (α := α × β) H).map Prod.fst s
