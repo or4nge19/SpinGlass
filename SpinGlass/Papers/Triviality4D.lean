@@ -117,7 +117,6 @@ lemma IsGeneralizedGaussianProcess.measurable_vec
     {Test : Type*} {T : Test → Ω → ℝ} (h : IsGeneralizedGaussianProcess (P := P) (T := T))
     (n : ℕ) (f : Fin n → Test) :
     Measurable (fun ω : Ω => fun i : Fin n => T (f i) ω) := by
-  classical
   refine (measurable_pi_iff).2 ?_
   intro i
   simpa using h.measurable (f i)

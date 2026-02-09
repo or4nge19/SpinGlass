@@ -41,7 +41,6 @@ lemma weightReal_nonneg_of_nonneg
 /-- Weight of a unit current is the corresponding coupling `β * J e₀`. -/
 lemma weightReal_unitCurrent (β : ℝ) (J : Edge (V := V) Λ → ℝ) (e₀ : Edge (V := V) Λ) :
     weightReal (V := V) (Λ := Λ) β J (unitCurrent (V := V) (Λ := Λ) e₀) = β * J e₀ := by
-  classical
   unfold weightReal unitCurrent
   let g : Edge (V := V) Λ → ℝ :=
     fun e : Edge (V := V) Λ =>
@@ -69,7 +68,6 @@ lemma ZReal_pos_of_exists_current
     (hsources : sources (V := V) (Λ := Λ) n₀ = B)
     (hwpos : 0 < weightReal (V := V) (Λ := Λ) β J n₀) :
     0 < ZReal (V := V) (Λ := Λ) β J B := by
-  classical
   let w : Current (V := V) Λ → ℝ := weightReal (V := V) (Λ := Λ) β J
   let f : Current (V := V) Λ → ℝ := fun n => if sources (V := V) n = B then w n else 0
   have hs_norm : Summable (fun n : Current (V := V) Λ => ‖f n‖) := by
@@ -91,7 +89,6 @@ lemma ZReal_pair_pos_of_nonneg
     (β : ℝ) (J : Edge (V := V) Λ → ℝ) {x y : ↥Λ} (hxy : x ≠ y)
     (hβJ : ∀ e, 0 ≤ β * J e) (hpos : 0 < β * J (edge (V := V) (Λ := Λ) x y hxy)) :
     0 < ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) := by
-  classical
   let B : Finset (↥Λ) := ({x, y} : Finset (↥Λ))
   let e₀ : Edge (V := V) Λ := edge (V := V) (Λ := Λ) x y hxy
   let n₀ : Current (V := V) Λ := unitCurrent (V := V) (Λ := Λ) e₀
@@ -154,7 +151,6 @@ lemma sources_currentOfPosCouplingWalk
     (w : (posCouplingGraph (V := V) (Λ := Λ) β J).Walk x y) :
     sources (V := V) (Λ := Λ) (currentOfPosCouplingWalk (β := β) (J := J) w)
       = (if x = y then (∅ : Finset (↥Λ)) else ({x, y} : Finset (↥Λ))) := by
-  classical
   induction w with
   | nil =>
       ext z
@@ -183,7 +179,6 @@ lemma betaJ_pos_of_currentOfPosCouplingWalk_ne_zero
     (w : (posCouplingGraph (V := V) (Λ := Λ) β J).Walk x y) {e : Edge (V := V) Λ}
     (hne : currentOfPosCouplingWalk (β := β) (J := J) w e ≠ 0) :
     0 < β * J e := by
-  classical
   induction w with
   | nil =>
       simp [currentOfPosCouplingWalk] at hne
@@ -204,7 +199,6 @@ lemma weightReal_pos_currentOfPosCouplingWalk
     0 <
       weightReal (V := V) (Λ := Λ) β J
         (currentOfPosCouplingWalk (β := β) (J := J) w) := by
-  classical
   unfold weightReal
   simpa using
     (Finset.prod_pos (s := (Finset.univ : Finset (Edge (V := V) Λ)))
@@ -237,7 +231,6 @@ lemma ZReal_pair_pos_of_posCouplingWalk
     {x y : ↥Λ} (hxy : x ≠ y)
     (wxy : (posCouplingGraph (V := V) (Λ := Λ) β J).Walk x y) :
     0 < ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) := by
-  classical
   let B : Finset (↥Λ) := ({x, y} : Finset (↥Λ))
   let n₀ : Current (V := V) Λ :=
     currentOfPosCouplingWalk (β := β) (J := J) wxy
@@ -694,6 +687,29 @@ theorem PPairReal_connected_eq_isingCorr_mul_isingCorr_div
     (isingCorr_mul_isingCorr_div_isingCorr_symmDiff_eq_PPairReal_hasSubCurrent (V := V) (Λ := Λ)
       (β := β) (J := J) ({y, u} : Finset (↥Λ)) ({x, u} : Finset (↥Λ)))
   simpa [hsymm, hSet, mul_comm, mul_left_comm, mul_assoc] using horgaf.symm
+
+/--
+In the ferromagnetic regime, the paper’s ratio
+\[
+\frac{\langle\sigma_x\sigma_u\rangle\langle\sigma_y\sigma_u\rangle}{\langle\sigma_x\sigma_y\rangle}
+\]
+lies in `[0,1]` since it equals a connectivity probability (Proposition `prop:3`, Eq. `(prop2b)`).
+-/
+theorem isingCorr_mul_isingCorr_div_isingCorr_pair_mem_Icc_of_nonneg
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) {x y u : ↥Λ}
+    (hxy : x ≠ y) (hxu : x ≠ u) (hyu : y ≠ u)
+    (hβJ : ∀ e : Edge (V := V) Λ, 0 ≤ β * J e) :
+    ((isingCorr (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
+          isingCorr (V := V) (Λ := Λ) β J ({y, u} : Finset (↥Λ))) /
+        isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ))) ∈ Set.Icc (0 : ℝ) 1 := by
+  have hP :
+      PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+          {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x u} ∈ Set.Icc (0 : ℝ) 1 :=
+    PPairReal_mem_Icc_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J)
+      ({x, y} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+      {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x u} hβJ
+  simpa [PPairReal_connected_eq_isingCorr_mul_isingCorr_div (V := V) (Λ := Λ) (β := β) (J := J)
+    (x := x) (y := y) (u := u) hxy hxu hyu] using hP
 
 /-! ## Two-point connectivity under sourceless pair law -/
 
