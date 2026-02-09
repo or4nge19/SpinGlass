@@ -46,7 +46,6 @@ lemma weightReal_unitCurrent (β : ℝ) (J : Edge (V := V) Λ → ℝ) (e₀ : E
   let g : Edge (V := V) Λ → ℝ :=
     fun e : Edge (V := V) Λ =>
       (β * J e) ^ (if e = e₀ then 1 else 0) / ((if e = e₀ then 1 else 0).factorial)
-  -- turn the `Fintype` product into a `Finset` product so we can use `prod_eq_single_of_mem`
   change (Finset.prod (Finset.univ : Finset (Edge (V := V) Λ)) g) = β * J e₀
   have he₀ : e₀ ∈ (Finset.univ : Finset (Edge (V := V) Λ)) := by simp
   have hsingle :
@@ -54,7 +53,6 @@ lemma weightReal_unitCurrent (β : ℝ) (J : Edge (V := V) Λ → ℝ) (e₀ : E
     refine Finset.prod_eq_single_of_mem e₀ he₀ ?_
     intro e he hne
     simp [hne]
-  -- now just simplify the remaining factor `g e₀`
   calc
     Finset.prod (Finset.univ : Finset (Edge (V := V) Λ)) g = g e₀ := hsingle
     _ = β * J e₀ := by simp [g]
@@ -95,7 +93,6 @@ lemma ZReal_pair_pos_of_nonneg
     0 < ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) := by
   classical
   let B : Finset (↥Λ) := ({x, y} : Finset (↥Λ))
-  -- witness a strictly positive term: the unit current on the edge `{x,y}`
   let e₀ : Edge (V := V) Λ := edge (V := V) (Λ := Λ) x y hxy
   let n₀ : Current (V := V) Λ := unitCurrent (V := V) (Λ := Λ) e₀
   have hsources : sources (V := V) (Λ := Λ) n₀ = B := by
@@ -553,7 +550,6 @@ theorem PPairReal_connected_eq_isingCorr_sq
         {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x y}
       =
       (isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ))) ^ 2 := by
-  classical
   have hPP :
       PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) (∅ : Finset (↥Λ))
           {n : Current (V := V) Λ | HasSubCurrent (V := V) (Λ := Λ) n ({x, y} : Finset (↥Λ))}
