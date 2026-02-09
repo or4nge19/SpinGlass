@@ -960,6 +960,152 @@ theorem isingUrsell4_eq_of_nonneg_of_reachable_posCouplingGraph
     isingUrsell4_eq (V := V) (Λ := Λ) (β := β) (J := J) (x := x) (y := y) (z := z) (t := t)
       hxy hxz hxt hyz hyt hzt hZxy hZzt
 
+/-! ### Simple bounds from (U4) in the ferromagnetic regime -/
+
+lemma isingCorr_nonneg_of_nonneg
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (hβJ : ∀ e : Edge (V := V) Λ, 0 ≤ β * J e)
+    (A : Finset (↥Λ)) :
+    0 ≤ isingCorr (V := V) (Λ := Λ) β J A := by
+  have hA :
+      0 ≤ ZReal (V := V) (Λ := Λ) β J A :=
+    ZReal_nonneg_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) hβJ A
+  have h0 :
+      0 ≤ ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) :=
+    ZReal_nonneg_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) hβJ (∅ : Finset (↥Λ))
+  simpa [isingCorr_eq_ZReal_div] using (div_nonneg hA h0)
+
+theorem isingUrsell4_le_zero_of_nonneg_of_reachable_posCouplingGraph
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) {x y z t : ↥Λ}
+    (hxy : x ≠ y) (hxz : x ≠ z) (hxt : x ≠ t)
+    (hyz : y ≠ z) (hyt : y ≠ t) (hzt : z ≠ t)
+    (hβJ : ∀ e : Edge (V := V) Λ, 0 ≤ β * J e)
+    (hreach_xy : (posCouplingGraph (V := V) (Λ := Λ) β J).Reachable x y)
+    (hreach_zt : (posCouplingGraph (V := V) (Λ := Λ) β J).Reachable z t) :
+    isingUrsell4 (V := V) (Λ := Λ) β J x y z t ≤ 0 := by
+  have hid :=
+    isingUrsell4_eq_of_nonneg_of_reachable_posCouplingGraph (V := V) (Λ := Λ) (β := β) (J := J)
+      (x := x) (y := y) (z := z) (t := t) hxy hxz hxt hyz hyt hzt hβJ hreach_xy hreach_zt
+  have hcorrxy :
+      0 ≤ isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) :=
+    isingCorr_nonneg_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) hβJ ({x, y} : Finset (↥Λ))
+  have hcorrzt :
+      0 ≤ isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) :=
+    isingCorr_nonneg_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) hβJ ({z, t} : Finset (↥Λ))
+  have hP :
+      0 ≤
+        PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
+          {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z} :=
+    PPairReal_nonneg_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J)
+      ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
+      {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z} hβJ
+  have hprod :
+      0 ≤
+        isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
+          isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) *
+            PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
+              {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z} :=
+    mul_nonneg (mul_nonneg hcorrxy hcorrzt) hP
+  have hnonpos :
+      -2 *
+          isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
+          isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) *
+          PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
+            {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z} ≤ 0 := by
+    have :
+        (-2 : ℝ) *
+            (isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
+              isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) *
+                PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
+                  {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z}) ≤ 0 :=
+      mul_nonpos_of_nonpos_of_nonneg (by norm_num) hprod
+    simpa [mul_assoc] using this
+  simpa [hid] using hnonpos
+
+theorem abs_isingUrsell4_le_two_mul_isingCorr_mul_isingCorr_of_nonneg_of_reachable_posCouplingGraph
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) {x y z t : ↥Λ}
+    (hxy : x ≠ y) (hxz : x ≠ z) (hxt : x ≠ t)
+    (hyz : y ≠ z) (hyt : y ≠ t) (hzt : z ≠ t)
+    (hβJ : ∀ e : Edge (V := V) Λ, 0 ≤ β * J e)
+    (hreach_xy : (posCouplingGraph (V := V) (Λ := Λ) β J).Reachable x y)
+    (hreach_zt : (posCouplingGraph (V := V) (Λ := Λ) β J).Reachable z t) :
+    |isingUrsell4 (V := V) (Λ := Λ) β J x y z t|
+      ≤
+      2 *
+        isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
+        isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) := by
+  have hid :=
+    isingUrsell4_eq_of_nonneg_of_reachable_posCouplingGraph (V := V) (Λ := Λ) (β := β) (J := J)
+      (x := x) (y := y) (z := z) (t := t) hxy hxz hxt hyz hyt hzt hβJ hreach_xy hreach_zt
+  have hnonpos :
+      isingUrsell4 (V := V) (Λ := Λ) β J x y z t ≤ 0 :=
+    isingUrsell4_le_zero_of_nonneg_of_reachable_posCouplingGraph (V := V) (Λ := Λ) (β := β) (J := J)
+      (x := x) (y := y) (z := z) (t := t) hxy hxz hxt hyz hyt hzt hβJ hreach_xy hreach_zt
+  have hP_le_one :
+      PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
+          {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z} ≤ 1 :=
+    PPairReal_le_one_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J)
+      ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
+      {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z} hβJ
+  have hcorrxy :
+      0 ≤ isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) :=
+    isingCorr_nonneg_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) hβJ ({x, y} : Finset (↥Λ))
+  have hcorrzt :
+      0 ≤ isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) :=
+    isingCorr_nonneg_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) hβJ ({z, t} : Finset (↥Λ))
+  have habs :
+      |isingUrsell4 (V := V) (Λ := Λ) β J x y z t|
+        =
+        2 *
+          isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
+          isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) *
+          PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
+            {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z} := by
+    calc
+      |isingUrsell4 (V := V) (Λ := Λ) β J x y z t|
+          = -(isingUrsell4 (V := V) (Λ := Λ) β J x y z t) := by
+              simpa using (abs_of_nonpos hnonpos)
+      _ = -(-2 *
+            isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
+            isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) *
+            PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
+              {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z}) := by
+            simp [hid]
+      _ = 2 *
+            isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
+            isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) *
+            PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
+              {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z} := by
+            ring
+  have hcoef_nonneg :
+      0 ≤
+        2 *
+          isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
+          isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) :=
+    mul_nonneg (mul_nonneg (by norm_num) hcorrxy) hcorrzt
+  have hbound :
+      (2 *
+          isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
+          isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ))) *
+          PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
+            {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z}
+        ≤
+        (2 *
+            isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
+            isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ))) * 1 :=
+    mul_le_mul_of_nonneg_left hP_le_one hcoef_nonneg
+  have hbound' :
+      2 *
+          isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
+          isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) *
+          PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
+            {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z}
+        ≤
+        2 *
+          isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
+          isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) := by
+    simpa [mul_assoc] using hbound
+  simpa [habs] using hbound'
+
 end RandomCurrent
 
 end SpinGlass.Papers.Triviality4D

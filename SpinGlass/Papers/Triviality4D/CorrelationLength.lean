@@ -147,6 +147,48 @@ noncomputable def corrLenLimsup (x : ZLattice d) (i : Fin d) : ℝ≥0∞ :=
 noncomputable abbrev corrLen0 (i : Fin d) : ℝ≥0∞ :=
   corrLenLimsup (d := d) (spin := spin) (μ := μ) (x := (0 : ZLattice d)) i
 
+/-! ### Exponential bounds from `corrLenLimsup` (no limit assumption) -/
+
+lemma eventually_truncTwoPointRay_le_exp_neg_div_of_corrLenLimsup_lt
+    {x : ZLattice d} {i : Fin d} {L : ℝ}
+    (hg : ∀ᶠ n : ℕ in atTop,
+      0 < truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i n ∧
+        truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i n < 1)
+    (hLpos : 0 < L)
+    (hξ : corrLenLimsup (d := d) (spin := spin) (μ := μ) x i < ENNReal.ofReal L) :
+    ∀ᶠ n : ℕ in atTop,
+      truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i n ≤ Real.exp (-((n : ℝ) / L)) := by
+  have hξ' :
+      Filter.limsup
+          (fun n : ℕ =>
+            corrLenTerm (g := truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i) n)
+          atTop
+        < ENNReal.ofReal L := by
+    simpa [corrLenLimsup] using hξ
+  simpa [truncTwoPointRay] using
+    (eventually_le_exp_neg_div_of_limsup_corrLenTerm_lt
+      (g := truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i) hg hLpos hξ')
+
+lemma frequently_exp_neg_div_le_truncTwoPointRay_of_lt_corrLenLimsup
+    {x : ZLattice d} {i : Fin d} {L : ℝ}
+    (hg : ∀ᶠ n : ℕ in atTop,
+      0 < truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i n ∧
+        truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i n < 1)
+    (hLpos : 0 < L)
+    (hξ : ENNReal.ofReal L < corrLenLimsup (d := d) (spin := spin) (μ := μ) x i) :
+    ∃ᶠ n : ℕ in atTop,
+      Real.exp (-((n : ℝ) / L)) ≤ truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i n := by
+  have hξ' :
+      ENNReal.ofReal L <
+        Filter.limsup
+          (fun n : ℕ =>
+            corrLenTerm (g := truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i) n)
+          atTop := by
+    simpa [corrLenLimsup] using hξ
+  simpa [truncTwoPointRay] using
+    (frequently_exp_neg_div_le_of_lt_limsup_corrLenTerm
+      (g := truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i) hg hLpos hξ')
+
 /--
 `IsCorrelationLength spin μ x i ξ` means: along the ray `x + n·e_i`, the truncated two-point
 function is eventually in `(0,1)`, and the paper’s correlation-length expression converges to `ξ`.

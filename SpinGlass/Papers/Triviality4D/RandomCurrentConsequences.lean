@@ -337,7 +337,7 @@ lemma PPairReal_nonneg_of_nonneg
         mul_nonneg hw1 hw2
       by_cases hmem : (p.1 + p.2) ∈ S
       · simp [hcond, Set.indicator_of_mem, hmem, hwprod]
-      · simp [hcond, Set.indicator_of_not_mem, hmem, hwprod]
+      · simp [hcond, Set.indicator, hmem]
     · simp [hcond]
   have hden :
       0 ≤
@@ -368,17 +368,22 @@ lemma PPairReal_le_one_of_nonneg
     refine Summable.of_norm_bounded (g := fun p => ‖w p.1‖ * ‖w p.2‖) hsWeight ?_
     intro p
     by_cases hcond : sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B
-    · simp [fAll, wprod, w, hcond, norm_mul, mul_nonneg, norm_nonneg]
-    · simp [fAll, hcond]
+    · simp [fAll, wprod, w, hcond, norm_mul]
+    · simpa [fAll, hcond] using
+        (mul_nonneg (norm_nonneg (w p.1)) (norm_nonneg (w p.2)))
   have hsAll : Summable fAll := hsAll_norm.of_norm
   have hsS_norm : Summable fun p : Current (V := V) Λ × Current (V := V) Λ => ‖fS p‖ := by
     refine Summable.of_norm_bounded (g := fun p => ‖w p.1‖ * ‖w p.2‖) hsWeight ?_
     intro p
     by_cases hcond : sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B
     · by_cases hmem : (p.1 + p.2) ∈ S
-      · simp [fS, hcond, Set.indicator_of_mem, hmem, wprod, w, norm_mul, mul_nonneg, norm_nonneg]
-      · simp [fS, hcond, Set.indicator_of_not_mem, hmem]
-    · simp [fS, hcond]
+      · simp [fS, hcond, Set.indicator_of_mem, hmem, wprod, w, norm_mul]
+      ·
+        simpa [fS, hcond, Set.indicator, hmem] using
+          (mul_nonneg (norm_nonneg (w p.1)) (norm_nonneg (w p.2)))
+    ·
+      simpa [fS, hcond] using
+        (mul_nonneg (norm_nonneg (w p.1)) (norm_nonneg (w p.2)))
   have hsS : Summable fS := hsS_norm.of_norm
   have hpoint : ∀ p, fS p ≤ fAll p := by
     intro p
@@ -390,12 +395,12 @@ lemma PPairReal_le_one_of_nonneg
       have hwprod : 0 ≤ wprod p := mul_nonneg hw1 hw2
       by_cases hmem : (p.1 + p.2) ∈ S
       · simp [fS, fAll, hcond, Set.indicator_of_mem, hmem]
-      · simp [fS, fAll, hcond, Set.indicator_of_not_mem, hmem, hwprod]
+      · simp [fS, fAll, hcond, Set.indicator, hmem, hwprod]
     · simp [fS, fAll, hcond]
   have htsum :
       (∑' p : Current (V := V) Λ × Current (V := V) Λ, fS p) ≤
         (∑' p : Current (V := V) Λ × Current (V := V) Λ, fAll p) :=
-    hsS.tsum_le_tsum hsAll hpoint
+    hsS.tsum_le_tsum hpoint hsAll
   have hZ :
       ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B =
         ∑' p : Current (V := V) Λ × Current (V := V) Λ, fAll p := by
