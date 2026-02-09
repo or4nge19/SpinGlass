@@ -662,13 +662,27 @@ theorem PPairReal_connected_eq_isingCorr_mul_isingCorr_div
     ext v
     by_cases hvx : v = x
     · subst hvx
-      simp [Finset.mem_symmDiff, hxy, hxu]
+      constructor
+      · intro _hx
+        simp
+      · intro _hx
+        refine (Finset.mem_symmDiff).2 (Or.inr ?_)
+        refine ⟨by simp, ?_⟩
+        simp [hxy, hxu]
     by_cases hvy : v = y
     · subst hvy
-      simp [Finset.mem_symmDiff, hyu, hvx]
+      constructor
+      · intro _hy
+        simp
+      · intro _hy
+        refine (Finset.mem_symmDiff).2 (Or.inl ?_)
+        refine ⟨by simp, ?_⟩
+        simp [hvx, hyu]
     by_cases hvu : v = u
-    · subst hvu
-      simp [Finset.mem_symmDiff, hvx, hvy]
+    · subst v
+      have hux : u ≠ x := by simpa [eq_comm] using hxu
+      have huy : u ≠ y := by simpa [eq_comm] using hyu
+      simp [Finset.mem_symmDiff, hux, huy]
     · simp [Finset.mem_symmDiff, hvx, hvy, hvu]
   have hSet :
       {n : Current (V := V) Λ | HasSubCurrent (V := V) (Λ := Λ) n ({x, u} : Finset (↥Λ))} =
