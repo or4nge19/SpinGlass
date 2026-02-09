@@ -29,7 +29,7 @@ Reusable definitions/layers live in:
 
 ## Roadmap / formalization status (peer-review triage)
 
-This file is currently an **interface/skeleton**: it states the paper’s main theorems and supplies
+This file states the paper’s main theorems and supplies
 the reusable algebraic/scaling API needed to *prove* them.  We have started to de-vacuify the
 statements by introducing concrete model predicates:
 
@@ -72,7 +72,9 @@ The paper defines the (inverse) correlation length via an asymptotic logarithmic
 We encode this as a **predicate** `IsCorrelationLength` (see `SpinGlass.Papers.Triviality4D.CorrelationLength`),
 with codomain `ℝ≥0∞` to allow the critical case `ξ(βc) = ∞`. The predicate makes the required
 positivity assumptions explicit (eventually `0 < ⟨σ_0;σ_{n e₁}⟩ < 1`) and states convergence of the
-paper’s expression in `ℝ≥0∞`.
+paper’s expression in `ℝ≥0∞`.  The same file also provides a definition-level object `corrLenLimsup`
+(`limsup` of the paper’s terms) and a lemma `IsCorrelationLength.corrLenLimsup_eq` identifying it
+with the claimed limit when convergence holds.
 -/
 
 /-! ## “Generalized Gaussian process” (finite-dimensional distributions are Gaussian) -/

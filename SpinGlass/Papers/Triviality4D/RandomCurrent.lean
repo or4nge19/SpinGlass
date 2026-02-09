@@ -4,8 +4,10 @@ import Mathlib.Data.Countable.Defs
 import Mathlib.Data.Finset.Sym
 import Mathlib.Data.Nat.Factorial.Basic
 import Mathlib.Data.Sym.Sym2
+import Mathlib.Algebra.BigOperators.Ring.Nat
 import Mathlib.Topology.Algebra.InfiniteSum.Basic
 import Mathlib.Topology.Algebra.InfiniteSum.ENNReal
+import Mathlib.Algebra.Ring.Parity
 
 /-!
 # Random current representation (finite volume): definitions + paper-facing API
@@ -86,6 +88,128 @@ lemma mem_sources_iff {Λ : Finset V} (n : Current (V := V) Λ) (x : ↥Λ) :
   classical
   simp [sources]
 
+/-! ## Sources under current addition -/
+
+lemma degree_add {Λ : Finset V} (n1 n2 : Current (V := V) Λ) (x : ↥Λ) :
+    degree (V := V) (n1 + n2) x = degree (V := V) n1 x + degree (V := V) n2 x := by
+  classical
+  simp [degree]
+  have hintegrand :
+      (fun e : Edge (V := V) Λ => if x ∈ (e.1 : Sym2 (↥Λ)) then n1 e + n2 e else 0) =
+        (fun e : Edge (V := V) Λ =>
+          (if x ∈ (e.1 : Sym2 (↥Λ)) then n1 e else 0) +
+            (if x ∈ (e.1 : Sym2 (↥Λ)) then n2 e else 0)) := by
+    funext e
+    by_cases hx : x ∈ (e.1 : Sym2 (↥Λ)) <;> simp [hx]
+  simpa [hintegrand] using
+    (Finset.sum_add_distrib (s := (Finset.univ : Finset (Edge (V := V) Λ)))
+      (f := fun e : Edge (V := V) Λ => if x ∈ (e.1 : Sym2 (↥Λ)) then n1 e else 0)
+      (g := fun e : Edge (V := V) Λ => if x ∈ (e.1 : Sym2 (↥Λ)) then n2 e else 0))
+
+lemma sources_add {Λ : Finset V} (n1 n2 : Current (V := V) Λ) :
+    sources (V := V) (n1 + n2) =
+      symmDiff (sources (V := V) n1) (sources (V := V) n2) := by
+  classical
+  ext x
+  simp [mem_sources_iff, IsSource, degree_add, Finset.mem_symmDiff]
+  have hiff : ∀ p q : Prop, (p ↔ ¬ q) ↔ (p ∧ ¬ q) ∨ (q ∧ ¬ p) := by
+    intro p q
+    by_cases hp : p <;> by_cases hq : q <;> simp [hp, hq]
+  have hadd :
+      Odd (degree (V := V) n1 x + degree (V := V) n2 x) ↔
+        (Odd (degree (V := V) n1 x) ↔ Even (degree (V := V) n2 x)) := by
+    simpa using (Nat.odd_add (m := degree (V := V) n1 x) (n := degree (V := V) n2 x))
+  have : (Odd (degree (V := V) n1 x) ↔ Even (degree (V := V) n2 x)) ↔
+      (Odd (degree (V := V) n1 x) ∧ Even (degree (V := V) n2 x)) ∨
+        (Odd (degree (V := V) n2 x) ∧ Even (degree (V := V) n1 x)) := by
+    simpa [Nat.not_odd_iff_even, and_left_comm, and_assoc, and_comm] using
+      (hiff (Odd (degree (V := V) n1 x)) (Odd (degree (V := V) n2 x)))
+  exact hadd.trans this
+
+/-! ### Handshaking lemma for current sources -/
+
+lemma sum_degree_eq_two_mul_sum_current {Λ : Finset V} (n : Current (V := V) Λ) :
+    (∑ x : ↥Λ, degree (V := V) n x) = 2 * ∑ e : Edge (V := V) Λ, n e := by
+  classical
+  -- expand the degree sum, then swap the summations
+  have hswap :
+      (∑ x : ↥Λ, ∑ e : Edge (V := V) Λ,
+          if x ∈ (e.1 : Sym2 (↥Λ)) then n e else 0)
+        =
+        ∑ e : Edge (V := V) Λ, ∑ x : ↥Λ,
+          if x ∈ (e.1 : Sym2 (↥Λ)) then n e else 0 := by
+    -- `∑` over a finite type is definitionally a sum over `Finset.univ`.
+    simpa using
+      (Finset.sum_comm (s := (Finset.univ : Finset (↥Λ))) (t := (Finset.univ : Finset (Edge (V := V) Λ)))
+        (f := fun x e => if x ∈ (e.1 : Sym2 (↥Λ)) then n e else 0))
+  have hinner :
+      ∀ e : Edge (V := V) Λ,
+        (∑ x : ↥Λ, if x ∈ (e.1 : Sym2 (↥Λ)) then n e else 0) = 2 * n e := by
+    intro e
+    let p : ↥Λ → Prop := fun x => x ∈ (e.1 : Sym2 (↥Λ))
+    have hfilter :
+        (Finset.univ.filter fun x : ↥Λ => p x) = (e.1 : Sym2 (↥Λ)).toFinset := by
+      ext x
+      simp [p, Sym2.mem_toFinset]
+    calc
+      (∑ x : ↥Λ, if p x then n e else 0)
+          = ∑ x ∈ (Finset.univ : Finset (↥Λ)), if p x then n e else 0 := by simp
+      _ = ∑ x ∈ (Finset.univ.filter fun x : ↥Λ => p x), n e := by
+            -- `Finset.sum_filter` rewrites sums over `filter` into sums of `ite`'s
+            simpa [p] using
+              (Finset.sum_filter (s := (Finset.univ : Finset (↥Λ)))
+                (f := fun _x : ↥Λ => n e) (p := p)).symm
+      _ = ∑ x ∈ (e.1 : Sym2 (↥Λ)).toFinset, n e := by
+            -- rewrite the finset of summation using `hfilter`
+            simpa using
+              congrArg (fun t : Finset (↥Λ) => (∑ x ∈ t, n e)) hfilter
+      _ = ((e.1 : Sym2 (↥Λ)).toFinset.card) * n e := by simp
+      _ = 2 * n e := by
+            simpa using congrArg (fun k => k * n e) (Sym2.card_toFinset_of_not_isDiag (z := (e.1 : Sym2 (↥Λ))) e.2)
+  -- finish by rewriting the inner sum and factoring out `2`
+  have hsum :
+      (∑ x : ↥Λ, degree (V := V) n x)
+        = ∑ e : Edge (V := V) Λ, 2 * n e := by
+    classical
+    -- Expand `degree`, swap the order of summation, then use `hinner`.
+    calc
+      (∑ x : ↥Λ, degree (V := V) n x)
+          = ∑ x : ↥Λ, ∑ e : Edge (V := V) Λ,
+              if x ∈ (e.1 : Sym2 (↥Λ)) then n e else 0 := by
+                rfl
+      _ = ∑ e : Edge (V := V) Λ, ∑ x : ↥Λ,
+              if x ∈ (e.1 : Sym2 (↥Λ)) then n e else 0 := by
+                simpa using hswap
+      _ = ∑ e : Edge (V := V) Λ, 2 * n e := by
+                -- rewrite the inner sum using `hinner` fiberwise
+                apply Fintype.sum_congr
+                intro e
+                simpa using hinner e
+  -- factor out `2`
+  -- `Finset.mul_sum` has the forward direction; we use its symmetry.
+  simpa using (hsum.trans (by
+    simpa using
+      (Finset.mul_sum (a := (2 : ℕ)) (s := (Finset.univ : Finset (Edge (V := V) Λ)))
+        (f := fun e : Edge (V := V) Λ => n e)).symm))
+
+lemma even_card_sources {Λ : Finset V} (n : Current (V := V) Λ) :
+    Even (sources (V := V) n).card := by
+  classical
+  -- The total sum of degrees is even, since it is `2 * ∑ₑ n(e)`.
+  have hsum :
+      (∑ x : ↥Λ, degree (V := V) n x) = 2 * ∑ e : Edge (V := V) Λ, n e :=
+    sum_degree_eq_two_mul_sum_current (V := V) (Λ := Λ) n
+  have hEvenSum : Even (∑ x ∈ (Finset.univ : Finset (↥Λ)), degree (V := V) n x) := by
+    refine ⟨∑ e : Edge (V := V) Λ, n e, ?_⟩
+    -- rewrite the `Fintype` sum as a `Finset` sum
+    simpa [two_mul] using hsum
+  -- Convert evenness of the degree-sum to evenness of the number of odd degrees.
+  have hEvenOdd :=
+    (Finset.even_sum_iff_even_card_odd (s := (Finset.univ : Finset (↥Λ)))
+      (f := fun x : ↥Λ => degree (V := V) n x)).1 hEvenSum
+  -- This filtered finset is exactly `sources n`.
+  simpa [sources, IsSource] using hEvenOdd
+
 /-! ## Connectivity in the trace graph -/
 
 /-- Adjacency relation induced by a current: `x ~ y` iff `x ≠ y` and `n({x,y}) > 0`. -/
@@ -118,12 +242,44 @@ lemma Connected.refl {Λ : Finset V} (n : Current (V := V) Λ) (x : ↥Λ) :
     Connected (V := V) n x x :=
   Relation.ReflTransGen.refl
 
+/-! ### Basic API for connectivity -/
+
+omit [DecidableEq V] in
+lemma Adj.mono {Λ : Finset V} {m n : Current (V := V) Λ} (hmn : CurrentLE (V := V) m n)
+    {x y : ↥Λ} (h : Adj (V := V) m x y) :
+    Adj (V := V) n x y := by
+  rcases h with ⟨hxy, hpos⟩
+  refine ⟨hxy, lt_of_lt_of_le hpos (hmn _ )⟩
+
+omit [DecidableEq V] in
+lemma Connected.mono {Λ : Finset V} {m n : Current (V := V) Λ} (hmn : CurrentLE (V := V) m n)
+    {x y : ↥Λ} (h : Connected (V := V) m x y) :
+    Connected (V := V) n x y := by
+  refine Relation.ReflTransGen.mono (p := Adj (V := V) n) ?_ h
+  intro a b hab
+  exact Adj.mono (V := V) (Λ := Λ) hmn hab
+
+omit [DecidableEq V] in
+lemma Connected.trans {Λ : Finset V} (n : Current (V := V) Λ) {x y z : ↥Λ} :
+    Connected (V := V) n x y → Connected (V := V) n y z → Connected (V := V) n x z :=
+  Relation.ReflTransGen.trans
+
+omit [DecidableEq V] in
+lemma Connected.symm {Λ : Finset V} (n : Current (V := V) Λ) {x y : ↥Λ} :
+    Connected (V := V) n x y → Connected (V := V) n y x := by
+  have hs : Symmetric (Adj (V := V) n) := by
+    intro a b hab
+    exact (Adj_comm (V := V) (Λ := Λ) n (x := a) (y := b)).1 hab
+  intro hxy
+  exact (Relation.ReflTransGen.symmetric hs) hxy
+
 /-! ### Clusters -/
 
 /-- The cluster of `x` in a current `n`: the set of vertices connected to `x`. -/
 def cluster {Λ : Finset V} (n : Current (V := V) Λ) (x : ↥Λ) : Set (↥Λ) :=
   {y | Connected (V := V) n x y}
 
+omit [DecidableEq V] in
 lemma mem_cluster_iff {Λ : Finset V} (n : Current (V := V) Λ) (x y : ↥Λ) :
     y ∈ cluster (V := V) n x ↔ Connected (V := V) n x y := by
   rfl
@@ -132,6 +288,24 @@ omit [DecidableEq V] in
 lemma mem_cluster_self {Λ : Finset V} (n : Current (V := V) Λ) (x : ↥Λ) :
     x ∈ cluster (V := V) n x := by
   simpa [cluster] using (Connected.refl (V := V) (Λ := Λ) n x)
+
+omit [DecidableEq V] in
+lemma cluster_inter_nonempty_iff_connected {Λ : Finset V} (n : Current (V := V) Λ) (x z : ↥Λ) :
+    Set.Nonempty (cluster (V := V) n x ∩ cluster (V := V) n z) ↔ Connected (V := V) n x z := by
+  constructor
+  · rintro ⟨y, ⟨hyx, hyz⟩⟩
+    have hyz' : Connected (V := V) n y z := (Connected.symm (V := V) (Λ := Λ) n hyz)
+    exact (Connected.trans (V := V) (Λ := Λ) n hyx hyz')
+  · intro hxz
+    refine ⟨z, ?_, ?_⟩
+    · exact hxz
+    · simpa [cluster] using (Connected.refl (V := V) (Λ := Λ) n z)
+
+/-! ## The event `ℱ_B`: existence of a subcurrent with sources `B` -/
+
+/-- `HasSubCurrent n B` means: there exists a subcurrent `m ≤ n` with `sources m = B`. -/
+def HasSubCurrent {Λ : Finset V} (n : Current (V := V) Λ) (B : Finset (↥Λ)) : Prop :=
+  ∃ m : Current (V := V) Λ, CurrentLE (V := V) m n ∧ sources (V := V) m = B
 
 /-! ## Random current weights and normalizations -/
 

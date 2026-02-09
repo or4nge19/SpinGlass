@@ -11,7 +11,7 @@ decay rate, e.g. along the `e₁`-ray
 \xi = \lim_{n\to\infty} -n / \log \langle \sigma_0 ; \sigma_{n e_1}\rangle.
 \]
 
-In Lean, we package this as a **predicate** `IsCorrelationLength` with codomain `ℝ≥0∞`.
+In Lean, we bundle this as a **predicate** `IsCorrelationLength` with codomain `ℝ≥0∞`.
 This avoids committing to existence/uniqueness of the limit as a global `def`, and it makes the
 required positivity assumptions explicit.
 -/
@@ -38,7 +38,21 @@ noncomputable def truncTwoPointRay (x : ZLattice d) (i : Fin d) : ℕ → ℝ :=
 
 /-- The `n`-th term in the correlation length limit, for a positive sequence `g`. -/
 noncomputable def corrLenTerm (g : ℕ → ℝ) (n : ℕ) : ℝ≥0∞ :=
-  ENNReal.ofReal ((n : ℝ) / (-Real.log (g n)))
+  ENNReal.ofReal (n : ℝ) / ENNReal.ofReal (-Real.log (g n))
+
+/--
+The (always-defined) `limsup`-based correlation length along a ray, as an element of `ℝ≥0∞`.
+
+This is the canonical `def` one can attach to any input data. When the paper’s limit exists,
+`IsCorrelationLength` identifies this value with the claimed limit.
+-/
+noncomputable def corrLenLimsup (x : ZLattice d) (i : Fin d) : ℝ≥0∞ :=
+  Filter.limsup (fun n : ℕ =>
+      corrLenTerm (g := truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i) n) atTop
+
+/-- The correlation length based at the origin along direction `i`, defined via `limsup`. -/
+noncomputable abbrev corrLen0 (i : Fin d) : ℝ≥0∞ :=
+  corrLenLimsup (d := d) (spin := spin) (μ := μ) (x := (0 : ZLattice d)) i
 
 /--
 `IsCorrelationLength spin μ x i ξ` means: along the ray `x + n·e_i`, the truncated two-point
@@ -70,6 +84,14 @@ lemma tendsto_corrLenTerm (h : IsCorrelationLength (d := d) (spin := spin) (μ :
         corrLenTerm (g := truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i) n) atTop (𝓝 ξ) :=
   h.2
 
+lemma corrLenLimsup_eq (h : IsCorrelationLength (d := d) (spin := spin) (μ := μ) x i ξ) :
+    corrLenLimsup (d := d) (spin := spin) (μ := μ) x i = ξ := by
+  simpa [corrLenLimsup] using (h.tendsto_corrLenTerm.limsup_eq)
+
+lemma corrLen0_eq (h : IsCorrelationLength (d := d) (spin := spin) (μ := μ) (x := (0 : ZLattice d)) i ξ) :
+    corrLen0 (d := d) (spin := spin) (μ := μ) i = ξ := by
+  simpa [corrLen0] using (corrLenLimsup_eq (d := d) (spin := spin) (μ := μ) (x := (0 : ZLattice d)) (i := i) h)
+
 lemma unique
     (h : IsCorrelationLength (d := d) (spin := spin) (μ := μ) x i ξ)
     (h' : IsCorrelationLength (d := d) (spin := spin) (μ := μ) x i ξ') :
@@ -83,9 +105,28 @@ lemma eventually_log_neg (h : IsCorrelationLength (d := d) (spin := spin) (μ :=
   filter_upwards [hpos, hlt] with n hnpos hnlt
   exact (Real.log_neg_iff hnpos).2 hnlt
 
+lemma eventually_neglog_pos (h : IsCorrelationLength (d := d) (spin := spin) (μ := μ) x i ξ) :
+    ∀ᶠ n in atTop, 0 < -Real.log (truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i n) := by
+  filter_upwards [h.eventually_log_neg] with n hn
+  simpa using (neg_pos.2 hn)
+
+lemma eventually_denom_ne_zero (h : IsCorrelationLength (d := d) (spin := spin) (μ := μ) x i ξ) :
+    ∀ᶠ n in atTop, ENNReal.ofReal (-Real.log (truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i n)) ≠ 0 := by
+  filter_upwards [h.eventually_neglog_pos] with n hn
+  intro h0
+  have : (-Real.log (truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i n)) ≤ 0 :=
+    (ENNReal.ofReal_eq_zero).1 h0
+  exact (not_le_of_gt hn) this
+
+lemma eventually_corrLenTerm_ne_top (h : IsCorrelationLength (d := d) (spin := spin) (μ := μ) x i ξ) :
+    ∀ᶠ n in atTop,
+      corrLenTerm (g := truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i) n ≠ ∞ := by
+  filter_upwards [h.eventually_denom_ne_zero] with n hn0
+  simpa [corrLenTerm] using (ENNReal.div_ne_top (x := (n : ℝ≥0∞)) (y := ENNReal.ofReal
+    (-Real.log (truncTwoPointRay (d := d) (spin := spin) (μ := μ) x i n))) (by simp) hn0)
+
 end IsCorrelationLength
 
 end
 
 end SpinGlass.Papers.Triviality4D
-

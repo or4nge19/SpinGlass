@@ -23,12 +23,6 @@ universe u
 variable {V : Type u} [DecidableEq V]
 variable {Λ : Finset V}
 
-/-! ## The event `ℱ_B`: existence of a subcurrent with sources `B` -/
-
-/-- `HasSubCurrent n B` means: there exists a subcurrent `m ≤ n` with `sources m = B`. -/
-def HasSubCurrent (n : Current (V := V) Λ) (B : Finset (↥Λ)) : Prop :=
-  ∃ m : Current (V := V) Λ, CurrentLE (V := V) m n ∧ sources (V := V) m = B
-
 /-! ## A finite type of edge-copy assignments for a fixed total current -/
 
 /--
@@ -202,44 +196,6 @@ lemma weightReal_mul_eq (β : ℝ) (J : Edge (V := V) Λ → ℝ)
     _ = weightReal (V := V) (Λ := Λ) β J (n1 + n2) *
           (∏ e : Edge (V := V) Λ, ((Nat.choose (n1 e + n2 e) (n1 e)) : ℝ)) := by
           simp [weightReal]
-
-/-! ## Sources under current addition -/
-
-lemma degree_add (n1 n2 : Current (V := V) Λ) (x : ↥Λ) :
-    degree (V := V) (n1 + n2) x = degree (V := V) n1 x + degree (V := V) n2 x := by
-  simp [degree]
-  have hintegrand :
-      (fun e : Edge (V := V) Λ => if x ∈ (e.1 : Sym2 (↥Λ)) then n1 e + n2 e else 0) =
-        (fun e : Edge (V := V) Λ =>
-          (if x ∈ (e.1 : Sym2 (↥Λ)) then n1 e else 0) +
-            (if x ∈ (e.1 : Sym2 (↥Λ)) then n2 e else 0)) := by
-    funext e
-    by_cases hx : x ∈ (e.1 : Sym2 (↥Λ))
-    · simp [hx]
-    · simp [hx]
-  simpa [hintegrand] using
-    (Finset.sum_add_distrib (s := (Finset.univ : Finset (Edge (V := V) Λ)))
-      (f := fun e : Edge (V := V) Λ => if x ∈ (e.1 : Sym2 (↥Λ)) then n1 e else 0)
-      (g := fun e : Edge (V := V) Λ => if x ∈ (e.1 : Sym2 (↥Λ)) then n2 e else 0))
-
-lemma sources_add (n1 n2 : Current (V := V) Λ) :
-    sources (V := V) (n1 + n2) =
-      symmDiff (sources (V := V) n1) (sources (V := V) n2) := by
-  ext x
-  simp [mem_sources_iff, IsSource, degree_add, Finset.mem_symmDiff]
-  have hiff : ∀ p q : Prop, (p ↔ ¬ q) ↔ (p ∧ ¬ q) ∨ (q ∧ ¬ p) := by
-    intro p q
-    by_cases hp : p <;> by_cases hq : q <;> simp [hp, hq]
-  have hadd :
-      Odd (degree (V := V) n1 x + degree (V := V) n2 x) ↔
-        (Odd (degree (V := V) n1 x) ↔ Even (degree (V := V) n2 x)) := by
-    simpa using (Nat.odd_add (m := degree (V := V) n1 x) (n := degree (V := V) n2 x))
-  have : (Odd (degree (V := V) n1 x) ↔ Even (degree (V := V) n2 x)) ↔
-      (Odd (degree (V := V) n1 x) ∧ Even (degree (V := V) n2 x)) ∨
-        (Odd (degree (V := V) n2 x) ∧ Even (degree (V := V) n1 x)) := by
-    simpa [Nat.not_odd_iff_even, and_left_comm, and_assoc, and_comm] using
-      (hiff (Odd (degree (V := V) n1 x)) (Odd (degree (V := V) n2 x)))
-  exact hadd.trans this
 
 /-! ## Finite splittings of a fixed total current -/
 
