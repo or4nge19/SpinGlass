@@ -334,7 +334,7 @@ lemma prod_mem_eq_prod_pow_indicator (A : Finset α) (s : α → M) :
         = ∏ x : α, if x ∈ A then s x else (1 : M) := by
             simp [hfilter]
     _ = ∏ x : α, (s x) ^ (if x ∈ A then (1 : ℕ) else 0) := by
-            simp [hpow]
+            simp
 
 end ProdIndicatorTwo
 
@@ -631,7 +631,7 @@ lemma sum_sigma_vertexMonomial_withSpin
         intro x
         have hx : (Odd (degree (V := V) n x) ↔ x ∈ A) := by
           have : x ∈ sources (V := V) n ↔ x ∈ A := by
-            simpa [hsrc]
+            simp [hsrc]
           simpa [mem_sources_iff] using this
         by_cases hxA : x ∈ A
         · have : Odd (degree (V := V) n x) := (hx.2 hxA)
@@ -652,10 +652,7 @@ lemma sum_sigma_vertexMonomial_withSpin
         have hxEven := hall x
         simpa [sum_bool_isingSpin_pow, hxEven, if_pos hxEven] using (sum_bool_isingSpin_pow (m := degree (V := V) n x + if x ∈ A then 1 else 0))
       have hconst : (∏ _x : ↥Λ, (2 : ℝ)) = (2 : ℝ) ^ Λ.card := by
-        have h' : (∏ _x : ↥Λ, (2 : ℝ)) = (2 : ℝ) ^ Fintype.card (↥Λ) := by
-          simpa using
-            (Finset.prod_const (s := (Finset.univ : Finset (↥Λ))) (b := (2 : ℝ)))
-        simpa [Fintype.card_coe Λ] using h'
+        simp
       simpa [hsrc, this, hconst]
     · have hne : ¬ (∀ x : ↥Λ, Odd (degree (V := V) n x) ↔ x ∈ A) := by
         intro hall
