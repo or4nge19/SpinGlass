@@ -16,7 +16,7 @@ This is a possibe principled bridge between:
 
 - Boltzmann machines / RBMs (joint Gibbs law on visible+hidden),
 - Hopfield-type low-rank energies (visible marginal after Gaussian hidden integration),
-- Talagrand’s “structure first” Vol II viewpoint (kernels / pushforwards).
+- Talagrand’s Vol II viewpoint (kernels / pushforwards).
 -/
 
 open MeasureTheory Real BigOperators
