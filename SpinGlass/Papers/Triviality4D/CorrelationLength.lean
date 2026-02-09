@@ -125,7 +125,7 @@ lemma frequently_exp_neg_div_le_of_lt_limsup_corrLenTerm
     ∃ᶠ n : ℕ in atTop, Real.exp (-((n : ℝ) / L)) ≤ g n := by
   have hfreq :
       ∃ᶠ n : ℕ in atTop, ENNReal.ofReal L < corrLenTerm (g := g) n :=
-    frequently_lt_of_lt_limsup (u := fun n : ℕ => corrLenTerm (g := g) n) hL
+    frequently_lt_of_lt_limsup (u := fun n : ℕ => corrLenTerm (g := g) n) (h := hL)
   have hfreq' :
       ∃ᶠ n : ℕ in atTop, ENNReal.ofReal L ≤ corrLenTerm (g := g) n :=
     hfreq.mono fun _ hn => le_of_lt hn
