@@ -9,6 +9,7 @@ import SpinGlass.Papers.Triviality4D.InfraredBound
 import SpinGlass.Papers.Triviality4D.CorrelationLength
 import SpinGlass.Papers.Triviality4D.RandomCurrentSwitching
 import SpinGlass.Papers.Triviality4D.RandomCurrentConsequences
+import SpinGlass.Papers.Triviality4D.RandomCurrentUrsell4
 import Mathlib.Algebra.BigOperators.Group.Finset.Basic
 import Mathlib.MeasureTheory.Constructions.BorelSpace.Basic
 import Mathlib.MeasureTheory.Function.ConvergenceInDistribution
@@ -44,7 +45,8 @@ What is still missing are the core theorems connecting these layers:
 
 - existence/uniqueness/translation invariance of infinite-volume Gibbs states and the critical point `βc`,
 - reflection positivity and the (sliding-scale) infrared bound proofs (Section 3),
-- the Ursell-4 (and higher) random current identities and their infinite-volume limits,
+- the **infinite-volume limit** of the finite-volume Ursell-4 random current identity (Eq. (U4), now in
+  `SpinGlass.Papers.Triviality4D.RandomCurrentUrsell4`) and higher cumulant identities,
 - the **mixing** and **intersection-clustering** bounds (Section 4).
 -/
 

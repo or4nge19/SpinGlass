@@ -38,10 +38,12 @@ def traceGraph (n : Current (V := V) Λ) : SimpleGraph (↥Λ) where
     rcases h with ⟨hxx, _⟩
     exact hxx rfl
 
+omit [DecidableEq V] in
 @[simp] lemma traceGraph_adj (n : Current (V := V) Λ) (x y : ↥Λ) :
     (traceGraph (V := V) (Λ := Λ) n).Adj x y ↔ Adj (V := V) (Λ := Λ) n x y :=
   Iff.rfl
 
+omit [DecidableEq V] in
 @[simp] lemma traceGraph_reachable_iff_connected (n : Current (V := V) Λ) (x y : ↥Λ) :
     (traceGraph (V := V) (Λ := Λ) n).Reachable x y ↔ Connected (V := V) (Λ := Λ) n x y := by
   simpa [Connected, traceGraph] using
@@ -71,7 +73,7 @@ lemma sources_unitCurrent_edge {x y : ↥Λ} (hxy : x ≠ y) :
       by_cases he : e = e₀ <;> simp [he]
     simp [hintegrand]
   simp [sources, IsSource, degree, unitCurrent, e₀, hsum]
-  by_cases hz : z = x ∨ z = y <;> simp [hz, e₀, edge, Sym2.mem_iff]
+  by_cases hz : z = x ∨ z = y <;> simp [hz, edge, Sym2.mem_iff]
 
 /--
 The current obtained by summing unit-currents along the edges of a walk in the trace graph.
@@ -129,16 +131,16 @@ lemma currentOfWalk_apply (n : Current (V := V) Λ) {x y : ↥Λ}
       · have h' : e = e₀ := (heq.1 h)
         have ih₀ : currentOfWalk (V := V) (Λ := Λ) n p e₀ = p.edges.count e₀.1 := by
           simpa [h'] using ih
-        simp [currentOfWalk, unitCurrent, e₀, ih₀, List.count_cons, h, h', Nat.add_comm, Nat.add_left_comm,
-          Nat.add_assoc]
+        simp [currentOfWalk, unitCurrent, e₀, ih₀, List.count_cons, h', Nat.add_comm]
         simp [edge]
       · have h' : e ≠ e₀ := by
           intro hEq
           exact h ((heq.2 hEq))
         have hs : ¬ s(u, v) = (e.1 : Sym2 (↥Λ)) := by
           simpa [eq_comm] using h
-        simp [currentOfWalk, unitCurrent, e₀, ih, h, h', hs]
+        simp [currentOfWalk, unitCurrent, e₀, ih, h', hs]
 
+omit [DecidableEq V] in
 lemma n_pos_of_mem_walk_edges (n : Current (V := V) Λ) {x y : ↥Λ}
     (w : (traceGraph (V := V) (Λ := Λ) n).Walk x y) {e : Edge (V := V) Λ} (he : e.1 ∈ w.edges) :
     0 < n e := by
@@ -195,10 +197,12 @@ noncomputable def clusterFinset (n : Current (V := V) Λ) (x : ↥Λ) : Finset (
   classical
   exact (Finset.univ.filter fun y => Connected (V := V) (Λ := Λ) n x y)
 
+omit [DecidableEq V] in
 lemma mem_clusterFinset_iff (n : Current (V := V) Λ) (x y : ↥Λ) :
     y ∈ clusterFinset (V := V) (Λ := Λ) n x ↔ Connected (V := V) (Λ := Λ) n x y := by
   simp [clusterFinset]
 
+omit [DecidableEq V] in
 lemma clusterFinset_closed_of_adj (n : Current (V := V) Λ) {x u v : ↥Λ}
     (hu : u ∈ clusterFinset (V := V) (Λ := Λ) n x) (h : Adj (V := V) (Λ := Λ) n u v) :
     v ∈ clusterFinset (V := V) (Λ := Λ) n x := by
@@ -207,6 +211,7 @@ lemma clusterFinset_closed_of_adj (n : Current (V := V) Λ) {x u v : ↥Λ}
   have hxv : Connected (V := V) (Λ := Λ) n x v := Connected.trans (V := V) (Λ := Λ) n hxu huv
   exact (mem_clusterFinset_iff (V := V) (Λ := Λ) n x v).2 hxv
 
+omit [DecidableEq V] in
 lemma edge_zero_of_boundary_clusterFinset
     (n : Current (V := V) Λ) {x : ↥Λ} {e : Edge (V := V) Λ}
     (h1 : e.1.out.1 ∈ clusterFinset (V := V) (Λ := Λ) n x)
@@ -231,6 +236,7 @@ lemma edge_zero_of_boundary_clusterFinset
     clusterFinset_closed_of_adj (V := V) (Λ := Λ) n (x := x) (u := e.1.out.1) (v := e.1.out.2) h1 hadj
   exact h2 this
 
+omit [DecidableEq V] in
 lemma edge_zero_of_boundary_clusterFinset_rev
     (n : Current (V := V) Λ) {x : ↥Λ} {e : Edge (V := V) Λ}
     (h1 : e.1.out.2 ∈ clusterFinset (V := V) (Λ := Λ) n x)
@@ -359,8 +365,25 @@ lemma even_sum_degree_clusterFinset (n : Current (V := V) Λ) (x : ↥Λ) :
     simp [degree, hswap]
   simpa [this] using hEven
 
+/-- The number of sources inside a trace-cluster is even. -/
+lemma even_card_sources_inter_clusterFinset (n : Current (V := V) Λ) (x : ↥Λ) :
+    Even ((sources (V := V) (Λ := Λ) n ∩ clusterFinset (V := V) (Λ := Λ) n x).card) := by
+  classical
+  set S : Finset (↥Λ) := clusterFinset (V := V) (Λ := Λ) n x
+  have hEvenSum : Even (∑ z ∈ S, degree (V := V) n z) := by
+    simpa [S] using even_sum_degree_clusterFinset (V := V) (Λ := Λ) n x
+  have hEvenOdd :
+      Even ((S.filter fun z : ↥Λ => Odd (degree (V := V) n z)).card) :=
+    (Finset.even_sum_iff_even_card_odd (s := S) (f := fun z : ↥Λ => degree (V := V) n z)).1 hEvenSum
+  have hfilter :
+      S.filter (fun z : ↥Λ => Odd (degree (V := V) n z)) =
+        sources (V := V) (Λ := Λ) n ∩ S := by
+    ext z
+    simp [sources, IsSource, and_comm, S]
+  simpa [hfilter, S] using hEvenOdd
+
 theorem connected_of_sources_eq_pair
-    (n : Current (V := V) Λ) {x y : ↥Λ} (hxy : x ≠ y)
+    (n : Current (V := V) Λ) {x y : ↥Λ}
     (hs : sources (V := V) (Λ := Λ) n = ({x, y} : Finset (↥Λ))) :
     Connected (V := V) (Λ := Λ) n x y := by
   classical
@@ -391,7 +414,7 @@ theorem connected_of_sources_eq_pair
         simpa [hs] using hz'.1
       cases hzsrc with
       | inl hzx =>
-          simpa [hzx] using (by simp : z ∈ ({x} : Finset (↥Λ)))
+          simp [hzx]
       | inr hzy =>
           exfalso
           exact hyS (by simpa [hzy] using hz'.2)
@@ -406,17 +429,21 @@ theorem connected_of_sources_eq_pair
   have hEvenInter : Even ((sources (V := V) (Λ := Λ) n ∩ S).card) := by
     simpa [hfilterSources] using hEvenSourcesInS
   -- but the set has cardinality `1`
-  have : Even (1 : ℕ) := by
-    simp [h1] at hEvenInter
-  simp at this
+  have hEven1 : Even (1 : ℕ) := by
+    have h : Even ((sources (V := V) (Λ := Λ) n ∩ S).card) := hEvenInter
+    have hcard : (sources (V := V) (Λ := Λ) n ∩ S).card = 1 := by
+      simp [h1]
+    rw [hcard] at h
+    exact h
+  exact Nat.not_even_one hEven1
 
 theorem connected_of_hasSubCurrent_pair
-    (n : Current (V := V) Λ) {x y : ↥Λ} (hxy : x ≠ y)
+    (n : Current (V := V) Λ) {x y : ↥Λ}
     (h : HasSubCurrent (V := V) (Λ := Λ) n ({x, y} : Finset (↥Λ))) :
     Connected (V := V) (Λ := Λ) n x y := by
   rcases h with ⟨m, hmn, hmSources⟩
   have hmConn : Connected (V := V) (Λ := Λ) m x y :=
-    connected_of_sources_eq_pair (V := V) (Λ := Λ) m (hxy := hxy) (hs := hmSources)
+    connected_of_sources_eq_pair (V := V) (Λ := Λ) m (hs := hmSources)
   exact Connected.mono (V := V) (Λ := Λ) hmn hmConn
 
 theorem hasSubCurrent_pair_iff_connected
@@ -425,7 +452,7 @@ theorem hasSubCurrent_pair_iff_connected
       Connected (V := V) (Λ := Λ) n x y := by
   constructor
   · intro h
-    exact connected_of_hasSubCurrent_pair (V := V) (Λ := Λ) n (hxy := hxy) h
+    exact connected_of_hasSubCurrent_pair (V := V) (Λ := Λ) n h
   · intro h
     exact hasSubCurrent_pair_of_connected (V := V) (Λ := Λ) n (hxy := hxy) h
 
