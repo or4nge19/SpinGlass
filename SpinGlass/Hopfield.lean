@@ -39,7 +39,6 @@ noncomputable def hopfieldOverlap (N : ℕ) (σ ξ : Config N) : ℝ :=
 
 lemma abs_hopfieldOverlap_le_one (N : ℕ) (σ ξ : Config N) :
     |hopfieldOverlap (N := N) σ ξ| ≤ (1 : ℝ) := by
-  classical
   cases N with
   | zero =>
       simp [hopfieldOverlap]
@@ -112,14 +111,11 @@ noncomputable def finVecNormSq (M : ℕ) (z : Fin M → ℝ) : ℝ :=
 
 @[fun_prop]
 lemma measurable_finVecNormSq (M : ℕ) : Measurable (finVecNormSq M) := by
-  classical
-  -- finite sum of measurable functions
   simpa [finVecNormSq] using
     (Finset.measurable_sum (s := (Finset.univ : Finset (Fin M)))
       (f := fun k : Fin M => fun z : Fin M → ℝ => (z k) ^ 2)
       (by
         intro k _hk
-        -- evaluation then squaring
         fun_prop))
 
 /-!
@@ -186,7 +182,6 @@ lemma exp_neg_hopfieldEnergyWithField_eq
       =
       Real.exp (((β * (N : ℝ)) / 2) * ∑ k : Fin M, (hopfieldOverlapVec (N := N) (M := M) Ξ σ k) ^ 2
         + (h * (N : ℝ)) * (hopfieldOverlapVec (N := N) (M := M) Ξ σ k0)) := by
-  classical
   simp [hopfieldEnergyWithField, sub_eq_add_neg]
   ac_rfl
 
@@ -205,7 +200,6 @@ lemma sum_exp_sum_spin (N : ℕ) (a : Fin N → ℝ) :
     (∑ σ : Config N, Real.exp (∑ i : Fin N, (a i) * (spin N σ i)))
       =
       ∏ i : Fin N, (Real.exp (a i) + Real.exp (-a i)) := by
-  classical
   induction N with
   | zero =>
       simp
@@ -280,7 +274,6 @@ lemma sum_exp_hopfield_linear_eq_two_pow_mul_exp_sum_log_cosh
       (2 : ℝ) ^ N
         * Real.exp (∑ i : Fin N,
             Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))) := by
-  classical
   have hfac :=
     sum_exp_sum_spin (N := N) (a := fun i : Fin N => β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)
   have hprod :
@@ -342,7 +335,6 @@ noncomputable def stdGaussianMeasure (M : ℕ) : Measure (Fin M → ℝ) :=
   Measure.infinitePi (fun _ : Fin M => (ProbabilityTheory.gaussianReal 0 (1 : ℝ≥0)))
 
 instance (M : ℕ) : IsProbabilityMeasure (stdGaussianMeasure M) := by
-  classical
   dsimp [stdGaussianMeasure]
   infer_instance
 

@@ -14,36 +14,24 @@ import Mathlib.Probability.Moments.CovarianceBilinDual
 import Mathlib.Topology.Algebra.Module.ClosedSubmodule
 
 /-!
-# Cameron-Martin space
+# Cameron–Martin space
 
-TODO: this is not up to date with the latest use of the rkhs for the def
+For a (Borel) Gaussian measure `μ` on a real Banach space `E`, the **Cameron–Martin space** is a
+separable Hilbert space canonically associated to `μ`. Its image in `E` describes the directions
+along which `μ` is quasi-invariant under translations (Cameron–Martin theorem).
 
-A Gaussian measure `μ` on a Banach space `E` is characterized by a separable Hilbert space,
-called the Cameron-Martin space of `μ`.
-That space is a subspace of `E`, but with a different norm.
+In this file we construct the Cameron–Martin space under the minimal hypothesis of a finite
+second moment, encoded as a typeclass `HasTwoMoments μ`.
 
-In this file, we define a type `cameronMartin μ` and build a bijective continuous linear map from
-that type to the subset of `E` of points `y` such that the quantity
-`⨆ (L : StrongDual ℝ E) (_ : Var[L; μ] ≤ 1), L y` is finite.
-
-Since `μ` has finite second moment, for every function `L : StrongDual ℝ E`, the function
-`L ↦ L (x - μ[id])` can be seen as a function in L2.
-The subspace of L2 we obtain that way inherits the scalar product of L2, which is equal to the
-covariance `covarianceBilin μ L L'`.
-We define `cameronMartin μ` as the completion of that subspace. It is a separable Hilbert space.
-
-This is the RKHS construction of the Cameron-Martin space. Another construction would be to
-consider the subspace of `E` consisting of all points `y` such that the quantity
-`⨆ (L : StrongDual ℝ E) (_ : Var[L; μ] ≤ 1), L y` is finite, and to endow it with
-the norm `‖y‖ = ⨆ (L : StrongDual ℝ E) (_ : Var[L; μ] ≤ 1), L y`.
-Here we don't define the Cameron-Martin space as a subspace because it would inherit
-the norm from `E`, which is not the norm we want to put on it. And we don't want to have two norms
-on the same type.
+We use the RKHS construction: we embed `StrongDual ℝ E` into `Lp ℝ 2 μ` via the centered map
+\(L \mapsto (x \mapsto L(x - \int y\, dμ(y)))\), take the closure of its range, and inherit the
+Hilbert structure from `Lp`.
 
 ## Main definitions
 
-* `cameronMartin μ`: Cameron-Martin space of the measure `μ`.
-* `cmOfDual μ L`: inclusion of the dual space `StrongDual ℝ E` into the Cameron-Martin space.
+* `HasTwoMoments μ`: a finite measure with `MemLp id 2 μ`.
+* `cameronMartin μ`: the closure of the range of `StrongDual.centeredToLp μ` in `Lp ℝ 2 μ`.
+* `cmOfDual μ L`: inclusion of the dual space `StrongDual ℝ E` into the Cameron–Martin space.
 * `cmCoe`: the continuous linear map from the Cameron-Martin space
   to the initial space `E`. It is injective and its range is the subspace of `E` of points
   `y` such that `⨆ (L : StrongDual ℝ E) (_ : Var[L; μ] ≤ 1), L y` is finite.
@@ -61,7 +49,7 @@ on the same type.
 * `norm_cmOfBounded`: for `y` in `E` with bounded Cameron-Martin norm,
   `‖cmOfBounded μ y‖ = ⨆ (L) (_ : Var[L; μ] ≤ 1), L y`.
 
-## Implementation details
+## Implementation notes
 
 We build the Cameron-Martin space for any finite measure with a finite second moment, not only for
 Gaussian measures. We do so only because we can write the definition with that weaker hypothesis:
@@ -69,7 +57,12 @@ we are not aware of any use of the Cameron-Martin space for non-Gaussian measure
 
 ## References
 
-* [F. Bar, *Quuxes*][bibkey]
+* V. I. Bogachev, *Gaussian Measures*, AMS, 1998.
+* H.-H. Kuo, *Gaussian Measures in Banach Spaces*, LNM 463, Springer, 1975.
+
+## Tags
+
+Gaussian measure, Cameron–Martin space, RKHS
 
 -/
 
@@ -85,7 +78,9 @@ variable {M R F : Type*} [Ring R] [NormedAddCommGroup M] [Module R M]
 
 namespace ProbabilityTheory
 
-/-- A finite measure has two moments if `∫ x, x ^ 2 ∂μ < ∞`, that is if `MemLp id 2 μ`. -/
+/-- A finite measure `μ` has a finite second moment, encoded as `MemLp id 2 μ`.
+
+This is the minimal hypothesis needed to define `cameronMartin μ` via the RKHS construction. -/
 class HasTwoMoments {E : Type*} {_ : MeasurableSpace E} [ENorm E] [TopologicalSpace E]
     (μ : Measure E) extends IsFiniteMeasure μ where
   memLp_two : MemLp id 2 μ
@@ -136,6 +131,7 @@ def centeredToLp (μ : Measure E) [IsFiniteMeasure μ] :
       (Lp.const 2 μ (1 : ℝ)))
 
 omit [CompleteSpace E] in
+/-- Pointwise a.e. formula for `StrongDual.centeredToLp`. -/
 lemma centeredToLp_apply [IsFiniteMeasure μ] (h : MemLp id 2 μ) (L : _root_.StrongDual ℝ E) :
     (StrongDual.centeredToLp (E := E) μ L : E → ℝ) =ᵐ[μ] fun x ↦ L x - L (∫ y : E, y ∂μ) := by
   have h_toLp :
@@ -182,6 +178,7 @@ lemma centeredToLp_apply [IsFiniteMeasure μ] (h : MemLp id 2 μ) (L : _root_.St
     simpa [Pi.sub_apply, hxLp', hxC', c] using hx
   simpa [c, Pi.sub_apply] using h_sub
 
+/-- The `L²` inner product of centered dual functionals is the covariance bilinear form. -/
 lemma centeredToLp_two_inner [IsFiniteMeasure μ] (h : MemLp id 2 μ) (L₁ L₂ : _root_.StrongDual ℝ E) :
     ⟪StrongDual.centeredToLp (E := E) μ L₁, StrongDual.centeredToLp (E := E) μ L₂⟫_ℝ =
       covarianceBilinDual μ L₁ L₂ := by
@@ -226,6 +223,7 @@ lemma centeredToLp_two_inner [IsFiniteMeasure μ] (h : MemLp id 2 μ) (L₁ L₂
     simpa [hswap] using hcov'.symm
   simpa [hinter'] using this
 
+/-- The `L²` norm of `StrongDual.centeredToLp μ L` squares to the variance `Var[L; μ]`. -/
 lemma sq_norm_centeredToLp_two [IsFiniteMeasure μ] (h : MemLp id 2 μ) (L : _root_.StrongDual ℝ E) :
     ‖StrongDual.centeredToLp (E := E) μ L‖ ^ 2 = Var[L; μ] := by
   have hinner := centeredToLp_two_inner (μ := μ) (h := h) L L
@@ -240,8 +238,10 @@ end StrongDual
 
 section CameronMartinSpace
 
-/-- The Cameron-Martin space of a Gaussian measure.
-This is a separable Hilbert space. -/
+/-- The Cameron–Martin space associated to a measure `μ` with finite second moment.
+
+It is the closure of the range of the centered embedding
+`StrongDual.centeredToLp μ : StrongDual ℝ E →L[ℝ] Lp ℝ 2 μ`, viewed as a submodule of `Lp`. -/
 noncomputable
 def cameronMartin (μ : Measure E) [HasTwoMoments μ] : Submodule ℝ (Lp ℝ 2 μ) :=
   (LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap).topologicalClosure
@@ -332,9 +332,10 @@ variable [HasTwoMoments μ]
 
 namespace CameronMartinAux -- namespace for auxiliary definitions and lemmas
 
-/-- For an L2 function `x` in the image of `Dual ℝ E` by `Dual.centeredToLp μ 2`, we can evaluate
-`x` at `y : E` by taking `L y` for an arbitrary `L : StrongDual ℝ E` that is sent to `x`.
-This is an auxiliary definition for `CameronMartin.eval`. -/
+/-- For an `L²` function `x` in the range of `StrongDual.centeredToLp μ`, evaluate `x` at `y : E`.
+
+This is done by picking `L : StrongDual ℝ E` mapping to `x` and returning `L y`. It is an
+auxiliary definition for `cmEval`. -/
 noncomputable
 def evalL2 (μ : Measure E) [HasTwoMoments μ] (y : E)
     (x : LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap) : ℝ :=
@@ -389,11 +390,13 @@ end CameronMartinAux
 
 open CameronMartinAux
 
-/-- Evaluation map on the Cameron-Martin space. `CameronMartin.eval μ y hy x` is the evaluation of
-`x` at `y`, where `x` is an element of the Cameron-Martin space of the Gaussian measure `μ`.
-This map is defined for `y` with bounded Cameron-Martin norm, i.e., such that there exists `M` with
-`∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M`.
-It satisfies `cmEval μ y hy (ofDual μ L) = L y`. -/
+/-- Evaluation functional on the Cameron–Martin space.
+
+Given `y : E` with bounded Cameron–Martin norm (i.e. `∃ M, ∀ L, Var[L; μ] ≤ 1 → L y ≤ M`),
+`cmEval μ y hy` is the continuous linear functional on `cameronMartin μ` obtained by extending
+evaluation from the dense range of `StrongDual.centeredToLp μ`.
+
+It satisfies `cmEval μ y hy (cmOfDual μ L) = L y`. -/
 noncomputable
 def cmEval (μ : Measure E) [HasTwoMoments μ] (y : E)
     (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M) :
@@ -440,9 +443,10 @@ lemma cmEval_cmOfDual (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 �
   simp only [closureExtensionCLM_coe, LinearMap.mkContinuous_apply, LinearMap.coe_mk, AddHom.coe_mk]
   rw [evalL2_centeredToLp_eq hy]
 
-/-- Map from the space on which a Gaussian measure `μ` is defined to the Cameron-Martin space
-of `μ`. This takes a meaningful value only if the argument has bounded Cameron-Martin norm,
-and takes the default value zero otherwise. -/
+/-- Map `E → cameronMartin μ` defined for points with bounded Cameron–Martin norm.
+
+If `y : E` has bounded Cameron–Martin norm, `cmOfBounded μ y` is the element corresponding to the
+evaluation functional at `y`. Otherwise it is defined to be `0`. -/
 noncomputable
 def cmOfBounded (μ : Measure E) [HasTwoMoments μ] (y : E)
     [Decidable (∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M)] :
@@ -472,9 +476,9 @@ variable [SecondCountableTopology E] [HasTwoMoments μ]
 
 namespace CameronMartinAux -- namespace for auxiliary definitions and lemmas
 
-/-- From `x` in the image of `Dual ℝ E` by `Dual.centeredToLp μ 2`, we define a point of `E` by
+/-- From `x` in the range of `StrongDual.centeredToLp μ`, build a point of `E` by
 `∫ y, L (y - ∫ z, z ∂μ) • (y - ∫ z, z ∂μ) ∂μ` for an arbitrary `L : StrongDual ℝ E` with
-`Dual.centeredToLp μ 2 L = x`.
+`StrongDual.centeredToLp μ L = x`.
 This is an auxiliary definition for `CameronMartin.cmCoe`. -/
 noncomputable
 def toInit (μ : Measure E) [IsFiniteMeasure μ]
@@ -539,10 +543,10 @@ end CameronMartinAux
 
 open CameronMartinAux
 
-/-- Continuous linear map from the Cameron-Martin space of a Gaussian measure to the space on
-which that measure is defined. This map is injective: see `cmCoe_injective`.
-Therefore, we can see the Cameron-Martin space as a subspace of the initial space, with a different
-norm. -/
+/-- Continuous linear map `cameronMartin μ →L[ℝ] E` associated to `μ`.
+
+This map is injective (see `cmCoe_injective`), so it identifies the Cameron–Martin space with a
+subspace of `E` endowed with the Cameron–Martin norm. -/
 noncomputable
 def cmCoe {μ : Measure E} [HasTwoMoments μ] : cameronMartin μ →L[ℝ] E :=
   closureExtensionCLM (LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap) <|

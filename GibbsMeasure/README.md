@@ -26,6 +26,8 @@ This is an **independent library** inside this repository (`[[lean_lib]] name = 
   - `GibbsMeasure/Potential.lean`
 - **Examples**
   - `GibbsMeasure/SpinGlass.lean` (example: SK-style potential on a finite set of vertices)
+  - `GibbsMeasure/Examples/Arithmetic.lean` (arithmetic spin glass toy model)
+  - `GibbsMeasure/Examples/IsingNN.lean` (nearest-neighbor Ising potential/specification + Gibbs-state predicate)
 
 ## “Mathlib” shim folder
 

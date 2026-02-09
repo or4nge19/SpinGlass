@@ -1,5 +1,6 @@
 import SpinGlass.Algebra
-import SpinGlass.ArguinTaiFp
+import SpinGlass.Papers.Arithmetic.ArguinTaiFp
+import SpinGlass.Papers.Triviality4D
 import SpinGlass.Calculus
 import SpinGlass.ComplexIBP
 import SpinGlass.Defs
@@ -25,4 +26,4 @@ import SpinGlass.Cascades
 import SpinGlass.Replicas
 import SpinGlass.SKModel
 
-import GibbsMeasure
+import SpinGlass.MeanFieldLimit

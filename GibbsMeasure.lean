@@ -1,4 +1,5 @@
 import GibbsMeasure.Examples.Arithmetic
+import GibbsMeasure.Examples.IsingNN
 import GibbsMeasure.KolmogorovExtension4.ProductMeasure
 import GibbsMeasure.Mathlib.Data.ENNReal.Basic
 import GibbsMeasure.Mathlib.MeasureTheory.Function.ConditionalExpectation.Basic

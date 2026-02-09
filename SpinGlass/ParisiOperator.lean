@@ -11,7 +11,7 @@ T_{m,v}(A)(x) = \frac{1}{m}\log \int \exp(m A(x+z)) \, d\gamma_{0,v}(z),
 \]
 where `γ_{0,v}` is `gaussianReal 0 v`.
 
-The key structural lemma for the Parisi recursion is the semigroup property:
+The main structural lemma for the Parisi recursion is the semigroup property:
 \[
 T_{m,v₁}(T_{m,v₂}(A)) = T_{m,v₁+v₂}(A),
 \]

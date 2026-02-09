@@ -3,11 +3,11 @@
 This repository contains two Lean 4 libraries:
 
 - `SpinGlass`: finite-volume mean-field spin glass calculus (Talagrand, Vol. I–II).
-- `GibbsMeasure`: DLR specifications and infinite-volume Gibbs measures (Georgii; Talagrand,
-  Vol. II). See `GibbsMeasure/README.md`.
+- `GibbsMeasure`: DLR specifications and infinite-volume Gibbs measures for lattice systems
+  (Georgii). See `GibbsMeasure/README.md`.
   Upstream: <https://github.com/james18lpc/GibbsMeasure>.
 
-Both are independent `lean_lib`s (see `lakefile.toml`).
+Both are separate `lean_lib`s (see `lakefile.toml`).
 
 ## Overview
 
@@ -29,6 +29,35 @@ Gaussian integration by parts is used through an intrinsic Cameron–Martin inte
 (`ProbabilityTheory.IsGaussian μ`), with the Hilbert/covariance-operator formulation as the
 main entry point for interpolation arguments.
 
+## Theoretical architecture: lattice vs. mean field
+
+Both libraries use configuration spaces given by countable products (e.g. `Ω := (ℕ → Bool)`) together
+with Borel probability measures.  The shared “kinematic” layer is provided by:
+
+- `GibbsMeasure.Topology.*`: configuration spaces, cylinder functions/events, and the topology of
+  local convergence on `ProbabilityMeasure (S → E)`.
+- `GibbsMeasure.Prereqs.*`: kernels, conditional expectations, and disintegration lemmas used to
+  express replica/cavity statements.
+
+The libraries diverge at the notion of “thermodynamic limit”.
+
+### Lattice models (`GibbsMeasure`)
+
+- **Geometry**: fixed lattice (e.g. `ℤ^d`) with finite-range interactions.
+- **Limit notion**: DLR equations for a specification `γ`.
+- **Core module**: `GibbsMeasure.Specification` (and `GibbsMeasure.Specification.*`).
+
+### Mean-field models (`SpinGlass`)
+
+- **Geometry**: complete graph with dense, scaled interactions.
+- **Limit notion**: replica laws and overlap identities (Ghirlanda–Guerra, cavity invariance,
+  Parisi functional), rather than DLR specifications.
+- **Core modules**: `SpinGlass.FiniteGibbs` (finite-volume calculus) and
+  `SpinGlass.Cascades.GhirlandaGuerra` / `SpinGlass.MeanFieldLimit` (law-level interfaces).
+
+In particular, this development does not formulate the SK thermodynamic limit as a DLR
+specification.
+
 ## Design choices
 
 - Finite-volume calculus is developed once (configuration-agnostic) in `SpinGlass.FiniteGibbs`.
@@ -41,11 +70,12 @@ main entry point for interpolation arguments.
 
 ## Entry points
 
-- `import SpinGlass` re-exports the full development
-  (and currently also imports `GibbsMeasure`).
+- `import SpinGlass` re-exports the full `SpinGlass` development.
 - For the finite-configuration calculus: `import SpinGlass.FiniteGibbs`.
 - For the Guerra interpolation development: `import SpinGlass.GuerraPipeline`.
 - For the DLR/specification library: `import GibbsMeasure`.
+- For the 4D triviality paper interface: `import SpinGlass.Papers.Triviality4D`
+  (with supporting modules under `SpinGlass/Papers/Triviality4D/`).
 
 Gaussian analysis entry points:
 
@@ -61,8 +91,7 @@ Gaussian analysis entry points:
 ### Main modules
 
 - `Common`: shared utilities (re-export module).
-- `SpinGlass`: main import for the full `SpinGlass` development
-  (currently also imports `GibbsMeasure`).
+- `SpinGlass`: main import for the full `SpinGlass` development.
 - `GibbsMeasure`: main import for the full `GibbsMeasure` development.
 
 ### Configuration-agnostic finite Gibbs calculus (`SpinGlass.FiniteGibbs`)
