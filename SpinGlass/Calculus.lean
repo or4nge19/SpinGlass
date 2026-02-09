@@ -107,7 +107,7 @@ lemma abs_free_energy_density_sub_le (H₁ H₂ : EnergySpace N) :
 /--
 **Second derivative / Hessian equals Gibbs covariance** (Talagrand).
 
-This is the main “bridge” identity: the abstract Hessian (Fréchet second derivative)
+Main “bridge” identity: the abstract Hessian (Fréchet second derivative)
 agrees with the explicit Gibbs covariance formula.
 
 In Talagrand’s notation, this is the identification of \(D^2 \log Z\) with the Gibbs
