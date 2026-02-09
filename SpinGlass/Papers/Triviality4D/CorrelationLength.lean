@@ -68,7 +68,6 @@ lemma le_exp_neg_div_of_corrLenTerm_le
   have hdiv : (n : ℝ) / L ≤ -Real.log (g n) :=
     (div_le_iff₀ hLpos).2 hnle'
   have hlog : Real.log (g n) ≤ -((n : ℝ) / L) := by
-    -- negate `hdiv`
     simpa using (neg_le_neg hdiv)
   have hexp : Real.exp (Real.log (g n)) ≤ Real.exp (-((n : ℝ) / L)) :=
     (Real.exp_le_exp).2 hlog
@@ -87,22 +86,52 @@ lemma exp_neg_div_le_of_le_corrLenTerm
         ENNReal.ofReal L ≤ ENNReal.ofReal ((n : ℝ) / (-Real.log (g n))) := by
       simpa [corrLenTerm_eq_of_neglog_pos hneglog] using h
     exact (ENNReal.ofReal_le_ofReal_iff (by
-      -- positivity of the RHS
       have : 0 ≤ (n : ℝ) := by exact_mod_cast (Nat.zero_le n)
       exact div_nonneg this (le_of_lt hneglog))).1 hENN
   have hnle : L * (-Real.log (g n)) ≤ (n : ℝ) := by
-    -- rewrite `h'` using `le_div_iff` with positive denominator
     exact (le_div_iff₀ hneglog).1 h'
   have hnle' : (-Real.log (g n)) ≤ (n : ℝ) / L := by
     have hnle'' : (-Real.log (g n)) * L ≤ (n : ℝ) := by
       simpa [mul_assoc, mul_left_comm, mul_comm] using hnle
     exact (le_div_iff₀ hLpos).2 hnle''
   have hlog : -((n : ℝ) / L) ≤ Real.log (g n) := by
-    -- negate `hnle'`
     simpa using (neg_le_neg hnle')
   have hexp : Real.exp (-((n : ℝ) / L)) ≤ Real.exp (Real.log (g n)) :=
     (Real.exp_le_exp).2 hlog
   simpa [Real.exp_log hgpos] using hexp
+
+/--
+If `limsup corrLenTerm < L`, then eventually `g n ≤ exp (-n/L)` (under the standing positivity
+assumptions `0 < g n < 1`).
+-/
+lemma eventually_le_exp_neg_div_of_limsup_corrLenTerm_lt
+    {g : ℕ → ℝ} {L : ℝ}
+    (hg : ∀ᶠ n : ℕ in atTop, 0 < g n ∧ g n < 1) (hLpos : 0 < L)
+    (hL : Filter.limsup (fun n : ℕ => corrLenTerm (g := g) n) atTop < ENNReal.ofReal L) :
+    ∀ᶠ n : ℕ in atTop, g n ≤ Real.exp (-((n : ℝ) / L)) := by
+  have hterm :
+      ∀ᶠ n : ℕ in atTop, corrLenTerm (g := g) n ≤ ENNReal.ofReal L :=
+    (eventually_lt_of_limsup_lt hL).mono fun _ hn => le_of_lt hn
+  filter_upwards [hg, hterm] with n hn hnt
+  exact le_exp_neg_div_of_corrLenTerm_le (g := g) (n := n) hn.1 hn.2 hLpos hnt
+
+/--
+If `L < limsup corrLenTerm`, then frequently `exp (-n/L) ≤ g n` (again under `0 < g n < 1`).
+-/
+lemma frequently_exp_neg_div_le_of_lt_limsup_corrLenTerm
+    {g : ℕ → ℝ} {L : ℝ}
+    (hg : ∀ᶠ n : ℕ in atTop, 0 < g n ∧ g n < 1) (hLpos : 0 < L)
+    (hL : ENNReal.ofReal L < Filter.limsup (fun n : ℕ => corrLenTerm (g := g) n) atTop) :
+    ∃ᶠ n : ℕ in atTop, Real.exp (-((n : ℝ) / L)) ≤ g n := by
+  have hfreq :
+      ∃ᶠ n : ℕ in atTop, ENNReal.ofReal L < corrLenTerm (g := g) n :=
+    frequently_lt_of_lt_limsup (u := fun n : ℕ => corrLenTerm (g := g) n) hL
+  have hfreq' :
+      ∃ᶠ n : ℕ in atTop, ENNReal.ofReal L ≤ corrLenTerm (g := g) n :=
+    hfreq.mono fun _ hn => le_of_lt hn
+  refine (hfreq'.and_eventually hg).mono ?_
+  intro n hn
+  exact exp_neg_div_le_of_le_corrLenTerm (g := g) (n := n) hn.2.1 hn.2.2 hLpos hn.1
 
 /--
 The (always-defined) `limsup`-based correlation length along a ray, as an element of `ℝ≥0∞`.
