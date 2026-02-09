@@ -433,6 +433,34 @@ noncomputable def isingBoltzmann (β : ℝ) (J : Edge (V := V) Λ → ℝ) (σ :
 noncomputable def isingZ (β : ℝ) (J : Edge (V := V) Λ → ℝ) : ℝ :=
   ∑ σ : (↥Λ → Bool), isingBoltzmann (V := V) (Λ := Λ) β J σ
 
+/-- The Boltzmann weight is strictly positive. -/
+lemma isingBoltzmann_pos (β : ℝ) (J : Edge (V := V) Λ → ℝ) (σ : ↥Λ → Bool) :
+    0 < isingBoltzmann (V := V) (Λ := Λ) β J σ := by
+  classical
+  -- unfold to a finite product of positive exponential factors
+  unfold isingBoltzmann
+  -- use `Finset.prod_pos` over `Finset.univ`
+  simpa using
+    (Finset.prod_pos (s := (Finset.univ : Finset (Edge (V := V) Λ)))
+      (f := fun e : Edge (V := V) Λ =>
+        Real.exp (β * J e * edgeSpin (V := V) (Λ := Λ) σ e))
+      (by
+        intro e _he
+        simpa using (Real.exp_pos (β * J e * edgeSpin (V := V) (Λ := Λ) σ e))))
+
+/-- The finite-volume partition function is strictly positive, hence nonzero. -/
+lemma isingZ_pos (β : ℝ) (J : Edge (V := V) Λ → ℝ) :
+    0 < isingZ (V := V) (Λ := Λ) β J := by
+  classical
+  unfold isingZ
+  -- sum of strictly positive terms over a nonempty finite type
+  refine Finset.sum_pos (fun σ _hσ => isingBoltzmann_pos (V := V) (Λ := Λ) (β := β) (J := J) σ)
+    (s := (Finset.univ : Finset (↥Λ → Bool))) Finset.univ_nonempty
+
+lemma isingZ_ne_zero (β : ℝ) (J : Edge (V := V) Λ → ℝ) :
+    isingZ (V := V) (Λ := Λ) β J ≠ 0 :=
+  ne_of_gt (isingZ_pos (V := V) (Λ := Λ) (β := β) (J := J))
+
 /-- Spin-inserted partition sum `∑_σ (∏_{x∈A} σ_x) e^{β H(σ)}`. -/
 noncomputable def isingZWithSpin (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : Finset (↥Λ)) : ℝ :=
   ∑ σ : (↥Λ → Bool),
@@ -905,6 +933,16 @@ theorem isingZ_eq_ZReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) :
       = (2 : ℝ) ^ Λ.card * ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) := by
   simpa [isingZ, isingZWithSpin] using
     (isingZWithSpin_eq_ZReal (V := V) (Λ := Λ) (β := β) (J := J) (A := (∅ : Finset (↥Λ))))
+
+/-- The empty-source current sum `ZReal ∅` is always nonzero. -/
+theorem ZReal_empty_ne_zero (β : ℝ) (J : Edge (V := V) Λ → ℝ) :
+    ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ≠ 0 := by
+  have hZ : isingZ (V := V) (Λ := Λ) β J ≠ 0 :=
+    isingZ_ne_zero (V := V) (Λ := Λ) (β := β) (J := J)
+  intro h0
+  have : isingZ (V := V) (Λ := Λ) β J = 0 := by
+    simpa [h0] using (isingZ_eq_ZReal (V := V) (Λ := Λ) (β := β) (J := J))
+  exact hZ this
 
 /-- Finite-volume Ising correlation `⟨∏_{x∈A} σ_x⟩_{Λ,β}` as a normalized spin-inserted partition sum. -/
 noncomputable def isingCorr (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : Finset (↥Λ)) : ℝ :=

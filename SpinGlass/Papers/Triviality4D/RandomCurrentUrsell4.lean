@@ -1,3 +1,4 @@
+import SpinGlass.Papers.Triviality4D.RandomCurrentRepresentation
 import SpinGlass.Papers.Triviality4D.RandomCurrentConsequences
 
 /-!
@@ -118,7 +119,7 @@ lemma symmDiff_pairXZ_pairYT_eq_fourSources
   have hunion :
       ({x, z} : Finset (↥Λ)) ∪ ({y, t} : Finset (↥Λ)) = ({x, y, z, t} : Finset (↥Λ)) := by
     ext u
-    simp [Finset.mem_union, or_left_comm, or_assoc, or_comm]
+    simp [or_left_comm, or_comm]
   calc
     symmDiff ({x, z} : Finset (↥Λ)) ({y, t} : Finset (↥Λ))
         = ({x, z} : Finset (↥Λ)) ∪ ({y, t} : Finset (↥Λ)) := by
@@ -143,7 +144,7 @@ lemma symmDiff_pairXT_pairYZ_eq_fourSources
   have hunion :
       ({x, t} : Finset (↥Λ)) ∪ ({y, z} : Finset (↥Λ)) = ({x, y, z, t} : Finset (↥Λ)) := by
     ext u
-    simp [Finset.mem_union, or_left_comm, or_assoc, or_comm]
+    simp [or_left_comm]
   calc
     symmDiff ({x, t} : Finset (↥Λ)) ({y, z} : Finset (↥Λ))
         = ({x, t} : Finset (↥Λ)) ∪ ({y, z} : Finset (↥Λ)) := by
@@ -305,16 +306,16 @@ lemma one_sub_pairings_ind_eq
             have : u = x ∨ u = y ∨ u = z ∨ u = t := by
               simpa [hs, fourSources] using hus
             rcases this with rfl | rfl | rfl | rfl
-            · simp [hxS]
+            · simp
             · exfalso; exact hyS (by simpa using huS)
-            · simp [hzS]
-            · simp [htS]
+            · simp
+            · simp
           · intro hu
             have hu' : u = x ∨ u = z ∨ u = t := by simpa [fourSources] using hu
             refine Finset.mem_inter.2 ⟨?_, ?_⟩
-            · rcases hu' with rfl | rfl | rfl <;> simpa [hs, fourSources]
+            · rcases hu' with rfl | rfl | rfl <;> simp [hs, fourSources]
             · rcases hu' with rfl | rfl | rfl <;> first | exact hxS | exact hzS | exact htS
-        simpa [hEq, hxz, hxt, hzt]
+        simp [hEq, hxz, hxt, hzt]
       have : ¬ Even ((sources (V := V) (Λ := Λ) n ∩ S).card) := by
         -- `¬ Even 3`
         simpa [hcard] using (show ¬ Even (3 : ℕ) from by decide)
@@ -353,15 +354,15 @@ lemma one_sub_pairings_ind_eq
               simpa [hs, fourSources] using hus
             rcases this with rfl | rfl | rfl | rfl
             · exfalso; exact hxSy (by simpa using huSy)
-            · simp [hySy]
-            · simp [hzSy]
-            · simp [htSy]
+            · simp
+            · simp
+            · simp
           · intro hu
             have hu' : u = y ∨ u = z ∨ u = t := by simpa [fourSources] using hu
             refine Finset.mem_inter.2 ⟨?_, ?_⟩
-            · rcases hu' with rfl | rfl | rfl <;> simpa [hs, fourSources]
+            · rcases hu' with rfl | rfl | rfl <;> simp [hs, fourSources]
             · rcases hu' with rfl | rfl | rfl <;> first | exact hySy | exact hzSy | exact htSy
-        simpa [hEq, hyz, hyt, hzt]
+        simp [hEq, hyz, hyt, hzt]
       have : ¬ Even ((sources (V := V) (Λ := Λ) n ∩ Sy).card) := by
         simpa [hcard] using (show ¬ Even (3 : ℕ) from by decide)
       exact this hEvenY
@@ -374,8 +375,7 @@ lemma one_sub_pairings_ind_eq
     exact ⟨hxz, hzt_conn⟩
   by_cases hall : Connected (V := V) (Λ := Λ) n x z ∧ Connected (V := V) (Λ := Λ) n z t
   · have hpair := hall_implies hall
-    have hzt : Connected (V := V) (Λ := Λ) n z t := hall.2
-    simp [ind, hall, hzt, hpair.1, hpair.2]
+    simp [ind, hall, hpair.1, hpair.2]
     norm_num
   · have hnotAll3 :
         ¬ (Connected (V := V) (Λ := Λ) n z t ∧
@@ -424,17 +424,17 @@ lemma one_sub_pairings_ind_eq
                 rcases this with rfl | rfl | rfl | rfl
                 · exfalso; exact hxSz (by simpa using huSz)
                 · exfalso; exact hySz (by simpa using huSz)
-                · simp [hzSz]
+                · simp
                 · exfalso; exact htSz (by simpa using huSz)
               · intro hu
                 have hu' : u = z := by simpa using hu
                 subst hu'
                 refine Finset.mem_inter.2 ⟨?_, ?_⟩
-                · simpa [hs, fourSources]
+                · simp [hs, fourSources]
                 · exact hzSz
-            simpa [hEq]
+            simp [hEq]
           have : ¬ Even ((sources (V := V) (Λ := Λ) n ∩ Sz).card) := by
-            simpa [hcard] using (show ¬ Even (1 : ℕ) from by decide)
+            simp [hcard]
           exact this hEvenZ
         have hzx : Connected (V := V) (Λ := Λ) n z x := by
           simpa [Sz, clusterFinset] using hxSz
@@ -470,7 +470,7 @@ lemma one_sub_pairings_ind_eq
                 · exfalso; exact hxSt (by simpa using huSt)
                 · exfalso; exact hySt (by simpa using huSt)
                 · exfalso; exact hzSt (by simpa using huSt)
-                · simp [htSt]
+                · simp
               · intro hu
                 have hu' : u = t := by simpa using hu
                 subst hu'
@@ -626,7 +626,7 @@ theorem ZReal_fourSources_mul_ZReal_empty_sub_pairings_eq_tsum_connected
         if cond4 p then wprod p else 0) := by
     refine Summable.of_norm_bounded (g := fun p => ‖w p.1‖ * ‖w p.2‖) hsWeight ?_
     intro p
-    by_cases hcond : cond4 p <;> simp [hcond, wprod, w, norm_mul, mul_nonneg, norm_nonneg]
+    by_cases hcond : cond4 p <;> simp [hcond, wprod, w, norm_mul, mul_nonneg]
   have hsZT :
       Summable (fun p : Current (V := V) Λ × Current (V := V) Λ =>
         if cond4 p then ind (Connected (V := V) (Λ := Λ) (p.1 + p.2) z t) * wprod p else 0) := by
@@ -634,8 +634,8 @@ theorem ZReal_fourSources_mul_ZReal_empty_sub_pairings_eq_tsum_connected
     intro p
     by_cases hcond : cond4 p
     · by_cases hzt' : Connected (V := V) (Λ := Λ) (p.1 + p.2) z t <;>
-        simp [hcond, ind, hzt', wprod, w, norm_mul, mul_nonneg, norm_nonneg]
-    · simp [hcond, mul_nonneg, norm_nonneg]
+        simp [hcond, ind, hzt', wprod, w, norm_mul, mul_nonneg]
+    · simp [hcond, mul_nonneg]
   have hsYT :
       Summable (fun p : Current (V := V) Λ × Current (V := V) Λ =>
         if cond4 p then ind (Connected (V := V) (Λ := Λ) (p.1 + p.2) y t) * wprod p else 0) := by
@@ -643,8 +643,8 @@ theorem ZReal_fourSources_mul_ZReal_empty_sub_pairings_eq_tsum_connected
     intro p
     by_cases hcond : cond4 p
     · by_cases hyt' : Connected (V := V) (Λ := Λ) (p.1 + p.2) y t <;>
-        simp [hcond, ind, hyt', wprod, w, norm_mul, mul_nonneg, norm_nonneg]
-    · simp [hcond, mul_nonneg, norm_nonneg]
+        simp [hcond, ind, hyt', wprod, w, norm_mul, mul_nonneg]
+    · simp [hcond, mul_nonneg]
   have hsYZ :
       Summable (fun p : Current (V := V) Λ × Current (V := V) Λ =>
         if cond4 p then ind (Connected (V := V) (Λ := Λ) (p.1 + p.2) y z) * wprod p else 0) := by
@@ -652,8 +652,8 @@ theorem ZReal_fourSources_mul_ZReal_empty_sub_pairings_eq_tsum_connected
     intro p
     by_cases hcond : cond4 p
     · by_cases hyz' : Connected (V := V) (Λ := Λ) (p.1 + p.2) y z <;>
-        simp [hcond, ind, hyz', wprod, w, norm_mul, mul_nonneg, norm_nonneg]
-    · simp [hcond, mul_nonneg, norm_nonneg]
+        simp [hcond, ind, hyz', wprod, w, norm_mul, mul_nonneg]
+    · simp [hcond, mul_nonneg]
   let fZT : Current (V := V) Λ × Current (V := V) Λ → ℝ :=
     fun p => if cond4 p then ind (Connected (V := V) (Λ := Λ) (p.1 + p.2) z t) * wprod p else 0
   let fYT : Current (V := V) Λ × Current (V := V) Λ → ℝ :=
@@ -741,10 +741,12 @@ theorem ZReal_fourSources_mul_ZReal_empty_sub_pairings_eq_tsum_connected
       funext p
       by_cases hcond : cond4 p
       · have hsTot : sources (V := V) (Λ := Λ) (p.1 + p.2) = S4 := by
-          have := sources_add (V := V) (Λ := Λ) (n1 := p.1) (n2 := p.2)
+          have hs :=
+            sources_add (V := V) (Λ := Λ) (n1 := p.1) (n2 := p.2)
           have hs' : sources (V := V) (Λ := Λ) (p.1 + p.2) = symmDiff S4 (∅ : Finset (↥Λ)) := by
-            simpa [cond4, S4, hcond] using this
-          simpa using hs'.trans (by simpa using (symmDiff_bot (a := S4)))
+            simpa [cond4, S4, hcond] using hs
+          have hbot : symmDiff S4 (∅ : Finset (↥Λ)) = S4 := by simp
+          exact hs'.trans hbot
         have hPair :=
           one_sub_pairings_ind_eq (V := V) (Λ := Λ) (n := (p.1 + p.2))
             (hxy := hxy) (hxz := hxz) (hxt := hxt) (hyz := hyz) (hyt := hyt) (hzt := hzt)
@@ -853,14 +855,14 @@ theorem ZReal_fourSources_mul_ZReal_empty_sub_pairings_eq_tsum_connected
 
 We now prove the finite-volume Ursell-4 identity.
 
-To match the “probability” form in the paper, we assume the normalizing factors are nonzero.
+To match the “probability” form in the paper, we assume the *pair* normalizing factors `Z_{xy}`,
+`Z_{zt}` are nonzero. (The empty-source sum `Z_∅` is always nonzero; see `ZReal_empty_ne_zero`.)
 -/
 
 theorem isingUrsell4_eq
     (β : ℝ) (J : Edge (V := V) Λ → ℝ) {x y z t : ↥Λ}
     (hxy : x ≠ y) (hxz : x ≠ z) (hxt : x ≠ t)
     (hyz : y ≠ z) (hyt : y ≠ t) (hzt : z ≠ t)
-    (hZ0 : ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ≠ 0)
     (hZxy : ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ≠ 0)
     (hZzt : ZReal (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) ≠ 0) :
     isingUrsell4 (V := V) (Λ := Λ) β J x y z t
@@ -870,6 +872,8 @@ theorem isingUrsell4_eq
         isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) *
           PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
             {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z} := by
+  have hZ0 : ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ≠ 0 :=
+    ZReal_empty_ne_zero (V := V) (Λ := Λ) (β := β) (J := J)
   have hCorr4 :=
     isingCorr_eq_ZReal_div (V := V) (Λ := Λ) (β := β) (J := J) ({x, y, z, t} : Finset (↥Λ))
   have hCorrXY :=
@@ -886,7 +890,7 @@ theorem isingUrsell4_eq
     isingCorr_eq_ZReal_div (V := V) (Λ := Λ) (β := β) (J := J) ({y, z} : Finset (↥Λ))
   unfold isingUrsell4
   simp [hCorr4, hCorrXY, hCorrZT, hCorrXZ, hCorrYT, hCorrXT, hCorrYZ,
-    PPairReal, indicator_const_eq_ind_mul, mul_assoc, mul_left_comm, mul_comm]
+    PPairReal, indicator_const_eq_ind_mul, mul_assoc, mul_comm]
   field_simp [hZ0, hZxy, hZzt]
   simpa [fourSources, mul_assoc, mul_left_comm, mul_comm] using
     (ZReal_fourSources_mul_ZReal_empty_sub_pairings_eq_tsum_connected (V := V) (Λ := Λ)
