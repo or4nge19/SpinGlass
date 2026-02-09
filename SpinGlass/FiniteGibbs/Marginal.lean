@@ -59,30 +59,23 @@ lemma exp_neg_marginalEnergy (H : EnergySpace (α × β)) (a : α) :
       = condZ (α := α) (β := β) H a := by
   have hpos : 0 < condZ (α := α) (β := β) H a :=
     condZ_pos (α := α) (β := β) (H := H) a
-  -- `exp (-(-log z)) = exp (log z) = z`
-  -- Reduce to `exp (log (condZ H a)) = condZ H a`.
   simpa [marginalEnergy, condZ] using (Real.exp_log hpos)
 
 /-! ## Partition function and pmf after marginalization -/
 
 lemma Z_marginalEnergy (H : EnergySpace (α × β)) :
     Z (α := α) (marginalEnergy (α := α) (β := β) H) = Z (α := α × β) H := by
-  classical
-  -- expand both sides and rearrange the double sum
   simp [Z, exp_neg_marginalEnergy, condZ, Fintype.sum_prod_type]
 
 lemma gibbs_pmf_marginalEnergy (H : EnergySpace (α × β)) (a : α) :
     gibbs_pmf (α := α) (marginalEnergy (α := α) (β := β) H) a
       =
       (∑ b : β, Real.exp (-H (a, b))) / Z (α := α × β) H := by
-  classical
   simp [gibbs_pmf, Z_marginalEnergy, exp_neg_marginalEnergy, condZ]
 
 lemma sum_gibbs_pmf_prod_eq_gibbs_pmf_marginalEnergy (H : EnergySpace (α × β)) (a : α) :
     (∑ b : β, gibbs_pmf (α := α × β) H (a, b))
       = gibbs_pmf (α := α) (marginalEnergy (α := α) (β := β) H) a := by
-  classical
-  -- rewrite both sides as `condZ / Z` and pull the constant denominator out of the sum
   have hZ : Z (α := α × β) H ≠ 0 := Z_ne_zero (α := α × β) (H := H)
   calc
     (∑ b : β, gibbs_pmf (α := α × β) H (a, b))
@@ -92,7 +85,6 @@ lemma sum_gibbs_pmf_prod_eq_gibbs_pmf_marginalEnergy (H : EnergySpace (α × β)
           simp [div_eq_mul_inv]
     _ = (∑ b : β, Real.exp (-H (a, b))) * (Z (α := α × β) H)⁻¹ := by
           classical
-          -- `∑ f b * c = (∑ f b) * c`
           simpa [Finset.sum_mul] using
             (Finset.sum_mul (s := (Finset.univ : Finset β))
               (f := fun b : β => Real.exp (-H (a, b))) (a := (Z (α := α × β) H)⁻¹)).symm
@@ -113,11 +105,7 @@ theorem map_fst_gibbsMeasure_eq_gibbsMeasure_marginalEnergy (H : EnergySpace (α
     (gibbsMeasure (α := α × β) H).map Prod.fst
       =
       gibbsMeasure (α := α) (marginalEnergy (α := α) (β := β) H) := by
-  classical
   refine Measure.ext (fun s hs => ?_)
-  -- Expand both atomic measures and simplify.
-  -- LHS: sum over `(a,b)` with indicator `a ∈ s`, then regroup over `a`.
-  -- RHS: sum over `a` with the effective weight.
   have hLHS :
       (gibbsMeasure (α := α × β) H).map Prod.fst s
         =
@@ -125,10 +113,7 @@ theorem map_fst_gibbsMeasure_eq_gibbsMeasure_marginalEnergy (H : EnergySpace (α
           (if a ∈ s then
               ∑ b : β, ENNReal.ofReal (gibbs_pmf (α := α × β) H (a, b))
             else 0) := by
-    -- `map_apply` + evaluate each Dirac atom on `Prod.fst ⁻¹' s`.
-    -- First eliminate `map` by rewriting to a preimage evaluation.
     rw [Measure.map_apply measurable_fst hs]
-    -- Then expand the atomic measure and regroup the product sum.
     simp [FiniteGibbs.gibbsMeasure, hs, gibbsWeightNNReal_coe_ennreal, Fintype.sum_prod_type,
       Set.indicator, Pi.one_apply]
   have hRHS :
@@ -137,19 +122,15 @@ theorem map_fst_gibbsMeasure_eq_gibbsMeasure_marginalEnergy (H : EnergySpace (α
         ∑ a : α, (if a ∈ s then ENNReal.ofReal
           (gibbs_pmf (α := α) (marginalEnergy (α := α) (β := β) H) a) else 0) := by
     simp [FiniteGibbs.gibbsMeasure, hs, gibbsWeightNNReal_coe_ennreal, Set.indicator, Pi.one_apply]
-  -- Identify the inner sum (over `b`) with the effective pmf, then finish.
   have hsum_ofReal (a : α) :
       (∑ b : β, ENNReal.ofReal (gibbs_pmf (α := α × β) H (a, b)))
         =
         ENNReal.ofReal (gibbs_pmf (α := α) (marginalEnergy (α := α) (β := β) H) a) := by
     have hnonneg : ∀ b : β, 0 ≤ gibbs_pmf (α := α × β) H (a, b) := fun b =>
       gibbs_pmf_nonneg (α := α × β) (H := H) (a, b)
-    -- pull `ENNReal.ofReal` out of the sum
     rw [← ENNReal.ofReal_sum_of_nonneg (s := (Finset.univ : Finset β))
       (f := fun b : β => gibbs_pmf (α := α × β) H (a, b)) (by intro b _; exact hnonneg b)]
-    -- and rewrite the real sum as the effective pmf
     simpa [sum_gibbs_pmf_prod_eq_gibbs_pmf_marginalEnergy (α := α) (β := β) (H := H) a]
-  -- finish by rewriting both sides as the same finite sum
   simp [hLHS, hRHS, hsum_ofReal]
 
 end
