@@ -941,6 +941,18 @@ theorem ZReal_empty_ne_zero (β : ℝ) (J : Edge (V := V) Λ → ℝ) :
     simpa [h0] using (isingZ_eq_ZReal (V := V) (Λ := Λ) (β := β) (J := J))
   exact hZ this
 
+/-- The empty-source current sum `ZReal ∅` is strictly positive (no sign assumptions needed). -/
+theorem ZReal_empty_pos (β : ℝ) (J : Edge (V := V) Λ → ℝ) :
+    0 < ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) := by
+  have hZ : 0 < isingZ (V := V) (Λ := Λ) β J :=
+    isingZ_pos (V := V) (Λ := Λ) (β := β) (J := J)
+  have hpow : 0 < (2 : ℝ) ^ Λ.card := by
+    exact pow_pos (by norm_num : (0 : ℝ) < 2) _
+  have hmul :
+      0 < (2 : ℝ) ^ Λ.card * ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) := by
+    simpa [isingZ_eq_ZReal (V := V) (Λ := Λ) (β := β) (J := J)] using hZ
+  exact pos_of_mul_pos_right hmul (le_of_lt hpow)
+
 /-- Finite-volume Ising correlation `⟨∏_{x∈A} σ_x⟩_{Λ,β}` as a normalized spin-inserted partition sum. -/
 noncomputable def isingCorr (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : Finset (↥Λ)) : ℝ :=
   isingZWithSpin (V := V) (Λ := Λ) β J A / isingZ (V := V) (Λ := Λ) β J
