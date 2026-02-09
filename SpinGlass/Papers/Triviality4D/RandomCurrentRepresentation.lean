@@ -437,9 +437,7 @@ noncomputable def isingZ (β : ℝ) (J : Edge (V := V) Λ → ℝ) : ℝ :=
 lemma isingBoltzmann_pos (β : ℝ) (J : Edge (V := V) Λ → ℝ) (σ : ↥Λ → Bool) :
     0 < isingBoltzmann (V := V) (Λ := Λ) β J σ := by
   classical
-  -- unfold to a finite product of positive exponential factors
   unfold isingBoltzmann
-  -- use `Finset.prod_pos` over `Finset.univ`
   simpa using
     (Finset.prod_pos (s := (Finset.univ : Finset (Edge (V := V) Λ)))
       (f := fun e : Edge (V := V) Λ =>
@@ -453,7 +451,6 @@ lemma isingZ_pos (β : ℝ) (J : Edge (V := V) Λ → ℝ) :
     0 < isingZ (V := V) (Λ := Λ) β J := by
   classical
   unfold isingZ
-  -- sum of strictly positive terms over a nonempty finite type
   refine Finset.sum_pos (fun σ _hσ => isingBoltzmann_pos (V := V) (Λ := Λ) (β := β) (J := J) σ)
     (s := (Finset.univ : Finset (↥Λ → Bool))) Finset.univ_nonempty
 

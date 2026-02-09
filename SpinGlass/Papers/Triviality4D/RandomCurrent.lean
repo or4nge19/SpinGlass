@@ -131,14 +131,12 @@ lemma sources_add {Λ : Finset V} (n1 n2 : Current (V := V) Λ) :
 lemma sum_degree_eq_two_mul_sum_current {Λ : Finset V} (n : Current (V := V) Λ) :
     (∑ x : ↥Λ, degree (V := V) n x) = 2 * ∑ e : Edge (V := V) Λ, n e := by
   classical
-  -- expand the degree sum, then swap the summations
   have hswap :
       (∑ x : ↥Λ, ∑ e : Edge (V := V) Λ,
           if x ∈ (e.1 : Sym2 (↥Λ)) then n e else 0)
         =
         ∑ e : Edge (V := V) Λ, ∑ x : ↥Λ,
           if x ∈ (e.1 : Sym2 (↥Λ)) then n e else 0 := by
-    -- `∑` over a finite type is definitionally a sum over `Finset.univ`.
     simpa using
       (Finset.sum_comm (s := (Finset.univ : Finset (↥Λ))) (t := (Finset.univ : Finset (Edge (V := V) Λ)))
         (f := fun x e => if x ∈ (e.1 : Sym2 (↥Λ)) then n e else 0))
@@ -155,23 +153,19 @@ lemma sum_degree_eq_two_mul_sum_current {Λ : Finset V} (n : Current (V := V) Λ
       (∑ x : ↥Λ, if p x then n e else 0)
           = ∑ x ∈ (Finset.univ : Finset (↥Λ)), if p x then n e else 0 := by simp
       _ = ∑ x ∈ (Finset.univ.filter fun x : ↥Λ => p x), n e := by
-            -- `Finset.sum_filter` rewrites sums over `filter` into sums of `ite`'s
             simpa [p] using
               (Finset.sum_filter (s := (Finset.univ : Finset (↥Λ)))
                 (f := fun _x : ↥Λ => n e) (p := p)).symm
       _ = ∑ x ∈ (e.1 : Sym2 (↥Λ)).toFinset, n e := by
-            -- rewrite the finset of summation using `hfilter`
             simpa using
               congrArg (fun t : Finset (↥Λ) => (∑ x ∈ t, n e)) hfilter
       _ = ((e.1 : Sym2 (↥Λ)).toFinset.card) * n e := by simp
       _ = 2 * n e := by
             simpa using congrArg (fun k => k * n e) (Sym2.card_toFinset_of_not_isDiag (z := (e.1 : Sym2 (↥Λ))) e.2)
-  -- finish by rewriting the inner sum and factoring out `2`
   have hsum :
       (∑ x : ↥Λ, degree (V := V) n x)
         = ∑ e : Edge (V := V) Λ, 2 * n e := by
     classical
-    -- Expand `degree`, swap the order of summation, then use `hinner`.
     calc
       (∑ x : ↥Λ, degree (V := V) n x)
           = ∑ x : ↥Λ, ∑ e : Edge (V := V) Λ,
@@ -181,12 +175,9 @@ lemma sum_degree_eq_two_mul_sum_current {Λ : Finset V} (n : Current (V := V) Λ
               if x ∈ (e.1 : Sym2 (↥Λ)) then n e else 0 := by
                 simpa using hswap
       _ = ∑ e : Edge (V := V) Λ, 2 * n e := by
-                -- rewrite the inner sum using `hinner` fiberwise
                 apply Fintype.sum_congr
                 intro e
                 simpa using hinner e
-  -- factor out `2`
-  -- `Finset.mul_sum` has the forward direction; we use its symmetry.
   simpa using (hsum.trans (by
     simpa using
       (Finset.mul_sum (a := (2 : ℕ)) (s := (Finset.univ : Finset (Edge (V := V) Λ)))
@@ -195,19 +186,15 @@ lemma sum_degree_eq_two_mul_sum_current {Λ : Finset V} (n : Current (V := V) Λ
 lemma even_card_sources {Λ : Finset V} (n : Current (V := V) Λ) :
     Even (sources (V := V) n).card := by
   classical
-  -- The total sum of degrees is even, since it is `2 * ∑ₑ n(e)`.
   have hsum :
       (∑ x : ↥Λ, degree (V := V) n x) = 2 * ∑ e : Edge (V := V) Λ, n e :=
     sum_degree_eq_two_mul_sum_current (V := V) (Λ := Λ) n
   have hEvenSum : Even (∑ x ∈ (Finset.univ : Finset (↥Λ)), degree (V := V) n x) := by
     refine ⟨∑ e : Edge (V := V) Λ, n e, ?_⟩
-    -- rewrite the `Fintype` sum as a `Finset` sum
     simpa [two_mul] using hsum
-  -- Convert evenness of the degree-sum to evenness of the number of odd degrees.
   have hEvenOdd :=
     (Finset.even_sum_iff_even_card_odd (s := (Finset.univ : Finset (↥Λ)))
       (f := fun x : ↥Λ => degree (V := V) n x)).1 hEvenSum
-  -- This filtered finset is exactly `sources n`.
   simpa [sources, IsSource] using hEvenOdd
 
 /-! ## Connectivity in the trace graph -/
@@ -334,8 +321,7 @@ noncomputable def weightEdge
 
 /-- The source-constrained partition function `Z_B = ∑_{n : ∂n = B} w(n)` (as `ℝ≥0∞`). -/
 noncomputable def Z
-    (β : ℝ) (J : V → V → ℝ) {Λ : Finset V} (B : Finset (↥Λ)) : ℝ≥0∞ :=
-by
+    (β : ℝ) (J : V → V → ℝ) {Λ : Finset V} (B : Finset (↥Λ)) : ℝ≥0∞ := by
   classical
   exact ∑' n : Current (V := V) Λ, if sources (V := V) n = B then weight (V := V) β J n else 0
 
@@ -353,8 +339,7 @@ This is a *definition-level* object: to upgrade it to a genuine probability meas
 `Z ≠ 0` and `Z ≠ ⊤` (and measurability) in a later module.
 -/
 noncomputable def P
-    (β : ℝ) (J : V → V → ℝ) {Λ : Finset V} (B : Finset (↥Λ)) (E : Set (Current (V := V) Λ)) : ℝ≥0∞ :=
-by
+    (β : ℝ) (J : V → V → ℝ) {Λ : Finset V} (B : Finset (↥Λ)) (E : Set (Current (V := V) Λ)) : ℝ≥0∞ := by
   classical
   exact
     (∑' n : Current (V := V) Λ,

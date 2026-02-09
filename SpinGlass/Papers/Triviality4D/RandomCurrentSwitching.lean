@@ -1492,7 +1492,6 @@ theorem switchingLemma_one
   have hF : ∀ n : Current (V := V) Λ, ‖(1 : ℝ)‖ ≤ (1 : ℝ) := by
     intro _n
     simp
-  -- `switchingLemma` with constant `F`
   simpa [mul_assoc] using
     (switchingLemma (V := V) (Λ := Λ) (β := β) (J := J) (A := A) (B := B)
       (F := fun _n : Current (V := V) Λ => (1 : ℝ)) (C := (1 : ℝ)) hF)
