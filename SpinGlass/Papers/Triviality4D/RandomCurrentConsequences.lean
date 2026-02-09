@@ -337,7 +337,7 @@ lemma PPairReal_nonneg_of_nonneg
         mul_nonneg hw1 hw2
       by_cases hmem : (p.1 + p.2) ∈ S
       · simp [hcond, Set.indicator_of_mem, hmem, hwprod]
-      · simp [hcond, Set.indicator, hmem, hwprod]
+      · simp [hcond, Set.indicator, hmem]
     · simp [hcond]
   have hden :
       0 ≤
@@ -369,8 +369,7 @@ lemma PPairReal_le_one_of_nonneg
     intro p
     by_cases hcond : sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B
     · simp [fAll, wprod, w, hcond, norm_mul]
-    ·
-      simpa [fAll, hcond] using
+    · simpa [fAll, hcond] using
         (mul_nonneg (norm_nonneg (w p.1)) (norm_nonneg (w p.2)))
   have hsAll : Summable fAll := hsAll_norm.of_norm
   have hsS_norm : Summable fun p : Current (V := V) Λ × Current (V := V) Λ => ‖fS p‖ := by
@@ -382,7 +381,9 @@ lemma PPairReal_le_one_of_nonneg
       ·
         simpa [fS, hcond, Set.indicator, hmem] using
           (mul_nonneg (norm_nonneg (w p.1)) (norm_nonneg (w p.2)))
-    · simp [fS, hcond]
+    ·
+      simpa [fS, hcond] using
+        (mul_nonneg (norm_nonneg (w p.1)) (norm_nonneg (w p.2)))
   have hsS : Summable fS := hsS_norm.of_norm
   have hpoint : ∀ p, fS p ≤ fAll p := by
     intro p
