@@ -428,7 +428,6 @@ theorem connected_of_sources_eq_pair
       · simpa [hz'] using hxS
   have hEvenInter : Even ((sources (V := V) (Λ := Λ) n ∩ S).card) := by
     simpa [hfilterSources] using hEvenSourcesInS
-  -- but the set has cardinality `1`
   have hEven1 : Even (1 : ℕ) := by
     have h : Even ((sources (V := V) (Λ := Λ) n ∩ S).card) := hEvenInter
     have hcard : (sources (V := V) (Λ := Λ) n ∩ S).card = 1 := by

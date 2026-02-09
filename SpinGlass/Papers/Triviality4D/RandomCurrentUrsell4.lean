@@ -317,7 +317,6 @@ lemma one_sub_pairings_ind_eq
             · rcases hu' with rfl | rfl | rfl <;> first | exact hxS | exact hzS | exact htS
         simp [hEq, hxz, hxt, hzt]
       have : ¬ Even ((sources (V := V) (Λ := Λ) n ∩ S).card) := by
-        -- `¬ Even 3`
         simpa [hcard] using (show ¬ Even (3 : ℕ) from by decide)
       exact this hEven
     have hxy' : Connected (V := V) (Λ := Λ) n x y := by
@@ -922,6 +921,41 @@ theorem isingUrsell4_eq_of_nonneg
       ZReal (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) ≠ 0 :=
     ZReal_pair_ne_zero_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) (x := z) (y := t)
       hzt hβJ hzt_pos
+  exact
+    isingUrsell4_eq (V := V) (Λ := Λ) (β := β) (J := J) (x := x) (y := y) (z := z) (t := t)
+      hxy hxz hxt hyz hyt hzt hZxy hZzt
+
+/--
+Eq. (U4), with the nonvanishing hypotheses discharged under:
+
+- nonnegative couplings `β * J e ≥ 0`, and
+- reachability in the graph of *strictly positive* couplings between `x` and `y`, and between `z` and `t`.
+
+This is the form that applies directly to nearest-neighbour ferromagnetic Ising models, where
+`J e > 0` only on lattice-neighbour edges and is `0` otherwise.
+-/
+theorem isingUrsell4_eq_of_nonneg_of_reachable_posCouplingGraph
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) {x y z t : ↥Λ}
+    (hxy : x ≠ y) (hxz : x ≠ z) (hxt : x ≠ t)
+    (hyz : y ≠ z) (hyt : y ≠ t) (hzt : z ≠ t)
+    (hβJ : ∀ e : Edge (V := V) Λ, 0 ≤ β * J e)
+    (hreach_xy : (posCouplingGraph (V := V) (Λ := Λ) β J).Reachable x y)
+    (hreach_zt : (posCouplingGraph (V := V) (Λ := Λ) β J).Reachable z t) :
+    isingUrsell4 (V := V) (Λ := Λ) β J x y z t
+      =
+      -2 *
+        isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
+        isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) *
+          PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
+            {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z} := by
+  have hZxy :
+      ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ≠ 0 :=
+    ZReal_pair_ne_zero_of_reachable_posCouplingGraph (V := V) (Λ := Λ) (β := β) (J := J)
+      hβJ hxy hreach_xy
+  have hZzt :
+      ZReal (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) ≠ 0 :=
+    ZReal_pair_ne_zero_of_reachable_posCouplingGraph (V := V) (Λ := Λ) (β := β) (J := J)
+      hβJ hzt hreach_zt
   exact
     isingUrsell4_eq (V := V) (Λ := Λ) (β := β) (J := J) (x := x) (y := y) (z := z) (t := t)
       hxy hxz hxt hyz hyt hzt hZxy hZzt
