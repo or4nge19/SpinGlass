@@ -896,6 +896,36 @@ theorem isingUrsell4_eq
     (ZReal_fourSources_mul_ZReal_empty_sub_pairings_eq_tsum_connected (V := V) (Λ := Λ)
       (β := β) (J := J) (x := x) (y := y) (z := z) (t := t) hxy hxz hxt hyz hyt hzt)
 
+/--
+Eq. (U4), with the nonvanishing hypotheses discharged under a simple “ferromagnetic positivity”
+assumption: `β * J e ≥ 0` for all edges and strict positivity on the specific edges `{x,y}`, `{z,t}`.
+-/
+theorem isingUrsell4_eq_of_nonneg
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) {x y z t : ↥Λ}
+    (hxy : x ≠ y) (hxz : x ≠ z) (hxt : x ≠ t)
+    (hyz : y ≠ z) (hyt : y ≠ t) (hzt : z ≠ t)
+    (hβJ : ∀ e : Edge (V := V) Λ, 0 ≤ β * J e)
+    (hxy_pos : 0 < β * J (edge (V := V) (Λ := Λ) x y hxy))
+    (hzt_pos : 0 < β * J (edge (V := V) (Λ := Λ) z t hzt)) :
+    isingUrsell4 (V := V) (Λ := Λ) β J x y z t
+      =
+      -2 *
+        isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
+        isingCorr (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) *
+          PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ({z, t} : Finset (↥Λ))
+            {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x z} := by
+  have hZxy :
+      ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ≠ 0 :=
+    ZReal_pair_ne_zero_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) (x := x) (y := y)
+      hxy hβJ hxy_pos
+  have hZzt :
+      ZReal (V := V) (Λ := Λ) β J ({z, t} : Finset (↥Λ)) ≠ 0 :=
+    ZReal_pair_ne_zero_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) (x := z) (y := t)
+      hzt hβJ hzt_pos
+  exact
+    isingUrsell4_eq (V := V) (Λ := Λ) (β := β) (J := J) (x := x) (y := y) (z := z) (t := t)
+      hxy hxz hxt hyz hyt hzt hZxy hZzt
+
 end RandomCurrent
 
 end SpinGlass.Papers.Triviality4D
