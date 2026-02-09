@@ -118,6 +118,21 @@ lemma Connected.refl {Λ : Finset V} (n : Current (V := V) Λ) (x : ↥Λ) :
     Connected (V := V) n x x :=
   Relation.ReflTransGen.refl
 
+/-! ### Clusters -/
+
+/-- The cluster of `x` in a current `n`: the set of vertices connected to `x`. -/
+def cluster {Λ : Finset V} (n : Current (V := V) Λ) (x : ↥Λ) : Set (↥Λ) :=
+  {y | Connected (V := V) n x y}
+
+lemma mem_cluster_iff {Λ : Finset V} (n : Current (V := V) Λ) (x y : ↥Λ) :
+    y ∈ cluster (V := V) n x ↔ Connected (V := V) n x y := by
+  rfl
+
+omit [DecidableEq V] in
+lemma mem_cluster_self {Λ : Finset V} (n : Current (V := V) Λ) (x : ↥Λ) :
+    x ∈ cluster (V := V) n x := by
+  simpa [cluster] using (Connected.refl (V := V) (Λ := Λ) n x)
+
 /-! ## Random current weights and normalizations -/
 
 /--

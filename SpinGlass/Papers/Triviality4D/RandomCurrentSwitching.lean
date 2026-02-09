@@ -1,5 +1,6 @@
 import SpinGlass.Papers.Triviality4D.RandomCurrentRepresentation
 import Mathlib.Data.Nat.Choose.Basic
+import Mathlib.Analysis.Normed.Group.Indicator
 
 /-!
 # Random current switching lemma (finite volume)
@@ -39,19 +40,35 @@ We represent edge-copies of `e` by `Fin (n e)`.
 abbrev EdgeAssign (n : Current (V := V) Λ) : Type u :=
   ∀ e : Edge (V := V) Λ, Finset (Fin (n e))
 
+/-- The first subcurrent `n₁` encoded by an edge assignment `S` for a total current `n`.
+
+By definition, `n₁ e` is the number of edge-copies of `e` assigned to the first current. -/
 noncomputable def currentOfEdgeAssign (n : Current (V := V) Λ) (S : EdgeAssign (V := V) (Λ := Λ) n) :
     Current (V := V) Λ :=
   fun e => (S e).card
 
+/-- The complementary subcurrent `n₂` encoded by an edge assignment `S` for a total current `n`.
+
+By definition, `n₂ e = n e - n₁ e`. -/
 noncomputable def currentOfEdgeAssignCompl (n : Current (V := V) Λ) (S : EdgeAssign (V := V) (Λ := Λ) n) :
     Current (V := V) Λ :=
   fun e => n e - (S e).card
 
+omit [DecidableEq V] in
+lemma currentOfEdgeAssign_le (n : Current (V := V) Λ) (S : EdgeAssign (V := V) (Λ := Λ) n) :
+    CurrentLE (V := V) (currentOfEdgeAssign (V := V) (Λ := Λ) n S) n := by
+  intro e
+  have hle : (S e).card ≤ n e := by
+    simpa using (Finset.card_le_univ (s := S e))
+  simpa [currentOfEdgeAssign] using hle
+
 /-! ## Counting edge assignments with prescribed multiplicities -/
 
+/-- Fiber of edge assignments inducing a given subcurrent `n₁`. -/
 abbrev EdgeAssignFiber (n n1 : Current (V := V) Λ) : Type u :=
   {S : EdgeAssign (V := V) (Λ := Λ) n // currentOfEdgeAssign (V := V) (Λ := Λ) n S = n1}
 
+/-- Reindex `EdgeAssignFiber n n₁` edgewise as families of fixed-cardinality subsets. -/
 noncomputable def edgeAssignFiberEquiv
     (n n1 : Current (V := V) Λ) :
     EdgeAssignFiber (V := V) (Λ := Λ) n n1 ≃
@@ -87,6 +104,7 @@ lemma card_edgeAssignFiber (n n1 : Current (V := V) Λ) :
 
 /-! ## Canonical edge assignments representing subcurrents -/
 
+/-- The canonical subset of `Fin n` of cardinality `k` (using `Fin.castLE`). -/
 noncomputable def canonEdgeSet (n k : ℕ) (hk : k ≤ n) : Finset (Fin n) :=
   (Finset.univ.image (Fin.castLE hk))
 
@@ -96,10 +114,14 @@ lemma card_canonEdgeSet (n k : ℕ) (hk : k ≤ n) :
     (Finset.card_image_of_injective (s := (Finset.univ : Finset (Fin k)))
       (Fin.castLE_injective hk))
 
+/-- The canonical edge assignment representing a subcurrent `m ≤ n`.
+
+For each edge `e`, we take the canonical subset of `Fin (n e)` of size `m e`. -/
 noncomputable def canonEdgeAssign (n m : Current (V := V) Λ) (hm : CurrentLE (V := V) m n) :
     EdgeAssign (V := V) (Λ := Λ) n :=
   fun e => canonEdgeSet (n e) (m e) (hm e)
 
+omit [DecidableEq V] in
 lemma currentOfEdgeAssign_canonEdgeAssign (n m : Current (V := V) Λ) (hm : CurrentLE (V := V) m n) :
     currentOfEdgeAssign (V := V) (Λ := Λ) n (canonEdgeAssign (V := V) (Λ := Λ) n m hm) = m := by
   funext e
@@ -113,12 +135,13 @@ lemma exists_edgeAssign_sources_of_hasSubCurrent (n : Current (V := V) Λ) (B : 
   refine ⟨canonEdgeAssign (V := V) (Λ := Λ) n m hmle, ?_⟩
   simpa [currentOfEdgeAssign_canonEdgeAssign (V := V) (Λ := Λ) (n := n) (m := m) hmle] using hsrc
 
+omit [DecidableEq V] in
 lemma currentOfEdgeAssign_add_currentOfEdgeAssignCompl (n : Current (V := V) Λ)
     (S : EdgeAssign (V := V) (Λ := Λ) n) :
     currentOfEdgeAssign (V := V) (Λ := Λ) n S + currentOfEdgeAssignCompl (V := V) (Λ := Λ) n S = n := by
   funext e
   have hle : (S e).card ≤ n e := by
-    simpa using (Finset.card_le_univ (s := S e))
+    simpa [currentOfEdgeAssign] using (currentOfEdgeAssign_le (V := V) (Λ := Λ) (n := n) S e)
   simp [currentOfEdgeAssign, currentOfEdgeAssignCompl, Nat.add_sub_of_le hle]
 
 /-! ## Real weight algebra for splittings -/
@@ -228,14 +251,17 @@ for every edge `e`. This parametrizes all current splittings `n = n₁ + n₂` b
 abbrev SplitCurrent (n : Current (V := V) Λ) : Type u :=
   ∀ e : Edge (V := V) Λ, Fin (n e + 1)
 
+/-- The first current `n₁` associated to a split parameter `s : SplitCurrent n`. -/
 noncomputable def splitCurrentToCurrent (n : Current (V := V) Λ) (s : SplitCurrent (V := V) (Λ := Λ) n) :
     Current (V := V) Λ :=
   fun e => (s e).val
 
+/-- The complementary current `n₂ = n - n₁` associated to a split parameter `s : SplitCurrent n`. -/
 noncomputable def splitCurrentToCurrentCompl (n : Current (V := V) Λ) (s : SplitCurrent (V := V) (Λ := Λ) n) :
     Current (V := V) Λ :=
   fun e => n e - (s e).val
 
+omit [DecidableEq V] in
 lemma splitCurrent_add (n : Current (V := V) Λ) (s : SplitCurrent (V := V) (Λ := Λ) n) :
     splitCurrentToCurrent (V := V) (Λ := Λ) n s +
         splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s = n := by
@@ -243,15 +269,43 @@ lemma splitCurrent_add (n : Current (V := V) Λ) (s : SplitCurrent (V := V) (Λ 
   have hle : (s e).val ≤ n e := Nat.le_of_lt_succ (s e).isLt
   simp [splitCurrentToCurrent, splitCurrentToCurrentCompl, Nat.add_sub_of_le hle]
 
+lemma weightReal_mul_eq_splitCurrent (β : ℝ) (J : Edge (V := V) Λ → ℝ)
+    (n : Current (V := V) Λ) (s : SplitCurrent (V := V) (Λ := Λ) n) :
+    weightReal (V := V) (Λ := Λ) β J (splitCurrentToCurrent (V := V) (Λ := Λ) n s) *
+        weightReal (V := V) (Λ := Λ) β J (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s)
+      =
+      weightReal (V := V) (Λ := Λ) β J n *
+        (∏ e : Edge (V := V) Λ,
+          ((Nat.choose (n e) ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e)) : ℝ)) := by
+  classical
+  have hsum :
+      splitCurrentToCurrent (V := V) (Λ := Λ) n s +
+          splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s = n := by
+    simpa using (splitCurrent_add (V := V) (Λ := Λ) n s)
+  have he :
+      ∀ e : Edge (V := V) Λ,
+        (splitCurrentToCurrent (V := V) (Λ := Λ) n s) e +
+            (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) e = n e := by
+    intro e
+    have := congrArg (fun m : Current (V := V) Λ => m e) hsum
+    simpa using this
+  simpa [hsum, he] using
+    (weightReal_mul_eq (V := V) (Λ := Λ) (β := β) (J := J)
+      (n1 := splitCurrentToCurrent (V := V) (Λ := Λ) n s)
+      (n2 := splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s))
+
+/-- Forget an edge assignment to its split parameter, by taking edgewise cardinalities. -/
 noncomputable def edgeAssignToSplitCurrent (n : Current (V := V) Λ) :
     EdgeAssign (V := V) (Λ := Λ) n → SplitCurrent (V := V) (Λ := Λ) n :=
   fun S e =>
     ⟨(S e).card, Nat.lt_succ_of_le (by
       simpa using (Finset.card_le_univ (s := S e)))⟩
 
+/-- Fiber of edge assignments inducing a fixed split parameter `s : SplitCurrent n`. -/
 abbrev EdgeAssignSplitFiber (n : Current (V := V) Λ) (s : SplitCurrent (V := V) (Λ := Λ) n) : Type u :=
   {S : EdgeAssign (V := V) (Λ := Λ) n // edgeAssignToSplitCurrent (V := V) (Λ := Λ) n S = s}
 
+/-- Identify `EdgeAssignSplitFiber n s` with `EdgeAssignFiber n n₁` for `n₁ = splitCurrentToCurrent n s`. -/
 noncomputable def edgeAssignSplitFiberEquiv (n : Current (V := V) Λ) (s : SplitCurrent (V := V) (Λ := Λ) n) :
     EdgeAssignSplitFiber (V := V) (Λ := Λ) n s ≃
       EdgeAssignFiber (V := V) (Λ := Λ) n (splitCurrentToCurrent (V := V) (Λ := Λ) n s) := by
@@ -280,6 +334,7 @@ noncomputable def toggleEdgeAssign (n : Current (V := V) Λ)
     (M S : EdgeAssign (V := V) (Λ := Λ) n) : EdgeAssign (V := V) (Λ := Λ) n :=
   fun e => symmDiff (S e) (M e)
 
+omit [DecidableEq V] in
 lemma toggleEdgeAssign_involutive (n : Current (V := V) Λ)
     (M : EdgeAssign (V := V) (Λ := Λ) n) :
     Function.Involutive (toggleEdgeAssign (V := V) (Λ := Λ) n M) := by
@@ -420,6 +475,7 @@ noncomputable def toggleEdgeAssignEquiv_sources (n : Current (V := V) Λ)
 
 /-! ## Counting splittings via edge assignments -/
 
+omit [DecidableEq V] in
 lemma splitCurrentToCurrent_edgeAssignToSplitCurrent (n : Current (V := V) Λ)
     (S : EdgeAssign (V := V) (Λ := Λ) n) :
     splitCurrentToCurrent (V := V) (Λ := Λ) n (edgeAssignToSplitCurrent (V := V) (Λ := Λ) n S) =
@@ -427,6 +483,7 @@ lemma splitCurrentToCurrent_edgeAssignToSplitCurrent (n : Current (V := V) Λ)
   funext e
   rfl
 
+omit [DecidableEq V] in
 lemma splitCurrentToCurrentCompl_edgeAssignToSplitCurrent (n : Current (V := V) Λ)
     (S : EdgeAssign (V := V) (Λ := Λ) n) :
     splitCurrentToCurrentCompl (V := V) (Λ := Λ) n (edgeAssignToSplitCurrent (V := V) (Λ := Λ) n S) =
@@ -579,11 +636,7 @@ lemma hasSubCurrent_of_exists_edgeAssign_sources (n : Current (V := V) Λ) (B : 
         sources (V := V) (currentOfEdgeAssign (V := V) (Λ := Λ) n M) = B) →
       HasSubCurrent (V := V) (Λ := Λ) n B := by
   rintro ⟨M, hM⟩
-  refine ⟨currentOfEdgeAssign (V := V) (Λ := Λ) n M, ?_, hM⟩
-  intro e
-  have hle : (M e).card ≤ n e := by
-    simpa using (Finset.card_le_univ (s := M e))
-  simpa [currentOfEdgeAssign] using hle
+  refine ⟨currentOfEdgeAssign (V := V) (Λ := Λ) n M, currentOfEdgeAssign_le (V := V) (Λ := Λ) (n := n) M, hM⟩
 
 lemma hasSubCurrent_iff_exists_edgeAssign_sources (n : Current (V := V) Λ) (B : Finset (↥Λ)) :
     HasSubCurrent (V := V) (Λ := Λ) n B ↔
@@ -602,7 +655,6 @@ Equivalence between split parameters `s : SplitCurrent n` and pairs `(n₁,n₂)
 -/
 noncomputable def splitCurrentEquivAddFiber (n : Current (V := V) Λ) :
     SplitCurrent (V := V) (Λ := Λ) n ≃ AddFiber (V := V) (Λ := Λ) n := by
-  classical
   refine
     { toFun := fun s =>
         ⟨⟨splitCurrentToCurrent (V := V) (Λ := Λ) n s,
@@ -652,7 +704,6 @@ lemma summable_norm_weightReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) :
 lemma hasSubCurrent_of_assignSources
     (n : Current (V := V) Λ) (A B : Finset (↥Λ)) (hn : sources (V := V) n = symmDiff A B) :
     AssignSources (V := V) (Λ := Λ) n A → HasSubCurrent (V := V) (Λ := Λ) n B := by
-  classical
   intro S
   let n1 : Current (V := V) Λ :=
     currentOfEdgeAssign (V := V) (Λ := Λ) n S.1
@@ -668,7 +719,6 @@ lemma hasSubCurrent_of_assignSources
     simpa [n1] using S.2
   have hsolve :
       symmDiff (sources (V := V) n1) (sources (V := V) n) = sources (V := V) n2 := by
-    -- apply `symmDiff (sources n1)` to `hadd` and cancel
     have := congrArg (fun t => symmDiff (sources (V := V) n1) t) hadd
     simpa [symmDiff_symmDiff_cancel_left] using this
   have hsrc2 : sources (V := V) n2 = B := by
@@ -679,23 +729,20 @@ lemma hasSubCurrent_of_assignSources
       _ = symmDiff A (symmDiff A B) := by
               simp [hsrc1, hn]
       _ = B := by
-              simpa using (symmDiff_symmDiff_cancel_left (a := A) (b := B))
+              simp
   have hle : CurrentLE (V := V) n2 n := by
     intro e
-    -- `n2 e = n e - (S e).card ≤ n e`
-    simpa [n2, currentOfEdgeAssignCompl] using (Nat.sub_le (n e) ((S.1 e).card))
+    simp [n2, currentOfEdgeAssignCompl]
   exact ⟨n2, hle, hsrc2⟩
 
 lemma card_assignSources_eq_of_hasSubCurrent
     (n : Current (V := V) Λ) (A B : Finset (↥Λ)) (hsub : HasSubCurrent (V := V) (Λ := Λ) n B) :
     (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ) =
       (Fintype.card (AssignSources (V := V) (Λ := Λ) n (symmDiff A B)) : ℝ) := by
-  classical
   rcases (exists_edgeAssign_sources_of_hasSubCurrent (V := V) (Λ := Λ) (n := n) (B := B) hsub) with ⟨M, hM⟩
   have hcard :
       Fintype.card (AssignSources (V := V) (Λ := Λ) n (symmDiff A B)) =
         Fintype.card (AssignSources (V := V) (Λ := Λ) n A) := by
-    -- toggle gives an equivalence between the two assignment subtypes
     simpa [AssignSources] using
       (Fintype.card_congr
         (toggleEdgeAssignEquiv_sources (V := V) (Λ := Λ) (n := n) (A := A) (B := B) (M := M) hM))
@@ -705,7 +752,6 @@ lemma card_assignSources_eq_zero_of_not_hasSubCurrent
     (n : Current (V := V) Λ) (A B : Finset (↥Λ)) (hn : sources (V := V) n = symmDiff A B)
     (hsub : ¬ HasSubCurrent (V := V) (Λ := Λ) n B) :
     (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ) = 0 := by
-  classical
   have hempty : IsEmpty (AssignSources (V := V) (Λ := Λ) n A) := by
     refine ⟨fun S => hsub (hasSubCurrent_of_assignSources (V := V) (Λ := Λ) (n := n) (A := A) (B := B) hn S)⟩
   have : Fintype.card (AssignSources (V := V) (Λ := Λ) n A) = 0 := by
@@ -721,7 +767,6 @@ lemma sum_choose_eq_card_assignSources (n : Current (V := V) Λ) (A : Finset (�
         else 0)
       =
       (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ) := by
-  classical
   have hcard :
       (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ)
         =
@@ -754,7 +799,6 @@ lemma sum_choose_eq_card_assignSources (n : Current (V := V) Λ) (A : Finset (�
               (n e).choose ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e) : ℕ) := by
       exact_mod_cast h
     simpa using h'
-  -- substitute the fiber-card formula into `hcard`
   have hsum :
       (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
           if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A then
@@ -786,10 +830,8 @@ lemma sum_choose_sources_eq_card_assignSources
       if sources (V := V) n = symmDiff A B then
         (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ)
       else 0 := by
-  classical
   by_cases hn : sources (V := V) n = symmDiff A B
-  · -- `sources n2 = B` is forced by `sources n1 = A`.
-    have hforce :
+  · have hforce :
         ∀ s : SplitCurrent (V := V) (Λ := Λ) n,
           sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A →
             sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = B := by
@@ -812,7 +854,7 @@ lemma sum_choose_sources_eq_card_assignSources
         _ = symmDiff A (symmDiff A B) := by
                 simp [n1, hA, hn]
         _ = B := by
-                simpa using (symmDiff_symmDiff_cancel_left (a := A) (b := B))
+                simp
     have hterm :
         ∀ s : SplitCurrent (V := V) (Λ := Λ) n,
           (if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A ∧
@@ -846,8 +888,7 @@ lemma sum_choose_sources_eq_card_assignSources
             else 0 := by
       exact Fintype.sum_congr _ _ hterm
     simp [hn, hsum, sum_choose_eq_card_assignSources (V := V) (Λ := Λ) (n := n) (A := A)]
-  · -- no such pair can exist, hence the sum is zero
-    have hz :
+  · have hz :
         (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
             if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A ∧
                   sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = B then
@@ -860,8 +901,7 @@ lemma sum_choose_sources_eq_card_assignSources
       by_cases hAB :
           sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A ∧
             sources (V := V) (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = B
-      · -- derive `sources n = A Δ B`, contradiction
-        let n1 : Current (V := V) Λ := splitCurrentToCurrent (V := V) (Λ := Λ) n s
+      · let n1 : Current (V := V) Λ := splitCurrentToCurrent (V := V) (Λ := Λ) n s
         let n2 : Current (V := V) Λ := splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s
         have hsum : n1 + n2 = n := by
           simpa [n1, n2] using (splitCurrent_add (V := V) (Λ := Λ) n s)
@@ -886,7 +926,6 @@ lemma sum_choose_sources_symmDiff_empty_eq_card_assignSources
       if sources (V := V) n = symmDiff A B then
         (Fintype.card (AssignSources (V := V) (Λ := Λ) n (symmDiff A B)) : ℝ)
       else 0 := by
-  classical
   by_cases hn : sources (V := V) n = symmDiff A B
   · have hforce :
         ∀ s : SplitCurrent (V := V) (Λ := Λ) n,
@@ -900,9 +939,7 @@ lemma sum_choose_sources_symmDiff_empty_eq_card_assignSources
       have hadd :
           sources (V := V) n = symmDiff (sources (V := V) n1) (sources (V := V) n2) := by
         simpa [hsum] using (sources_add (V := V) (Λ := Λ) (n1 := n1) (n2 := n2))
-      -- with `sources n = sources n1`, we get `sources n2 = ∅`
       have hEq : symmDiff (sources (V := V) n1) (sources (V := V) n2) = sources (V := V) n1 := by
-        -- rewrite `sources n` and `sources n1` by `hn` and `hsrc`
         simpa [n1, hn, hsrc] using hadd.symm
       have hb : sources (V := V) n2 = (⊥ : Finset (↥Λ)) := (symmDiff_eq_left).1 hEq
       simpa using hb
@@ -967,6 +1004,620 @@ lemma sum_choose_sources_symmDiff_empty_eq_card_assignSources
         exact (hn this).elim
       · simp [hAB]
     simp [hn, hz]
+
+/-! ## Fiberwise decomposition of `tsum` over total current -/
+
+omit [DecidableEq V] in
+lemma tsum_by_totalCurrent
+    (f : (Current (V := V) Λ × Current (V := V) Λ) → ℝ) (hf : Summable f) :
+    (∑' p, f p)
+      =
+      ∑' n : Current (V := V) Λ,
+        ∑' p : AddFiber (V := V) (Λ := Λ) n, f p.1 := by
+  let g :
+      (Current (V := V) Λ × Current (V := V) Λ) → Current (V := V) Λ := fun p => p.1 + p.2
+  have ha : HasSum f (∑' p, f p) := hf.hasSum
+  have ha' :
+      HasSum
+        (fun n : Current (V := V) Λ =>
+          ∑' p : {p : (Current (V := V) Λ × Current (V := V) Λ) // g p = n}, f p.1)
+        (∑' p, f p) :=
+    ha.tsum_fiberwise g
+  have ha'' :
+      HasSum
+        (fun n : Current (V := V) Λ =>
+          ∑' p : AddFiber (V := V) (Λ := Λ) n, f p.1)
+        (∑' p, f p) := by
+    simpa [g, AddFiber] using ha'
+  exact ha''.tsum_eq.symm
+
+lemma tsum_addFiber_eq_sum_splitCurrent
+    (n : Current (V := V) Λ) (g : (Current (V := V) Λ × Current (V := V) Λ) → ℝ) :
+    (∑' p : AddFiber (V := V) (Λ := Λ) n, g p.1)
+      =
+      ∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+        g ⟨splitCurrentToCurrent (V := V) (Λ := Λ) n s,
+          splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s⟩ := by
+  have :=
+    (Equiv.tsum_eq (splitCurrentEquivAddFiber (V := V) (Λ := Λ) n) (fun p => g p.1))
+  simpa [tsum_fintype, splitCurrentEquivAddFiber] using this.symm
+
+/-! ## Switching lemma (paper Lemma 1.5), as an identity of absolutely convergent series -/
+
+lemma summable_norm_weightReal_mul_norm_weightReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) :
+    Summable (fun p : Current (V := V) Λ × Current (V := V) Λ =>
+      ‖weightReal (V := V) (Λ := Λ) β J p.1‖ * ‖weightReal (V := V) (Λ := Λ) β J p.2‖) := by
+  let w : Current (V := V) Λ → ℝ := weightReal (V := V) (Λ := Λ) β J
+  have hs : Summable fun n : Current (V := V) Λ => ‖w n‖ := summable_norm_weightReal (V := V) (Λ := Λ) (β := β) J
+  have hnonneg : 0 ≤ (fun n : Current (V := V) Λ => ‖w n‖) := by
+    intro n
+    exact norm_nonneg (w n)
+  simpa [w] using (Summable.mul_of_nonneg hs hs hnonneg hnonneg)
+
+/-! ### Summability helpers for switching-series -/
+
+lemma nonneg_const_of_norm_le {α : Type*} [Inhabited α]
+    (F : α → ℝ) (C : ℝ) (hF : ∀ a, ‖F a‖ ≤ C) : 0 ≤ C := by
+  have h := hF default
+  exact (norm_nonneg (F default)).trans h
+
+lemma norm_F_mul_weightReal_mul_weightReal_le (β : ℝ) (J : Edge (V := V) Λ → ℝ)
+    (F : Current (V := V) Λ → ℝ) (C : ℝ) (hF : ∀ n, ‖F n‖ ≤ C) :
+    ∀ p : Current (V := V) Λ × Current (V := V) Λ,
+      ‖F (p.1 + p.2) *
+            weightReal (V := V) (Λ := Λ) β J p.1 *
+          weightReal (V := V) (Λ := Λ) β J p.2‖
+        ≤
+        C *
+          (‖weightReal (V := V) (Λ := Λ) β J p.1‖ *
+            ‖weightReal (V := V) (Λ := Λ) β J p.2‖) := by
+  intro p
+  have hFn : ‖F (p.1 + p.2)‖ ≤ C := hF (p.1 + p.2)
+  have hmul₁ :
+      ‖F (p.1 + p.2) *
+            weightReal (V := V) (Λ := Λ) β J p.1 *
+          weightReal (V := V) (Λ := Λ) β J p.2‖
+        ≤
+        ‖F (p.1 + p.2) * weightReal (V := V) (Λ := Λ) β J p.1‖ *
+          ‖weightReal (V := V) (Λ := Λ) β J p.2‖ :=
+    norm_mul_le (F (p.1 + p.2) * weightReal (V := V) (Λ := Λ) β J p.1)
+      (weightReal (V := V) (Λ := Λ) β J p.2)
+  have hmul₂ :
+      ‖F (p.1 + p.2) * weightReal (V := V) (Λ := Λ) β J p.1‖
+        ≤
+        ‖F (p.1 + p.2)‖ * ‖weightReal (V := V) (Λ := Λ) β J p.1‖ :=
+    norm_mul_le (F (p.1 + p.2)) (weightReal (V := V) (Λ := Λ) β J p.1)
+  have hmul₃ :
+      ‖F (p.1 + p.2) * weightReal (V := V) (Λ := Λ) β J p.1‖ *
+          ‖weightReal (V := V) (Λ := Λ) β J p.2‖
+        ≤
+        (‖F (p.1 + p.2)‖ * ‖weightReal (V := V) (Λ := Λ) β J p.1‖) *
+          ‖weightReal (V := V) (Λ := Λ) β J p.2‖ :=
+    mul_le_mul_of_nonneg_right hmul₂ (norm_nonneg _)
+  have hmul :
+      ‖F (p.1 + p.2) *
+            weightReal (V := V) (Λ := Λ) β J p.1 *
+          weightReal (V := V) (Λ := Λ) β J p.2‖
+        ≤
+        ‖F (p.1 + p.2)‖ *
+          (‖weightReal (V := V) (Λ := Λ) β J p.1‖ *
+            ‖weightReal (V := V) (Λ := Λ) β J p.2‖) := by
+    have := (le_trans hmul₁ hmul₃)
+    simp [mul_assoc]
+  have hnonneg :
+      0 ≤
+        ‖weightReal (V := V) (Λ := Λ) β J p.1‖ *
+          ‖weightReal (V := V) (Λ := Λ) β J p.2‖ :=
+    mul_nonneg (norm_nonneg _) (norm_nonneg _)
+  exact hmul.trans (mul_le_mul_of_nonneg_right hFn hnonneg)
+
+lemma summable_of_norm_le_mul_weightReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (C : ℝ)
+    (f : (Current (V := V) Λ × Current (V := V) Λ) → ℝ)
+    (hf :
+      ∀ p : Current (V := V) Λ × Current (V := V) Λ,
+        ‖f p‖ ≤
+          C *
+            (‖weightReal (V := V) (Λ := Λ) β J p.1‖ *
+              ‖weightReal (V := V) (Λ := Λ) β J p.2‖)) :
+    Summable f := by
+  have hs_prod :
+      Summable (fun p : Current (V := V) Λ × Current (V := V) Λ =>
+        ‖weightReal (V := V) (Λ := Λ) β J p.1‖ *
+          ‖weightReal (V := V) (Λ := Λ) β J p.2‖) := by
+    simpa using (summable_norm_weightReal_mul_norm_weightReal (V := V) (Λ := Λ) (β := β) J)
+  have hs_bound :
+      Summable (fun p : Current (V := V) Λ × Current (V := V) Λ =>
+        C *
+          (‖weightReal (V := V) (Λ := Λ) β J p.1‖ *
+            ‖weightReal (V := V) (Λ := Λ) β J p.2‖)) :=
+    hs_prod.mul_left C
+  exact Summable.of_norm_bounded hs_bound hf
+
+lemma summable_switchingSummandL (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ))
+    (F : Current (V := V) Λ → ℝ) (C : ℝ) (hF : ∀ n, ‖F n‖ ≤ C) :
+    Summable (fun p : Current (V := V) Λ × Current (V := V) Λ =>
+      if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+        F (p.1 + p.2) *
+            weightReal (V := V) (Λ := Λ) β J p.1 *
+          weightReal (V := V) (Λ := Λ) β J p.2
+      else 0) := by
+  classical
+  have hC : 0 ≤ C := nonneg_const_of_norm_le (F := F) (C := C) hF
+  refine
+    summable_of_norm_le_mul_weightReal (V := V) (Λ := Λ) (β := β) (J := J) (C := C)
+      (f := fun p =>
+        if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+          F (p.1 + p.2) *
+              weightReal (V := V) (Λ := Λ) β J p.1 *
+            weightReal (V := V) (Λ := Λ) β J p.2
+        else 0) ?_
+  intro p
+  by_cases hsrc : sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B
+  · simpa [hsrc] using
+      (norm_F_mul_weightReal_mul_weightReal_le (V := V) (Λ := Λ) (β := β) (J := J) (F := F) (C := C) hF p)
+  · have hnonneg :
+        0 ≤
+          C *
+            (‖weightReal (V := V) (Λ := Λ) β J p.1‖ *
+              ‖weightReal (V := V) (Λ := Λ) β J p.2‖) :=
+      mul_nonneg hC (mul_nonneg (norm_nonneg _) (norm_nonneg _))
+    simpa [hsrc] using hnonneg
+
+lemma summable_switchingSummandR (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ))
+    (F : Current (V := V) Λ → ℝ) (C : ℝ) (hF : ∀ n, ‖F n‖ ≤ C) :
+    Summable (fun p : Current (V := V) Λ × Current (V := V) Λ =>
+      if sources (V := V) p.1 = symmDiff A B ∧ sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
+        ({n : Current (V := V) Λ | HasSubCurrent (V := V) (Λ := Λ) n B}).indicator
+          (fun n =>
+            F n *
+                weightReal (V := V) (Λ := Λ) β J p.1 *
+              weightReal (V := V) (Λ := Λ) β J p.2)
+          (p.1 + p.2)
+      else 0) := by
+  let SB : Set (Current (V := V) Λ) := {n | HasSubCurrent (V := V) (Λ := Λ) n B}
+  have hC : 0 ≤ C := nonneg_const_of_norm_le (F := F) (C := C) hF
+  refine
+    summable_of_norm_le_mul_weightReal (V := V) (Λ := Λ) (β := β) (J := J) (C := C)
+      (f := fun p =>
+        if sources (V := V) p.1 = symmDiff A B ∧ sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
+          SB.indicator
+            (fun n =>
+              F n *
+                  weightReal (V := V) (Λ := Λ) β J p.1 *
+                weightReal (V := V) (Λ := Λ) β J p.2)
+            (p.1 + p.2)
+        else 0) ?_
+  intro p
+  by_cases hsrc :
+      sources (V := V) p.1 = symmDiff A B ∧ sources (V := V) p.2 = (∅ : Finset (↥Λ))
+  · have hind :
+        ‖SB.indicator
+              (fun n =>
+                F n *
+                    weightReal (V := V) (Λ := Λ) β J p.1 *
+                  weightReal (V := V) (Λ := Λ) β J p.2)
+              (p.1 + p.2)‖
+          ≤
+          ‖F (p.1 + p.2) *
+                weightReal (V := V) (Λ := Λ) β J p.1 *
+              weightReal (V := V) (Λ := Λ) β J p.2‖ := by
+      simpa [SB] using
+        (norm_indicator_le_norm_self (s := SB)
+          (f := fun n =>
+            F n *
+                weightReal (V := V) (Λ := Λ) β J p.1 *
+              weightReal (V := V) (Λ := Λ) β J p.2)
+          (a := p.1 + p.2))
+    have hcore :
+        ‖F (p.1 + p.2) *
+              weightReal (V := V) (Λ := Λ) β J p.1 *
+            weightReal (V := V) (Λ := Λ) β J p.2‖
+          ≤
+          C *
+            (‖weightReal (V := V) (Λ := Λ) β J p.1‖ *
+              ‖weightReal (V := V) (Λ := Λ) β J p.2‖) :=
+      norm_F_mul_weightReal_mul_weightReal_le (V := V) (Λ := Λ) (β := β) (J := J) (F := F) (C := C) hF p
+    have : ‖SB.indicator
+          (fun n =>
+            F n *
+                weightReal (V := V) (Λ := Λ) β J p.1 *
+              weightReal (V := V) (Λ := Λ) β J p.2)
+          (p.1 + p.2)‖
+        ≤
+        C *
+          (‖weightReal (V := V) (Λ := Λ) β J p.1‖ *
+            ‖weightReal (V := V) (Λ := Λ) β J p.2‖) :=
+      hind.trans hcore
+    simpa [hsrc, SB] using this
+  · have hnonneg :
+        0 ≤
+          C *
+            (‖weightReal (V := V) (Λ := Λ) β J p.1‖ *
+              ‖weightReal (V := V) (Λ := Λ) β J p.2‖) :=
+      mul_nonneg hC (mul_nonneg (norm_nonneg _) (norm_nonneg _))
+    simpa [hsrc] using hnonneg
+
+
+/--
+Switching lemma (Lemma 1.5 in `4D_triviality_June_2021_final.tex`) for the real current weights
+`weightReal`.
+
+We assume `F` is bounded in norm, so both sides are absolutely summable in `ℝ`.
+-/
+theorem switchingLemma
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ))
+    (F : Current (V := V) Λ → ℝ) (C : ℝ) (hF : ∀ n, ‖F n‖ ≤ C) :
+    (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+        if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+          F (p.1 + p.2) *
+              weightReal (V := V) (Λ := Λ) β J p.1 *
+            weightReal (V := V) (Λ := Λ) β J p.2
+        else 0)
+      =
+      (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+        if sources (V := V) p.1 = symmDiff A B ∧ sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
+          ({n : Current (V := V) Λ | HasSubCurrent (V := V) (Λ := Λ) n B}).indicator
+            (fun n =>
+              F n *
+                  weightReal (V := V) (Λ := Λ) β J p.1 *
+                weightReal (V := V) (Λ := Λ) β J p.2)
+            (p.1 + p.2)
+        else 0) := by
+  let w : Current (V := V) Λ → ℝ := weightReal (V := V) (Λ := Λ) β J
+  let SB : Set (Current (V := V) Λ) := {n | HasSubCurrent (V := V) (Λ := Λ) n B}
+  let fL : (Current (V := V) Λ × Current (V := V) Λ) → ℝ := fun p =>
+    if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+      F (p.1 + p.2) * w p.1 * w p.2
+    else 0
+  let fR : (Current (V := V) Λ × Current (V := V) Λ) → ℝ := fun p =>
+    if sources (V := V) p.1 = symmDiff A B ∧ sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
+      SB.indicator (fun n => F n * w p.1 * w p.2) (p.1 + p.2)
+    else 0
+  have hsL : Summable fL := by
+    simpa [fL, w] using
+      (summable_switchingSummandL (V := V) (Λ := Λ) (β := β) (J := J) (A := A) (B := B)
+        (F := F) (C := C) hF)
+  have hsR : Summable fR := by
+    simpa [fR, w, SB] using
+      (summable_switchingSummandR (V := V) (Λ := Λ) (β := β) (J := J) (A := A) (B := B)
+        (F := F) (C := C) hF)
+  have hdecompL := tsum_by_totalCurrent (V := V) (Λ := Λ) (f := fL) hsL
+  have hdecompR := tsum_by_totalCurrent (V := V) (Λ := Λ) (f := fR) hsR
+  have hinter :
+      ∀ n : Current (V := V) Λ,
+        (∑' p : AddFiber (V := V) (Λ := Λ) n, fL p.1)
+          =
+          (∑' p : AddFiber (V := V) (Λ := Λ) n, fR p.1) := by
+    intro n
+    rw [tsum_addFiber_eq_sum_splitCurrent (V := V) (Λ := Λ) (n := n) (g := fL),
+      tsum_addFiber_eq_sum_splitCurrent (V := V) (Λ := Λ) (n := n) (g := fR)]
+    let c : ℝ := F n * w n
+    have hL :
+        (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+            fL ⟨splitCurrentToCurrent (V := V) (Λ := Λ) n s,
+              splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s⟩)
+          =
+          c *
+            (if sources (V := V) n = symmDiff A B then
+              (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ)
+            else 0) := by
+      have hterm :
+          ∀ s : SplitCurrent (V := V) (Λ := Λ) n,
+            fL ⟨splitCurrentToCurrent (V := V) (Λ := Λ) n s,
+                splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s⟩
+              =
+              c *
+                (if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A ∧
+                      sources (V := V)
+                          (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = B then
+                    (∏ e : Edge (V := V) Λ,
+                        ((Nat.choose (n e)
+                            ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e)) : ℝ))
+                  else 0) := by
+        intro s
+        let n1 : Current (V := V) Λ := splitCurrentToCurrent (V := V) (Λ := Λ) n s
+        let n2 : Current (V := V) Λ := splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s
+        have hsum : n1 + n2 = n := by
+          simpa [n1, n2] using (splitCurrent_add (V := V) (Λ := Λ) n s)
+        have hmul :
+            w n1 * w n2
+              =
+              w n * (∏ e : Edge (V := V) Λ,
+                ((Nat.choose (n e) (n1 e)) : ℝ)) := by
+          simpa [w, n1, n2] using
+            (weightReal_mul_eq_splitCurrent (V := V) (Λ := Λ) (β := β) (J := J) (n := n) s)
+        by_cases hAB : sources (V := V) n1 = A ∧ sources (V := V) n2 = B
+        · simp [fL, w, c, n1, n2, hAB, hsum, hmul, mul_assoc]
+        · simp [fL, w, c, n1, n2, hAB]
+      calc
+        (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+            fL ⟨splitCurrentToCurrent (V := V) (Λ := Λ) n s,
+              splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s⟩)
+            = ∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+                c *
+                  (if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A ∧
+                        sources (V := V)
+                            (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = B then
+                      (∏ e : Edge (V := V) Λ,
+                          ((Nat.choose (n e)
+                              ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e)) : ℝ))
+                    else 0) := by
+                exact Fintype.sum_congr _ _ hterm
+        _ = c *
+              (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+                if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A ∧
+                    sources (V := V)
+                        (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = B then
+                  (∏ e : Edge (V := V) Λ,
+                      ((Nat.choose (n e)
+                          ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e)) : ℝ))
+                else 0) := by
+              simpa using
+                (Finset.mul_sum (s := (Finset.univ : Finset (SplitCurrent (V := V) (Λ := Λ) n)))
+                    (f := fun s =>
+                      if sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = A ∧
+                          sources (V := V)
+                              (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = B then
+                        (∏ e : Edge (V := V) Λ,
+                            ((Nat.choose (n e)
+                                ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e)) : ℝ))
+                      else 0) c).symm
+        _ = c *
+              (if sources (V := V) n = symmDiff A B then
+                (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ)
+              else 0) := by
+              simp [sum_choose_sources_eq_card_assignSources (V := V) (Λ := Λ) (n := n) (A := A) (B := B)]
+    by_cases hsub : HasSubCurrent (V := V) (Λ := Λ) n B
+    · have hR :
+          (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+              fR ⟨splitCurrentToCurrent (V := V) (Λ := Λ) n s,
+                splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s⟩)
+            =
+            c *
+              (if sources (V := V) n = symmDiff A B then
+                (Fintype.card (AssignSources (V := V) (Λ := Λ) n (symmDiff A B)) : ℝ)
+              else 0) := by
+        have hterm :
+            ∀ s : SplitCurrent (V := V) (Λ := Λ) n,
+              fR ⟨splitCurrentToCurrent (V := V) (Λ := Λ) n s,
+                  splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s⟩
+                =
+                c *
+                  (if sources (V := V)
+                        (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = symmDiff A B ∧
+                      sources (V := V)
+                          (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = (∅ : Finset (↥Λ)) then
+                      (∏ e : Edge (V := V) Λ,
+                          ((Nat.choose (n e)
+                              ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e)) : ℝ))
+                    else 0) := by
+          intro s
+          let n1 : Current (V := V) Λ := splitCurrentToCurrent (V := V) (Λ := Λ) n s
+          let n2 : Current (V := V) Λ := splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s
+          have hsum : n1 + n2 = n := by
+            simpa [n1, n2] using (splitCurrent_add (V := V) (Λ := Λ) n s)
+          have hmul :
+              w n1 * w n2
+                =
+                w n * (∏ e : Edge (V := V) Λ,
+                  ((Nat.choose (n e) (n1 e)) : ℝ)) := by
+            simpa [w, n1, n2] using
+              (weightReal_mul_eq_splitCurrent (V := V) (Λ := Λ) (β := β) (J := J) (n := n) s)
+          by_cases hsrc :
+              sources (V := V) n1 = symmDiff A B ∧
+                sources (V := V) n2 = (∅ : Finset (↥Λ))
+          · have hmem : n ∈ SB := by simpa [SB] using hsub
+            simp [fR, SB, w, c, n1, n2, hsrc, hsum, hmul, Set.indicator_of_mem hmem, mul_assoc]
+          · simp [fR, w, c, n1, n2, hsrc]
+        calc
+          (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+              fR ⟨splitCurrentToCurrent (V := V) (Λ := Λ) n s,
+                splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s⟩)
+              = ∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+                  c *
+                    (if sources (V := V)
+                          (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = symmDiff A B ∧
+                        sources (V := V)
+                            (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = (∅ : Finset (↥Λ)) then
+                        (∏ e : Edge (V := V) Λ,
+                            ((Nat.choose (n e)
+                                ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e)) : ℝ))
+                      else 0) := by
+                  exact Fintype.sum_congr _ _ hterm
+          _ = c *
+                (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+                  if sources (V := V)
+                        (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = symmDiff A B ∧
+                      sources (V := V)
+                          (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = (∅ : Finset (↥Λ)) then
+                    (∏ e : Edge (V := V) Λ,
+                        ((Nat.choose (n e)
+                            ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e)) : ℝ))
+                  else 0) := by
+                simpa using
+                  (Finset.mul_sum (s := (Finset.univ : Finset (SplitCurrent (V := V) (Λ := Λ) n)))
+                      (f := fun s =>
+                        if sources (V := V)
+                              (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = symmDiff A B ∧
+                            sources (V := V)
+                                (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) =
+                                  (∅ : Finset (↥Λ)) then
+                          (∏ e : Edge (V := V) Λ,
+                              ((Nat.choose (n e)
+                                  ((splitCurrentToCurrent (V := V) (Λ := Λ) n s) e)) : ℝ))
+                        else 0) c).symm
+          _ = c *
+                (if sources (V := V) n = symmDiff A B then
+                  (Fintype.card (AssignSources (V := V) (Λ := Λ) n (symmDiff A B)) : ℝ)
+                else 0) := by
+                simp [sum_choose_sources_symmDiff_empty_eq_card_assignSources (V := V) (Λ := Λ) (n := n)
+                  (A := A) (B := B)]
+      have hcard :
+          (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ)
+            =
+            (Fintype.card (AssignSources (V := V) (Λ := Λ) n (symmDiff A B)) : ℝ) :=
+        card_assignSources_eq_of_hasSubCurrent (V := V) (Λ := Λ) (n := n) (A := A) (B := B) hsub
+      by_cases hsrc : sources (V := V) n = symmDiff A B
+      · simp [hL, hR, hsrc, hcard]
+      · simp [hL, hR, hsrc]
+    · have hR0 :
+          (∑ s : SplitCurrent (V := V) (Λ := Λ) n,
+              fR ⟨splitCurrentToCurrent (V := V) (Λ := Λ) n s,
+                splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s⟩)
+            = 0 := by
+        refine Fintype.sum_eq_zero _ ?_
+        intro s
+        have hnot :
+            splitCurrentToCurrent (V := V) (Λ := Λ) n s +
+                splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s ∉ SB := by
+          simpa [SB, splitCurrent_add (V := V) (Λ := Λ) (n := n) s] using hsub
+        by_cases hsrc :
+            sources (V := V) (splitCurrentToCurrent (V := V) (Λ := Λ) n s) = symmDiff A B ∧
+              sources (V := V)
+                  (splitCurrentToCurrentCompl (V := V) (Λ := Λ) n s) = (∅ : Finset (↥Λ))
+        · simp [fR, hsrc, SB, Set.indicator_of_notMem hnot]
+        · simp [fR, hsrc]
+      by_cases hsrc : sources (V := V) n = symmDiff A B
+      · have hcard0 :
+            (Fintype.card (AssignSources (V := V) (Λ := Λ) n A) : ℝ) = 0 :=
+          card_assignSources_eq_zero_of_not_hasSubCurrent (V := V) (Λ := Λ) (n := n)
+            (A := A) (B := B) hsrc hsub
+        simp [hL, hR0, hsrc, hcard0]
+      · simp [hL, hR0, hsrc]
+  calc
+    (∑' p : Current (V := V) Λ × Current (V := V) Λ, fL p)
+        = ∑' n : Current (V := V) Λ, ∑' p : AddFiber (V := V) (Λ := Λ) n, fL p.1 := hdecompL
+    _ = ∑' n : Current (V := V) Λ, ∑' p : AddFiber (V := V) (Λ := Λ) n, fR p.1 := by
+          refine tsum_congr ?_
+          intro n
+          simpa using hinter n
+    _ = (∑' p : Current (V := V) Λ × Current (V := V) Λ, fR p) := hdecompR.symm
+
+theorem switchingLemma_bounded
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ))
+    (F : Current (V := V) Λ → ℝ) (hF : ∃ C : ℝ, ∀ n, ‖F n‖ ≤ C) :
+    (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+        if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+          F (p.1 + p.2) *
+              weightReal (V := V) (Λ := Λ) β J p.1 *
+            weightReal (V := V) (Λ := Λ) β J p.2
+        else 0)
+      =
+      (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+        if sources (V := V) p.1 = symmDiff A B ∧ sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
+          ({n : Current (V := V) Λ | HasSubCurrent (V := V) (Λ := Λ) n B}).indicator
+            (fun n =>
+              F n *
+                  weightReal (V := V) (Λ := Λ) β J p.1 *
+                weightReal (V := V) (Λ := Λ) β J p.2)
+            (p.1 + p.2)
+        else 0) := by
+  rcases hF with ⟨C, hC⟩
+  exact switchingLemma (V := V) (Λ := Λ) (β := β) (J := J) (A := A) (B := B) (F := F) (C := C) hC
+
+/-! ## Switching lemma with `F ≡ 1` -/
+
+theorem switchingLemma_one
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ)) :
+    (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+        if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+          weightReal (V := V) (Λ := Λ) β J p.1 *
+            weightReal (V := V) (Λ := Λ) β J p.2
+        else 0)
+      =
+      (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+        if sources (V := V) p.1 = symmDiff A B ∧ sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
+          ({n : Current (V := V) Λ | HasSubCurrent (V := V) (Λ := Λ) n B}).indicator
+            (fun _n =>
+              weightReal (V := V) (Λ := Λ) β J p.1 *
+                weightReal (V := V) (Λ := Λ) β J p.2)
+            (p.1 + p.2)
+        else 0) := by
+  have hF : ∀ n : Current (V := V) Λ, ‖(1 : ℝ)‖ ≤ (1 : ℝ) := by
+    intro _n
+    simp
+  -- `switchingLemma` with constant `F`
+  simpa [mul_assoc] using
+    (switchingLemma (V := V) (Λ := Λ) (β := β) (J := J) (A := A) (B := B)
+      (F := fun _n : Current (V := V) Λ => (1 : ℝ)) (C := (1 : ℝ)) hF)
+
+/-! ## Source-constrained sums as products of `ZReal` -/
+
+lemma summable_norm_sources_weightReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : Finset (↥Λ)) :
+    Summable (fun n : Current (V := V) Λ =>
+      ‖if sources (V := V) n = A then weightReal (V := V) (Λ := Λ) β J n else 0‖) := by
+  have hs :
+      Summable (fun n : Current (V := V) Λ => ‖weightReal (V := V) (Λ := Λ) β J n‖) :=
+    summable_norm_weightReal (V := V) (Λ := Λ) (β := β) J
+  refine Summable.of_nonneg_of_le (f := fun n => ‖weightReal (V := V) (Λ := Λ) β J n‖)
+    (g := fun n => ‖if sources (V := V) n = A then weightReal (V := V) (Λ := Λ) β J n else 0‖)
+    (fun _n => norm_nonneg _) ?_ hs
+  intro n
+  by_cases h : sources (V := V) n = A <;> simp [h]
+
+lemma ZReal_mul_ZReal_eq_tsum_pair
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ)) :
+    ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B
+      =
+      (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+        if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+          weightReal (V := V) (Λ := Λ) β J p.1 *
+            weightReal (V := V) (Λ := Λ) β J p.2
+        else 0) := by
+  classical
+  let f : Current (V := V) Λ → ℝ :=
+    fun n => if sources (V := V) n = A then weightReal (V := V) (Λ := Λ) β J n else 0
+  let g : Current (V := V) Λ → ℝ :=
+    fun n => if sources (V := V) n = B then weightReal (V := V) (Λ := Λ) β J n else 0
+  have hf :
+      Summable (fun n : Current (V := V) Λ => ‖f n‖) := by
+    simpa [f] using summable_norm_sources_weightReal (V := V) (Λ := Λ) (β := β) (J := J) (A := A)
+  have hg :
+      Summable (fun n : Current (V := V) Λ => ‖g n‖) := by
+    simpa [g] using summable_norm_sources_weightReal (V := V) (Λ := Λ) (β := β) (J := J) (A := B)
+  have hmul :
+      ((∑' n : Current (V := V) Λ, f n) * (∑' n : Current (V := V) Λ, g n)) =
+        ∑' p : Current (V := V) Λ × Current (V := V) Λ, f p.1 * g p.2 := by
+    simpa using (tsum_mul_tsum_of_summable_norm (f := f) (g := g) hf hg)
+  -- unfold `ZReal`, then rewrite the nested `if`s into a single conjunction
+  have hmul' :
+      ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B
+        =
+        ∑' p : Current (V := V) Λ × Current (V := V) Λ,
+          if sources (V := V) p.2 = B then
+            if sources (V := V) p.1 = A then
+              weightReal (V := V) (Λ := Λ) β J p.1 *
+                weightReal (V := V) (Λ := Λ) β J p.2
+            else 0
+          else 0 := by
+    simpa [ZReal, f, g] using hmul
+  refine hmul'.trans ?_
+  refine tsum_congr ?_
+  intro p
+  by_cases h1 : sources (V := V) p.1 = A <;> by_cases h2 : sources (V := V) p.2 = B <;> simp [h1, h2]
+
+theorem switchingLemma_ZReal_mul
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ)) :
+    ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B
+      =
+      (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+        if sources (V := V) p.1 = symmDiff A B ∧ sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
+          ({n : Current (V := V) Λ | HasSubCurrent (V := V) (Λ := Λ) n B}).indicator
+            (fun _n =>
+              weightReal (V := V) (Λ := Λ) β J p.1 *
+                weightReal (V := V) (Λ := Λ) β J p.2)
+            (p.1 + p.2)
+        else 0) := by
+  calc
+    ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B
+        =
+        (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+          if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+            weightReal (V := V) (Λ := Λ) β J p.1 *
+              weightReal (V := V) (Λ := Λ) β J p.2
+          else 0) := ZReal_mul_ZReal_eq_tsum_pair (V := V) (Λ := Λ) (β := β) (J := J) (A := A) (B := B)
+    _ = _ := switchingLemma_one (V := V) (Λ := Λ) (β := β) (J := J) (A := A) (B := B)
+
 
 end RandomCurrent
 

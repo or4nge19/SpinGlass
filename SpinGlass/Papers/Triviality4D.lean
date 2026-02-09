@@ -6,6 +6,9 @@ import SpinGlass.Papers.Triviality4D.Ising
 import SpinGlass.Papers.Triviality4D.GSClass
 import SpinGlass.Papers.Triviality4D.GSModel
 import SpinGlass.Papers.Triviality4D.InfraredBound
+import SpinGlass.Papers.Triviality4D.CorrelationLength
+import SpinGlass.Papers.Triviality4D.RandomCurrentSwitching
+import SpinGlass.Papers.Triviality4D.RandomCurrentConsequences
 import Mathlib.Algebra.BigOperators.Group.Finset.Basic
 import Mathlib.MeasureTheory.Constructions.BorelSpace.Basic
 import Mathlib.MeasureTheory.Function.ConvergenceInDistribution
@@ -41,7 +44,7 @@ What is still missing are the **core theorems** connecting these layers:
 
 - existence/uniqueness/translation invariance of infinite-volume Gibbs states and the critical point `βc`,
 - reflection positivity and the (sliding-scale) infrared bound proofs (Section 3),
-- the random current representation identities and **switching lemma** (Section 1.5),
+- the Ursell-4 (and higher) random current identities and their infinite-volume limits,
 - the **mixing** and **intersection-clustering** bounds (Section 4).
 -/
 
@@ -66,14 +69,10 @@ The paper defines the (inverse) correlation length via an asymptotic logarithmic
 \xi = \lim_{n\to\infty} -n / \log \langle \sigma_0 ; \sigma_{n e_1}\rangle.
 \]
 
-We **do not** currently encode this definition as a Lean `def` because:
-- the expression involves `Real.log`, hence requires a persistent positivity hypothesis on the
-  truncated two-point function along the chosen ray;
-- at criticality the paper expects `ξ(βc) = ∞`, so `ℝ≥0∞` is the correct codomain for `ξ`;
-- the interface file only needs `ξ` as an *external parameter* for the main theorem statements.
-
-If/when we formalize the underlying positivity/decay hypotheses, we can introduce a robust predicate
-`IsCorrelationLength` with codomain `ℝ≥0∞`.
+We encode this as a **predicate** `IsCorrelationLength` (see `SpinGlass.Papers.Triviality4D.CorrelationLength`),
+with codomain `ℝ≥0∞` to allow the critical case `ξ(βc) = ∞`. The predicate makes the required
+positivity assumptions explicit (eventually `0 < ⟨σ_0;σ_{n e₁}⟩ < 1`) and states convergence of the
+paper’s expression in `ℝ≥0∞`.
 -/
 
 /-! ## “Generalized Gaussian process” (finite-dimensional distributions are Gaussian) -/
@@ -322,6 +321,8 @@ theorem ImprovedTreeDiagramBound_Ising4
     ∃ c C : ℝ, 0 < c ∧ 0 < C ∧
       ∀ β : ℝ, β ≤ βc →
         Ising.IsIsingNNGibbsState' (d := 4) (J := J) (β := β) (μ := μβ β) →
+        IsCorrelationLength (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β)
+          (x := (0 : Z4)) (i := (0 : Fin 4)) (ξ β) →
         (∀ u v : Z4,
           0 ≤ twoPoint (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) u v) →
         ∀ L : ℕ, (L : ℝ≥0∞) ≤ ξ β →
@@ -356,6 +357,8 @@ theorem gaussianCharFnBound_Ising4
     ∃ c C : ℝ, 0 < c ∧ 0 < C ∧
       ∀ β : ℝ, β ≤ βc →
         Ising.IsIsingNNGibbsState' (d := 4) (J := J) (β := β) (μ := μβ β) →
+        IsCorrelationLength (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β)
+          (x := (0 : Z4)) (i := (0 : Fin 4)) (ξ β) →
         ∀ L : ℕ, (L : ℝ≥0∞) ≤ ξ β →
           (2 ≤ L) →
           ∀ f : C_c(Fin 4 → ℝ, ℝ),
@@ -389,6 +392,8 @@ theorem gaussianCharFnBound_Ising4_of_ImprovedTreeDiagramBound_Ising4
     (∃ c C : ℝ, 0 < c ∧ 0 < C ∧
       ∀ β : ℝ, β ≤ βc →
         Ising.IsIsingNNGibbsState' (d := 4) (J := J) (β := β) (μ := μβ β) →
+        IsCorrelationLength (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β)
+          (x := (0 : Z4)) (i := (0 : Fin 4)) (ξ β) →
         (∀ u v : Z4,
           0 ≤ twoPoint (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β) u v) →
         ∀ L : ℕ, (L : ℝ≥0∞) ≤ ξ β →
@@ -405,6 +410,8 @@ theorem gaussianCharFnBound_Ising4_of_ImprovedTreeDiagramBound_Ising4
     ∃ c C : ℝ, 0 < c ∧ 0 < C ∧
       ∀ β : ℝ, β ≤ βc →
         Ising.IsIsingNNGibbsState' (d := 4) (J := J) (β := β) (μ := μβ β) →
+        IsCorrelationLength (d := 4) (spin := SpinGlass.isingSpin) (μ := μβ β)
+          (x := (0 : Z4)) (i := (0 : Fin 4)) (ξ β) →
         ∀ L : ℕ, (L : ℝ≥0∞) ≤ ξ β →
           (2 ≤ L) →
           ∀ f : C_c(Fin 4 → ℝ, ℝ),
@@ -440,6 +447,8 @@ theorem ImprovedTreeDiagramBound_GS4
     ∃ c C : ℝ, 0 < c ∧ 0 < C ∧
       ∀ β : ℝ, β ≤ βc →
         GSModel.IsGSNNQuadraticModel (d := 4) (J := J) (β := β) ρ (μβ β) →
+        IsCorrelationLength (d := 4) (spin := (fun x : ℝ => x)) (μ := μβ β)
+          (x := (0 : Z4)) (i := (0 : Fin 4)) (ξ β) →
         0 ≤ β →
         0 ≤ J →
         (∀ u v : Z4, 0 ≤ twoPoint (d := 4) (spin := (fun x : ℝ => x)) (μ := μβ β) u v) →

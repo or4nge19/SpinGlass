@@ -31,6 +31,7 @@ universe u
 
 /-! ## Algebraic tools: products of series and sums over Boolean functions -/
 
+/-- Product term associated to `n : E → ℕ` for an edgewise weight family `f : E → ℕ → ℝ`. -/
 noncomputable def currTerm {E : Type*} [Fintype E] (f : E → ℕ → ℝ) (n : E → ℕ) : ℝ :=
   ∏ e : E, f e (n e)
 
@@ -226,18 +227,22 @@ end BoolFunctionSum
 variable {V : Type u} [DecidableEq V]
 variable {Λ : Finset V}
 
+/-- Spin value in `ℝ` associated to a Boolean Ising spin `σ x`. -/
 noncomputable def spinVal (σ : ↥Λ → Bool) (x : ↥Λ) : ℝ :=
   SpinGlass.isingSpin (σ x)
 
+/-- Edge spin product \(σ_x σ_y\) for an unordered edge `e = {x,y}`. -/
 noncomputable def edgeSpin (σ : ↥Λ → Bool) (e : Edge (V := V) Λ) : ℝ :=
   (e.1.lift
     ⟨fun x y => spinVal (Λ := Λ) σ x * spinVal (Λ := Λ) σ y, by
       intro x y
       simp [spinVal, mul_comm]⟩)
 
+/-- Edge monomial \(\prod_e (σ_e)^{n(e)}\) associated to a current `n`. -/
 noncomputable def edgeMonomial (σ : ↥Λ → Bool) (n : Current (V := V) Λ) : ℝ :=
   ∏ e : Edge (V := V) Λ, (edgeSpin (V := V) (Λ := Λ) σ e) ^ (n e)
 
+/-- Vertex monomial \(\prod_x (σ_x)^{\deg_n(x)}\) associated to a current `n`. -/
 noncomputable def vertexMonomial (σ : ↥Λ → Bool) (n : Current (V := V) Λ) : ℝ :=
   ∏ x : ↥Λ, (spinVal (Λ := Λ) σ x) ^ (degree (V := V) n x)
 
@@ -245,6 +250,7 @@ section ProdIndicatorTwo
 
 variable {α : Type*} [Fintype α] [DecidableEq α]
 
+/-- Equivalence between the two-point subset `{x // x = a ∨ x = b}` and `Bool`. -/
 noncomputable def orEqEquivBool (a b : α) (hab : a ≠ b) : {x : α // x = a ∨ x = b} ≃ Bool := by
   have hba : b ≠ a := by
     intro h
@@ -321,14 +327,8 @@ lemma prod_mem_eq_prod_pow_indicator (A : Finset α) (s : α → M) :
     by_cases hx : x ∈ A <;> simp [hx]
   have hfilter :
       (∏ x : α, if x ∈ A then s x else (1 : M)) = ∏ x ∈ A, s x := by
-    have h1 :
-        (∏ x ∈ (Finset.univ : Finset α) with x ∈ A, s x)
-          = ∏ x ∈ (Finset.univ : Finset α), if x ∈ A then s x else (1 : M) := by
-      simp
-    have huniv : (Finset.univ.filter (fun x : α => x ∈ A)) = A := by
-      ext x
-      simp
-    simp [huniv]
+    classical
+    simp
   calc
     (∏ x ∈ A, s x)
         = ∏ x : α, if x ∈ A then s x else (1 : M) := by
@@ -349,15 +349,9 @@ lemma edge_factor_eq_vertex_prod (σ : ↥Λ → Bool) (n : Current (V := V) Λ)
             = ∏ x : ↥Λ, (spinVal (Λ := Λ) σ x) ^ (if x ∈ (m : Sym2 (↥Λ)) then n ⟨m, hm⟩ else 0) := by
     intro m
     refine Sym2.ind ?_ m
-    intro a b
-    intro hm
+    intro a b hm
     have hab : a ≠ b := by
       simpa [Sym2.mk_isDiag_iff] using hm
-    have hmemb :
-        (fun x : ↥Λ => x ∈ (s(a, b) : Sym2 (↥Λ)))
-          = fun x => x = a ∨ x = b := by
-      funext x
-      simp [Sym2.mem_iff]
     have hprod :=
       prod_indicator_two (α := ↥Λ) (M := ℝ) (s := fun x => spinVal (Λ := Λ) σ x) a b hab
         (k := n ⟨s(a, b), hm⟩)
@@ -373,7 +367,7 @@ lemma edge_factor_eq_vertex_prod (σ : ↥Λ → Bool) (n : Current (V := V) Λ)
       _ = ∏ x : ↥Λ, (spinVal (Λ := Λ) σ x) ^ (if x = a ∨ x = b then n ⟨s(a, b), hm⟩ else 0) := by
             exact hprod.symm
       _ = ∏ x : ↥Λ, (spinVal (Λ := Λ) σ x) ^ (if x ∈ (s(a, b) : Sym2 (↥Λ)) then n ⟨s(a, b), hm⟩ else 0) := by
-            simp [hmemb]
+            simp [Sym2.mem_iff]
   simpa using hP m hm
 
 lemma edgeMonomial_eq_vertexMonomial (σ : ↥Λ → Bool) (n : Current (V := V) Λ) :
@@ -431,12 +425,15 @@ lemma edgeMonomial_eq_vertexMonomial (σ : ↥Λ → Bool) (n : Current (V := V)
 
 /-! ## Ising partition function as a current sum -/
 
+/-- Boltzmann weight for a spin configuration `σ` in finite volume `Λ`. -/
 noncomputable def isingBoltzmann (β : ℝ) (J : Edge (V := V) Λ → ℝ) (σ : ↥Λ → Bool) : ℝ :=
   ∏ e : Edge (V := V) Λ, Real.exp (β * J e * edgeSpin (V := V) (Λ := Λ) σ e)
 
+/-- Finite-volume Ising partition function `Z_Λ(β)` (in Boolean-spin encoding). -/
 noncomputable def isingZ (β : ℝ) (J : Edge (V := V) Λ → ℝ) : ℝ :=
   ∑ σ : (↥Λ → Bool), isingBoltzmann (V := V) (Λ := Λ) β J σ
 
+/-- Spin-inserted partition sum `∑_σ (∏_{x∈A} σ_x) e^{β H(σ)}`. -/
 noncomputable def isingZWithSpin (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : Finset (↥Λ)) : ℝ :=
   ∑ σ : (↥Λ → Bool),
     (∏ x ∈ A, spinVal (Λ := Λ) σ x) * isingBoltzmann (V := V) (Λ := Λ) β J σ
@@ -460,7 +457,7 @@ lemma summable_norm_pow_div_factorial (x : ℝ) :
     Summable (fun n : ℕ => ‖x ^ n / (n.factorial : ℝ)‖) := by
   have : (fun n : ℕ => ‖x ^ n / (n.factorial : ℝ)‖) = fun n : ℕ => (|x| : ℝ) ^ n / (n.factorial : ℝ) := by
     funext n
-    simp [Real.norm_eq_abs, abs_pow, abs_div]
+    simp [Real.norm_eq_abs]
   simpa [this] using (Real.summable_pow_div_factorial (x := |x|))
 
 lemma isingBoltzmann_eq_tsum_current (β : ℝ) (J : Edge (V := V) Λ → ℝ) (σ : ↥Λ → Bool) :
@@ -521,25 +518,25 @@ lemma isingBoltzmann_eq_tsum_current (β : ℝ) (J : Edge (V := V) Λ → ℝ) (
       _ = (∏ e : Edge (V := V) Λ, (β * J e) ^ (n e) / (n e).factorial) *
             ∏ e : Edge (V := V) Λ, (edgeSpin (V := V) (Λ := Λ) σ e) ^ (n e) := hsplit
       _ = weightReal (V := V) (Λ := Λ) β J n * edgeMonomial (V := V) (Λ := Λ) σ n := by
-            simp [weightReal, edgeMonomial, mul_assoc]
+            simp [weightReal, edgeMonomial]
   unfold isingBoltzmann
   calc
     (∏ e : Edge (V := V) Λ, Real.exp (β * J e * edgeSpin (V := V) (Λ := Λ) σ e))
         = ∏ e : Edge (V := V) Λ, (∑' k : ℕ, f e k) := hexp
     _ = ∑' n : Current (V := V) Λ, currTerm (E := Edge (V := V) Λ) f n := by
-          simpa [hprod] using hprod.symm
+          exact hprod.symm
     _ = ∑' n : Current (V := V) Λ,
           weightReal (V := V) (Λ := Λ) β J n * edgeMonomial (V := V) (Λ := Λ) σ n := by
           refine tsum_congr ?_
           intro n
-          simpa [hterm n]
+          exact hterm n
 
 lemma sum_bool_isingSpin_pow (m : ℕ) :
     (∑ b : Bool, SpinGlass.isingSpin b ^ m) = if Even m then (2 : ℝ) else 0 := by
   by_cases h : Even m
-  · simp [Fintype.sum_bool, SpinGlass.isingSpin, h, neg_one_pow_eq_ite, one_add_one_eq_two]
+  · simp [SpinGlass.isingSpin, h, one_add_one_eq_two]
   · have h' : ¬ Even m := h
-    simp [Fintype.sum_bool, SpinGlass.isingSpin, h', neg_one_pow_eq_ite]
+    simp [SpinGlass.isingSpin, h', neg_one_pow_eq_ite]
 
 lemma sum_sigma_vertexMonomial_withSpin
     (n : Current (V := V) Λ) (A : Finset (↥Λ)) :
@@ -599,7 +596,7 @@ lemma sum_sigma_vertexMonomial_withSpin
       (∏ x ∈ A, spinVal (Λ := Λ) σ x) * vertexMonomial (V := V) (Λ := Λ) σ n
           = (∏ x : ↥Λ, (spinVal (Λ := Λ) σ x) ^ (if x ∈ A then 1 else 0)) *
               (∏ x : ↥Λ, (spinVal (Λ := Λ) σ x) ^ (degree (V := V) n x)) := by
-                simpa [vertexMonomial, hA]
+                simp [vertexMonomial, hA]
       _ = ∏ x : ↥Λ,
             (spinVal (Λ := Λ) σ x) ^ (degree (V := V) n x) *
               (spinVal (Λ := Λ) σ x) ^ (if x ∈ A then 1 else 0) := hmul
@@ -612,7 +609,7 @@ lemma sum_sigma_vertexMonomial_withSpin
               (g := fun x : ↥Λ =>
                 (spinVal (Λ := Λ) σ x) ^ (degree (V := V) n x + if x ∈ A then 1 else 0)) ?_
             intro x
-            simpa [pow_add] using
+            simpa using
               (pow_add (spinVal (Λ := Λ) σ x) (degree (V := V) n x) (if x ∈ A then 1 else 0)).symm
   have hfactor :
       (∑ σ : (↥Λ → Bool),
@@ -633,7 +630,8 @@ lemma sum_sigma_vertexMonomial_withSpin
           ∀ x : ↥Λ, Even (degree (V := V) n x + if x ∈ A then 1 else 0) := by
         intro x
         have hx : (Odd (degree (V := V) n x) ↔ x ∈ A) := by
-          have : x ∈ sources (V := V) n ↔ x ∈ A := by simpa [hsrc] using congrArg (fun s => x ∈ s) hsrc
+          have : x ∈ sources (V := V) n ↔ x ∈ A := by
+            simpa [hsrc]
           simpa [mem_sources_iff] using this
         by_cases hxA : x ∈ A
         · have : Odd (degree (V := V) n x) := (hx.2 hxA)
@@ -655,7 +653,7 @@ lemma sum_sigma_vertexMonomial_withSpin
         simpa [sum_bool_isingSpin_pow, hxEven, if_pos hxEven] using (sum_bool_isingSpin_pow (m := degree (V := V) n x + if x ∈ A then 1 else 0))
       have hconst : (∏ _x : ↥Λ, (2 : ℝ)) = (2 : ℝ) ^ Λ.card := by
         have h' : (∏ _x : ↥Λ, (2 : ℝ)) = (2 : ℝ) ^ Fintype.card (↥Λ) := by
-          simpa [Finset.prod_const] using
+          simpa using
             (Finset.prod_const (s := (Finset.univ : Finset (↥Λ))) (b := (2 : ℝ)))
         simpa [Fintype.card_coe Λ] using h'
       simpa [hsrc, this, hconst]
@@ -698,7 +696,7 @@ lemma sum_sigma_vertexMonomial_withSpin
     (∑ σ : (↥Λ → Bool), (∏ x ∈ A, spinVal (Λ := Λ) σ x) * vertexMonomial (V := V) (Λ := Λ) σ n)
         = ∑ σ : (↥Λ → Bool),
             ∏ x : ↥Λ, (spinVal (Λ := Λ) σ x) ^ (degree (V := V) n x + if x ∈ A then 1 else 0) := by
-            simpa [hintegrand]
+            simp [hintegrand]
     _ = ∏ x : ↥Λ, (∑ b : Bool,
           SpinGlass.isingSpin b ^ (degree (V := V) n x + if x ∈ A then 1 else 0)) := by
           simpa using hfactor
@@ -777,14 +775,14 @@ theorem isingZWithSpin_eq_ZReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : F
           _ = (∏ e : Edge (V := V) Λ, (β * J e) ^ (n e) / (n e).factorial) *
                 ∏ e : Edge (V := V) Λ, (edgeSpin (V := V) (Λ := Λ) σ e) ^ (n e) := hsplit
           _ = weightReal (V := V) (Λ := Λ) β J n * edgeMonomial (V := V) (Λ := Λ) σ n := by
-                simp [weightReal, edgeMonomial, mul_assoc]
+                simp [weightReal, edgeMonomial]
       have hsum : Summable (fun n : Current (V := V) Λ =>
           weightReal (V := V) (Λ := Λ) β J n * edgeMonomial (V := V) (Λ := Λ) σ n) := by
         have : Summable (fun n : Current (V := V) Λ =>
             ‖weightReal (V := V) (Λ := Λ) β J n * edgeMonomial (V := V) (Λ := Λ) σ n‖) := by
           refine Summable.congr hsumN ?_
           intro n
-          simpa [hterm n]
+          simp [hterm n]
         exact this.of_norm
       simpa [mul_assoc] using hsum.mul_left (∏ x ∈ A, spinVal (Λ := Λ) σ x)
     have hrewrite :
@@ -853,11 +851,11 @@ theorem isingZWithSpin_eq_ZReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : F
           =
           weightReal (V := V) (Λ := Λ) β J n *
             (∑ σ : (↥Λ → Bool), (∏ x ∈ A, spinVal (Λ := Λ) σ x) * vertexMonomial (V := V) (Λ := Λ) σ n) := by
-      simp [hmono, mul_assoc, mul_left_comm, mul_comm, Finset.mul_sum]
+      simp [hmono, mul_assoc, mul_comm, Finset.mul_sum]
     rw [this, sum_sigma_vertexMonomial_withSpin (V := V) (Λ := Λ) (n := n) (A := A)]
     by_cases hsrc : sources (V := V) n = A
-    · simp [hsrc, mul_assoc, mul_comm, mul_left_comm]
-    · simp [hsrc, mul_assoc, mul_comm, mul_left_comm]
+    · simp [hsrc, mul_comm]
+    · simp [hsrc]
   unfold isingZWithSpin ZReal isingBoltzmann
   calc
     (∑ σ : (↥Λ → Bool),
@@ -910,6 +908,22 @@ theorem isingZ_eq_ZReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) :
       = (2 : ℝ) ^ Λ.card * ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) := by
   simpa [isingZ, isingZWithSpin] using
     (isingZWithSpin_eq_ZReal (V := V) (Λ := Λ) (β := β) (J := J) (A := (∅ : Finset (↥Λ))))
+
+/-- Finite-volume Ising correlation `⟨∏_{x∈A} σ_x⟩_{Λ,β}` as a normalized spin-inserted partition sum. -/
+noncomputable def isingCorr (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : Finset (↥Λ)) : ℝ :=
+  isingZWithSpin (V := V) (Λ := Λ) β J A / isingZ (V := V) (Λ := Λ) β J
+
+/-- Random-current representation of finite-volume correlations: `⟨σ_A⟩ = Z_A / Z_∅`. -/
+theorem isingCorr_eq_ZReal_div (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : Finset (↥Λ)) :
+    isingCorr (V := V) (Λ := Λ) β J A
+      =
+      ZReal (V := V) (Λ := Λ) β J A / ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) := by
+  have hpow : ((2 : ℝ) ^ Λ.card) ≠ 0 := by
+    exact pow_ne_zero _ (by norm_num : (2 : ℝ) ≠ 0)
+  unfold isingCorr
+  rw [isingZWithSpin_eq_ZReal (V := V) (Λ := Λ) (β := β) (J := J) (A := A),
+    isingZ_eq_ZReal (V := V) (Λ := Λ) (β := β) (J := J)]
+  simp [mul_div_mul_left, hpow]
 
 end RandomCurrent
 
