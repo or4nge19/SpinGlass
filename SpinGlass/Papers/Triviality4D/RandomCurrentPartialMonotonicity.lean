@@ -197,201 +197,6 @@ decomposition capture that situation. The next step is to expose a convenient `E
 We introduce only the minimal API now (enough to factor sums in later lemmas).
 -/
 
-noncomputable def ZInsideReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (S : Finset (↥Λ))
-    (A : Finset (↥Λ)) : ℝ :=
-  ∑' nI : InsideCurrent (V := V) (Λ := Λ) S,
-    if sources (V := V) nI.1 = A then weightReal (V := V) (Λ := Λ) β J nI.1 else 0
-
-noncomputable def ZOutsideReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (S : Finset (↥Λ))
-    (B : Finset (↥Λ)) : ℝ :=
-  ∑' nO : OutsideCurrent (V := V) (Λ := Λ) S,
-    if sources (V := V) nO.1 = B then weightReal (V := V) (Λ := Λ) β J nO.1 else 0
-
-lemma sources_subset_of_mem_InsideCurrent
-    (S : Finset (↥Λ)) (nI : InsideCurrent (V := V) (Λ := Λ) S) :
-    sources (V := V) nI.1 ⊆ S := by
-  -- rewrite `nI` as a `restrictInside` current and apply the general subset lemma
-  simpa [nI.2] using
-    (sources_restrictInside_subset (V := V) (Λ := Λ) (S := S) (n := nI.1))
-
-lemma sources_subset_compl_of_mem_OutsideCurrent
-    (S : Finset (↥Λ)) (nO : OutsideCurrent (V := V) (Λ := Λ) S) :
-    sources (V := V) nO.1 ⊆ Sᶜ := by
-  simpa [nO.2] using
-    (sources_restrictOutside_subset_compl (V := V) (Λ := Λ) (S := S) (n := nO.1))
-
-lemma disjoint_sources_of_mem_InsideOutside
-    (S : Finset (↥Λ)) (nI : InsideCurrent (V := V) (Λ := Λ) S) (nO : OutsideCurrent (V := V) (Λ := Λ) S) :
-    Disjoint (sources (V := V) nI.1) (sources (V := V) nO.1) := by
-  refine Finset.disjoint_left.2 ?_
-  intro x hxI hxO
-  have hxS : x ∈ S := (sources_subset_of_mem_InsideCurrent (V := V) (Λ := Λ) S nI) hxI
-  have hxSc : x ∈ Sᶜ := (sources_subset_compl_of_mem_OutsideCurrent (V := V) (Λ := Λ) S nO) hxO
-  exact (Finset.not_mem_compl.2 hxS) hxSc
-
-lemma sources_add_eq_union_of_mem_InsideOutside
-    (S : Finset (↥Λ)) (nI : InsideCurrent (V := V) (Λ := Λ) S) (nO : OutsideCurrent (V := V) (Λ := Λ) S) :
-    sources (V := V) (nI.1 + nO.1) =
-        sources (V := V) nI.1 ∪ sources (V := V) nO.1 := by
-  classical
-  have hdisj : Disjoint (sources (V := V) nI.1) (sources (V := V) nO.1) :=
-    disjoint_sources_of_mem_InsideOutside (V := V) (Λ := Λ) S nI nO
-  simpa [sources_add, Finset.symmDiff_eq_union hdisj]
-
-lemma weightReal_add_eq_mul_of_mem_InsideOutside
-    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (S : Finset (↥Λ))
-    (nI : InsideCurrent (V := V) (Λ := Λ) S) (nO : OutsideCurrent (V := V) (Λ := Λ) S) :
-    weightReal (V := V) (Λ := Λ) β J (nI.1 + nO.1)
-      =
-      weightReal (V := V) (Λ := Λ) β J nI.1 * weightReal (V := V) (Λ := Λ) β J nO.1 := by
-  have hNC : NoCross (V := V) (Λ := Λ) S (nI.1 + nO.1) :=
-    noCross_of_add_InsideOutside (V := V) (Λ := Λ) S nI nO
-  have hfac :=
-    weightReal_eq_mul_weightReal_restrictInside_restrictOutside (V := V) (Λ := Λ)
-      (β := β) (J := J) (S := S) (n := (nI.1 + nO.1)) hNC
-  have h0I : restrictInside (V := V) (Λ := Λ) S nO.1 = 0 :=
-    restrictInside_eq_zero_of_restrictOutside_eq (V := V) (Λ := Λ) S nO.2
-  have h0O : restrictOutside (V := V) (Λ := Λ) S nI.1 = 0 :=
-    restrictOutside_eq_zero_of_restrictInside_eq (V := V) (Λ := Λ) S nI.2
-  have hri :
-      restrictInside (V := V) (Λ := Λ) S (nI.1 + nO.1) = nI.1 := by
-    calc
-      restrictInside (V := V) (Λ := Λ) S (nI.1 + nO.1)
-          =
-          restrictInside (V := V) (Λ := Λ) S nI.1 +
-            restrictInside (V := V) (Λ := Λ) S nO.1 := by
-              simpa using (restrictInside_add (V := V) (Λ := Λ) S nI.1 nO.1)
-      _ = nI.1 := by simp [nI.2, h0I]
-  have hro :
-      restrictOutside (V := V) (Λ := Λ) S (nI.1 + nO.1) = nO.1 := by
-    calc
-      restrictOutside (V := V) (Λ := Λ) S (nI.1 + nO.1)
-          =
-          restrictOutside (V := V) (Λ := Λ) S nI.1 +
-            restrictOutside (V := V) (Λ := Λ) S nO.1 := by
-              simpa using (restrictOutside_add (V := V) (Λ := Λ) S nI.1 nO.1)
-      _ = nO.1 := by simp [nO.2, h0O]
-  simpa [hri, hro] using hfac
-
-lemma ZReal_cutCoupling_eq_mul_ZInsideReal_ZOutsideReal_of_disjoint
-    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (S B : Finset (↥Λ)) (hdisj : Disjoint B S) :
-    ZReal (V := V) (Λ := Λ) β (cutCoupling (V := V) (Λ := Λ) J S) B
-      =
-      ZInsideReal (V := V) (Λ := Λ) β J S (∅ : Finset (↥Λ)) *
-        ZOutsideReal (V := V) (Λ := Λ) β J S B := by
-  classical
-  have hZ :=
-    ZReal_cutCoupling_eq_tsum_ite_noCross (V := V) (Λ := Λ) (β := β) (J := J) (S := S) (B := B)
-  let g : Current (V := V) Λ → ℝ :=
-    fun n => if sources (V := V) n = B then weightReal (V := V) (Λ := Λ) β J n else 0
-  have hrewrite :
-      (fun n : Current (V := V) Λ =>
-          if sources (V := V) n = B then
-            (if NoCross (V := V) (Λ := Λ) S n then weightReal (V := V) (Λ := Λ) β J n else 0)
-          else 0)
-        =
-        fun n : Current (V := V) Λ =>
-          if NoCross (V := V) (Λ := Λ) S n then g n else 0 := by
-    funext n
-    by_cases hsrc : sources (V := V) n = B <;> by_cases hNC : NoCross (V := V) (Λ := Λ) S n <;>
-      simp [g, hsrc, hNC]
-  have hsubtype :
-      (∑' n : Current (V := V) Λ,
-          if NoCross (V := V) (Λ := Λ) S n then g n else 0)
-        =
-        ∑' n : NoCrossCurrent (V := V) (Λ := Λ) S, g n.1 := by
-    -- use `tsum_subtype` with the set `{n | NoCross S n}`
-    -- (rewrite the RHS as a subtype over that set)
-    simpa [NoCrossCurrent, Set.indicator, Set.mem_setOf_eq] using
-      (tsum_subtype (s := {n : Current (V := V) Λ | NoCross (V := V) (Λ := Λ) S n}) (f := g)).symm
-  -- now apply the inside/outside equivalence
-  let e := noCrossEquivInsideOutside (V := V) (Λ := Λ) S
-  have he :
-      (∑' n : NoCrossCurrent (V := V) (Λ := Λ) S, g n.1) =
-        ∑' p : InsideCurrent (V := V) (Λ := Λ) S × OutsideCurrent (V := V) (Λ := Λ) S,
-          g (p.1.1 + p.2.1) := by
-    -- `e` is an equivalence, so we can rewrite `tsum` along it
-    simpa [e] using (e.tsum_eq (f := fun p => g (p.1.1 + p.2.1))).symm
-  -- put the pieces together
-  have hZ' :
-      ZReal (V := V) (Λ := Λ) β (cutCoupling (V := V) (Λ := Λ) J S) B
-        =
-        ∑' p : InsideCurrent (V := V) (Λ := Λ) S × OutsideCurrent (V := V) (Λ := Λ) S,
-          g (p.1.1 + p.2.1) := by
-    -- from `hZ`, `hrewrite`, `hsubtype`, `he`
-    calc
-      ZReal (V := V) (Λ := Λ) β (cutCoupling (V := V) (Λ := Λ) J S) B
-          =
-          ∑' n : Current (V := V) Λ,
-            if sources (V := V) n = B then
-              (if NoCross (V := V) (Λ := Λ) S n then weightReal (V := V) (Λ := Λ) β J n else 0)
-            else 0 := hZ
-      _ =
-          ∑' n : Current (V := V) Λ,
-            if NoCross (V := V) (Λ := Λ) S n then g n else 0 := by
-              simp [hrewrite]
-      _ =
-          ∑' n : NoCrossCurrent (V := V) (Λ := Λ) S, g n.1 := hsubtype
-      _ =
-          ∑' p : InsideCurrent (V := V) (Λ := Λ) S × OutsideCurrent (V := V) (Λ := Λ) S,
-            g (p.1.1 + p.2.1) := he
-  -- simplify the integrand using disjointness of `B` and `S`
-  have hIntegrand :
-      (fun p : InsideCurrent (V := V) (Λ := Λ) S × OutsideCurrent (V := V) (Λ := Λ) S =>
-        g (p.1.1 + p.2.1))
-        =
-        (fun p : InsideCurrent (V := V) (Λ := Λ) S × OutsideCurrent (V := V) (Λ := Λ) S =>
-          (if sources (V := V) p.1.1 = (∅ : Finset (↥Λ)) ∧ sources (V := V) p.2.1 = B then
-            weightReal (V := V) (Λ := Λ) β J p.1.1 * weightReal (V := V) (Λ := Λ) β J p.2.1
-          else 0)) := by
-    funext p
-    -- abbreviations
-    let nI := p.1
-    let nO := p.2
-    have hsrcUnion :
-        sources (V := V) (nI.1 + nO.1) =
-            sources (V := V) nI.1 ∪ sources (V := V) nO.1 :=
-      sources_add_eq_union_of_mem_InsideOutside (V := V) (Λ := Λ) S nI nO
-    have hdisjIO :
-        Disjoint (sources (V := V) nI.1) (sources (V := V) nO.1) :=
-      disjoint_sources_of_mem_InsideOutside (V := V) (Λ := Λ) S nI nO
-    -- rewrite `g` and analyze the source condition
-    by_cases hB : sources (V := V) (nI.1 + nO.1) = B
-    · have hI0 : sources (V := V) nI.1 = (∅ : Finset (↥Λ)) := by
-        -- `sources nI ⊆ S` and `sources (nI+nO) = B` with `B ⟂ S` forces emptiness
-        have hsub : sources (V := V) nI.1 ⊆ S :=
-          sources_subset_of_mem_InsideCurrent (V := V) (Λ := Λ) S nI
-        -- `sources nI ⊆ B` since `B = sources nI ∪ sources nO`
-        have hsubB : sources (V := V) nI.1 ⊆ B := by
-          intro x hx
-          have : x ∈ B := by
-            have hxUnion : x ∈ sources (V := V) nI.1 ∪ sources (V := V) nO.1 :=
-              Finset.mem_union.2 (Or.inl hx)
-            simpa [hB, hsrcUnion] using hxUnion
-          exact this
-        -- show `sources nI` is empty using `Disjoint B S`
-        refine (Finset.eq_empty_iff_forall_notMem).2 ?_
-        intro x hxMem
-        have hxS : x ∈ S := hsub hxMem
-        have hxBmem : x ∈ B := hsubB hxMem
-        exact (Finset.disjoint_left.1 hdisj hxBmem hxS)
-      have hO : sources (V := V) nO.1 = B := by
-        -- since sources(nI+nO)=B and sources nI = ∅, we must have sources nO = B
-        have : B = sources (V := V) nI.1 ∪ sources (V := V) nO.1 := by
-          simpa [hB, hsrcUnion] using rfl
-        simpa [hI0] using this
-      have hw :
-          weightReal (V := V) (Λ := Λ) β J (nI.1 + nO.1)
-            =
-            weightReal (V := V) (Λ := Λ) β J nI.1 * weightReal (V := V) (Λ := Λ) β J nO.1 :=
-        weightReal_add_eq_mul_of_mem_InsideOutside (V := V) (Λ := Λ) (β := β) (J := J) S nI nO
-      simp [g, hB, hI0, hO, hw]
-    · simp [g, hB]
-  -- rewrite `hZ'` using the simplified integrand, and identify the product of `ZInsideReal` and `ZOutsideReal`
-  rw [hZ']
-  -- use the integrand simplification
-  simp [hIntegrand, ZInsideReal, ZOutsideReal, tsum_mul_tsum_of_summable_norm]
-
 lemma restrictInside_eq_self_of_mem_InsideCurrent
     (S : Finset (↥Λ)) (n : InsideCurrent (V := V) (Λ := Λ) S) :
     restrictInside (V := V) (Λ := Λ) S n.1 = n.1 :=
@@ -586,6 +391,78 @@ lemma disjoint_sources_restrictInside_restrictOutside
     have : x ∈ Sᶜ := sources_restrictOutside_subset_compl (V := V) (Λ := Λ) S n hxOut
     simpa using this
   exact hxNotS hxS
+
+lemma sources_subset_of_mem_InsideCurrent
+    (S : Finset (↥Λ)) (nI : InsideCurrent (V := V) (Λ := Λ) S) :
+    sources (V := V) nI.1 ⊆ S := by
+  -- rewrite `nI` as a `restrictInside` current and apply the general subset lemma
+  have hsub :
+      sources (V := V) (restrictInside (V := V) (Λ := Λ) S nI.1) ⊆ S :=
+    sources_restrictInside_subset (V := V) (Λ := Λ) S nI.1
+  simpa [nI.2] using hsub
+
+lemma sources_subset_compl_of_mem_OutsideCurrent
+    (S : Finset (↥Λ)) (nO : OutsideCurrent (V := V) (Λ := Λ) S) :
+    sources (V := V) nO.1 ⊆ Sᶜ := by
+  have hsub :
+      sources (V := V) (restrictOutside (V := V) (Λ := Λ) S nO.1) ⊆ Sᶜ :=
+    sources_restrictOutside_subset_compl (V := V) (Λ := Λ) S nO.1
+  simpa [nO.2] using hsub
+
+lemma disjoint_sources_of_mem_InsideOutside
+    (S : Finset (↥Λ))
+    (nI : InsideCurrent (V := V) (Λ := Λ) S) (nO : OutsideCurrent (V := V) (Λ := Λ) S) :
+    Disjoint (sources (V := V) nI.1) (sources (V := V) nO.1) := by
+  refine Finset.disjoint_left.2 ?_
+  intro x hxI hxO
+  have hxS : x ∈ S := (sources_subset_of_mem_InsideCurrent (V := V) (Λ := Λ) S nI) hxI
+  have hxSc : x ∈ Sᶜ := (sources_subset_compl_of_mem_OutsideCurrent (V := V) (Λ := Λ) S nO) hxO
+  have hxNotS : x ∉ S := by simpa using hxSc
+  exact hxNotS hxS
+
+lemma sources_add_eq_union_of_mem_InsideOutside
+    (S : Finset (↥Λ))
+    (nI : InsideCurrent (V := V) (Λ := Λ) S) (nO : OutsideCurrent (V := V) (Λ := Λ) S) :
+    sources (V := V) (nI.1 + nO.1) = sources (V := V) nI.1 ∪ sources (V := V) nO.1 := by
+  classical
+  have hdisj : Disjoint (sources (V := V) nI.1) (sources (V := V) nO.1) :=
+    disjoint_sources_of_mem_InsideOutside (V := V) (Λ := Λ) S nI nO
+  simpa [sources_add, Finset.symmDiff_eq_union hdisj]
+
+lemma weightReal_add_eq_mul_of_mem_InsideOutside
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (S : Finset (↥Λ))
+    (nI : InsideCurrent (V := V) (Λ := Λ) S) (nO : OutsideCurrent (V := V) (Λ := Λ) S) :
+    weightReal (V := V) (Λ := Λ) β J (nI.1 + nO.1)
+      =
+      weightReal (V := V) (Λ := Λ) β J nI.1 * weightReal (V := V) (Λ := Λ) β J nO.1 := by
+  have hNC : NoCross (V := V) (Λ := Λ) S (nI.1 + nO.1) :=
+    noCross_of_add_InsideOutside (V := V) (Λ := Λ) S nI nO
+  have hfac :=
+    weightReal_eq_mul_weightReal_restrictInside_restrictOutside (V := V) (Λ := Λ)
+      (β := β) (J := J) (S := S) (n := (nI.1 + nO.1)) hNC
+  have h0I : restrictInside (V := V) (Λ := Λ) S nO.1 = 0 :=
+    restrictInside_eq_zero_of_restrictOutside_eq (V := V) (Λ := Λ) S nO.2
+  have h0O : restrictOutside (V := V) (Λ := Λ) S nI.1 = 0 :=
+    restrictOutside_eq_zero_of_restrictInside_eq (V := V) (Λ := Λ) S nI.2
+  have hri :
+      restrictInside (V := V) (Λ := Λ) S (nI.1 + nO.1) = nI.1 := by
+    calc
+      restrictInside (V := V) (Λ := Λ) S (nI.1 + nO.1)
+          =
+          restrictInside (V := V) (Λ := Λ) S nI.1 +
+            restrictInside (V := V) (Λ := Λ) S nO.1 := by
+              simpa using (restrictInside_add (V := V) (Λ := Λ) S nI.1 nO.1)
+      _ = nI.1 := by simp [nI.2, h0I]
+  have hro :
+      restrictOutside (V := V) (Λ := Λ) S (nI.1 + nO.1) = nO.1 := by
+    calc
+      restrictOutside (V := V) (Λ := Λ) S (nI.1 + nO.1)
+          =
+          restrictOutside (V := V) (Λ := Λ) S nI.1 +
+            restrictOutside (V := V) (Λ := Λ) S nO.1 := by
+              simpa using (restrictOutside_add (V := V) (Λ := Λ) S nI.1 nO.1)
+      _ = nO.1 := by simp [nO.2, h0O]
+  simpa [hri, hro] using hfac
 
 lemma restrictInside_add_restrictOutside_eq_of_noCross
     (S : Finset (↥Λ)) (n : Current (V := V) Λ) (hNC : NoCross (V := V) (Λ := Λ) S n) :
