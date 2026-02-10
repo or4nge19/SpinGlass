@@ -5,7 +5,7 @@ import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Topology.Order.OrderClosed
 
 /-!
-# Correlation length `ξ` (paper-facing definition)
+# Correlation length `ξ` (paper-specific definition)
 
 The 4D-triviality paper defines the (inverse) correlation length through an asymptotic logarithmic
 decay rate, e.g. along the `e₁`-ray
@@ -13,7 +13,7 @@ decay rate, e.g. along the `e₁`-ray
 \xi = \lim_{n\to\infty} -n / \log \langle \sigma_0 ; \sigma_{n e_1}\rangle.
 \]
 
-In Lean, we bundle this as a **predicate** `IsCorrelationLength` with codomain `ℝ≥0∞`.
+We formalize this as a **predicate** `IsCorrelationLength` with codomain `ℝ≥0∞`.
 This avoids committing to existence/uniqueness of the limit as a global `def`, and it makes the
 required positivity assumptions explicit.
 -/
