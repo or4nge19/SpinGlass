@@ -169,7 +169,9 @@ lemma not_mem_sources_restrictInside_of_not_mem
   have hdeg :
       degree (V := V) (Λ := Λ) (restrictInside (V := V) (Λ := Λ) S n) x = 0 :=
     degree_restrictInside_eq_zero_of_not_mem (V := V) (Λ := Λ) S n hx
-  have : Odd 0 := by simp [hdeg] at hxOdd
+  have hxOdd0 := hxOdd
+  have : Odd 0 := by
+    simp [hdeg] at hxOdd0
   exact Nat.not_odd_zero this
 
 lemma not_mem_sources_restrictOutside_of_mem
@@ -185,7 +187,9 @@ lemma not_mem_sources_restrictOutside_of_mem
   have hdeg :
       degree (V := V) (Λ := Λ) (restrictOutside (V := V) (Λ := Λ) S n) x = 0 :=
     degree_restrictOutside_eq_zero_of_mem (V := V) (Λ := Λ) S n hx
-  have : Odd 0 := by simp [hdeg] at hxOdd
+  have hxOdd0 := hxOdd
+  have : Odd 0 := by
+    simp [hdeg] at hxOdd0
   exact Nat.not_odd_zero this
 
 lemma sources_restrictInside_subset
