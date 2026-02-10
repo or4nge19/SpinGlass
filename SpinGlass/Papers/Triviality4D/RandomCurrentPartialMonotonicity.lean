@@ -106,6 +106,145 @@ noncomputable def restrictInside (S : Finset (↥Λ)) (n : Current (V := V) Λ) 
 noncomputable def restrictOutside (S : Finset (↥Λ)) (n : Current (V := V) Λ) : Current (V := V) Λ :=
   fun e => if (e.1.out.1 ∉ S ∧ e.1.out.2 ∉ S) then n e else 0
 
+lemma degree_restrictInside_eq_zero_of_not_mem
+    (S : Finset (↥Λ)) (n : Current (V := V) Λ) {x : ↥Λ} (hx : x ∉ S) :
+    degree (V := V) (Λ := Λ) (restrictInside (V := V) (Λ := Λ) S n) x = 0 := by
+  classical
+  unfold degree restrictInside
+  refine
+    Fintype.sum_eq_zero
+      (f := fun e : Edge (V := V) Λ =>
+        if x ∈ (e.1 : Sym2 (↥Λ)) then
+          if e.1.out.1 ∈ S ∧ e.1.out.2 ∈ S then n e else 0
+        else 0) ?_
+  intro e
+  by_cases hmem : x ∈ (e.1 : Sym2 (↥Λ))
+  · have hxOut : x = e.1.out.1 ∨ x = e.1.out.2 := by
+      have : x ∈ (s(e.1.out.1, e.1.out.2) : Sym2 (↥Λ)) := by
+        simpa [e.1.out_eq] using hmem
+      exact (Sym2.mem_iff (a := x) (b := e.1.out.1) (c := e.1.out.2)).1 this
+    have hnot : ¬ (e.1.out.1 ∈ S ∧ e.1.out.2 ∈ S) := by
+      intro h
+      rcases hxOut with rfl | rfl
+      · exact hx h.1
+      · exact hx h.2
+    simp [hmem, hnot]
+  · simp [hmem]
+
+lemma degree_restrictOutside_eq_zero_of_mem
+    (S : Finset (↥Λ)) (n : Current (V := V) Λ) {x : ↥Λ} (hx : x ∈ S) :
+    degree (V := V) (Λ := Λ) (restrictOutside (V := V) (Λ := Λ) S n) x = 0 := by
+  classical
+  unfold degree restrictOutside
+  refine
+    Fintype.sum_eq_zero
+      (f := fun e : Edge (V := V) Λ =>
+        if x ∈ (e.1 : Sym2 (↥Λ)) then
+          if e.1.out.1 ∉ S ∧ e.1.out.2 ∉ S then n e else 0
+        else 0) ?_
+  intro e
+  by_cases hmem : x ∈ (e.1 : Sym2 (↥Λ))
+  · have hxOut : x = e.1.out.1 ∨ x = e.1.out.2 := by
+      have : x ∈ (s(e.1.out.1, e.1.out.2) : Sym2 (↥Λ)) := by
+        simpa [e.1.out_eq] using hmem
+      exact (Sym2.mem_iff (a := x) (b := e.1.out.1) (c := e.1.out.2)).1 this
+    have hnot : ¬ (e.1.out.1 ∉ S ∧ e.1.out.2 ∉ S) := by
+      intro h
+      rcases hxOut with rfl | rfl
+      · exact h.1 hx
+      · exact h.2 hx
+    simp [hmem, hnot]
+  · simp [hmem]
+
+lemma not_mem_sources_restrictInside_of_not_mem
+    (S : Finset (↥Λ)) (n : Current (V := V) Λ) {x : ↥Λ} (hx : x ∉ S) :
+    x ∉ sources (V := V) (restrictInside (V := V) (Λ := Λ) S n) := by
+  intro hxSrc
+  have hxIs :
+      IsSource (V := V) (restrictInside (V := V) (Λ := Λ) S n) x :=
+    (mem_sources_iff (V := V) (n := restrictInside (V := V) (Λ := Λ) S n) x).1 hxSrc
+  have hxOdd :
+      Odd (degree (V := V) (Λ := Λ) (restrictInside (V := V) (Λ := Λ) S n) x) := by
+    simpa [IsSource] using hxIs
+  have hdeg :
+      degree (V := V) (Λ := Λ) (restrictInside (V := V) (Λ := Λ) S n) x = 0 :=
+    degree_restrictInside_eq_zero_of_not_mem (V := V) (Λ := Λ) S n hx
+  have : Odd 0 := by simp [hdeg] at hxOdd
+  exact Nat.not_odd_zero this
+
+lemma not_mem_sources_restrictOutside_of_mem
+    (S : Finset (↥Λ)) (n : Current (V := V) Λ) {x : ↥Λ} (hx : x ∈ S) :
+    x ∉ sources (V := V) (restrictOutside (V := V) (Λ := Λ) S n) := by
+  intro hxSrc
+  have hxIs :
+      IsSource (V := V) (restrictOutside (V := V) (Λ := Λ) S n) x :=
+    (mem_sources_iff (V := V) (n := restrictOutside (V := V) (Λ := Λ) S n) x).1 hxSrc
+  have hxOdd :
+      Odd (degree (V := V) (Λ := Λ) (restrictOutside (V := V) (Λ := Λ) S n) x) := by
+    simpa [IsSource] using hxIs
+  have hdeg :
+      degree (V := V) (Λ := Λ) (restrictOutside (V := V) (Λ := Λ) S n) x = 0 :=
+    degree_restrictOutside_eq_zero_of_mem (V := V) (Λ := Λ) S n hx
+  have : Odd 0 := by simp [hdeg] at hxOdd
+  exact Nat.not_odd_zero this
+
+lemma sources_restrictInside_subset
+    (S : Finset (↥Λ)) (n : Current (V := V) Λ) :
+    sources (V := V) (restrictInside (V := V) (Λ := Λ) S n) ⊆ S := by
+  intro x hxSrc
+  by_contra hx
+  exact (not_mem_sources_restrictInside_of_not_mem (V := V) (Λ := Λ) S n hx) hxSrc
+
+lemma sources_restrictOutside_subset_compl
+    (S : Finset (↥Λ)) (n : Current (V := V) Λ) :
+    sources (V := V) (restrictOutside (V := V) (Λ := Λ) S n) ⊆ Sᶜ := by
+  intro x hxSrc
+  by_contra hx
+  have hxS : x ∈ S := by simpa using hx
+  exact (not_mem_sources_restrictOutside_of_mem (V := V) (Λ := Λ) S n hxS) hxSrc
+
+lemma disjoint_sources_restrictInside_restrictOutside
+    (S : Finset (↥Λ)) (n : Current (V := V) Λ) :
+    Disjoint
+        (sources (V := V) (restrictInside (V := V) (Λ := Λ) S n))
+        (sources (V := V) (restrictOutside (V := V) (Λ := Λ) S n)) := by
+  refine Finset.disjoint_left.2 ?_
+  intro x hxIn hxOut
+  have hxS :
+      x ∈ S :=
+    sources_restrictInside_subset (V := V) (Λ := Λ) S n hxIn
+  have hxNotS :
+      x ∉ S := by
+    have : x ∈ Sᶜ := sources_restrictOutside_subset_compl (V := V) (Λ := Λ) S n hxOut
+    simpa using this
+  exact hxNotS hxS
+
+lemma restrictInside_add_restrictOutside_eq_of_noCross
+    (S : Finset (↥Λ)) (n : Current (V := V) Λ) (hNC : NoCross (V := V) (Λ := Λ) S n) :
+    restrictInside (V := V) (Λ := Λ) S n + restrictOutside (V := V) (Λ := Λ) S n = n := by
+  ext e
+  by_cases h1 : e.1.out.1 ∈ S <;> by_cases h2 : e.1.out.2 ∈ S
+  · simp [restrictInside, restrictOutside, h1, h2]
+  · have hz : n e = 0 := hNC e (Or.inl ⟨h1, h2⟩)
+    simp [restrictInside, restrictOutside, h1, h2, hz]
+  · have hz : n e = 0 := hNC e (Or.inr ⟨h1, h2⟩)
+    simp [restrictInside, restrictOutside, h1, h2, hz]
+  · simp [restrictInside, restrictOutside, h1, h2]
+
+lemma sources_eq_symmDiff_sources_restrictInside_restrictOutside_of_noCross
+    (S : Finset (↥Λ)) (n : Current (V := V) Λ) (hNC : NoCross (V := V) (Λ := Λ) S n) :
+    sources (V := V) n =
+      symmDiff
+        (sources (V := V) (restrictInside (V := V) (Λ := Λ) S n))
+        (sources (V := V) (restrictOutside (V := V) (Λ := Λ) S n)) := by
+  have hdecomp :
+      restrictInside (V := V) (Λ := Λ) S n + restrictOutside (V := V) (Λ := Λ) S n = n :=
+    restrictInside_add_restrictOutside_eq_of_noCross (V := V) (Λ := Λ) S n hNC
+  simpa [hdecomp] using
+    (sources_add (V := V)
+      (n1 := restrictInside (V := V) (Λ := Λ) S n)
+      (n2 := restrictOutside (V := V) (Λ := Λ) S n))
+
 lemma weightReal_eq_mul_weightReal_restrictInside_restrictOutside
     (β : ℝ) (J : Edge (V := V) Λ → ℝ) (S : Finset (↥Λ)) (n : Current (V := V) Λ)
     (hzero : ∀ e : Edge (V := V) Λ, EdgeCross (V := V) (Λ := Λ) S e → n e = 0) :
@@ -113,9 +252,7 @@ lemma weightReal_eq_mul_weightReal_restrictInside_restrictOutside
       =
       weightReal (V := V) (Λ := Λ) β J (restrictInside (V := V) (Λ := Λ) S n) *
         weightReal (V := V) (Λ := Λ) β J (restrictOutside (V := V) (Λ := Λ) S n) := by
-  classical
   unfold weightReal restrictInside restrictOutside
-  -- pointwise factorization, then `Fintype.prod_mul_distrib`
   have hpoint :
       (fun e : Edge (V := V) Λ => (β * J e) ^ (n e) / (n e).factorial)
         =
@@ -126,16 +263,12 @@ lemma weightReal_eq_mul_weightReal_restrictInside_restrictOutside
                 (if e.1.out.1 ∉ S ∧ e.1.out.2 ∉ S then n e else 0).factorial)) := by
     funext e
     by_cases h1 : e.1.out.1 ∈ S <;> by_cases h2 : e.1.out.2 ∈ S
-    · -- inside
-      simp [h1, h2]
-    · -- crossing (out.1 in, out.2 out)
-      have hz : n e = 0 := hzero e (Or.inl ⟨h1, h2⟩)
+    · simp [h1, h2]
+    · have hz : n e = 0 := hzero e (Or.inl ⟨h1, h2⟩)
       simp [h1, h2, hz]
-    · -- crossing (out.1 out, out.2 in)
-      have hz : n e = 0 := hzero e (Or.inr ⟨h1, h2⟩)
+    · have hz : n e = 0 := hzero e (Or.inr ⟨h1, h2⟩)
       simp [h1, h2, hz]
-    · -- outside
-      simp [h1, h2]
+    · simp [h1, h2]
   calc
     (∏ e : Edge (V := V) Λ, (β * J e) ^ (n e) / (n e).factorial)
         =
@@ -184,7 +317,6 @@ lemma weightReal_cutCoupling_eq_ite_noCross
     weightReal (V := V) (Λ := Λ) β (cutCoupling (V := V) (Λ := Λ) J S) n
       =
       if NoCross (V := V) (Λ := Λ) S n then weightReal (V := V) (Λ := Λ) β J n else 0 := by
-  classical
   by_cases hNC : NoCross (V := V) (Λ := Λ) S n
   · simpa [hNC] using
       (weightReal_cutCoupling_eq_weightReal (V := V) (Λ := Λ) (β := β) (J := J) (S := S) (n := n)
