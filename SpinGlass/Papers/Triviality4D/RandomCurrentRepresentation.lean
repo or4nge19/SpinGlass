@@ -471,6 +471,25 @@ noncomputable def weightReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (n : Curr
 noncomputable def ZReal (β : ℝ) (J : Edge (V := V) Λ → ℝ) (B : Finset (↥Λ)) : ℝ :=
   ∑' n : Current (V := V) Λ, if sources (V := V) n = B then weightReal (V := V) (Λ := Λ) β J n else 0
 
+/-! ### Parity: `ZReal B = 0` when `B` has odd cardinality -/
+
+lemma sources_ne_of_odd_card (n : Current (V := V) Λ) {B : Finset (↥Λ)} (hB : Odd B.card) :
+    sources (V := V) n ≠ B := by
+  intro hsrc
+  have hEven : Even B.card := by
+    simpa [hsrc] using (even_card_sources (V := V) (Λ := Λ) n)
+  exact (Nat.not_even_iff_odd.2 hB) hEven
+
+theorem ZReal_eq_zero_of_odd_card
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) {B : Finset (↥Λ)} (hB : Odd B.card) :
+    ZReal (V := V) (Λ := Λ) β J B = 0 := by
+  classical
+  unfold ZReal
+  have hsrc : ∀ n : Current (V := V) Λ, sources (V := V) n ≠ B := by
+    intro n
+    exact sources_ne_of_odd_card (V := V) (Λ := Λ) n hB
+  simp [hsrc]
+
 lemma real_exp_eq_tsum_pow_div_factorial (x : ℝ) :
     Real.exp x = ∑' n : ℕ, x ^ n / (n.factorial : ℝ) := by
   have hx :
@@ -941,6 +960,18 @@ theorem ZReal_empty_ne_zero (β : ℝ) (J : Edge (V := V) Λ → ℝ) :
     simpa [h0] using (isingZ_eq_ZReal (V := V) (Λ := Λ) (β := β) (J := J))
   exact hZ this
 
+/-- The empty-source current sum `ZReal ∅` is strictly positive (no sign assumptions needed). -/
+theorem ZReal_empty_pos (β : ℝ) (J : Edge (V := V) Λ → ℝ) :
+    0 < ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) := by
+  have hZ : 0 < isingZ (V := V) (Λ := Λ) β J :=
+    isingZ_pos (V := V) (Λ := Λ) (β := β) (J := J)
+  have hpow : 0 < (2 : ℝ) ^ Λ.card := by
+    exact pow_pos (by norm_num : (0 : ℝ) < 2) _
+  have hmul :
+      0 < (2 : ℝ) ^ Λ.card * ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) := by
+    simpa [isingZ_eq_ZReal (V := V) (Λ := Λ) (β := β) (J := J)] using hZ
+  exact pos_of_mul_pos_right hmul (le_of_lt hpow)
+
 /-- Finite-volume Ising correlation `⟨∏_{x∈A} σ_x⟩_{Λ,β}` as a normalized spin-inserted partition sum. -/
 noncomputable def isingCorr (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : Finset (↥Λ)) : ℝ :=
   isingZWithSpin (V := V) (Λ := Λ) β J A / isingZ (V := V) (Λ := Λ) β J
@@ -956,6 +987,20 @@ theorem isingCorr_eq_ZReal_div (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A : Fi
   rw [isingZWithSpin_eq_ZReal (V := V) (Λ := Λ) (β := β) (J := J) (A := A),
     isingZ_eq_ZReal (V := V) (Λ := Λ) (β := β) (J := J)]
   simp [mul_div_mul_left, hpow]
+
+theorem isingZWithSpin_eq_zero_of_odd_card
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) {A : Finset (↥Λ)} (hA : Odd A.card) :
+    isingZWithSpin (V := V) (Λ := Λ) β J A = 0 := by
+  have hZ : ZReal (V := V) (Λ := Λ) β J A = 0 :=
+    ZReal_eq_zero_of_odd_card (V := V) (Λ := Λ) (β := β) (J := J) hA
+  simp [isingZWithSpin_eq_ZReal, hZ]
+
+theorem isingCorr_eq_zero_of_odd_card
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) {A : Finset (↥Λ)} (hA : Odd A.card) :
+    isingCorr (V := V) (Λ := Λ) β J A = 0 := by
+  have hZ : ZReal (V := V) (Λ := Λ) β J A = 0 :=
+    ZReal_eq_zero_of_odd_card (V := V) (Λ := Λ) (β := β) (J := J) hA
+  simp [isingCorr_eq_ZReal_div, hZ]
 
 end RandomCurrent
 

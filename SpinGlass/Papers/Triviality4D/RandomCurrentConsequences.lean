@@ -41,7 +41,6 @@ lemma weightReal_nonneg_of_nonneg
 /-- Weight of a unit current is the corresponding coupling `β * J e₀`. -/
 lemma weightReal_unitCurrent (β : ℝ) (J : Edge (V := V) Λ → ℝ) (e₀ : Edge (V := V) Λ) :
     weightReal (V := V) (Λ := Λ) β J (unitCurrent (V := V) (Λ := Λ) e₀) = β * J e₀ := by
-  classical
   unfold weightReal unitCurrent
   let g : Edge (V := V) Λ → ℝ :=
     fun e : Edge (V := V) Λ =>
@@ -69,7 +68,6 @@ lemma ZReal_pos_of_exists_current
     (hsources : sources (V := V) (Λ := Λ) n₀ = B)
     (hwpos : 0 < weightReal (V := V) (Λ := Λ) β J n₀) :
     0 < ZReal (V := V) (Λ := Λ) β J B := by
-  classical
   let w : Current (V := V) Λ → ℝ := weightReal (V := V) (Λ := Λ) β J
   let f : Current (V := V) Λ → ℝ := fun n => if sources (V := V) n = B then w n else 0
   have hs_norm : Summable (fun n : Current (V := V) Λ => ‖f n‖) := by
@@ -91,7 +89,6 @@ lemma ZReal_pair_pos_of_nonneg
     (β : ℝ) (J : Edge (V := V) Λ → ℝ) {x y : ↥Λ} (hxy : x ≠ y)
     (hβJ : ∀ e, 0 ≤ β * J e) (hpos : 0 < β * J (edge (V := V) (Λ := Λ) x y hxy)) :
     0 < ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) := by
-  classical
   let B : Finset (↥Λ) := ({x, y} : Finset (↥Λ))
   let e₀ : Edge (V := V) Λ := edge (V := V) (Λ := Λ) x y hxy
   let n₀ : Current (V := V) Λ := unitCurrent (V := V) (Λ := Λ) e₀
@@ -154,7 +151,6 @@ lemma sources_currentOfPosCouplingWalk
     (w : (posCouplingGraph (V := V) (Λ := Λ) β J).Walk x y) :
     sources (V := V) (Λ := Λ) (currentOfPosCouplingWalk (β := β) (J := J) w)
       = (if x = y then (∅ : Finset (↥Λ)) else ({x, y} : Finset (↥Λ))) := by
-  classical
   induction w with
   | nil =>
       ext z
@@ -183,7 +179,6 @@ lemma betaJ_pos_of_currentOfPosCouplingWalk_ne_zero
     (w : (posCouplingGraph (V := V) (Λ := Λ) β J).Walk x y) {e : Edge (V := V) Λ}
     (hne : currentOfPosCouplingWalk (β := β) (J := J) w e ≠ 0) :
     0 < β * J e := by
-  classical
   induction w with
   | nil =>
       simp [currentOfPosCouplingWalk] at hne
@@ -204,7 +199,6 @@ lemma weightReal_pos_currentOfPosCouplingWalk
     0 <
       weightReal (V := V) (Λ := Λ) β J
         (currentOfPosCouplingWalk (β := β) (J := J) w) := by
-  classical
   unfold weightReal
   simpa using
     (Finset.prod_pos (s := (Finset.univ : Finset (Edge (V := V) Λ)))
@@ -237,7 +231,6 @@ lemma ZReal_pair_pos_of_posCouplingWalk
     {x y : ↥Λ} (hxy : x ≠ y)
     (wxy : (posCouplingGraph (V := V) (Λ := Λ) β J).Walk x y) :
     0 < ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) := by
-  classical
   let B : Finset (↥Λ) := ({x, y} : Finset (↥Λ))
   let n₀ : Current (V := V) Λ :=
     currentOfPosCouplingWalk (β := β) (J := J) wxy
@@ -292,6 +285,106 @@ noncomputable def PPairReal
           (p.1 + p.2)
       else 0) /
     (ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B)
+
+/--
+Expectation of a (real-valued) observable `F(n₁,n₂)` under the pair-current law with sources `(A,B)`:
+\[
+\mathbf E^{A,B}_{\Lambda,\beta}[F]
+= \frac{\sum_{\partial n_1 = A,\ \partial n_2 = B} w(n_1) w(n_2)\,F(n_1,n_2)}{Z_A Z_B}.
+\]
+
+This is the function-valued analogue of `PPairReal`, which corresponds to taking `F` to be an
+indicator depending only on the total current `n₁+n₂`.
+-/
+noncomputable def EPairReal
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ))
+    (F : Current (V := V) Λ → Current (V := V) Λ → ℝ) : ℝ :=
+  (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+      if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+        F p.1 p.2 *
+            (weightReal (V := V) (Λ := Λ) β J p.1 *
+              weightReal (V := V) (Λ := Λ) β J p.2)
+      else 0) /
+    (ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B)
+
+lemma PPairReal_eq_EPairReal
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ)) (S : Set (Current (V := V) Λ)) :
+    PPairReal (V := V) (Λ := Λ) β J A B S
+      =
+      EPairReal (V := V) (Λ := Λ) β J A B (fun n₁ n₂ => (S.indicator (fun _ => (1 : ℝ)) (n₁ + n₂))) := by
+  classical
+  unfold PPairReal EPairReal
+  congr 1
+  refine tsum_congr ?_
+  intro p
+  by_cases hcond : sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B
+  · by_cases hmem : (p.1 + p.2) ∈ S
+    · simp [hcond, hmem, Set.indicator_of_mem]
+    · simp [hcond, hmem, Set.indicator]
+  · simp [hcond]
+
+lemma PPairReal_comm
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ)) (S : Set (Current (V := V) Λ)) :
+    PPairReal (V := V) (Λ := Λ) β J A B S = PPairReal (V := V) (Λ := Λ) β J B A S := by
+  classical
+  unfold PPairReal
+  let w : Current (V := V) Λ → ℝ := weightReal (V := V) (Λ := Λ) β J
+  let f : (Current (V := V) Λ × Current (V := V) Λ) → ℝ := fun p =>
+    if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+      S.indicator (fun _n => w p.1 * w p.2) (p.1 + p.2)
+    else 0
+  let g : (Current (V := V) Λ × Current (V := V) Λ) → ℝ := fun p =>
+    if sources (V := V) p.1 = B ∧ sources (V := V) p.2 = A then
+      S.indicator (fun _n => w p.1 * w p.2) (p.1 + p.2)
+    else 0
+  have hnum : (∑' p : Current (V := V) Λ × Current (V := V) Λ, f p) =
+      ∑' p : Current (V := V) Λ × Current (V := V) Λ, g p := by
+    let e :
+        (Current (V := V) Λ × Current (V := V) Λ) ≃
+          (Current (V := V) Λ × Current (V := V) Λ) :=
+      Equiv.prodComm (Current (V := V) Λ) (Current (V := V) Λ)
+    calc
+      (∑' p : Current (V := V) Λ × Current (V := V) Λ, f p) =
+          ∑' p : Current (V := V) Λ × Current (V := V) Λ, f (e p) := by
+            simpa [e] using (e.tsum_eq (f := f)).symm
+      _ = ∑' p : Current (V := V) Λ × Current (V := V) Λ, g p := by
+          refine tsum_congr ?_
+          intro p
+          by_cases hcond : sources (V := V) p.1 = B ∧ sources (V := V) p.2 = A
+          · -- swap the pair `(p.1,p.2)` and commute products
+            simp [f, g, e, hcond, w, add_comm, mul_comm]
+          · have hcond' : ¬ (sources (V := V) p.2 = A ∧ sources (V := V) p.1 = B) := by
+              intro hcond'
+              exact hcond ⟨hcond'.2, hcond'.1⟩
+            simp [f, g, e, hcond, hcond', w]
+  -- identical denominators after commuting `*`
+  rw [hnum]
+  simp [g, w, mul_comm]
+
+/-! ### Basic normalization of `PPairReal` -/
+
+@[simp]
+lemma PPairReal_empty
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ)) :
+    PPairReal (V := V) (Λ := Λ) β J A B (∅ : Set (Current (V := V) Λ)) = 0 := by
+  simp [PPairReal]
+
+lemma PPairReal_univ_eq_one
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ))
+    (hZ : ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B ≠ 0) :
+    PPairReal (V := V) (Λ := Λ) β J A B (Set.univ : Set (Current (V := V) Λ)) = 1 := by
+
+  have hnum :
+      (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+          if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+            weightReal (V := V) (Λ := Λ) β J p.1 *
+              weightReal (V := V) (Λ := Λ) β J p.2
+          else 0)
+        =
+        ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B := by
+    simpa using
+      (ZReal_mul_ZReal_eq_tsum_pair (V := V) (Λ := Λ) (β := β) (J := J) (A := A) (B := B)).symm
+  simp [PPairReal, Set.indicator, hnum, hZ]
 
 /-! ### Positivity bounds for `PPairReal` under nonnegative couplings -/
 
@@ -423,6 +516,80 @@ lemma PPairReal_le_one_of_nonneg
     exact div_le_one_of_le₀ hnum_le hden_nonneg
   simpa [PPairReal, fS, wprod, w] using this
 
+lemma PPairReal_mono_of_nonneg
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ))
+    {S T : Set (Current (V := V) Λ)} (hST : S ⊆ T)
+    (hβJ : ∀ e : Edge (V := V) Λ, 0 ≤ β * J e) :
+    PPairReal (V := V) (Λ := Λ) β J A B S ≤ PPairReal (V := V) (Λ := Λ) β J A B T := by
+  let w : Current (V := V) Λ → ℝ := weightReal (V := V) (Λ := Λ) β J
+  let wprod : (Current (V := V) Λ × Current (V := V) Λ) → ℝ := fun p => w p.1 * w p.2
+  let fS : (Current (V := V) Λ × Current (V := V) Λ) → ℝ :=
+    fun p =>
+      if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+        S.indicator (fun _n => wprod p) (p.1 + p.2)
+      else 0
+  let fT : (Current (V := V) Λ × Current (V := V) Λ) → ℝ :=
+    fun p =>
+      if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+        T.indicator (fun _n => wprod p) (p.1 + p.2)
+      else 0
+  have hsWeight :
+      Summable fun p : Current (V := V) Λ × Current (V := V) Λ => ‖w p.1‖ * ‖w p.2‖ :=
+    summable_norm_weightReal_mul_norm_weightReal (V := V) (Λ := Λ) (β := β) J
+  have hsS_norm : Summable fun p : Current (V := V) Λ × Current (V := V) Λ => ‖fS p‖ := by
+    refine Summable.of_norm_bounded (g := fun p => ‖w p.1‖ * ‖w p.2‖) hsWeight ?_
+    intro p
+    by_cases hcond : sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B
+    · by_cases hmem : (p.1 + p.2) ∈ S
+      · simp [fS, hcond, Set.indicator_of_mem, hmem, wprod, w, norm_mul]
+      · simpa [fS, hcond, Set.indicator, hmem] using
+          (mul_nonneg (norm_nonneg (w p.1)) (norm_nonneg (w p.2)))
+    · simpa [fS, hcond] using
+        (mul_nonneg (norm_nonneg (w p.1)) (norm_nonneg (w p.2)))
+  have hsS : Summable fS := hsS_norm.of_norm
+  have hsT_norm : Summable fun p : Current (V := V) Λ × Current (V := V) Λ => ‖fT p‖ := by
+    refine Summable.of_norm_bounded (g := fun p => ‖w p.1‖ * ‖w p.2‖) hsWeight ?_
+    intro p
+    by_cases hcond : sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B
+    · by_cases hmem : (p.1 + p.2) ∈ T
+      · simp [fT, hcond, Set.indicator_of_mem, hmem, wprod, w, norm_mul]
+      · simpa [fT, hcond, Set.indicator, hmem] using
+          (mul_nonneg (norm_nonneg (w p.1)) (norm_nonneg (w p.2)))
+    · simpa [fT, hcond] using
+        (mul_nonneg (norm_nonneg (w p.1)) (norm_nonneg (w p.2)))
+  have hsT : Summable fT := hsT_norm.of_norm
+  have hpoint : ∀ p, fS p ≤ fT p := by
+    intro p
+    by_cases hcond : sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B
+    · have hw1 : 0 ≤ w p.1 :=
+        weightReal_nonneg_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) hβJ p.1
+      have hw2 : 0 ≤ w p.2 :=
+        weightReal_nonneg_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) hβJ p.2
+      have hwprod : 0 ≤ wprod p := mul_nonneg hw1 hw2
+      by_cases hmemS : (p.1 + p.2) ∈ S
+      · have hmemT : (p.1 + p.2) ∈ T := hST hmemS
+        simp [fS, fT, hcond, Set.indicator_of_mem, hmemS, hmemT]
+      · by_cases hmemT : (p.1 + p.2) ∈ T
+        · simp [fS, fT, hcond, Set.indicator, hmemS, hmemT, hwprod]
+        · simp [fS, fT, hcond, Set.indicator, hmemS, hmemT]
+    · simp [fS, fT, hcond]
+  have htsum : (∑' p, fS p) ≤ ∑' p, fT p :=
+    hsS.tsum_le_tsum hpoint hsT
+  have hden_nonneg :
+      0 ≤
+        ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B :=
+    mul_nonneg
+      (ZReal_nonneg_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) hβJ A)
+      (ZReal_nonneg_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) hβJ B)
+  have hdiv :
+      (∑' p, fS p) /
+          (ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B)
+        ≤
+        (∑' p, fT p) /
+          (ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B) :=
+    div_le_div_of_nonneg_right htsum hden_nonneg
+  simpa [PPairReal, fS, fT, wprod, w] using hdiv
+
 lemma PPairReal_mem_Icc_of_nonneg
     (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ)) (S : Set (Current (V := V) Λ))
     (hβJ : ∀ e : Edge (V := V) Λ, 0 ≤ β * J e) :
@@ -431,7 +598,7 @@ lemma PPairReal_mem_Icc_of_nonneg
     PPairReal_le_one_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J) (A := A) (B := B) (S := S) hβJ⟩
 
 /--
-Switching lemma, packaged as a normalized weight ratio: the total-current event `ℱ_B` (existence of a
+Switching lemma as a normalized weight ratio: the total-current event `ℱ_B` (existence of a
 `B`-sourced subcurrent) under sources `(AΔB, ∅)` has weight ratio
 \[
 \frac{Z_A Z_B}{Z_{A\Delta B} Z_{\emptyset}}.
@@ -535,6 +702,90 @@ theorem isingCorr_mul_isingCorr_div_isingCorr_symmDiff_eq_PPairReal_hasSubCurren
           {n : Current (V := V) Λ | HasSubCurrent (V := V) (Λ := Λ) n B} := by
           exact hPP.symm
 
+/-! ## (prop2b) Connectivity probability as a correlation ratio -/
+
+/--
+Paper Appendix Proposition `prop:3`, Eq. `(prop2b)` in finite volume:
+for distinct `x,y,u`, the connectivity of `x` to `u` in the total current under sources `{x,y}` and `∅`
+is given by a ratio of two-point correlations:
+\[
+{\bf P}^{xy,\emptyset}_{\Lambda,\beta}[u \leftrightarrow x]
+= \frac{\langle\sigma_x\sigma_u\rangle_{\Lambda,\beta}\,\langle\sigma_u\sigma_y\rangle_{\Lambda,\beta}}
+        {\langle\sigma_x\sigma_y\rangle_{\Lambda,\beta}}.
+\]
+
+Here the RHS is expressed using `isingCorr` and the LHS using `PPairReal` applied to the event
+`Connected`.
+-/
+theorem PPairReal_connected_eq_isingCorr_mul_isingCorr_div
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) {x y u : ↥Λ}
+    (hxy : x ≠ y) (hxu : x ≠ u) (hyu : y ≠ u) :
+    PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+        {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x u}
+      =
+      (isingCorr (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
+          isingCorr (V := V) (Λ := Λ) β J ({y, u} : Finset (↥Λ))) /
+        isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) := by
+  have hsymm : symmDiff ({y, u} : Finset (↥Λ)) ({x, u} : Finset (↥Λ)) = ({x, y} : Finset (↥Λ)) := by
+    ext v
+    by_cases hvx : v = x
+    · subst hvx
+      constructor
+      · intro _hx
+        simp
+      · intro _hx
+        refine (Finset.mem_symmDiff).2 (Or.inr ?_)
+        refine ⟨by simp, ?_⟩
+        simp [hxy, hxu]
+    by_cases hvy : v = y
+    · subst hvy
+      constructor
+      · intro _hy
+        simp
+      · intro _hy
+        refine (Finset.mem_symmDiff).2 (Or.inl ?_)
+        refine ⟨by simp, ?_⟩
+        simp [hvx, hyu]
+    by_cases hvu : v = u
+    · subst v
+      have hux : u ≠ x := by simpa [eq_comm] using hxu
+      have huy : u ≠ y := by simpa [eq_comm] using hyu
+      simp [Finset.mem_symmDiff, hux, huy]
+    · simp [Finset.mem_symmDiff, hvx, hvy, hvu]
+  have hSet :
+      {n : Current (V := V) Λ | HasSubCurrent (V := V) (Λ := Λ) n ({x, u} : Finset (↥Λ))} =
+        {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x u} := by
+    ext n
+    simpa using
+      (hasSubCurrent_pair_iff_connected (V := V) (Λ := Λ) (n := n) (x := x) (y := u) (hxy := hxu))
+  have horgaf :=
+    (isingCorr_mul_isingCorr_div_isingCorr_symmDiff_eq_PPairReal_hasSubCurrent (V := V) (Λ := Λ)
+      (β := β) (J := J) ({y, u} : Finset (↥Λ)) ({x, u} : Finset (↥Λ)))
+  simpa [hsymm, hSet, mul_comm, mul_left_comm, mul_assoc] using horgaf.symm
+
+/--
+In the ferromagnetic regime, the paper’s ratio
+\[
+\frac{\langle\sigma_x\sigma_u\rangle\langle\sigma_y\sigma_u\rangle}{\langle\sigma_x\sigma_y\rangle}
+\]
+lies in `[0,1]` since it equals a connectivity probability (Proposition `prop:3`, Eq. `(prop2b)`).
+-/
+theorem isingCorr_mul_isingCorr_div_isingCorr_pair_mem_Icc_of_nonneg
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) {x y u : ↥Λ}
+    (hxy : x ≠ y) (hxu : x ≠ u) (hyu : y ≠ u)
+    (hβJ : ∀ e : Edge (V := V) Λ, 0 ≤ β * J e) :
+    ((isingCorr (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
+          isingCorr (V := V) (Λ := Λ) β J ({y, u} : Finset (↥Λ))) /
+        isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ))) ∈ Set.Icc (0 : ℝ) 1 := by
+  have hP :
+      PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+          {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x u} ∈ Set.Icc (0 : ℝ) 1 :=
+    PPairReal_mem_Icc_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J)
+      ({x, y} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+      {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x u} hβJ
+  simpa [PPairReal_connected_eq_isingCorr_mul_isingCorr_div (V := V) (Λ := Λ) (β := β) (J := J)
+    (x := x) (y := y) (u := u) hxy hxu hyu] using hP
+
 /-! ## Two-point connectivity under sourceless pair law -/
 
 /--
@@ -595,6 +846,23 @@ theorem PPairReal_connected_eq_isingCorr_sq
           simp [mul_div_mul_comm]
     _ = (isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ))) ^ 2 := by
           simp [hCorr, pow_two]
+
+theorem abs_isingCorr_pair_le_one_of_nonneg
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) {x y : ↥Λ} (hxy : x ≠ y)
+    (hβJ : ∀ e : Edge (V := V) Λ, 0 ≤ β * J e) :
+    |isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ))| ≤ 1 := by
+  have hP :
+      PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) (∅ : Finset (↥Λ))
+          {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x y}
+        ≤ 1 :=
+    PPairReal_le_one_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J)
+      (A := (∅ : Finset (↥Λ))) (B := (∅ : Finset (↥Λ)))
+      {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x y} hβJ
+  have hsq :
+      (isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ))) ^ 2 ≤ 1 := by
+    simpa [PPairReal_connected_eq_isingCorr_sq (V := V) (Λ := Λ) (β := β) (J := J) (x := x) (y := y) hxy] using
+      hP
+  exact (sq_le_one_iff_abs_le_one _).1 hsq
 
 end RandomCurrent
 

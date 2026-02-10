@@ -117,7 +117,6 @@ lemma IsGeneralizedGaussianProcess.measurable_vec
     {Test : Type*} {T : Test → Ω → ℝ} (h : IsGeneralizedGaussianProcess (P := P) (T := T))
     (n : ℕ) (f : Fin n → Test) :
     Measurable (fun ω : Ω => fun i : Fin n => T (f i) ω) := by
-  classical
   refine (measurable_pi_iff).2 ?_
   intro i
   simpa using h.measurable (f i)
@@ -478,6 +477,82 @@ theorem ImprovedTreeDiagramBound_GS4
                             twoPoint (d := 4) (spin := (fun x : ℝ => x)) (μ := μβ β) u'' t))) := by
   -- TODO: formalize GS class + Griffiths–Simon reduction, then lift the Ising bound.
   sorry
+
+/-!
+### Appendix Proposition 3 (finite-volume random current inequalities)
+
+The random-current part of the paper’s Appendix Proposition `prop:3` is developed in
+`SpinGlass.Papers.Triviality4D.RandomCurrentConsequences` and
+`SpinGlass.Papers.Triviality4D.RandomCurrentUrsell4`.
+
+Here we expose the already-proved implication `(imp) → (prop3b)` as a theorem with explicit
+assumptions.
+-/
+
+namespace RandomCurrent
+
+universe u
+
+variable {V : Type u} [DecidableEq V]
+variable {Λ : Finset V}
+
+/--
+Appendix Proposition `prop:3`: the switching-lemma step turning `(imp)` into the “two-step” bound
+`(prop3b)` (finite volume).
+
+`RandomCurrent.PPairReal_connected_and_connected_le_twoStep_of_imp`, with the required
+nonvanishing hypotheses discharged under:
+
+- nonnegative couplings `β * J e ≥ 0`, and
+- reachability in the graph of *strictly positive* couplings between `x` and `y`, between `x` and `u`,
+  and between `u` and `y`.
+-/
+theorem PPairReal_connected_and_connected_le_twoStep_of_imp_of_nonneg_of_reachable_posCouplingGraph
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) {x y u v : ↥Λ}
+    (hxy : x ≠ y) (hxu : x ≠ u) (hyu : y ≠ u)
+    (hxv : x ≠ v) (hyv : y ≠ v) (huv : u ≠ v)
+    (hβJ : ∀ e : Edge (V := V) Λ, 0 ≤ β * J e)
+    (hreach_xy : (posCouplingGraph (V := V) (Λ := Λ) β J).Reachable x y)
+    (hreach_xu : (posCouplingGraph (V := V) (Λ := Λ) β J).Reachable x u)
+    (hreach_uy : (posCouplingGraph (V := V) (Λ := Λ) β J).Reachable u y)
+    (himp :
+        PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+              {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+          ≤
+          PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+            + PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+            - PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) (∅ : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}) :
+    PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+        {n : Current (V := V) Λ |
+          Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v}
+      ≤
+      (isingCorr (V := V) (Λ := Λ) β J ({x, v} : Finset (↥Λ)) *
+            isingCorr (V := V) (Λ := Λ) β J ({u, v} : Finset (↥Λ)) *
+          isingCorr (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ))) /
+        isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ))
+        +
+      (isingCorr (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
+            isingCorr (V := V) (Λ := Λ) β J ({u, v} : Finset (↥Λ)) *
+          isingCorr (V := V) (Λ := Λ) β J ({v, y} : Finset (↥Λ))) /
+        isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) := by
+  have hZxy : ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ≠ 0 :=
+    ZReal_pair_ne_zero_of_reachable_posCouplingGraph (V := V) (Λ := Λ) (β := β) (J := J)
+      hβJ hxy hreach_xy
+  have hZxu : ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) ≠ 0 :=
+    ZReal_pair_ne_zero_of_reachable_posCouplingGraph (V := V) (Λ := Λ) (β := β) (J := J)
+      hβJ hxu hreach_xu
+  have hZuy : ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ)) ≠ 0 :=
+    ZReal_pair_ne_zero_of_reachable_posCouplingGraph (V := V) (Λ := Λ) (β := β) (J := J)
+      hβJ hyu.symm hreach_uy
+  simpa using
+    (PPairReal_connected_and_connected_le_twoStep_of_imp (V := V) (Λ := Λ)
+      (β := β) (J := J) (x := x) (y := y) (u := u) (v := v)
+      hxy hxu hyu hxv hyv huv hZxy hZxu hZuy hβJ himp)
+
+end RandomCurrent
 
 end Statements
 
