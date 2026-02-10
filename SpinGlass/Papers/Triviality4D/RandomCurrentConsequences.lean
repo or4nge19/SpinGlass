@@ -286,6 +286,43 @@ noncomputable def PPairReal
       else 0) /
     (ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B)
 
+/--
+Expectation of a (real-valued) observable `F(n₁,n₂)` under the pair-current law with sources `(A,B)`:
+\[
+\mathbf E^{A,B}_{\Lambda,\beta}[F]
+= \frac{\sum_{\partial n_1 = A,\ \partial n_2 = B} w(n_1) w(n_2)\,F(n_1,n_2)}{Z_A Z_B}.
+\]
+
+This is the function-valued analogue of `PPairReal`, which corresponds to taking `F` to be an
+indicator depending only on the total current `n₁+n₂`.
+-/
+noncomputable def EPairReal
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ))
+    (F : Current (V := V) Λ → Current (V := V) Λ → ℝ) : ℝ :=
+  (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+      if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+        F p.1 p.2 *
+            (weightReal (V := V) (Λ := Λ) β J p.1 *
+              weightReal (V := V) (Λ := Λ) β J p.2)
+      else 0) /
+    (ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B)
+
+lemma PPairReal_eq_EPairReal
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ)) (S : Set (Current (V := V) Λ)) :
+    PPairReal (V := V) (Λ := Λ) β J A B S
+      =
+      EPairReal (V := V) (Λ := Λ) β J A B (fun n₁ n₂ => (S.indicator (fun _ => (1 : ℝ)) (n₁ + n₂))) := by
+  classical
+  unfold PPairReal EPairReal
+  congr 1
+  refine tsum_congr ?_
+  intro p
+  by_cases hcond : sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B
+  · by_cases hmem : (p.1 + p.2) ∈ S
+    · simp [hcond, hmem, Set.indicator_of_mem]
+    · simp [hcond, hmem, Set.indicator]
+  · simp [hcond]
+
 lemma PPairReal_comm
     (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ)) (S : Set (Current (V := V) Λ)) :
     PPairReal (V := V) (Λ := Λ) β J A B S = PPairReal (V := V) (Λ := Λ) β J B A S := by
