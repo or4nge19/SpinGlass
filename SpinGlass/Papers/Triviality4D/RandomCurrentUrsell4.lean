@@ -268,6 +268,105 @@ theorem switchingLemma_pair_ind_connected_eq_tsum_ind_and
     simp [hsrc, hind, hind', mul_assoc]
   · simp [hsrc]
 
+/-!
+### Helper lemmas for multi-point connectivity
+
+These lemmas factor out small but frequently recurring pieces used in the multi-point
+connectivity identities and bounds of Appendix Proposition `prop:3`.
+-/
+
+lemma ind_congr {P Q : Prop} (h : P ↔ Q) : ind P = ind Q := by
+  by_cases hP : P
+  · have hQ : Q := h.mp hP
+    simp [ind, hP, hQ]
+  · have hQ : ¬ Q := by
+      intro hQ
+      exact hP (h.mpr hQ)
+    simp [ind, hP, hQ]
+
+lemma symmDiff_pair_pair_eq_pair
+    {x y u : ↥Λ} (hxy : x ≠ y) (hxu : x ≠ u) (hyu : y ≠ u) :
+    symmDiff ({x, u} : Finset (↥Λ)) ({u, y} : Finset (↥Λ)) = ({x, y} : Finset (↥Λ)) := by
+  ext w
+  by_cases hwx : w = x
+  · subst hwx
+    simp [Finset.mem_symmDiff, hxu, hxy]
+  by_cases hwy : w = y
+  · subst hwy
+    simp [Finset.mem_symmDiff, hyu, hwx]
+  by_cases hwu : w = u
+  · subst w
+    have hux : u ≠ x := by simpa [eq_comm] using hxu
+    have huy : u ≠ y := by simpa [eq_comm] using hyu
+    simp [Finset.mem_symmDiff, hux, huy]
+  · simp [Finset.mem_symmDiff, hwx, hwy, hwu]
+
+lemma connected_and_connected_iff_of_sources_eq_pair
+    (n : Current (V := V) Λ) {x y u v : ↥Λ}
+    (hs : sources (V := V) n = ({x, y} : Finset (↥Λ))) :
+    (Connected (V := V) (Λ := Λ) n u v ∧ Connected (V := V) (Λ := Λ) n u y)
+      ↔
+      (Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v) := by
+  have hxy_conn : Connected (V := V) (Λ := Λ) n x y :=
+    connected_of_sources_eq_pair (V := V) (Λ := Λ) n (hs := hs)
+  constructor
+  · intro h
+    have hxu : Connected (V := V) (Λ := Λ) n x u :=
+      Connected.trans (V := V) (Λ := Λ) n hxy_conn
+        (Connected.symm (V := V) (Λ := Λ) n h.2)
+    have hxv : Connected (V := V) (Λ := Λ) n x v :=
+      Connected.trans (V := V) (Λ := Λ) n hxu h.1
+    exact ⟨hxu, hxv⟩
+  · intro h
+    have huy : Connected (V := V) (Λ := Λ) n u y :=
+      Connected.trans (V := V) (Λ := Λ) n
+        (Connected.symm (V := V) (Λ := Λ) n h.1) hxy_conn
+    have huv : Connected (V := V) (Λ := Λ) n u v :=
+      Connected.trans (V := V) (Λ := Λ) n
+        (Connected.symm (V := V) (Λ := Λ) n h.1) h.2
+    exact ⟨huv, huy⟩
+
+lemma ind_connected_and_connected_eq_of_sources_eq_pair
+    (n : Current (V := V) Λ) {x y u v : ↥Λ}
+    (hs : sources (V := V) n = ({x, y} : Finset (↥Λ))) :
+    ind (Connected (V := V) (Λ := Λ) n u v ∧ Connected (V := V) (Λ := Λ) n u y)
+      =
+      ind (Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v) := by
+  exact ind_congr (connected_and_connected_iff_of_sources_eq_pair (V := V) (Λ := Λ) n
+    (x := x) (y := y) (u := u) (v := v) hs)
+
+lemma PPairReal_eq_tsum_ind_mul
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ)) (S : Set (Current (V := V) Λ)) :
+    PPairReal (V := V) (Λ := Λ) β J A B S
+      =
+      (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+          if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+            ind ((p.1 + p.2) ∈ S) *
+              (weightReal (V := V) (Λ := Λ) β J p.1 *
+                weightReal (V := V) (Λ := Λ) β J p.2)
+          else 0) /
+        (ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B) := by
+  unfold PPairReal
+  congr 1
+  refine tsum_congr ?_
+  intro p
+  by_cases hcond : sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B
+  · simp [hcond, indicator_const_eq_ind_mul]
+  · simp [hcond]
+
+lemma PPairReal_eq_tsum_ind_mul_setOf
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ)) (P : Current (V := V) Λ → Prop) :
+    PPairReal (V := V) (Λ := Λ) β J A B {n : Current (V := V) Λ | P n}
+      =
+      (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+          if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+            ind (P (p.1 + p.2)) *
+              (weightReal (V := V) (Λ := Λ) β J p.1 *
+                weightReal (V := V) (Λ := Λ) β J p.2)
+          else 0) /
+        (ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B) := by
+  simp [PPairReal_eq_tsum_ind_mul]
+
 /-
 ## Multi-point connectivity probability (Appendix Proposition `prop:3`)
 
@@ -303,223 +402,32 @@ theorem PPairReal_connected_and_connected_eq_isingCorr_mul_isingCorr_div_mul_PPa
           isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ))) *
         PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
           {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v} := by
-  classical
-  -- First rewrite the “bridge ratio” using Eq. (prop2b).
-  have hbridge :
-      (isingCorr (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
-            isingCorr (V := V) (Λ := Λ) β J ({y, u} : Finset (↥Λ))) /
-          isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ))
-        =
-        PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) (∅ : Finset (↥Λ))
-          {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x u} := by
-    simpa [mul_comm, mul_left_comm, mul_assoc] using
-      (PPairReal_connected_eq_isingCorr_mul_isingCorr_div (V := V) (Λ := Λ) (β := β) (J := J)
-        (x := x) (y := y) (u := u) hxy hxu hyu).symm
-
-  -- The switching lemma converts the RHS `PPairReal` numerator from sources `{x,u},{u,y}` to
-  -- sources `{x,y},∅` with a conjunction event.
-  have hsymm : symmDiff ({x, u} : Finset (↥Λ)) ({u, y} : Finset (↥Λ)) = ({x, y} : Finset (↥Λ)) := by
-    ext w
-    by_cases hwx : w = x
-    · subst hwx
-      simp [Finset.mem_symmDiff, hxu, hxy]
-    by_cases hwy : w = y
-    · subst hwy
-      simp [Finset.mem_symmDiff, hyu, hxy, hwx]
-    by_cases hwu : w = u
-    · subst w
-      have hux : u ≠ x := by simpa [eq_comm] using hxu
-      have huy : u ≠ y := by simpa [eq_comm] using hyu
-      simp [Finset.mem_symmDiff, hux, huy, hwx, hwy]
-    · simp [Finset.mem_symmDiff, hwx, hwy, hwu]
-
-  -- Express the RHS `PPairReal` numerator using `ind` so that we can apply the switching lemma.
-  let T : Set (Current (V := V) Λ) := {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
-  let S : Set (Current (V := V) Λ) :=
-    {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v}
-
+  have hsymm :
+      symmDiff ({x, u} : Finset (↥Λ)) ({u, y} : Finset (↥Λ)) = ({x, y} : Finset (↥Λ)) :=
+    symmDiff_pair_pair_eq_pair (V := V) (Λ := Λ) (x := x) (y := y) (u := u) hxy hxu hyu
   have hswitch :
       (∑' p : Current (V := V) Λ × Current (V := V) Λ,
           if sources (V := V) p.1 = ({x, u} : Finset (↥Λ)) ∧
               sources (V := V) p.2 = ({u, y} : Finset (↥Λ)) then
             ind (Connected (V := V) (Λ := Λ) (p.1 + p.2) u v) *
-                weightReal (V := V) (Λ := Λ) β J p.1 *
-              weightReal (V := V) (Λ := Λ) β J p.2
+              (weightReal (V := V) (Λ := Λ) β J p.1 *
+                weightReal (V := V) (Λ := Λ) β J p.2)
           else 0)
         =
         (∑' p : Current (V := V) Λ × Current (V := V) Λ,
           if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
               sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
             ind
-                  (Connected (V := V) (Λ := Λ) (p.1 + p.2) u v ∧
-                    Connected (V := V) (Λ := Λ) (p.1 + p.2) u y) *
-                weightReal (V := V) (Λ := Λ) β J p.1 *
-              weightReal (V := V) (Λ := Λ) β J p.2
-          else 0) := by
-    -- `switchingLemma_pair_ind_connected_eq_tsum_ind_and` gives this after rewriting `symmDiff`.
-    simpa [hsymm] using
-      (switchingLemma_pair_ind_connected_eq_tsum_ind_and (V := V) (Λ := Λ) (β := β) (J := J)
-        (A := ({x, u} : Finset (↥Λ))) (u := u) (v := y) (x := u) (z := v) hyu.symm)
-
-  -- Replace the conjunction `Connected u v ∧ Connected u y` by the source-cluster event for `x`.
-  have hconj :
-      ∀ n : Current (V := V) Λ,
-        sources (V := V) n = ({x, y} : Finset (↥Λ)) →
-          ind (Connected (V := V) (Λ := Λ) n u v ∧ Connected (V := V) (Λ := Λ) n u y)
-            =
-            ind (Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v) := by
-    intro n hs
-    have hxy_conn : Connected (V := V) (Λ := Λ) n x y :=
-      connected_of_sources_eq_pair (V := V) (Λ := Λ) n (hs := hs)
-    by_cases h : Connected (V := V) (Λ := Λ) n u v ∧ Connected (V := V) (Λ := Λ) n u y
-    · have hxuv : Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v := by
-        refine ⟨?_, ?_⟩
-        · -- `x` connects to `u` via `y`
-          have : Connected (V := V) (Λ := Λ) n x y := hxy_conn
-          have : Connected (V := V) (Λ := Λ) n x u :=
-            Connected.trans (V := V) (Λ := Λ) n this (Connected.symm (V := V) (Λ := Λ) n h.2)
-          simpa using this
-        · -- `x` connects to `v` via `u`
-          have hx_u : Connected (V := V) (Λ := Λ) n x u := by
-            have : Connected (V := V) (Λ := Λ) n x y := hxy_conn
-            exact Connected.trans (V := V) (Λ := Λ) n this (Connected.symm (V := V) (Λ := Λ) n h.2)
-          have : Connected (V := V) (Λ := Λ) n x v :=
-            Connected.trans (V := V) (Λ := Λ) n hx_u h.1
-          simpa using this
-      simp [ind, h, hxuv]
-    · have hxuv : ¬ (Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v) := by
-        intro hxuv
-        have hu_y : Connected (V := V) (Λ := Λ) n u y :=
-          Connected.trans (V := V) (Λ := Λ) n
-            (Connected.symm (V := V) (Λ := Λ) n hxuv.1) hxy_conn
-        have hu_v : Connected (V := V) (Λ := Λ) n u v :=
-          Connected.trans (V := V) (Λ := Λ) n
-            (Connected.symm (V := V) (Λ := Λ) n hxuv.1) hxuv.2
-        exact h ⟨hu_v, hu_y⟩
-      simp [ind, h, hxuv]
-
-  -- Now expand `PPairReal` and use the switching identity at the numerator level.
-  -- The key point: the switching lemma identifies the numerator of the RHS probability with the
-  -- numerator of the LHS probability.
-  unfold PPairReal
-  -- rewrite the left numerator using `ind`:
-  have hnumL :
-      (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-          if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧ sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-            S.indicator
-                (fun _n =>
-                  weightReal (V := V) (Λ := Λ) β J p.1 *
-                    weightReal (V := V) (Λ := Λ) β J p.2)
-                (p.1 + p.2)
-          else 0)
-        =
-        (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-          if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-              sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-            ind (Connected (V := V) (Λ := Λ) (p.1 + p.2) x u ∧
-                  Connected (V := V) (Λ := Λ) (p.1 + p.2) x v) *
-                weightReal (V := V) (Λ := Λ) β J p.1 *
-              weightReal (V := V) (Λ := Λ) β J p.2
-          else 0) := by
-    refine tsum_congr ?_
-    intro p
-    by_cases hsrc : sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-        sources (V := V) p.2 = (∅ : Finset (↥Λ))
-    · have :
-          S.indicator
-              (fun _n =>
-                weightReal (V := V) (Λ := Λ) β J p.1 *
-                  weightReal (V := V) (Λ := Λ) β J p.2)
-              (p.1 + p.2)
-            =
-            ind (Connected (V := V) (Λ := Λ) (p.1 + p.2) x u ∧
-                  Connected (V := V) (Λ := Λ) (p.1 + p.2) x v) *
+                (Connected (V := V) (Λ := Λ) (p.1 + p.2) u v ∧
+                  Connected (V := V) (Λ := Λ) (p.1 + p.2) u y) *
               (weightReal (V := V) (Λ := Λ) β J p.1 *
-                weightReal (V := V) (Λ := Λ) β J p.2) := by
-        simpa [S, indicator_const_eq_ind_mul, mul_assoc] using
-          (indicator_const_eq_ind_mul (S := S)
-            (r := weightReal (V := V) (Λ := Λ) β J p.1 *
-              weightReal (V := V) (Λ := Λ) β J p.2)
-            (a := (p.1 + p.2)))
-      simp [PPairReal, hsrc, this, mul_assoc, mul_left_comm, mul_comm]
-    · simp [hsrc]
-
-  -- rewrite the RHS probability numerator similarly and apply `hswitch`, then `hconj`.
-  have hnumR :
-      (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-          if sources (V := V) p.1 = ({x, u} : Finset (↥Λ)) ∧
-              sources (V := V) p.2 = ({u, y} : Finset (↥Λ)) then
-            T.indicator
-                (fun _n =>
-                  weightReal (V := V) (Λ := Λ) β J p.1 *
-                    weightReal (V := V) (Λ := Λ) β J p.2)
-                (p.1 + p.2)
-          else 0)
-        =
-        (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-          if sources (V := V) p.1 = ({x, u} : Finset (↥Λ)) ∧
-              sources (V := V) p.2 = ({u, y} : Finset (↥Λ)) then
-            ind (Connected (V := V) (Λ := Λ) (p.1 + p.2) u v) *
-                weightReal (V := V) (Λ := Λ) β J p.1 *
-              weightReal (V := V) (Λ := Λ) β J p.2
+                weightReal (V := V) (Λ := Λ) β J p.2)
           else 0) := by
-    refine tsum_congr ?_
-    intro p
-    by_cases hsrc : sources (V := V) p.1 = ({x, u} : Finset (↥Λ)) ∧
-        sources (V := V) p.2 = ({u, y} : Finset (↥Λ))
-    · have :
-          T.indicator
-              (fun _n =>
-                weightReal (V := V) (Λ := Λ) β J p.1 *
-                  weightReal (V := V) (Λ := Λ) β J p.2)
-              (p.1 + p.2)
-            =
-            ind (Connected (V := V) (Λ := Λ) (p.1 + p.2) u v) *
-              (weightReal (V := V) (Λ := Λ) β J p.1 *
-                weightReal (V := V) (Λ := Λ) β J p.2) := by
-        simpa [T, indicator_const_eq_ind_mul, mul_assoc] using
-          (indicator_const_eq_ind_mul (S := T)
-            (r := weightReal (V := V) (Λ := Λ) β J p.1 *
-              weightReal (V := V) (Λ := Λ) β J p.2)
-            (a := (p.1 + p.2)))
-      simp [PPairReal, hsrc, this, mul_assoc, mul_left_comm, mul_comm]
-    · simp [hsrc]
-
-  -- Put the pieces together.
-  -- After unfolding, both sides share the common denominator `ZReal {x,y} * ZReal ∅`.
-  -- The switching lemma identifies the second numerator with the first.
-  -- (We keep the final expression in terms of `isingCorr` using `hbridge`.)
-  -- The algebra is just cancellation of the intermediate `ZReal` factors.
-  -- Start by rewriting the LHS numerator with `hnumL`.
-  -- Then rewrite the RHS factor `PPairReal {x,u} {u,y} ...` using `hnumR` and `hswitch`.
-  -- Finally use `hconj` to replace the conjunction event.
-  -- Denominator simplification is handled by `field_simp`.
-  have hNumEq :
-      (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-          if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-              sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-            ind (Connected (V := V) (Λ := Λ) (p.1 + p.2) x u ∧
-                  Connected (V := V) (Λ := Λ) (p.1 + p.2) x v) *
-                weightReal (V := V) (Λ := Λ) β J p.1 *
-              weightReal (V := V) (Λ := Λ) β J p.2
-          else 0)
-        =
+    have hswitch0 :
         (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-          if sources (V := V) p.1 = ({x, u} : Finset (↥Λ)) ∧
-              sources (V := V) p.2 = ({u, y} : Finset (↥Λ)) then
-            ind (Connected (V := V) (Λ := Λ) (p.1 + p.2) u v) *
-                weightReal (V := V) (Λ := Λ) β J p.1 *
-              weightReal (V := V) (Λ := Λ) β J p.2
-          else 0) := by
-    -- Rewrite the left side of `hswitch.symm` using the deterministic implication `hconj`,
-    -- then close by `hswitch.symm`.
-    have hleft :
-        (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-            if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-                sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-              ind
-                    (Connected (V := V) (Λ := Λ) (p.1 + p.2) u v ∧
-                      Connected (V := V) (Λ := Λ) (p.1 + p.2) u y) *
+            if sources (V := V) p.1 = ({x, u} : Finset (↥Λ)) ∧
+                sources (V := V) p.2 = ({u, y} : Finset (↥Λ)) then
+              ind (Connected (V := V) (Λ := Λ) (p.1 + p.2) u v) *
                   weightReal (V := V) (Λ := Λ) β J p.1 *
                 weightReal (V := V) (Λ := Λ) β J p.2
             else 0)
@@ -528,94 +436,77 @@ theorem PPairReal_connected_and_connected_eq_isingCorr_mul_isingCorr_div_mul_PPa
             if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
                 sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
               ind
-                    (Connected (V := V) (Λ := Λ) (p.1 + p.2) x u ∧
-                      Connected (V := V) (Λ := Λ) (p.1 + p.2) x v) *
+                    (Connected (V := V) (Λ := Λ) (p.1 + p.2) u v ∧
+                      Connected (V := V) (Λ := Λ) (p.1 + p.2) u y) *
                   weightReal (V := V) (Λ := Λ) β J p.1 *
                 weightReal (V := V) (Λ := Λ) β J p.2
             else 0) := by
-        refine tsum_congr ?_
-        intro p
-        by_cases hsrc :
-            sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-              sources (V := V) p.2 = (∅ : Finset (↥Λ))
-        · have hsources_total : sources (V := V) (p.1 + p.2) = ({x, y} : Finset (↥Λ)) := by
-            have hp2 : sources (V := V) (Λ := Λ) p.2 = (∅ : Finset (↥Λ)) := hsrc.2
-            have hp1 : sources (V := V) (Λ := Λ) p.1 = ({x, y} : Finset (↥Λ)) := hsrc.1
-            simpa [sources_add, hp1, hp2]
-          have hind := hconj (n := (p.1 + p.2)) hsources_total
-          simp [hsrc, hind, mul_assoc]
-        · simp [hsrc]
-    -- now use the switching lemma identity
-    simpa [hleft] using hswitch.symm
-
-  -- Finish with straightforward algebra on the `PPairReal` definitions.
-  -- We turn `hNumEq` into an equality of the indicator numerators appearing in `PPairReal`,
-  -- then simplify the remaining algebra using the (nonvanishing) normalization assumptions.
-  have hNumIndicator :
+      simpa [hsymm] using
+        (switchingLemma_pair_ind_connected_eq_tsum_ind_and (V := V) (Λ := Λ) (β := β) (J := J)
+          (A := ({x, u} : Finset (↥Λ))) (u := u) (v := y) (x := u) (z := v) hyu.symm)
+    simpa [mul_assoc] using hswitch0
+  have hconjSum :
       (∑' p : Current (V := V) Λ × Current (V := V) Λ,
           if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
               sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-            ({n : Current (V := V) Λ |
-                  Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v}).indicator
-                (fun _n =>
-                  weightReal (V := V) (Λ := Λ) β J p.1 *
-                    weightReal (V := V) (Λ := Λ) β J p.2)
-                (p.1 + p.2)
+            ind
+                (Connected (V := V) (Λ := Λ) (p.1 + p.2) u v ∧
+                  Connected (V := V) (Λ := Λ) (p.1 + p.2) u y) *
+              (weightReal (V := V) (Λ := Λ) β J p.1 *
+                weightReal (V := V) (Λ := Λ) β J p.2)
+          else 0)
+        =
+        (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+          if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
+              sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
+            ind
+                (Connected (V := V) (Λ := Λ) (p.1 + p.2) x u ∧
+                  Connected (V := V) (Λ := Λ) (p.1 + p.2) x v) *
+              (weightReal (V := V) (Λ := Λ) β J p.1 *
+                weightReal (V := V) (Λ := Λ) β J p.2)
+          else 0) := by
+    refine tsum_congr ?_
+    intro p
+    by_cases hsrc :
+        sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
+          sources (V := V) p.2 = (∅ : Finset (↥Λ))
+    · have hsources_total : sources (V := V) (p.1 + p.2) = ({x, y} : Finset (↥Λ)) := by
+        have hp2 : sources (V := V) p.2 = (∅ : Finset (↥Λ)) := hsrc.2
+        have hp1 : sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) := hsrc.1
+        simp [sources_add, hp1, hp2]
+      have hind :
+          ind
+              (Connected (V := V) (Λ := Λ) (p.1 + p.2) u v ∧
+                Connected (V := V) (Λ := Λ) (p.1 + p.2) u y)
+            =
+            ind
+              (Connected (V := V) (Λ := Λ) (p.1 + p.2) x u ∧
+                Connected (V := V) (Λ := Λ) (p.1 + p.2) x v) :=
+        ind_connected_and_connected_eq_of_sources_eq_pair (V := V) (Λ := Λ) (n := (p.1 + p.2))
+          (x := x) (y := y) (u := u) (v := v) hsources_total
+      simp [hsrc, hind]
+    · simp [hsrc]
+  have hNumEq :
+      (∑' p : Current (V := V) Λ × Current (V := V) Λ,
+          if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
+              sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
+            ind
+                (Connected (V := V) (Λ := Λ) (p.1 + p.2) x u ∧
+                  Connected (V := V) (Λ := Λ) (p.1 + p.2) x v) *
+              (weightReal (V := V) (Λ := Λ) β J p.1 *
+                weightReal (V := V) (Λ := Λ) β J p.2)
           else 0)
         =
         (∑' p : Current (V := V) Λ × Current (V := V) Λ,
           if sources (V := V) p.1 = ({x, u} : Finset (↥Λ)) ∧
               sources (V := V) p.2 = ({u, y} : Finset (↥Λ)) then
-            ({n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}).indicator
-                (fun _n =>
-                  weightReal (V := V) (Λ := Λ) β J p.1 *
-                    weightReal (V := V) (Λ := Λ) β J p.2)
-                (p.1 + p.2)
-          else 0) := by
-    -- rewrite indicator numerators to `ind`-weighted numerators on both sides
-    calc
-      (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-          if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-              sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-            ({n : Current (V := V) Λ |
-                  Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v}).indicator
-                (fun _n =>
-                  weightReal (V := V) (Λ := Λ) β J p.1 *
-                    weightReal (V := V) (Λ := Λ) β J p.2)
-                (p.1 + p.2)
-          else 0)
-          =
-        (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-          if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-              sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-            ind (Connected (V := V) (Λ := Λ) (p.1 + p.2) x u ∧
-                  Connected (V := V) (Λ := Λ) (p.1 + p.2) x v) *
-                weightReal (V := V) (Λ := Λ) β J p.1 *
-              weightReal (V := V) (Λ := Λ) β J p.2
-          else 0) := by
-            simpa [S] using hnumL
-      _ =
-        (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-          if sources (V := V) p.1 = ({x, u} : Finset (↥Λ)) ∧
-              sources (V := V) p.2 = ({u, y} : Finset (↥Λ)) then
             ind (Connected (V := V) (Λ := Λ) (p.1 + p.2) u v) *
-                weightReal (V := V) (Λ := Λ) β J p.1 *
-              weightReal (V := V) (Λ := Λ) β J p.2
-          else 0) := hNumEq
-      _ =
-        (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-          if sources (V := V) p.1 = ({x, u} : Finset (↥Λ)) ∧
-              sources (V := V) p.2 = ({u, y} : Finset (↥Λ)) then
-            ({n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}).indicator
-                (fun _n =>
-                  weightReal (V := V) (Λ := Λ) β J p.1 *
-                    weightReal (V := V) (Λ := Λ) β J p.2)
-                (p.1 + p.2)
+              (weightReal (V := V) (Λ := Λ) β J p.1 *
+                weightReal (V := V) (Λ := Λ) β J p.2)
           else 0) := by
-            simpa [T] using hnumR.symm
-
+    exact hconjSum.symm.trans hswitch.symm
   have hZ0 : ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ≠ 0 :=
-    (ne_of_gt (ZReal_empty_pos (V := V) (Λ := Λ) (β := β) (J := J)))
+    ne_of_gt (ZReal_empty_pos (V := V) (Λ := Λ) (β := β) (J := J))
   have hDenT :
       ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
           ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ)) ≠ 0 :=
@@ -624,8 +515,6 @@ theorem PPairReal_connected_and_connected_eq_isingCorr_mul_isingCorr_div_mul_PPa
       ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
           ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ≠ 0 :=
     mul_ne_zero hZxy hZ0
-
-  -- Rewrite the correlation ratio in terms of `ZReal`.
   have hratioZ :
       ((isingCorr (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
             isingCorr (V := V) (Λ := Λ) β J ({y, u} : Finset (↥Λ))) /
@@ -635,6 +524,8 @@ theorem PPairReal_connected_and_connected_eq_isingCorr_mul_isingCorr_div_mul_PPa
             ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ))) /
           (ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
             ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ))) := by
+    have hyufin : ({y, u} : Finset (↥Λ)) = ({u, y} : Finset (↥Λ)) := by
+      ext w; simp [or_comm]
     have hxu' :
         isingCorr (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) =
           ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) /
@@ -650,197 +541,244 @@ theorem PPairReal_connected_and_connected_eq_isingCorr_mul_isingCorr_div_mul_PPa
           ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) /
             ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) :=
       isingCorr_eq_ZReal_div (V := V) (Λ := Λ) (β := β) (J := J) ({x, y} : Finset (↥Λ))
-    -- use the nonvanishing normalizations to clear denominators
-    field_simp [hxu', hyu', hxy', hDenS, hZ0, hZxy, hZxu, hZuy]
-    ring
+    rw [hxu', hyu', hxy']
+    simp [hyufin]
+    have hxy_div :
+        (ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) /
+              ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ))) ≠ 0 :=
+      div_ne_zero hZxy hZ0
+    field_simp [hZ0, hZxy, hZxu, hZuy, hxy_div]
+  rw [PPairReal_eq_tsum_ind_mul_setOf (V := V) (Λ := Λ) (β := β) (J := J)
+        (A := ({x, y} : Finset (↥Λ))) (B := (∅ : Finset (↥Λ)))
+        (P := fun n : Current (V := V) Λ =>
+          Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v)]
+  rw [PPairReal_eq_tsum_ind_mul_setOf (V := V) (Λ := Λ) (β := β) (J := J)
+        (A := ({x, u} : Finset (↥Λ))) (B := ({u, y} : Finset (↥Λ)))
+        (P := fun n : Current (V := V) Λ => Connected (V := V) (Λ := Λ) n u v)]
+  rw [hNumEq, hratioZ]
+  field_simp [hDenS, hDenT]
 
-  -- Finally, substitute the numerator equality and cancel `ZReal {x,u} * ZReal {u,y}`.
-  -- (Cancellation uses `hDenT`.)
-  have hyu_finset : ({y, u} : Finset (↥Λ)) = ({u, y} : Finset (↥Λ)) := by
-    ext w; simp [or_left_comm, or_comm]
-  -- Note: the goal after `unfold PPairReal` is already the expanded statement.
-  -- We rewrite to the `ZReal`-ratio form and use `mul_div_mul_comm` + `mul_div_mul_left`.
-  -- `hNumIndicator` identifies the two numerators.
-  -- Replace the right numerator by the left one.
-  -- (The remaining line is algebra.)
-  have :
-      (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-          if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-              sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-            ({n : Current (V := V) Λ |
-                  Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v}).indicator
-                (fun _n =>
-                  weightReal (V := V) (Λ := Λ) β J p.1 *
-                    weightReal (V := V) (Λ := Λ) β J p.2)
-                (p.1 + p.2)
-          else 0) /
-        (ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
-          ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)))
+/--
+Paper Appendix Proposition `prop:3`, inequality `(prop3b)` in finite volume, **assuming** the auxiliary
+bound `(imp)` on the intermediate two-current law.
+
+This isolates the switching-lemma algebra (proved above) from the monotonicity input used in the paper
+to prove `(imp)`.
+-/
+theorem PPairReal_connected_and_connected_le_twoStep_of_imp
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) {x y u v : ↥Λ}
+    (hxy : x ≠ y) (hxu : x ≠ u) (hyu : y ≠ u)
+    (hxv : x ≠ v) (hyv : y ≠ v) (huv : u ≠ v)
+    (hZxy : ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) ≠ 0)
+    (hZxu : ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) ≠ 0)
+    (hZuy : ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ)) ≠ 0)
+    (hβJ : ∀ e : Edge (V := V) Λ, 0 ≤ β * J e)
+    (himp :
+        PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+              {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+          ≤
+          PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+            + PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+            - PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) (∅ : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}) :
+    PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+        {n : Current (V := V) Λ |
+          Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v}
+      ≤
+      (isingCorr (V := V) (Λ := Λ) β J ({x, v} : Finset (↥Λ)) *
+            isingCorr (V := V) (Λ := Λ) β J ({u, v} : Finset (↥Λ)) *
+          isingCorr (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ))) /
+        isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ))
+        +
+      (isingCorr (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
+            isingCorr (V := V) (Λ := Λ) β J ({u, v} : Finset (↥Λ)) *
+          isingCorr (V := V) (Λ := Λ) β J ({v, y} : Finset (↥Λ))) /
+        isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) := by
+  set r : ℝ :=
+      ((isingCorr (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
+            isingCorr (V := V) (Λ := Λ) β J ({y, u} : Finset (↥Λ))) /
+          isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ))) with hr
+  have heq :
+      PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+          {n : Current (V := V) Λ |
+            Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v}
         =
-        ((ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
-              ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ))) /
-            (ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
-              ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)))) *
-          ((∑' p : Current (V := V) Λ × Current (V := V) Λ,
-              if sources (V := V) p.1 = ({x, u} : Finset (↥Λ)) ∧
-                  sources (V := V) p.2 = ({u, y} : Finset (↥Λ)) then
-                ({n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}).indicator
-                    (fun _n =>
-                      weightReal (V := V) (Λ := Λ) β J p.1 *
-                        weightReal (V := V) (Λ := Λ) β J p.2)
-                    (p.1 + p.2)
-              else 0) /
-            (ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
-              ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ)))) := by
-    -- rewrite the second numerator using `hNumIndicator`
-    rw [hNumIndicator]
-    -- now simplify by cancelling the `ZReal {x,u} * ZReal {u,y}` factor
-    -- in the product of fractions
-    have hmul :
-        ((ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
-                ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ))) /
-              (ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
-                ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)))) *
-            ((∑' p : Current (V := V) Λ × Current (V := V) Λ,
-                if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-                    sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-                  ({n : Current (V := V) Λ |
-                        Connected (V := V) (Λ := Λ) n x u ∧
-                          Connected (V := V) (Λ := Λ) n x v}).indicator
-                      (fun _n =>
-                        weightReal (V := V) (Λ := Λ) β J p.1 *
-                          weightReal (V := V) (Λ := Λ) β J p.2)
-                      (p.1 + p.2)
-                else 0) /
-              (ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
-                ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ))))
+        r *
+          PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+            {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v} := by
+    simpa [r, hr] using
+      (PPairReal_connected_and_connected_eq_isingCorr_mul_isingCorr_div_mul_PPairReal_connected
+          (V := V) (Λ := Λ) (β := β) (J := J) (x := x) (y := y) (u := u) (v := v)
+          hxy hxu hyu hZxy hZxu hZuy)
+  have hnonneg_empty :
+      0 ≤
+        PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) (∅ : Finset (↥Λ))
+          {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v} :=
+    PPairReal_nonneg_of_nonneg (V := V) (Λ := Λ) (β := β) (J := J)
+      (A := (∅ : Finset (↥Λ))) (B := (∅ : Finset (↥Λ)))
+      {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v} hβJ
+  have hle_imp' :
+      PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+            {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+        ≤
+        PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+              {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+          + PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+              {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v} := by
+    have hsub :
+        (PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+              + PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+              -
+              PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) (∅ : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v})
+          ≤
+          (PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+            + PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}) := by
+        exact sub_le_self _ hnonneg_empty
+    exact le_trans himp hsub
+  have hr_mem :
+      r ∈ Set.Icc (0 : ℝ) 1 := by
+    simpa [r, hr, mul_comm, mul_left_comm, mul_assoc] using
+      (isingCorr_mul_isingCorr_div_isingCorr_pair_mem_Icc_of_nonneg (V := V) (Λ := Λ)
+        (β := β) (J := J) (x := x) (y := y) (u := u) hxy hxu hyu hβJ)
+  have hr_nonneg : 0 ≤ r := (Set.mem_Icc.mp hr_mem).1
+  have hmul :
+      r *
+          PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+            {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+        ≤
+        r *
+          (PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+            + PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}) :=
+    mul_le_mul_of_nonneg_left hle_imp' hr_nonneg
+  have hxufin : ({x, u} : Finset (↥Λ)) = ({u, x} : Finset (↥Λ)) := by
+    ext w; simp [or_comm]
+  have hyufin : ({y, u} : Finset (↥Λ)) = ({u, y} : Finset (↥Λ)) := by
+    ext w; simp [or_comm]
+  have hterm1 :
+      r *
+          PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+            {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+        =
+        (isingCorr (V := V) (Λ := Λ) β J ({x, v} : Finset (↥Λ)) *
+              isingCorr (V := V) (Λ := Λ) β J ({u, v} : Finset (↥Λ)) *
+            isingCorr (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ))) /
+          isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) := by
+    have hP :
+        PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+              {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
           =
-          (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-              if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-                  sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-                ({n : Current (V := V) Λ |
-                      Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v}).indicator
-                    (fun _n =>
-                      weightReal (V := V) (Λ := Λ) β J p.1 *
-                        weightReal (V := V) (Λ := Λ) β J p.2)
-                    (p.1 + p.2)
-            else 0) /
-            (ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
-              ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ))) := by
-      -- combine the two fractions and cancel
-      -- `mul_div_mul_comm` puts it over the product denominator; `mul_div_mul_left` cancels.
-      have := (mul_div_mul_comm
-        (ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
-              ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ)))
-        (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-          if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-              sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-            ({n : Current (V := V) Λ |
-                  Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v}).indicator
-                (fun _n =>
-                  weightReal (V := V) (Λ := Λ) β J p.1 *
-                    weightReal (V := V) (Λ := Λ) β J p.2)
-                (p.1 + p.2)
-          else 0)
-        (ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
-              ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)))
-        (ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
-              ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ))))
-      -- simplify the combined fraction by cancelling the common factor
-      -- (requires `hDenT`)
-      -- Note: we rewrite `a*b` commutatively to match `mul_div_mul_left`.
-      have hcancel :
-          ((ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
-                  ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ))) *
-                (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-                  if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-                      sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-                    ({n : Current (V := V) Λ |
-                          Connected (V := V) (Λ := Λ) n x u ∧
-                            Connected (V := V) (Λ := Λ) n x v}).indicator
-                        (fun _n =>
-                          weightReal (V := V) (Λ := Λ) β J p.1 *
-                            weightReal (V := V) (Λ := Λ) β J p.2)
-                        (p.1 + p.2)
-                  else 0)) /
-              ((ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
-                    ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ))) *
-                  (ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
-                    ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ))))
-            =
-            (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-                if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-                    sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-                  ({n : Current (V := V) Λ |
-                        Connected (V := V) (Λ := Λ) n x u ∧
-                          Connected (V := V) (Λ := Λ) n x v}).indicator
-                      (fun _n =>
-                        weightReal (V := V) (Λ := Λ) β J p.1 *
-                          weightReal (V := V) (Λ := Λ) β J p.2)
-                      (p.1 + p.2)
-                else 0) /
-              (ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
-                ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ))) := by
-        -- commute to match `mul_div_mul_left`
-        have hcomm :
-            (ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
-                ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ))) *
-              (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-                if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-                    sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-                  ({n : Current (V := V) Λ |
-                        Connected (V := V) (Λ := Λ) n x u ∧
-                          Connected (V := V) (Λ := Λ) n x v}).indicator
-                      (fun _n =>
-                        weightReal (V := V) (Λ := Λ) β J p.1 *
-                          weightReal (V := V) (Λ := Λ) β J p.2)
-                      (p.1 + p.2)
-                else 0)
-              =
-              (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-                if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-                    sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-                  ({n : Current (V := V) Λ |
-                        Connected (V := V) (Λ := Λ) n x u ∧
-                          Connected (V := V) (Λ := Λ) n x v}).indicator
-                      (fun _n =>
-                        weightReal (V := V) (Λ := Λ) β J p.1 *
-                          weightReal (V := V) (Λ := Λ) β J p.2)
-                      (p.1 + p.2)
-                else 0) *
-                (ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
-                  ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ))) := by
-          simp [mul_comm, mul_left_comm, mul_assoc]
-        -- apply cancellation
-        simpa [hcomm] using
-          (mul_div_mul_left
-            (∑' p : Current (V := V) Λ × Current (V := V) Λ,
-              if sources (V := V) p.1 = ({x, y} : Finset (↥Λ)) ∧
-                  sources (V := V) p.2 = (∅ : Finset (↥Λ)) then
-                ({n : Current (V := V) Λ |
-                      Connected (V := V) (Λ := Λ) n x u ∧
-                        Connected (V := V) (Λ := Λ) n x v}).indicator
-                    (fun _n =>
-                      weightReal (V := V) (Λ := Λ) β J p.1 *
-                        weightReal (V := V) (Λ := Λ) β J p.2)
-                    (p.1 + p.2)
-              else 0)
-            (ZReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) *
-              ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)))
-            (ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
-              ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ))) hDenT)
-      -- combine and cancel
-      simpa [div_eq_mul_inv, mul_assoc] using this.trans hcancel
-    -- now conclude
-    simpa [hmul] 
+          (isingCorr (V := V) (Λ := Λ) β J ({u, v} : Finset (↥Λ)) *
+                isingCorr (V := V) (Λ := Λ) β J ({x, v} : Finset (↥Λ))) /
+            isingCorr (V := V) (Λ := Λ) β J ({u, x} : Finset (↥Λ)) := by
+      simpa [hxufin, mul_comm, mul_left_comm, mul_assoc] using
+        (PPairReal_connected_eq_isingCorr_mul_isingCorr_div (V := V) (Λ := Λ) (β := β) (J := J)
+          (x := u) (y := x) (u := v) hxu.symm huv hxv)
+    have hZ0 : ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ≠ 0 :=
+      ne_of_gt (ZReal_empty_pos (V := V) (Λ := Λ) (β := β) (J := J))
+    have hCorr_xu :
+        isingCorr (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) ≠ 0 := by
+      have hxucorr :
+          isingCorr (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) =
+            ZReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) /
+              ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) :=
+        isingCorr_eq_ZReal_div (V := V) (Λ := Λ) (β := β) (J := J) ({x, u} : Finset (↥Λ))
+      simpa [hxucorr] using div_ne_zero hZxu hZ0
+    have hxucorr' :
+        isingCorr (V := V) (Λ := Λ) β J ({u, x} : Finset (↥Λ)) ≠ 0 := by
+      simpa [hxufin] using hCorr_xu
+    rw [hP, hr]
+    field_simp [hCorr_xu, hxucorr']
+    simp [hxufin, hyufin]
+    ring_nf
+  have hterm2 :
+      r *
+          PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+            {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+        =
+        (isingCorr (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
+              isingCorr (V := V) (Λ := Λ) β J ({u, v} : Finset (↥Λ)) *
+            isingCorr (V := V) (Λ := Λ) β J ({v, y} : Finset (↥Λ))) /
+          isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) := by
+    have hcomm :
+        PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+              {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+          =
+          PPairReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+              {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v} := by
+      simpa using (PPairReal_comm (V := V) (Λ := Λ) (β := β) (J := J)
+        (A := (∅ : Finset (↥Λ))) (B := ({u, y} : Finset (↥Λ)))
+        {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v})
+    have hP :
+        PPairReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+              {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+          =
+          (isingCorr (V := V) (Λ := Λ) β J ({u, v} : Finset (↥Λ)) *
+                isingCorr (V := V) (Λ := Λ) β J ({y, v} : Finset (↥Λ))) /
+            isingCorr (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ)) := by
+      simpa [mul_comm, mul_left_comm, mul_assoc] using
+        (PPairReal_connected_eq_isingCorr_mul_isingCorr_div (V := V) (Λ := Λ) (β := β) (J := J)
+          (x := u) (y := y) (u := v) hyu.symm huv hyv)
+    have hZ0 : ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ≠ 0 :=
+      ne_of_gt (ZReal_empty_pos (V := V) (Λ := Λ) (β := β) (J := J))
+    have hCorr_uy :
+        isingCorr (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ)) ≠ 0 := by
+      have huycorr :
+          isingCorr (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ)) =
+            ZReal (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ)) /
+              ZReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) :=
+        isingCorr_eq_ZReal_div (V := V) (Λ := Λ) (β := β) (J := J) ({u, y} : Finset (↥Λ))
+      simpa [huycorr] using div_ne_zero hZuy hZ0
+    rw [hcomm, hP, hr]
+    field_simp [hCorr_uy]
+    have hyvfin : ({y, v} : Finset (↥Λ)) = ({v, y} : Finset (↥Λ)) := by
+      ext w; simp [or_comm]
+    simp [hyufin, hyvfin]
+    ring_nf
 
-  -- Conclude by rewriting the correlation ratio and applying the algebra lemma `this`.
-  -- (We also swap `{y,u}` to `{u,y}` using `hyu_finset`.)
-  -- `hratioZ` converts the correlation ratio to the `ZReal` ratio needed in `this`.
-  -- The rest is rewriting.
-  -- The main goal is already the expanded `PPairReal` statement after `unfold PPairReal`.
-  -- So we just rewrite the ratio and apply `this`.
-  simpa [hratioZ, hyu_finset] using this
+  -- Put everything together.
+  calc
+    PPairReal (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+        {n : Current (V := V) Λ |
+          Connected (V := V) (Λ := Λ) n x u ∧ Connected (V := V) (Λ := Λ) n x v}
+        =
+        r *
+          PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+            {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v} := heq
+    _ ≤
+        r *
+          (PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+            + PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+                {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}) := hmul
+    _ =
+        r *
+            PPairReal (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) (∅ : Finset (↥Λ))
+              {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v}
+          +
+          r *
+            PPairReal (V := V) (Λ := Λ) β J (∅ : Finset (↥Λ)) ({u, y} : Finset (↥Λ))
+              {n : Current (V := V) Λ | Connected (V := V) (Λ := Λ) n u v} := by
+        ring
+    _ =
+        (isingCorr (V := V) (Λ := Λ) β J ({x, v} : Finset (↥Λ)) *
+              isingCorr (V := V) (Λ := Λ) β J ({u, v} : Finset (↥Λ)) *
+            isingCorr (V := V) (Λ := Λ) β J ({u, y} : Finset (↥Λ))) /
+          isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ))
+          +
+          (isingCorr (V := V) (Λ := Λ) β J ({x, u} : Finset (↥Λ)) *
+              isingCorr (V := V) (Λ := Λ) β J ({u, v} : Finset (↥Λ)) *
+            isingCorr (V := V) (Λ := Λ) β J ({v, y} : Finset (↥Λ))) /
+          isingCorr (V := V) (Λ := Λ) β J ({x, y} : Finset (↥Λ)) := by
+        simp [hterm1, hterm2]
 
 lemma one_sub_pairings_ind_eq
     (n : Current (V := V) Λ) {x y z t : ↥Λ}

@@ -286,6 +286,44 @@ noncomputable def PPairReal
       else 0) /
     (ZReal (V := V) (Λ := Λ) β J A * ZReal (V := V) (Λ := Λ) β J B)
 
+lemma PPairReal_comm
+    (β : ℝ) (J : Edge (V := V) Λ → ℝ) (A B : Finset (↥Λ)) (S : Set (Current (V := V) Λ)) :
+    PPairReal (V := V) (Λ := Λ) β J A B S = PPairReal (V := V) (Λ := Λ) β J B A S := by
+  classical
+  unfold PPairReal
+  let w : Current (V := V) Λ → ℝ := weightReal (V := V) (Λ := Λ) β J
+  let f : (Current (V := V) Λ × Current (V := V) Λ) → ℝ := fun p =>
+    if sources (V := V) p.1 = A ∧ sources (V := V) p.2 = B then
+      S.indicator (fun _n => w p.1 * w p.2) (p.1 + p.2)
+    else 0
+  let g : (Current (V := V) Λ × Current (V := V) Λ) → ℝ := fun p =>
+    if sources (V := V) p.1 = B ∧ sources (V := V) p.2 = A then
+      S.indicator (fun _n => w p.1 * w p.2) (p.1 + p.2)
+    else 0
+  have hnum : (∑' p : Current (V := V) Λ × Current (V := V) Λ, f p) =
+      ∑' p : Current (V := V) Λ × Current (V := V) Λ, g p := by
+    let e :
+        (Current (V := V) Λ × Current (V := V) Λ) ≃
+          (Current (V := V) Λ × Current (V := V) Λ) :=
+      Equiv.prodComm (Current (V := V) Λ) (Current (V := V) Λ)
+    calc
+      (∑' p : Current (V := V) Λ × Current (V := V) Λ, f p) =
+          ∑' p : Current (V := V) Λ × Current (V := V) Λ, f (e p) := by
+            simpa [e] using (e.tsum_eq (f := f)).symm
+      _ = ∑' p : Current (V := V) Λ × Current (V := V) Λ, g p := by
+          refine tsum_congr ?_
+          intro p
+          by_cases hcond : sources (V := V) p.1 = B ∧ sources (V := V) p.2 = A
+          · -- swap the pair `(p.1,p.2)` and commute products
+            simp [f, g, e, hcond, w, add_comm, mul_comm]
+          · have hcond' : ¬ (sources (V := V) p.2 = A ∧ sources (V := V) p.1 = B) := by
+              intro hcond'
+              exact hcond ⟨hcond'.2, hcond'.1⟩
+            simp [f, g, e, hcond, hcond', w]
+  -- identical denominators after commuting `*`
+  rw [hnum]
+  simp [g, w, mul_comm]
+
 /-! ### Basic normalization of `PPairReal` -/
 
 @[simp]
