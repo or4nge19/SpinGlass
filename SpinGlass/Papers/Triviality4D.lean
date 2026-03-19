@@ -297,10 +297,10 @@ theorem Gaussianity_phi4_4D
     (hPhiEven : ∀ L : ℕ, PhiEven (d := 4) (μ := μL L)) :
     HasFiniteDimensionalScalingLimit (d := 4) (Ω := Ω) μL P Tlim →
     IsGeneralizedGaussianProcess (P := P) (T := Tlim) := by
-  -- TODO: combine (i) Proposition 1.3 (characteristic-function bound),
-  -- (ii) tightness/projective limit machinery, and
-  -- (iii) `IsGaussian` characterization via `charFunDual`.
-  sorry
+  intro hScaling
+  refine ⟨hScaling.measurable_Tlim, ?_⟩
+  intro n f
+  apply?
 
 end Phi4Gaussianity
 
