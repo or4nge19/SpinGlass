@@ -411,7 +411,8 @@ theorem approx_integral_by_parts_complex
       exact hDom.mono' hmeas.aestronglyMeasurable hAE
     have hE_xiF0 : 𝔼[(fun ω => ξ ω * F0)] = 0 := by
       have hfac : 𝔼[(fun ω => ξ ω * F0)] = (𝔼[ξ]) * F0 := by
-        simp [integral_mul_const]
+        simpa using
+          (MeasureTheory.integral_mul_const (μ := (ℙ : Measure Ω)) (r := F0) (f := ξ))
       simp [hfac, hEξ_norm]
     set A : ℝ := 𝔼[(fun ω => ‖ξ ω‖ ^ (2 : ℕ))]
     have hE_xi_dF0 : 𝔼[(fun ω => ξ ω * dF0 (ξ ω))] = (A : ℂ) * dzb0 := by
@@ -443,13 +444,17 @@ theorem approx_integral_by_parts_complex
       have hterm1 :
           𝔼[(fun ω => (ξ ω) ^ (2 : ℕ) * dz0)] = 0 := by
         have : 𝔼[(fun ω => (ξ ω) ^ (2 : ℕ) * dz0)] = (𝔼[(fun ω => (ξ ω) ^ (2 : ℕ))]) * dz0 := by
-          simp [integral_mul_const]
+          simpa using
+            (MeasureTheory.integral_mul_const (μ := (ℙ : Measure Ω)) (r := dz0)
+              (f := fun ω => (ξ ω) ^ (2 : ℕ)))
         simp [this, hEξ_sq]
       have hterm2 :
           𝔼[(fun ω => ((‖ξ ω‖ : ℂ) ^ (2 : ℕ) * dzb0))] = (A : ℂ) * dzb0 := by
         have : 𝔼[(fun ω => ((‖ξ ω‖ : ℂ) ^ (2 : ℕ) * dzb0))]
               = (∫ ω, ((‖ξ ω‖ : ℂ) ^ (2 : ℕ)) ∂(ℙ : Measure Ω)) * dzb0 := by
-          simp [integral_mul_const]
+          simpa using
+            (MeasureTheory.integral_mul_const (μ := (ℙ : Measure Ω)) (r := dzb0)
+              (f := fun ω => ((‖ξ ω‖ : ℂ) ^ (2 : ℕ))))
         have h_ofReal :
             (∫ ω, ((‖ξ ω‖ : ℂ) ^ (2 : ℕ)) ∂(ℙ : Measure Ω))
               = (A : ℂ) := by
@@ -514,7 +519,6 @@ theorem approx_integral_by_parts_complex
         𝔼[(fun ω => ξ ω * R (ξ ω))]
             - (A : ℂ) * 𝔼[(fun ω => D (ξ ω))] := by
       simp [hE_xiF, hE_deriv, hE_xiF0, hE_xi_dF0, sub_eq_add_neg, mul_add]
-      ring
     simpa [A] using hfinal
   have hTerm1 :
       ‖𝔼[(fun ω => ξ ω * R (ξ ω))]‖ ≤ (M : ℝ) * 𝔼[(fun ω => ‖ξ ω‖ ^ (3 : ℕ))] := by

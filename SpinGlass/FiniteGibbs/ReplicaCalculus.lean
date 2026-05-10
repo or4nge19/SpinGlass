@@ -36,13 +36,6 @@ variable {α : Type*} [Fintype α] [Nonempty α]
 
 /-! ## Elementary bounds for Gibbs weights -/
 
-lemma prod_gibbs_pmf_nonneg (n : ℕ) (H : EnergySpace α) (σs : ReplicaSpace (α := α) n) :
-    0 ≤ ∏ l : Fin n, gibbs_pmf (α := α) H (σs l) := by
-  classical
-  refine Finset.prod_nonneg ?_
-  intro l _hl
-  exact gibbs_pmf_nonneg (α := α) (H := H) (σ := σs l)
-
 lemma prod_gibbs_pmf_le_one (n : ℕ) (H : EnergySpace α) (σs : ReplicaSpace (α := α) n) :
     (∏ l : Fin n, gibbs_pmf (α := α) H (σs l)) ≤ (1 : ℝ) := by
   classical
@@ -214,7 +207,7 @@ lemma abs_sum_mul_prod_gibbs_pmf_mul_n_mul_sub_card_le [DecidableEq α] (n : ℕ
             intro σs _hσs
             exact hterm σs
     _ = (2 * (n : ℝ)) * (∑ σs : ReplicaSpace (α := α) n, |f σs|) := by
-            simpa [Finset.mul_sum, mul_comm, mul_left_comm, mul_assoc]
+            simp [Finset.mul_sum, mul_comm]
 
 /-! ## Bounds for the derivative of `gibbs_pmf` -/
 

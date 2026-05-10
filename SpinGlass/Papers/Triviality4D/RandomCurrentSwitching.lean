@@ -549,9 +549,11 @@ noncomputable def assignSourcesEquivSigma (n : Current (V := V) Λ) (A : Finset 
       | mk S hS =>
         cases hS
         simp [toFun, invFun]
-        funext e
-        apply Fin.ext
-        rfl
+        constructor
+        · funext e
+          apply Fin.ext
+          rfl
+        · rfl
 
 lemma card_assignSources (n : Current (V := V) Λ) (A : Finset (↥Λ)) :
     Fintype.card (AssignSources (V := V) (Λ := Λ) n A) =

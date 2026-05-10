@@ -1,4 +1,4 @@
-import GibbsMeasure.Examples.IsingNN
+import SpinGlass.GibbsMeasure.Examples.IsingNN
 import SpinGlass.Lattice.Zd
 
 /-!

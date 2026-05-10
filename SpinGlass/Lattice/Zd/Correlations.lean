@@ -1,5 +1,5 @@
 import SpinGlass.Lattice.Zd
-import GibbsMeasure.Observables.Correlations
+import SpinGlass.GibbsMeasure.Observables.Correlations
 
 /-!
 # Correlation functions on `ℤ^d` configuration spaces

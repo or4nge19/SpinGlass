@@ -34,9 +34,9 @@ def traceGraph (n : Current (V := V) Λ) : SimpleGraph (↥Λ) where
     intro x y h
     exact (Adj_comm (V := V) (Λ := Λ) n (x := x) (y := y)).1 h
   loopless := by
-    intro x h
-    rcases h with ⟨hxx, _⟩
-    exact hxx rfl
+    exact ⟨fun x h => by
+      rcases h with ⟨hxx, _⟩
+      exact hxx rfl⟩
 
 omit [DecidableEq V] in
 @[simp] lemma traceGraph_adj (n : Current (V := V) Λ) (x y : ↥Λ) :

@@ -129,9 +129,9 @@ def posCouplingGraph (β : ℝ) (J : Edge (V := V) Λ → ℝ) : SimpleGraph (�
       simp [edge]
     simpa [he] using hpos
   loopless := by
-    intro x h
-    rcases h with ⟨hxx, _⟩
-    exact hxx rfl
+    exact ⟨fun x h => by
+      rcases h with ⟨hxx, _⟩
+      exact hxx rfl⟩
 
 /--
 The current obtained by summing unit-currents along the edges of a walk in the positive-coupling

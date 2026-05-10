@@ -6,6 +6,7 @@ Authors: Rémy Degenne
 
 import Mathlib.Analysis.InnerProductSpace.Dual
 import Mathlib.Analysis.Normed.Group.Completion
+import Mathlib.Analysis.Normed.Module.DoubleDual
 import Mathlib.Analysis.Normed.Module.Dual
 import Mathlib.Analysis.Normed.Operator.Extend
 import Mathlib.Topology.Algebra.Module.ClosedSubmodule
@@ -37,11 +38,20 @@ instance instContinuousConstSMul_submodule {M R : Type*} [Semiring R] [AddCommMo
   simpa using
     ((continuous_const_smul c).comp continuous_subtype_val).subtype_mk fun x : s => s.smul_mem c x.2
 
+instance instIsUniformAddGroup_submodule {M R : Type*} [Ring R] [AddCommGroup M] [Module R M]
+    [UniformSpace M] [IsUniformAddGroup M] (s : Submodule R M) : IsUniformAddGroup s where
+  uniformContinuous_sub := by
+    have hfst : UniformContinuous fun p : s × s => (p.1 : M) :=
+      uniformContinuous_subtype_val.comp uniformContinuous_fst
+    have hsnd : UniformContinuous fun p : s × s => (p.2 : M) :=
+      uniformContinuous_subtype_val.comp uniformContinuous_snd
+    exact (hfst.sub hsnd).subtype_mk fun p => s.sub_mem p.1.2 p.2.2
+
 lemma InnerProductSpace.norm_le_dual_bound {E : Type*} [NormedAddCommGroup E]
     [InnerProductSpace ℝ E] [CompleteSpace E]
     (x : E) {M : ℝ} (hMp : 0 ≤ M) (hM : ∀ y : E, ⟪x, y⟫_ℝ ≤ M * ‖y‖) :
     ‖x‖ ≤ M := by
-  refine NormedSpace.norm_le_dual_bound ℝ _ hMp fun f ↦ ?_
+  refine NormedSpace.norm_le_dual_bound ℝ x hMp fun f ↦ ?_
   let y := (InnerProductSpace.toDual ℝ E).symm f
   obtain hy : f x = ⟪x, y⟫_ℝ := by
     unfold y

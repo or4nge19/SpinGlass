@@ -700,7 +700,7 @@ lemma tendsto_hopfieldPsi_cocompact_atBot
             simpa [hpow, mul_assoc, add_assoc, add_left_comm, add_comm] using
               add_le_add_left hz (-((N : ℝ) * β / 2) * (‖z‖ ^ (2 : ℕ)))
       _ = (-((N : ℝ) * β / 4)) * (‖z‖ ^ (2 : ℕ)) := by ring
-  exact (Filter.tendsto_atBot_mono' (l := Filter.cocompact (Fin M → ℝ)) hdom) hnegquad
+  exact Filter.tendsto_atBot_mono' (Filter.cocompact (Fin M → ℝ)) hdom hnegquad
 
 theorem exists_maximizer_hopfieldPsi
     (β h : ℝ) (Ξ : Patterns N M) (hβ : 0 < β) (hN : N ≠ 0) :

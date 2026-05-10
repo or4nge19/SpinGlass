@@ -2,7 +2,7 @@ import SpinGlass.Lattice.Zd
 import Mathlib.Topology.ContinuousMap.CompactlySupported
 import Mathlib.Probability.Notation
 import Mathlib.Topology.Algebra.InfiniteSum.Basic
-import GibbsMeasure.Observables.Correlations
+import SpinGlass.GibbsMeasure.Observables.Correlations
 
 /-!
 # Scaling observables on `ℤ^d`

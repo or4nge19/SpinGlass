@@ -47,14 +47,15 @@ noncomputable instance : FiniteDimensional ℝ (EnergySpace α) := by
 
 /-- Dirac basis vector `e_σ` in `EnergySpace α`. -/
 noncomputable def std_basis (σ : α) : EnergySpace α := by
-    classical
-    exact WithLp.toLp 2 (fun τ => if σ = τ then 1 else 0)
+  classical
+  exact PiLp.single 2 σ (1 : ℝ)
 
 omit [Nonempty α] in
 lemma inner_std_basis_apply (σ : α) (H : EnergySpace α) :
     inner ℝ (std_basis (α := α) σ) H = H σ := by
   classical
-  simp [std_basis, PiLp.inner_apply]
+  simpa [std_basis] using
+    (EuclideanSpace.inner_single_left (𝕜 := ℝ) (ι := α) σ (1 : ℝ) H)
 
 /-- Partition function `Z(H) = ∑_σ exp(-H σ)`. -/
 noncomputable def Z (H : EnergySpace α) : ℝ :=
@@ -501,7 +502,10 @@ theorem trace_formula (n : ℕ) (H : EnergySpace α) (Cov : α → α → ℝ) :
     by_cases hστ : σ = τ
     · subst hστ
       simp [g, std_basis]
-    · simp [g, std_basis, hστ]
+    · have hτσ : τ ≠ σ := by
+        intro h
+        exact hστ h.symm
+      simp [g, std_basis, hστ, hτσ]
   have hHess :
       ∀ σ τ,
         hessian_free_energy (α := α) n H (std_basis (α := α) σ) (std_basis (α := α) τ)

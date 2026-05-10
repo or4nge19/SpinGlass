@@ -144,7 +144,8 @@ lemma symmDiff_pairXT_pairYZ_eq_fourSources
   have hunion :
       ({x, t} : Finset (↥Λ)) ∪ ({y, z} : Finset (↥Λ)) = ({x, y, z, t} : Finset (↥Λ)) := by
     ext u
-    simp [or_left_comm]
+    simp only [Finset.mem_union, Finset.mem_insert, Finset.mem_singleton]
+    tauto
   calc
     symmDiff ({x, t} : Finset (↥Λ)) ({y, z} : Finset (↥Λ))
         = ({x, t} : Finset (↥Λ)) ∪ ({y, z} : Finset (↥Λ)) := by

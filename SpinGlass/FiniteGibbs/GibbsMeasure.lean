@@ -1,6 +1,7 @@
 import SpinGlass.FiniteGibbs
 import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
 import Mathlib.MeasureTheory.Integral.Lebesgue.Countable
+import Mathlib.Probability.ProbabilityMassFunction.Integrals
 
 /-!
 # Finite Gibbs measure as an atomic probability measure
@@ -45,17 +46,36 @@ noncomputable def gibbsWeightNNReal (H : EnergySpace α) (σ : α) : ℝ≥0 :=
     simp [gibbsWeightNNReal]
   simp [ENNReal.ofReal_eq_coe_nnreal hσ, hnn]
 
+/-- The Gibbs distribution as a `PMF`, the native Mathlib object for finite probability laws. -/
+noncomputable def gibbsPMF (H : EnergySpace α) : PMF α :=
+  PMF.ofFintype (fun σ => ENNReal.ofReal (gibbs_pmf (α := α) H σ)) <| by
+    rw [← ENNReal.ofReal_sum_of_nonneg]
+    · simp [sum_gibbs_pmf (α := α) (H := H)]
+    · intro σ _hσ
+      exact gibbs_pmf_nonneg (α := α) (H := H) σ
+
+@[simp] lemma gibbsPMF_apply (H : EnergySpace α) (σ : α) :
+    gibbsPMF (α := α) H σ = ENNReal.ofReal (gibbs_pmf (α := α) H σ) :=
+  rfl
+
 variable [MeasurableSpace α]
 
 /-- The finite-volume Gibbs measure (atomic, with weights `gibbs_pmf`). -/
 noncomputable def gibbsMeasure (H : EnergySpace α) : Measure α :=
-  (Finset.univ : Finset α).sum fun σ =>
-    ((gibbsWeightNNReal (α := α) H σ : ℝ≥0∞) • Measure.dirac σ)
+  (gibbsPMF (α := α) H).toMeasure
 
 lemma lintegral_gibbsMeasure (H : EnergySpace α) (f : α → ℝ≥0∞) [MeasurableSingletonClass α] :
     (∫⁻ σ, f σ ∂gibbsMeasure (α := α) H) =
       ∑ σ : α, (gibbsWeightNNReal (α := α) H σ : ℝ≥0∞) * f σ := by
-  simp [gibbsMeasure, gibbsWeightNNReal, lintegral_finset_sum_measure, mul_comm]
+  rw [lintegral_fintype]
+  refine Finset.sum_congr rfl ?_
+  intro σ _hσ
+  have hsingleton :
+      gibbsMeasure (α := α) H ({σ} : Set α) =
+        (gibbsWeightNNReal (α := α) H σ : ℝ≥0∞) := by
+    simpa [gibbsMeasure, gibbsWeightNNReal_coe_ennreal] using
+      (PMF.toMeasure_apply_singleton (gibbsPMF (α := α) H) σ (measurableSet_singleton σ))
+  rw [hsingleton, mul_comm]
 
 /-- `lintegral` of a nonnegative real-valued function under the Gibbs measure. -/
 lemma lintegral_gibbsMeasure_ofReal
@@ -92,37 +112,22 @@ lemma integral_gibbsMeasure
     (H : EnergySpace α) (f : α → ℝ) [MeasurableSingletonClass α] :
     (∫ σ, f σ ∂gibbsMeasure (α := α) H)  =
       ∑ σ : α, (gibbs_pmf (α := α) H σ) * f σ := by
-  let μatom : α → Measure α :=
-    fun σ =>
-      ((gibbsWeightNNReal (α := α) H σ : ℝ≥0∞) • Measure.dirac σ)
-  have h_integrable :
-      ∀ σ ∈ (Finset.univ : Finset α), Integrable f (μatom σ) := by
-    intro σ _hσ
-    have hdirac : Integrable f (Measure.dirac σ) :=
-      MeasureTheory.integrable_dirac (a := σ) (f := f) (by simp)
-    exact hdirac.smul_measure (by simp)
-  have hsum :
-      (∫ x, f x ∂((Finset.univ : Finset α).sum μatom)) =
-        (Finset.univ : Finset α).sum fun σ => ∫ x, f x ∂(μatom σ) := by
-    simpa using
-      (MeasureTheory.integral_finset_sum_measure
-        (f := f) (μ := μatom) (s := (Finset.univ : Finset α)) h_integrable)
-  simpa [gibbsMeasure, μatom, gibbsWeightNNReal, gibbs_pmf, mul_comm, mul_left_comm, mul_assoc] using hsum
+  calc
+    (∫ σ, f σ ∂gibbsMeasure (α := α) H)
+        = ∑ σ : α, (gibbsPMF (α := α) H σ).toReal • f σ := by
+            simpa [gibbsMeasure] using (PMF.integral_eq_sum (gibbsPMF (α := α) H) f)
+    _ = ∑ σ : α, (gibbs_pmf (α := α) H σ) * f σ := by
+          refine Finset.sum_congr rfl ?_
+          intro σ _hσ
+          simp [ENNReal.toReal_ofReal (gibbs_pmf_nonneg (α := α) (H := H) σ), smul_eq_mul]
 
 lemma gibbsMeasure_univ (H : EnergySpace α) : gibbsMeasure (α := α) H Set.univ = 1 := by
-  have h_univ :
-      gibbsMeasure (α := α) H Set.univ = ∑ σ : α, (gibbsWeightNNReal (α := α) H σ : ℝ≥0∞) := by
-    simp [gibbsMeasure, gibbsWeightNNReal]
-  have hsumNNReal : (∑ σ : α, gibbsWeightNNReal (α := α) H σ) = (1 : ℝ≥0) := by
-    apply NNReal.coe_injective
-    simpa [gibbsWeightNNReal] using (sum_gibbs_pmf (α := α) (H := H))
-  have hsumENNReal :
-      (∑ σ : α, (gibbsWeightNNReal (α := α) H σ : ℝ≥0∞)) = (1 : ℝ≥0∞) := by
-    simpa using congrArg (fun x : ℝ≥0 => (x : ℝ≥0∞)) hsumNNReal
-  simpa [h_univ] using hsumENNReal
+  simp [gibbsMeasure]
 
 instance (H : EnergySpace α) : IsProbabilityMeasure (gibbsMeasure (α := α) H) :=
-  ⟨gibbsMeasure_univ (α := α) (H := H)⟩
+  by
+    dsimp [gibbsMeasure]
+    infer_instance
 
 end
 

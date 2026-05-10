@@ -190,7 +190,7 @@ lemma centeredToLp_two_inner [IsFiniteMeasure μ] (h : MemLp id 2 μ) (L₁ L₂
         ∫ x : E,
           ((StrongDual.centeredToLp (E := E) μ L₂ : Lp ℝ 2 μ) : E → ℝ) x *
             ((StrongDual.centeredToLp (E := E) μ L₁ : Lp ℝ 2 μ) : E → ℝ) x ∂μ := by
-    simp [L2.inner_def, RCLike.inner_apply, conj_trivial]
+    simp [inner, mul_comm]
   have hmul :
       (fun x : E =>
           ((StrongDual.centeredToLp (E := E) μ L₂ : Lp ℝ 2 μ) : E → ℝ) x *
@@ -246,6 +246,8 @@ noncomputable
 def cameronMartin (μ : Measure E) [HasTwoMoments μ] : Submodule ℝ (Lp ℝ 2 μ) :=
   (LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap).topologicalClosure
 
+attribute [reducible] cameronMartin
+
 variable [HasTwoMoments μ]
 
 noncomputable
@@ -256,15 +258,28 @@ instance :
 noncomputable
 instance instCoeFun : CoeFun (cameronMartin μ) (fun _ ↦ E → ℝ) := ⟨fun f ↦ (f : E → ℝ)⟩
 
-noncomputable instance : NormedAddCommGroup (cameronMartin μ) := by
+noncomputable instance instAddCommGroupCameronMartin : AddCommGroup (cameronMartin μ) := by
   unfold cameronMartin
   infer_instance
 
-noncomputable instance : InnerProductSpace ℝ (cameronMartin μ) := by
+noncomputable instance instNormedAddCommGroupCameronMartin :
+    NormedAddCommGroup (cameronMartin μ) := by
   unfold cameronMartin
   infer_instance
 
-noncomputable instance : CompleteSpace (cameronMartin μ) := by
+noncomputable instance instInnerProductSpaceCameronMartin :
+    InnerProductSpace ℝ (cameronMartin μ) := by
+  unfold cameronMartin
+  infer_instance
+
+noncomputable instance instNormedSpaceCameronMartin : NormedSpace ℝ (cameronMartin μ) :=
+  InnerProductSpace.toNormedSpace
+
+noncomputable instance instModuleCameronMartin : Module ℝ (cameronMartin μ) :=
+  @NormedSpace.toModule ℝ (cameronMartin μ) _ _
+    (instNormedSpaceCameronMartin (E := E) (μ := μ))
+
+noncomputable instance instCompleteSpaceCameronMartin : CompleteSpace (cameronMartin μ) := by
   unfold cameronMartin
   infer_instance
 
@@ -288,15 +303,24 @@ lemma cmOfDual_apply (L : StrongDual ℝ E) :
 
 lemma cmOfDual_inner (L₁ L₂ : StrongDual ℝ E) :
     ⟪cmOfDual μ L₁, cmOfDual μ L₂⟫_ℝ = covarianceBilinDual μ L₁ L₂ := by
-  simpa [cmOfDual_apply, Submodule.coe_inner] using
-    (StrongDual.centeredToLp_two_inner (μ := μ) (h := memLp_two_id) L₁ L₂)
+  change
+    ⟪StrongDual.centeredToLp (E := E) μ L₁,
+      StrongDual.centeredToLp (E := E) μ L₂⟫_ℝ = covarianceBilinDual μ L₁ L₂
+  exact StrongDual.centeredToLp_two_inner (μ := μ) (h := memLp_two_id) L₁ L₂
 
 lemma norm_cmOfDual (L : StrongDual ℝ E) : ‖cmOfDual μ L‖ = √Var[L; μ] := by
-  rw [norm_eq_sqrt_real_inner, cmOfDual_inner, covarianceBilinDual_self_eq_variance memLp_two_id]
+  calc
+    ‖cmOfDual μ L‖ = √(⟪cmOfDual μ L, cmOfDual μ L⟫_ℝ) :=
+      norm_eq_sqrt_real_inner (cmOfDual μ L)
+    _ = √Var[L; μ] := by
+      rw [cmOfDual_inner, covarianceBilinDual_self_eq_variance memLp_two_id]
 
 lemma sq_norm_cmOfDual (L : StrongDual ℝ E) : ‖cmOfDual μ L‖ ^ 2 = Var[L; μ] := by
-  rw [← real_inner_self_eq_norm_sq, cmOfDual_inner,
-    covarianceBilinDual_self_eq_variance memLp_two_id]
+  calc
+    ‖cmOfDual μ L‖ ^ 2 = ⟪cmOfDual μ L, cmOfDual μ L⟫_ℝ :=
+      (real_inner_self_eq_norm_sq (cmOfDual μ L)).symm
+    _ = Var[L; μ] := by
+      rw [cmOfDual_inner, covarianceBilinDual_self_eq_variance memLp_two_id]
 
 omit [CompleteSpace E] in
 /-- `cmOfDual` has dense range in the Cameron–Martin space. -/
@@ -352,9 +376,12 @@ lemma norm_eval_le_norm_centeredToLp_mul (hy : ∃ M, ∀ L : StrongDual ℝ E, 
 lemma norm_evalL2_le (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M)
     (x : LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap) :
     ‖evalL2 μ y x‖ ≤ ‖x‖ * ⨆ (L : StrongDual ℝ E) (_ : Var[L; μ] ≤ 1), L y := by
-  simp only [AddSubgroupClass.coe_norm]
-  conv_rhs => rw [← (LinearMap.mem_range.mp x.2).choose_spec]
-  exact norm_eval_le_norm_centeredToLp_mul hy (LinearMap.mem_range.mp x.2).choose
+  have hchoose :
+      StrongDual.centeredToLp (E := E) μ (LinearMap.mem_range.mp x.2).choose = (x : Lp ℝ 2 μ) := by
+    simpa using (LinearMap.mem_range.mp x.2).choose_spec
+  simpa [evalL2, hchoose] using
+    norm_eval_le_norm_centeredToLp_mul (μ := μ) (y := y) hy
+      (LinearMap.mem_range.mp x.2).choose
 
 lemma eval_eq_of_centeredToLp_eq (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M)
     (L L' : StrongDual ℝ E)
@@ -386,22 +413,12 @@ lemma evalL2_centeredToLp_eq (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] �
         ⟨StrongDual.centeredToLp (E := E) μ L, LinearMap.mem_range.mpr ⟨L, rfl⟩⟩ = L y :=
   evalL2_eq hy _ (by simp)
 
-end CameronMartinAux
-
-open CameronMartinAux
-
-/-- Evaluation functional on the Cameron–Martin space.
-
-Given `y : E` with bounded Cameron–Martin norm (i.e. `∃ M, ∀ L, Var[L; μ] ≤ 1 → L y ≤ M`),
-`cmEval μ y hy` is the continuous linear functional on `cameronMartin μ` obtained by extending
-evaluation from the dense range of `StrongDual.centeredToLp μ`.
-
-It satisfies `cmEval μ y hy (cmOfDual μ L) = L y`. -/
+/-- Evaluation as a continuous linear functional on the dense range of
+`StrongDual.centeredToLp μ`. -/
 noncomputable
-def cmEval (μ : Measure E) [HasTwoMoments μ] (y : E)
+def evalCLM (μ : Measure E) [HasTwoMoments μ] (y : E)
     (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M) :
-    StrongDual ℝ (cameronMartin μ) :=
-  closureExtensionCLM (LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap) <|
+    LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap →L[ℝ] ℝ :=
   LinearMap.mkContinuous
     { toFun x := evalL2 μ y x
       map_add' x₁ x₂ := by
@@ -431,17 +448,46 @@ def cmEval (μ : Measure E) [HasTwoMoments μ] (y : E)
             _ = r • (x : Lp ℝ 2 μ) := by simp [hL']
             _ = (r • x : LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap) := rfl }
     (⨆ (L' : StrongDual ℝ E) (_ : Var[L'; μ] ≤ 1), L' y) fun x ↦ by
-    simp only [LinearMap.coe_mk, AddHom.coe_mk, AddSubgroupClass.coe_norm]
+    simp only [LinearMap.coe_mk, AddHom.coe_mk]
     rw [mul_comm]
     exact norm_evalL2_le hy x
+
+lemma evalCLM_centeredToLp_eq
+    (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M)
+    (L : StrongDual ℝ E) :
+    evalCLM μ y hy
+        ⟨StrongDual.centeredToLp (E := E) μ L, LinearMap.mem_range.mpr ⟨L, rfl⟩⟩ = L y := by
+  simpa [evalCLM] using evalL2_centeredToLp_eq (μ := μ) (y := y) hy L
+
+end CameronMartinAux
+
+open CameronMartinAux
+
+/-- Evaluation functional on the Cameron–Martin space.
+
+Given `y : E` with bounded Cameron–Martin norm (i.e. `∃ M, ∀ L, Var[L; μ] ≤ 1 → L y ≤ M`),
+`cmEval μ y hy` is the continuous linear functional on `cameronMartin μ` obtained by extending
+evaluation from the dense range of `StrongDual.centeredToLp μ`.
+
+It satisfies `cmEval μ y hy (cmOfDual μ L) = L y`. -/
+noncomputable
+def cmEval (μ : Measure E) [HasTwoMoments μ] (y : E)
+    (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M) :
+    StrongDual ℝ (cameronMartin μ) :=
+  closureExtensionCLM (LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap)
+    (evalCLM μ y hy)
 
 lemma cmEval_cmOfDual (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M)
     (L : StrongDual ℝ E) :
     cmEval μ y hy (cmOfDual μ L) = L y := by
   rw [cmOfDual_apply, cmEval]
-  unfold cameronMartin
-  simp only [closureExtensionCLM_coe, LinearMap.mkContinuous_apply, LinearMap.coe_mk, AddHom.coe_mk]
-  rw [evalL2_centeredToLp_eq hy]
+  let s : Submodule ℝ (Lp ℝ 2 μ) :=
+    LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap
+  change closureExtensionCLM s (evalCLM μ y hy)
+      (⟨StrongDual.centeredToLp (E := E) μ L, LinearMap.mem_range.mpr ⟨L, rfl⟩⟩ : s) =
+    L y
+  rw [closureExtensionCLM_coe]
+  exact evalCLM_centeredToLp_eq (μ := μ) (y := y) hy L
 
 /-- Map `E → cameronMartin μ` defined for points with bounded Cameron–Martin norm.
 
@@ -450,20 +496,37 @@ evaluation functional at `y`. Otherwise it is defined to be `0`. -/
 noncomputable
 def cmOfBounded (μ : Measure E) [HasTwoMoments μ] (y : E)
     [Decidable (∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M)] :
-    cameronMartin μ :=
-  if hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M
-    then (InnerProductSpace.toDual ℝ (cameronMartin μ)).symm (cmEval μ y hy)
-    else 0
+    cameronMartin μ := by
+  by_cases hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M
+  · haveI : Module ℝ (cameronMartin μ) := by unfold cameronMartin; infer_instance
+    haveI : InnerProductSpace ℝ (cameronMartin μ) := by unfold cameronMartin; infer_instance
+    haveI : CompleteSpace (cameronMartin μ) := by unfold cameronMartin; infer_instance
+    exact (InnerProductSpace.toDual ℝ (cameronMartin μ)).symm (cmEval μ y hy)
+  · exact 0
 
 variable [Decidable (∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M)]
 
 lemma cmOfBounded_def (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M) :
-    cmOfBounded μ y = (InnerProductSpace.toDual ℝ (cameronMartin μ)).symm (cmEval μ y hy) := by
-  simp [cmOfBounded, hy]
+    cmOfBounded μ y =
+      (by
+        haveI : Module ℝ (cameronMartin μ) := by unfold cameronMartin; infer_instance
+        haveI : InnerProductSpace ℝ (cameronMartin μ) := by unfold cameronMartin; infer_instance
+        haveI : CompleteSpace (cameronMartin μ) := by unfold cameronMartin; infer_instance
+        exact (InnerProductSpace.toDual ℝ (cameronMartin μ)).symm (cmEval μ y hy)) := by
+  rw [cmOfBounded]
+  simp [hy]
 
 lemma cmEval_apply (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M) (x : cameronMartin μ) :
     cmEval μ y hy x = ⟪x, cmOfBounded μ y⟫_ℝ := by
-  rw [cmOfBounded_def hy, real_inner_comm, InnerProductSpace.toDual_symm_apply]
+  letI : NormedSpace ℝ (cameronMartin μ) :=
+    instNormedSpaceCameronMartin (E := E) (μ := μ)
+  letI : Module ℝ (cameronMartin μ) :=
+    @NormedSpace.toModule ℝ (cameronMartin μ) _ _
+      (instNormedSpaceCameronMartin (E := E) (μ := μ))
+  letI : InnerProductSpace ℝ (cameronMartin μ) :=
+    instInnerProductSpaceCameronMartin (E := E) (μ := μ)
+  rw [cmOfBounded_def hy, real_inner_comm]
+  rw [InnerProductSpace.toDual_symm_apply]
 
 end cmOfBounded
 
@@ -520,7 +583,7 @@ lemma apply_toInit_eq_inner (x : LinearMap.range (StrongDual.centeredToLp (E := 
     (L : StrongDual ℝ E) :
     L (toInit μ x) = ⟪StrongDual.centeredToLp (E := E) μ L, x⟫_ℝ := by
   rw [← (LinearMap.mem_range.mp x.2).choose_spec, L2.inner_def, apply_toInit]
-  simp only [RCLike.inner_apply, conj_trivial]
+  simp [inner, mul_comm]
   refine integral_congr_ae ?_
   filter_upwards [StrongDual.centeredToLp_apply memLp_two_id L,
     StrongDual.centeredToLp_apply memLp_two_id (LinearMap.mem_range.mp x.2).choose]
@@ -558,7 +621,7 @@ def cmCoe {μ : Measure E} [HasTwoMoments μ] : cameronMartin μ →L[ℝ] E :=
       map_smul' r x := by
         refine (eq_iff_forall_dual_eq (𝕜 := ℝ)).mpr fun L ↦ ?_
         simp_rw [map_smul, apply_toInit_eq_inner, Submodule.coe_smul, inner_smul_right]
-        simp }
+        simp [smul_eq_mul] }
     ‖StrongDual.centeredToLp (E := E) μ‖ norm_toInit_le
 
 lemma apply_cmCoe_eq_inner (x : cameronMartin μ) (L : StrongDual ℝ E) :
@@ -585,19 +648,22 @@ lemma apply_cmCoe_eq_inner (x : cameronMartin μ) (L : StrongDual ℝ E) :
               map_smul' r x := by
                 refine (eq_iff_forall_dual_eq (𝕜 := ℝ)).mpr fun L ↦ ?_
                 simp_rw [map_smul, apply_toInit_eq_inner, Submodule.coe_smul, inner_smul_right]
-                simp }
+                simp [smul_eq_mul] }
             ‖StrongDual.centeredToLp (E := E) μ‖ norm_toInit_le) a)
     have hleft : L (cmCoe (μ := μ) (coeClosureCLM s a)) = L (toInit μ a) := by simp [hcm]
     have hright :
         ⟪(cmOfDual μ L : s.topologicalClosure), coeClosureCLM s a⟫_ℝ
           = ⟪StrongDual.centeredToLp (E := E) μ L, a⟫_ℝ := by
-      simp [Submodule.coe_inner]
       have hcoe :
           ((cmOfDual μ L : cameronMartin μ) : Lp ℝ 2 μ) = StrongDual.centeredToLp (E := E) μ L := by
-        simp [cmOfDual, cameronMartin, coeClosureCLM, coeClosure]
+        rfl
       have ha : ((coeClosureCLM s a : s.topologicalClosure) : Lp ℝ 2 μ) = (a : Lp ℝ 2 μ) := by
         rfl
-      simp [hcoe, ha]
+      change
+        ⟪((cmOfDual μ L : cameronMartin μ) : Lp ℝ 2 μ),
+          ((coeClosureCLM s a : s.topologicalClosure) : Lp ℝ 2 μ)⟫_ℝ =
+          ⟪StrongDual.centeredToLp (E := E) μ L, a⟫_ℝ
+      rw [hcoe, ha]
     simpa [hleft, hright] using (apply_toInit_eq_inner (μ := μ) (x := a) L)
   simpa [cameronMartin, s] using congrArg (fun f => f x) hfun
 
@@ -629,12 +695,20 @@ lemma eq_zero_of_cmCoe_eq_zero {x : cameronMartin μ}
       have := apply_cmCoe_eq_inner (μ := μ) (x := x) L
       simpa [hL0] using this.symm
     simpa [hLv] using hinner
-  exact Dense.eq_zero_of_inner_right (K := K) hK_dense h_inner
+  exact @Dense.eq_zero_of_inner_right (cameronMartin μ) ℝ _
+    (instNormedAddCommGroupCameronMartin (μ := μ))
+    (instInnerProductSpaceCameronMartin (μ := μ))
+    x (K : Set (cameronMartin μ)) hK_dense (by
+    intro v hv
+    exact h_inner ⟨v, hv⟩)
 
 lemma cmCoe_injective : Function.Injective (cmCoe (μ := μ)) := by
   intro x y hxy
   have hsub : cmCoe (μ := μ) (x - y) = 0 := by
-    simp [map_sub, hxy]
+    calc
+      cmCoe (μ := μ) (x - y) = cmCoe (μ := μ) x - cmCoe (μ := μ) y :=
+        (map_sub (cmCoe (μ := μ)) x y)
+      _ = 0 := by rw [hxy, sub_self]
   have : x - y = 0 := eq_zero_of_cmCoe_eq_zero (μ := μ) (x := x - y) hsub
   exact sub_eq_zero.mp this
 
@@ -649,7 +723,9 @@ lemma apply_cmCoe_le_norm (x : cameronMartin μ)
         (show Var[L; μ] ≤ 1 from by simpa using hL)
     have habs : |‖cmOfDual μ L‖| ≤ 1 :=
       (sq_le_one_iff_abs_le_one (a := ‖cmOfDual μ L‖)).1 hsq
-    simpa [abs_norm] using habs
+    have ha : |‖cmOfDual μ L‖| = ‖cmOfDual μ L‖ :=
+      abs_of_nonneg (norm_nonneg (cmOfDual μ L))
+    simpa [ha] using habs
   calc
     L (cmCoe x) = ⟪cmOfDual μ L, x⟫_ℝ := apply_cmCoe_eq_inner (μ := μ) (x := x) L
     _ ≤ ‖cmOfDual μ L‖ * ‖x‖ := real_inner_le_norm _ _
@@ -709,6 +785,7 @@ lemma cmOfDual_inner_le_of_norm_cmOfDual_le (x : cameronMartin μ) {L : StrongDu
     by_cases hL' : Var[L'; μ] ≤ 1
     · simpa [hL'] using apply_cmCoe_le_norm (μ := μ) (x := x) (L := L') hL'
     · simp [hL']
+      exact norm_nonneg x
   have hVar : Var[L; μ] ≤ 1 := by
     have hsq : ‖cmOfDual μ L‖ ^ 2 ≤ 1 := by
       have hmul : ‖cmOfDual μ L‖ * ‖cmOfDual μ L‖ ≤ (1 : ℝ) * 1 :=
@@ -727,26 +804,37 @@ lemma cmOfDual_inner_le_mul (x : cameronMartin μ) (L : StrongDual ℝ E) :
     ⟪cmOfDual μ L, x⟫_ℝ
       ≤ ‖cmOfDual μ L‖ * ⨆ (L : StrongDual ℝ E) (_ : Var[L; μ] ≤ 1), L (cmCoe x) := by
   classical
+  letI : Module ℝ (cameronMartin μ) := instModuleCameronMartin (μ := μ)
+  letI : NormedSpace ℝ (cameronMartin μ) := instNormedSpaceCameronMartin (μ := μ)
+  letI : NormSMulClass ℝ (cameronMartin μ) := NormedSpace.toNormSMulClass
   by_cases h0 : ‖cmOfDual μ L‖ = 0
   · have hcm : cmOfDual μ L = 0 := by
       simpa [norm_eq_zero] using h0
-    simp [hcm]
+    rw [hcm, inner_zero_left]
+    have hnorm0 : ‖(0 : cameronMartin μ)‖ = (0 : ℝ) := norm_zero
+    rw [hnorm0, zero_mul]
   · set a : ℝ := ‖cmOfDual μ L‖
     have ha_pos : 0 < a := by
       have hL0 : cmOfDual μ L ≠ 0 := by
         intro hL0
-        apply h0
-        simp [a, hL0]
-      simpa [a] using (norm_pos_iff.mpr hL0)
-    set r : ℝ := a⁻¹
+        have : a = 0 := by
+          change ‖cmOfDual μ L‖ = 0
+          rw [hL0]
+          exact norm_zero
+        exact h0 this
+      change 0 < ‖cmOfDual μ L‖
+      exact norm_pos_iff.mpr hL0
+    let r : ℝ := a⁻¹
     have hr : ‖cmOfDual μ (r • L)‖ ≤ 1 := by
       have hnorm : ‖cmOfDual μ (r • L)‖ = 1 := by
         calc
-          ‖cmOfDual μ (r • L)‖ = ‖r • cmOfDual μ L‖ := by simp [map_smul]
-          _ = |r| * ‖cmOfDual μ L‖ := by simp [norm_smul]
-          _ = 1 := by
-              simp [r, a]
-              aesop
+          ‖cmOfDual μ (r • L)‖ = ‖r • cmOfDual μ L‖ := by rw [map_smul]
+          _ = |r| * ‖cmOfDual μ L‖ := by rw [norm_smul, Real.norm_eq_abs]
+          _ = |r| * a := by rfl
+          _ = a⁻¹ * a := by
+              dsimp [r]
+              rw [abs_of_pos (inv_pos.mpr ha_pos)]
+          _ = 1 := inv_mul_cancel₀ ha_pos.ne'
       exact le_of_eq hnorm
     have hnormed :
         ⟪cmOfDual μ (r • L), x⟫_ℝ
@@ -755,14 +843,19 @@ lemma cmOfDual_inner_le_mul (x : cameronMartin μ) (L : StrongDual ℝ E) :
     have hmul := mul_le_mul_of_nonneg_left hnormed (by positivity : 0 ≤ a)
     have hrec : a • cmOfDual μ (r • L) = cmOfDual μ L := by
       calc
-        a • cmOfDual μ (r • L) = a • (r • cmOfDual μ L) := by simp [map_smul]
-        _ = (a * r) • cmOfDual μ L := by simp [smul_smul]
-        _ = (1 : ℝ) • cmOfDual μ L := by simp [r, ha_pos.ne']
-        _ = cmOfDual μ L := by simp
+        a • cmOfDual μ (r • L) = a • (r • cmOfDual μ L) := by rw [map_smul]
+        _ = (a * r) • cmOfDual μ L := by
+          exact smul_smul a r (cmOfDual μ L)
+        _ = (1 : ℝ) • cmOfDual μ L := by
+          dsimp [r]
+          rw [mul_inv_cancel₀ ha_pos.ne']
+        _ = cmOfDual μ L := by
+          exact one_smul ℝ (cmOfDual μ L)
     have hscale : a * ⟪cmOfDual μ (r • L), x⟫_ℝ = ⟪cmOfDual μ L, x⟫_ℝ := by
       calc
         a * ⟪cmOfDual μ (r • L), x⟫_ℝ = ⟪a • cmOfDual μ (r • L), x⟫_ℝ := by
-          simp [inner_smul_left]
+          simpa [smul_eq_mul] using
+            (real_inner_smul_left (cmOfDual μ (r • L)) x a).symm
         _ = ⟪cmOfDual μ L, x⟫_ℝ := by
           simpa using congrArg (fun v => ⟪v, x⟫_ℝ) hrec
     have : ⟪cmOfDual μ L, x⟫_ℝ ≤ a * ⨆ (L : StrongDual ℝ E) (_ : Var[L; μ] ≤ 1), L (cmCoe x) := by
@@ -809,6 +902,7 @@ lemma norm_cameronMartin_eq_ciSup (x : cameronMartin μ) :
       by_cases hL' : Var[L'; μ] ≤ 1
       · simpa [hL'] using apply_cmCoe_le_norm (μ := μ) (x := x) (L := L') hL'
       · simp [hL']
+        exact norm_nonneg x
     have : (0 : ℝ) ≤ ⨆ (L : StrongDual ℝ E) (_ : Var[L; μ] ≤ 1), L (cmCoe x) := by
       refine le_ciSup_of_le h_bdd (0 : StrongDual ℝ E) ?_
       simp
@@ -820,6 +914,7 @@ lemma norm_cameronMartin_eq_ciSup (x : cameronMartin μ) :
     by_cases hL : Var[L; μ] ≤ 1
     · simpa [hL] using apply_cmCoe_le_norm (μ := μ) (x := x) (L := L) hL
     · simp [hL]
+      exact norm_nonneg x
   have hnorm_le : ‖x‖ ≤ S := by
     classical
     by_cases hx : ‖x‖ = 0

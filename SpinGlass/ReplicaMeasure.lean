@@ -69,6 +69,15 @@ instance (N n : ℕ) (H : EnergySpace N) : IsProbabilityMeasure (replicaGibbsMea
   simpa [replicaGibbsMeasure] using (by infer_instance :
       IsProbabilityMeasure (FiniteGibbs.replicaGibbsMeasure (α := Config N) (n := n) H))
 
+lemma lintegral_replicaGibbsMeasure (N n : ℕ)
+    (H : EnergySpace N) (f : ReplicaSpace N n → ℝ≥0∞) :
+    (∫⁻ σs, f σs ∂replicaGibbsMeasure (N := N) (n := n) H) =
+      ∑ σs : ReplicaSpace N n,
+        (replicaGibbsWeightNNReal (N := N) (n := n) H σs : ℝ≥0∞) * f σs := by
+  simpa [replicaGibbsMeasure, replicaGibbsWeightNNReal, ReplicaSpace] using
+    (FiniteGibbs.lintegral_replicaGibbsMeasure
+      (α := Config N) (n := n) (H := H) (f := f))
+
 /-- `gibbs_average_n_det` is the expectation of `f` under the `n`-replica Gibbs measure. -/
 lemma integral_replicaGibbsMeasure_eq_gibbs_average_n_det (N n : ℕ)
     (H : EnergySpace N) (f : ReplicaFun N n) :
