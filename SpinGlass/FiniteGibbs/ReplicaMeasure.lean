@@ -23,7 +23,7 @@ namespace FiniteGibbs
 
 noncomputable section
 
-variable {α : Type*} [Fintype α] [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α]
+variable {α : Type*} [Fintype α] [Nonempty α]
 
 /-- The space of `n` replicas: `Fin n → α`. -/
 abbrev ReplicaSpace (n : ℕ) := Fin n → α
@@ -48,10 +48,10 @@ noncomputable def replicaGibbsWeightNNReal (n : ℕ) (H : EnergySpace α) (σs :
     intro l _hl
     exact gibbs_pmf_nonneg (α := α) (H := H) (σ := σs l)⟩
 
-/-- The `n`-replica Gibbs measure as an explicit finite atomic measure on `ReplicaSpace α n`. -/
-noncomputable def replicaGibbsMeasure (n : ℕ) (H : EnergySpace α) : Measure (ReplicaSpace (α := α) n) :=
-  (Finset.univ : Finset (ReplicaSpace (α := α) n)).sum fun σs =>
-    ((replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) • Measure.dirac σs)
+@[simp] lemma replicaGibbsWeightNNReal_coe (n : ℕ) (H : EnergySpace α)
+    (σs : ReplicaSpace (α := α) n) :
+    (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ) =
+      ∏ l, gibbs_pmf (α := α) H (σs l) := rfl
 
 /-! ## Normalization and bracket-as-integral -/
 
@@ -92,50 +92,89 @@ lemma sum_prod_gibbs_pmf_eq_one (n : ℕ) (H : EnergySpace α) :
         _ = ∑ σ₀ : α, p σ₀ := by simp
         _ = 1 := hs1
 
+lemma prod_gibbs_pmf_nonneg (n : ℕ) (H : EnergySpace α) (σs : ReplicaSpace (α := α) n) :
+    0 ≤ ∏ l, gibbs_pmf (α := α) H (σs l) :=
+  Finset.prod_nonneg fun l _hl => gibbs_pmf_nonneg (α := α) (H := H) (σs l)
+
+@[simp] lemma replicaGibbsWeightNNReal_coe_ennreal (n : ℕ) (H : EnergySpace α)
+    (σs : ReplicaSpace (α := α) n) :
+    (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) =
+      ENNReal.ofReal (∏ l, gibbs_pmf (α := α) H (σs l)) := by
+  have hnn :
+      replicaGibbsWeightNNReal (α := α) (n := n) H σs =
+        ⟨∏ l, gibbs_pmf (α := α) H (σs l),
+          prod_gibbs_pmf_nonneg (α := α) (n := n) (H := H) σs⟩ := by
+    ext
+    simp [replicaGibbsWeightNNReal]
+  simpa [hnn] using
+    (ENNReal.ofReal_eq_coe_nnreal
+      (prod_gibbs_pmf_nonneg (α := α) (n := n) (H := H) σs)).symm
+
+/-- The `n`-replica Gibbs distribution as a `PMF`. -/
+noncomputable def replicaGibbsPMF (n : ℕ) (H : EnergySpace α) : PMF (ReplicaSpace (α := α) n) :=
+  PMF.ofFintype
+    (fun σs : ReplicaSpace (α := α) n => ENNReal.ofReal (∏ l, gibbs_pmf (α := α) H (σs l))) <| by
+      rw [← ENNReal.ofReal_sum_of_nonneg]
+      · simp [sum_prod_gibbs_pmf_eq_one (α := α) (n := n) (H := H)]
+      · intro σs _hσs
+        exact prod_gibbs_pmf_nonneg (α := α) (n := n) (H := H) σs
+
+@[simp] lemma replicaGibbsPMF_apply (n : ℕ) (H : EnergySpace α)
+    (σs : ReplicaSpace (α := α) n) :
+    replicaGibbsPMF (α := α) (n := n) H σs =
+      ENNReal.ofReal (∏ l, gibbs_pmf (α := α) H (σs l)) :=
+  rfl
+
+variable [MeasurableSpace α]
+
+/-- The `n`-replica Gibbs measure as an explicit finite atomic measure on `ReplicaSpace α n`. -/
+noncomputable def replicaGibbsMeasure (n : ℕ) (H : EnergySpace α) : Measure (ReplicaSpace (α := α) n) :=
+  (replicaGibbsPMF (α := α) (n := n) H).toMeasure
+
 lemma replicaGibbsMeasure_univ (n : ℕ) (H : EnergySpace α) :
     replicaGibbsMeasure (α := α) (n := n) H Set.univ = 1 := by
-  classical
-  have h_univ :
-      replicaGibbsMeasure (α := α) (n := n) H Set.univ
-        =
-        ∑ σs : ReplicaSpace (α := α) n, (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) := by
-    simp [replicaGibbsMeasure, replicaGibbsWeightNNReal]
-  have hsumNNReal :
-      (∑ σs : ReplicaSpace (α := α) n, replicaGibbsWeightNNReal (α := α) (n := n) H σs) = (1 : ℝ≥0) := by
-    apply NNReal.coe_injective
-    simpa [replicaGibbsWeightNNReal] using (sum_prod_gibbs_pmf_eq_one (α := α) (n := n) (H := H))
-  have hsumENNReal :
-      (∑ σs : ReplicaSpace (α := α) n,
-          (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞)) = (1 : ℝ≥0∞) := by
-    simpa using congrArg (fun x : ℝ≥0 => (x : ℝ≥0∞)) hsumNNReal
-  simpa [h_univ] using hsumENNReal
+  simp [replicaGibbsMeasure]
 
 instance (n : ℕ) (H : EnergySpace α) :
     IsProbabilityMeasure (replicaGibbsMeasure (α := α) (n := n) H) :=
-  ⟨replicaGibbsMeasure_univ (α := α) (n := n) (H := H)⟩
+  by
+    dsimp [replicaGibbsMeasure]
+    infer_instance
+
+variable [MeasurableSingletonClass α]
+
+lemma lintegral_replicaGibbsMeasure (n : ℕ) (H : EnergySpace α)
+    (f : ReplicaSpace (α := α) n → ℝ≥0∞) :
+    (∫⁻ σs, f σs ∂replicaGibbsMeasure (α := α) (n := n) H) =
+      ∑ σs : ReplicaSpace (α := α) n,
+        (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) * f σs := by
+  rw [lintegral_fintype]
+  refine Finset.sum_congr rfl ?_
+  intro σs _hσs
+  have hsingleton :
+      replicaGibbsMeasure (α := α) (n := n) H ({σs} : Set (ReplicaSpace (α := α) n)) =
+        (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) := by
+    simpa [replicaGibbsMeasure, replicaGibbsWeightNNReal_coe_ennreal] using
+      (PMF.toMeasure_apply_singleton (replicaGibbsPMF (α := α) (n := n) H) σs
+        (measurableSet_singleton σs))
+  rw [hsingleton, mul_comm]
 
 /-- `gibbs_average_n_det` is the expectation of `f` under the `n`-replica Gibbs measure. -/
 lemma integral_replicaGibbsMeasure_eq_gibbs_average_n_det (n : ℕ)
     (H : EnergySpace α) (f : ReplicaFun (α := α) n) :
     (∫ σs, f σs ∂(replicaGibbsMeasure (α := α) (n := n) H)) =
       gibbs_average_n_det (α := α) (n := n) H f := by
-  let μatom : ReplicaSpace (α := α) n → Measure (ReplicaSpace (α := α) n) :=
-    fun σs =>
-      ((replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) • Measure.dirac σs)
-  have h_integrable :
-      ∀ σs ∈ (Finset.univ : Finset (ReplicaSpace (α := α) n)), Integrable f (μatom σs) := by
-    intro σs _hσs
-    have hdirac : Integrable f (Measure.dirac σs) :=
-      MeasureTheory.integrable_dirac (a := σs) (f := f) (by simp)
-    exact hdirac.smul_measure (by simp)
-  have hsum :
-      (∫ x, f x ∂((Finset.univ : Finset (ReplicaSpace (α := α) n)).sum μatom)) =
-        (Finset.univ : Finset (ReplicaSpace (α := α) n)).sum fun σs => ∫ x, f x ∂(μatom σs) := by
-    simpa using
-      (MeasureTheory.integral_finset_sum_measure
-        (f := f) (μ := μatom) (s := (Finset.univ : Finset (ReplicaSpace (α := α) n))) h_integrable)
-  simpa [replicaGibbsMeasure, μatom, gibbs_average_n_det, replicaGibbsWeightNNReal, mul_comm, mul_left_comm,
-    mul_assoc] using hsum
+  calc
+    (∫ σs, f σs ∂(replicaGibbsMeasure (α := α) (n := n) H))
+        = ∑ σs : ReplicaSpace (α := α) n,
+            (replicaGibbsPMF (α := α) (n := n) H σs).toReal • f σs := by
+            simpa [replicaGibbsMeasure] using
+              (PMF.integral_eq_sum (replicaGibbsPMF (α := α) (n := n) H) f)
+    _ = gibbs_average_n_det (α := α) (n := n) H f := by
+          refine Finset.sum_congr rfl ?_
+          intro σs _hσs
+          simp [ENNReal.toReal_ofReal (prod_gibbs_pmf_nonneg (α := α) (n := n) (H := H) σs),
+            smul_eq_mul, mul_comm]
 
 end
 

@@ -259,25 +259,21 @@ noncomputable
 instance instCoeFun : CoeFun (cameronMartin μ) (fun _ ↦ E → ℝ) := ⟨fun f ↦ (f : E → ℝ)⟩
 
 noncomputable instance instAddCommGroupCameronMartin : AddCommGroup (cameronMartin μ) := by
-  unfold cameronMartin
-  infer_instance
+  exact (cameronMartin μ).addCommGroup
 
 noncomputable instance instNormedAddCommGroupCameronMartin :
-    NormedAddCommGroup (cameronMartin μ) := by
-  unfold cameronMartin
-  infer_instance
+    NormedAddCommGroup (cameronMartin μ) :=
+  (cameronMartin μ).normedAddCommGroup
 
 noncomputable instance instInnerProductSpaceCameronMartin :
-    InnerProductSpace ℝ (cameronMartin μ) := by
-  unfold cameronMartin
-  infer_instance
+    InnerProductSpace ℝ (cameronMartin μ) :=
+  (cameronMartin μ).innerProductSpace
 
 noncomputable instance instNormedSpaceCameronMartin : NormedSpace ℝ (cameronMartin μ) :=
-  InnerProductSpace.toNormedSpace
+  (cameronMartin μ).normedSpace
 
 noncomputable instance instModuleCameronMartin : Module ℝ (cameronMartin μ) :=
-  @NormedSpace.toModule ℝ (cameronMartin μ) _ _
-    (instNormedSpaceCameronMartin (E := E) (μ := μ))
+  (cameronMartin μ).module
 
 noncomputable instance instCompleteSpaceCameronMartin : CompleteSpace (cameronMartin μ) := by
   unfold cameronMartin
@@ -498,10 +494,11 @@ def cmOfBounded (μ : Measure E) [HasTwoMoments μ] (y : E)
     [Decidable (∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M)] :
     cameronMartin μ := by
   by_cases hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M
-  · haveI : Module ℝ (cameronMartin μ) := by unfold cameronMartin; infer_instance
-    haveI : InnerProductSpace ℝ (cameronMartin μ) := by unfold cameronMartin; infer_instance
-    haveI : CompleteSpace (cameronMartin μ) := by unfold cameronMartin; infer_instance
-    exact (InnerProductSpace.toDual ℝ (cameronMartin μ)).symm (cmEval μ y hy)
+  · have hComplete : CompleteSpace (cameronMartin μ) := by
+      unfold cameronMartin
+      infer_instance
+    exact (@InnerProductSpace.toDual ℝ (cameronMartin μ) _ inferInstance inferInstance hComplete).symm
+      (cmEval μ y hy)
   · exact 0
 
 variable [Decidable (∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M)]
@@ -509,24 +506,22 @@ variable [Decidable (∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y �
 lemma cmOfBounded_def (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M) :
     cmOfBounded μ y =
       (by
-        haveI : Module ℝ (cameronMartin μ) := by unfold cameronMartin; infer_instance
-        haveI : InnerProductSpace ℝ (cameronMartin μ) := by unfold cameronMartin; infer_instance
-        haveI : CompleteSpace (cameronMartin μ) := by unfold cameronMartin; infer_instance
-        exact (InnerProductSpace.toDual ℝ (cameronMartin μ)).symm (cmEval μ y hy)) := by
+        have hComplete : CompleteSpace (cameronMartin μ) := by
+          unfold cameronMartin
+          infer_instance
+        exact (@InnerProductSpace.toDual ℝ (cameronMartin μ) _ inferInstance inferInstance hComplete).symm
+          (cmEval μ y hy)) := by
   rw [cmOfBounded]
   simp [hy]
 
 lemma cmEval_apply (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M) (x : cameronMartin μ) :
     cmEval μ y hy x = ⟪x, cmOfBounded μ y⟫_ℝ := by
-  letI : NormedSpace ℝ (cameronMartin μ) :=
-    instNormedSpaceCameronMartin (E := E) (μ := μ)
-  letI : Module ℝ (cameronMartin μ) :=
-    @NormedSpace.toModule ℝ (cameronMartin μ) _ _
-      (instNormedSpaceCameronMartin (E := E) (μ := μ))
-  letI : InnerProductSpace ℝ (cameronMartin μ) :=
-    instInnerProductSpaceCameronMartin (E := E) (μ := μ)
   rw [cmOfBounded_def hy, real_inner_comm]
-  rw [InnerProductSpace.toDual_symm_apply]
+  have hComplete : CompleteSpace (cameronMartin μ) := by
+    unfold cameronMartin
+    infer_instance
+  exact (@InnerProductSpace.toDual_symm_apply ℝ (cameronMartin μ) _
+    inferInstance inferInstance hComplete (x := x) (y := cmEval μ y hy)).symm
 
 end cmOfBounded
 
@@ -785,7 +780,6 @@ lemma cmOfDual_inner_le_of_norm_cmOfDual_le (x : cameronMartin μ) {L : StrongDu
     by_cases hL' : Var[L'; μ] ≤ 1
     · simpa [hL'] using apply_cmCoe_le_norm (μ := μ) (x := x) (L := L') hL'
     · simp [hL']
-      exact norm_nonneg x
   have hVar : Var[L; μ] ≤ 1 := by
     have hsq : ‖cmOfDual μ L‖ ^ 2 ≤ 1 := by
       have hmul : ‖cmOfDual μ L‖ * ‖cmOfDual μ L‖ ≤ (1 : ℝ) * 1 :=
@@ -902,7 +896,6 @@ lemma norm_cameronMartin_eq_ciSup (x : cameronMartin μ) :
       by_cases hL' : Var[L'; μ] ≤ 1
       · simpa [hL'] using apply_cmCoe_le_norm (μ := μ) (x := x) (L := L') hL'
       · simp [hL']
-        exact norm_nonneg x
     have : (0 : ℝ) ≤ ⨆ (L : StrongDual ℝ E) (_ : Var[L; μ] ≤ 1), L (cmCoe x) := by
       refine le_ciSup_of_le h_bdd (0 : StrongDual ℝ E) ?_
       simp
@@ -914,7 +907,6 @@ lemma norm_cameronMartin_eq_ciSup (x : cameronMartin μ) :
     by_cases hL : Var[L; μ] ≤ 1
     · simpa [hL] using apply_cmCoe_le_norm (μ := μ) (x := x) (L := L) hL
     · simp [hL]
-      exact norm_nonneg x
   have hnorm_le : ‖x‖ ≤ S := by
     classical
     by_cases hx : ‖x‖ = 0

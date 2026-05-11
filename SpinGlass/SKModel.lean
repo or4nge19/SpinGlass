@@ -310,7 +310,14 @@ lemma GaussianDisorder.covarianceOperator_apply_std_basis_eq_sum
             (std_basis N ρ) := by simp [real_inner_comm]
       _ = G.cov σ ρ := G.cov_eq σ ρ
   have hsum : (∑ τ : Config N, (G.cov σ τ) • std_basis N τ) ρ = G.cov σ ρ := by
+    classical
     simp [std_basis, FiniteGibbs.std_basis]
+    rw [Finset.sum_eq_single ρ]
+    · simp
+    · intro τ _ hτρ
+      simp [hτρ]
+    · intro hρ
+      simp at hρ
   simp [hcoord, hsum]
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in

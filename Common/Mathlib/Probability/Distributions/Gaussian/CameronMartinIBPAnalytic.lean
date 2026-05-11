@@ -6,6 +6,8 @@ import Mathlib.Analysis.Calculus.Deriv.Add
 import Mathlib.Analysis.Calculus.Deriv.Mul
 import Mathlib.MeasureTheory.Function.L2Space
 
+set_option maxHeartbeats 800000
+
 /-!
 # Cameron–Martin IBP: analytic layer
 
@@ -343,9 +345,10 @@ theorem hasDerivAt_shiftFun_at0_polyGrowth
         _ ≤ (C * (1 + ‖y + t • v‖) ^ m) * ‖v‖ := by gcongr
         _ ≤ (C * ((1 + ‖v‖) * (1 + ‖y‖)) ^ m) * ‖v‖ := by gcongr
         _ = (C * ‖v‖) * ((1 + ‖v‖) ^ m * (1 + ‖y‖) ^ m) := by
-            simp [mul_assoc, mul_comm, mul_left_comm, mul_pow]
+            rw [mul_pow]
+            ring
     -- final rearrangement to match `bound`
-    simpa [bound, mul_assoc, mul_comm, mul_left_comm] using this
+    simpa [bound, mul_assoc] using this
   simpa using
     hasDerivAt_shiftFun_at0_of_integrable_bound (μ := μ) x F hF_meas hF_c1 (δ := (1 : ℝ))
       (by norm_num) hF_int bound hbound_int hbound
@@ -426,14 +429,23 @@ theorem hasDerivAt_tiltFun_at0_of_integrable_profile
     have hx' : AEStronglyMeasurable (fun y : E => x y) μ := hx.aestronglyMeasurable
     have hEq : (fun y : E => H' 0 y) = fun y : E => F y * x y := by
       funext y
-      simp [H', tiltKernel, mul_comm]
+      dsimp [H']
+      simp
     simpa [hEq] using (hF_meas.aestronglyMeasurable.mul hx')
   have hBnd : ∀ᵐ y ∂μ, ∀ t ∈ Metric.ball (0 : ℝ) δ, ‖H' t y‖ ≤
       |F y| * (δ * (v : ℝ) + 1) * ((|x y| + 1) * Real.exp (δ * |x y|)) := by
     refine ae_of_all _ (fun y t ht => ?_)
     have ht1 : |t| ≤ δ := le_of_lt (by simpa [Metric.mem_ball, Real.norm_eq_abs] using ht)
     have h := gaussianTilt_deriv_dom_bound (v := v) (δ := δ) (hδ_pos := hδ) (F := fun _ : ℝ => F y) t ht1 (x := x y)
-    simpa [H', Real.norm_eq_abs, mul_assoc, mul_left_comm, mul_comm] using h
+    have hvabs : |(v : ℝ)| = (v : ℝ) := abs_of_nonneg v.2
+    dsimp [H']
+    calc
+      |F y * ((x y - (v : ℝ) * t) * tiltKernel v t (x y))|
+          = |F y * (x y - (v : ℝ) * t) * tiltKernel v t (x y)| := by ring_nf
+      _ ≤ |F y| * ((|(v : ℝ)| * δ) + 1) * (|x y| + 1) * Real.exp (δ * |x y|) := h
+      _ = |F y| * (δ * (v : ℝ) + 1) * ((|x y| + 1) * Real.exp (δ * |x y|)) := by
+        rw [hvabs]
+        ring
   have hdiff : ∀ᵐ y ∂μ, ∀ t ∈ Metric.ball (0 : ℝ) δ, HasDerivAt (fun s => H s y) (H' t y) t := by
     refine ae_of_all _ (fun y t ht => ?_)
     simpa [H, H', mul_assoc, mul_left_comm, mul_comm] using

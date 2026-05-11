@@ -3,6 +3,7 @@ import Mathlib.Analysis.Calculus.ParametricIntegral
 import Mathlib.Analysis.Calculus.MeanValue
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.Calculus.Deriv.Inv
+import Mathlib.LinearAlgebra.Complex.FiniteDimensional
 import Mathlib.MeasureTheory.Measure.WithDensity
 import Mathlib.Topology.Metrizable.Uniformity
 
@@ -50,6 +51,16 @@ instance : BorelSpace (ℂ →L[ℝ] ℝ) := ⟨rfl⟩
 instance : BorelSpace (ℂ →L[ℝ] ℂ →L[ℝ] ℂ) := ⟨rfl⟩
 instance : BorelSpace (ℂ →L[ℝ] ℂ →L[ℝ] ℝ) := ⟨rfl⟩
 
+instance : IsScalarTower ℝ ℂ (ℂ →L[ℝ] ℂ) where
+  smul_assoc r c T := by
+    ext z
+    exact smul_assoc r c (T z)
+
+instance : IsScalarTower ℝ ℂ (ℂ →L[ℝ] ℂ →L[ℝ] ℂ) where
+  smul_assoc r c T := by
+    ext z w
+    exact smul_assoc r c (T z w)
+
 -- `PseudoMetrizableSpace` does not always infer for higher-order CLM spaces, so we register it
 -- explicitly via the induced (pseudo)metric structure coming from the operator norm.
 instance : TopologicalSpace.PseudoMetrizableSpace (ℂ →L[ℝ] ℂ →L[ℝ] ℝ) := by
@@ -68,7 +79,8 @@ instance : IsBoundedSMul ℂ (ℂ →L[ℝ] ℂ →L[ℝ] ℂ) := by
   refine IsBoundedSMul.of_norm_smul_le (α := ℂ) (β := (ℂ →L[ℝ] ℂ →L[ℝ] ℂ)) ?_
   intro c T
   simpa using
-    (NormedSpace.norm_smul_le (𝕜 := ℂ) (E := (ℂ →L[ℝ] ℂ →L[ℝ] ℂ)) c T)
+    (ContinuousLinearMap.opNorm_smul_le (𝕜₂ := ℝ) (𝕜' := ℂ)
+      (E := ℂ) (F := (ℂ →L[ℝ] ℂ)) c T)
 
 -- With the boundedness instance in place, we can register continuity/measurability of the action.
 instance : ContinuousSMul ℂ (ℂ →L[ℝ] ℂ →L[ℝ] ℂ) :=
@@ -480,7 +492,7 @@ lemma hasFDerivAt_DZ_p_of_bounded
           (continuous_clm_apply (𝕜 := ℝ) (E := ℂ) (F := ℝ) (f := fun h => L_p β p h)).1 hcontL y
         have hLu : Continuous fun h : ℝ => (L_p β p h) u :=
           (continuous_clm_apply (𝕜 := ℝ) (E := ℂ) (F := ℝ) (f := fun h => L_p β p h)).1 hcontL u
-        simpa [ContinuousLinearMap.smulRight_apply, mul_assoc] using (hLy.mul hLu)
+        simpa [ContinuousLinearMap.smulRight_apply] using hLy.mul hLu
       exact hcont.measurable
     have hF' : Measurable (F' z0) := hw.smul hL
     exact hF'.aestronglyMeasurable
@@ -827,7 +839,7 @@ lemma hasFDerivAt_DN_p_of_bounded
           (continuous_clm_apply (𝕜 := ℝ) (E := ℂ) (F := ℝ) (f := fun h => L_p β p h)).1 hcontL y
         have hLu : Continuous fun h : ℝ => (L_p β p h) u :=
           (continuous_clm_apply (𝕜 := ℝ) (E := ℂ) (F := ℝ) (f := fun h => L_p β p h)).1 hcontL u
-        simpa [ContinuousLinearMap.smulRight_apply, mul_assoc] using (hLy.mul hLu)
+        simpa [ContinuousLinearMap.smulRight_apply] using hLy.mul hLu
       exact hcont.measurable
     have hT :
         Measurable (fun h : ℝ =>
@@ -1034,7 +1046,7 @@ lemma hasFDerivAt_F_p_of_bounded
               (Complex.ofRealCLM.comp DZ))
           + ((Z_p β p Y z0 : ℂ)⁻¹) • DN)
         z0 := by
-    simpa using (hN.mul hinv)
+    simpa only [Pi.mul_apply] using (hN.mul hinv)
   simpa [F_p, div_eq_mul_inv, DZ, DN, DZ_p, DN_p] using hprod
 
 /-! ## Uniform derivative bounds (crucial for `FDerivLipschitz`) -/
@@ -1483,7 +1495,13 @@ lemma DF_p_eq_DF_p_simpl (β : ℝ) (p : ℕ) (Y : ℝ → ℝ) (z : ℂ) :
       (DF_p_simpl β p Y z) u =
         (N_p β p Y z) * (Complex.ofReal (-(Zr ^ 2)⁻¹ * (DZ u)))
           + (Z0⁻¹) * (DN u) := by
-    simp [DF_p_simpl, Zr, Z0, DZ, DN]
+    change
+      ((N_p β p Y z) • (Complex.ofRealCLM.comp ((-(Zr ^ 2)⁻¹) • DZ))
+          + ((Zr⁻¹ : ℂ) • DN)) u =
+        (N_p β p Y z) * (Complex.ofReal (-(Zr ^ 2)⁻¹ * (DZ u)))
+          + (Z0⁻¹) * (DN u)
+    rw [ContinuousLinearMap.add_apply]
+    congr 1
   rw [hL, hR]
   have hcoef : -(Z0⁻¹ * Z0⁻¹) = (-(Zr ^ 2)⁻¹ : ℂ) := by
     by_cases hZ : Zr = 0

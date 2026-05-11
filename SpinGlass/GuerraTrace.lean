@@ -78,8 +78,9 @@ private lemma fderiv_gibbs_pmf_apply_std_basis
     (H : EnergySpace N) (σ τ : Config N) :
     fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H (std_basis N τ)
       =
-      (gibbs_pmf N H σ) * ((gibbs_pmf N H τ) - (if σ = τ then 1 else 0)) := by
-  simpa [Z, gibbs_pmf, std_basis, FiniteGibbs.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.std_basis, eq_comm] using
+      (gibbs_pmf N H σ) *
+        ((gibbs_pmf N H τ) - @ite ℝ (σ = τ) (Classical.propDecidable (σ = τ)) 1 0) := by
+  simpa [Z, gibbs_pmf, std_basis, FiniteGibbs.Z, FiniteGibbs.gibbs_pmf, FiniteGibbs.std_basis] using
     (FiniteGibbs.fderiv_gibbs_pmf_apply_std_basis (α := Config N) (H := H) (σ := σ) (τ := τ))
 
 private lemma hessian_free_energy_std_basis_eq_neg_fderiv_gibbs_pmf
@@ -94,7 +95,8 @@ private lemma hessian_free_energy_std_basis_eq_neg_fderiv_gibbs_pmf
     have hf :
         fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H (std_basis N σ)
           =
-          (gibbs_pmf N H σ) * ((gibbs_pmf N H σ) - (if σ = σ then 1 else 0)) :=
+          (gibbs_pmf N H σ) *
+            ((gibbs_pmf N H σ) - @ite ℝ (σ = σ) (Classical.propDecidable (σ = σ)) 1 0) :=
       fderiv_gibbs_pmf_apply_std_basis (N := N) (H := H) (σ := σ) (τ := σ)
     rw [hf]
     simp [hessian_free_energy, std_basis, FiniteGibbs.std_basis]
@@ -102,10 +104,11 @@ private lemma hessian_free_energy_std_basis_eq_neg_fderiv_gibbs_pmf
   · have hf :
         fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H (std_basis N τ)
           =
-          (gibbs_pmf N H σ) * ((gibbs_pmf N H τ) - (if σ = τ then 1 else 0)) :=
+          (gibbs_pmf N H σ) *
+            ((gibbs_pmf N H τ) - @ite ℝ (σ = τ) (Classical.propDecidable (σ = τ)) 1 0) :=
       fderiv_gibbs_pmf_apply_std_basis (N := N) (H := H) (σ := σ) (τ := τ)
     rw [hf]
-    simp [hessian_free_energy, std_basis, FiniteGibbs.std_basis, hστ]
+    simp [hessian_free_energy, std_basis, FiniteGibbs.std_basis, hστ, Ne.symm hστ]
 
 /-!
 ### Lemmas for the trace/Hessian step

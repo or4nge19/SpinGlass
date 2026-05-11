@@ -4,6 +4,8 @@ import Mathlib.Probability.Kernel.IonescuTulcea.Traj
 import Mathlib.MeasureTheory.MeasurableSpace.PreorderRestrict
 import Mathlib.Order.Restriction
 
+set_option maxHeartbeats 800000
+
 /-!
 # Vol II infrastructure: trajectory *measures* and DLR-style conditional distributions
 
@@ -49,12 +51,40 @@ instance instNonempty_iid_succ (a : ℕ) [Nonempty β] :
 /-- Trajectory measure for i.i.d. sampling from `K`, starting from `μ₀` on the head space. -/
 noncomputable def iidTrajMeasure (μ₀ : Measure α) (K : Kernel α β)
     [IsProbabilityMeasure μ₀] [IsMarkovKernel K] :
-    Measure (Π n, IidX (α := α) (β := β) n) :=
-  ProbabilityTheory.Kernel.trajMeasure (μ₀ := μ₀) (κ := iidκ (α := α) (β := β) K)
+    Measure (Π n, IidX (α := α) (β := β) n) := by
+  let κ := iidκ (α := α) (β := β) K
+  have hmarkov : ∀ n, IsMarkovKernel (κ n) := by
+    intro n
+    dsimp [κ]
+    infer_instance
+  exact
+    @ProbabilityTheory.Kernel.trajMeasure
+      (fun n => IidX (α := α) (β := β) n) (fun n => inferInstance) μ₀ κ hmarkov
 
 instance (μ₀ : Measure α) (K : Kernel α β) [IsProbabilityMeasure μ₀] [IsMarkovKernel K] :
     IsProbabilityMeasure (iidTrajMeasure (α := α) (β := β) μ₀ K) := by
   dsimp [iidTrajMeasure]
+  let κ := iidκ (α := α) (β := β) K
+  have hmarkov : ∀ n, IsMarkovKernel (κ n) := by
+    intro n
+    dsimp [κ]
+    infer_instance
+  change IsProbabilityMeasure
+    (@ProbabilityTheory.Kernel.trajMeasure
+      (fun n => IidX (α := α) (β := β) n) (fun n => inferInstance) μ₀ κ hmarkov)
+  rw [ProbabilityTheory.Kernel.trajMeasure]
+  haveI :
+      IsProbabilityMeasure
+        (μ₀.map (MeasurableEquiv.piUnique
+          (fun i : Finset.Iic 0 => IidX (α := α) (β := β) i)).symm) := by
+    exact Measure.isProbabilityMeasure_map
+      ((MeasurableEquiv.piUnique
+        (fun i : Finset.Iic 0 => IidX (α := α) (β := β) i)).symm.measurable.aemeasurable)
+  change IsProbabilityMeasure
+    (((@ProbabilityTheory.Kernel.traj
+      (fun n => IidX (α := α) (β := β) n) (fun n => inferInstance) κ hmarkov 0)) ∘ₘ
+        (μ₀.map (MeasurableEquiv.piUnique
+          (fun i : Finset.Iic 0 => IidX (α := α) (β := β) i)).symm))
   infer_instance
 
 /--
@@ -74,9 +104,21 @@ lemma condDistrib_iidTrajMeasure (μ₀ : Measure α) (K : Kernel α β)
         (Preorder.frestrictLe (π := fun n => IidX (α := α) (β := β) n) a)]
         (iidκ (α := α) (β := β) K a) := by
   -- Reduce to Mathlib’s theorem.
-  simpa [iidTrajMeasure] using
-    (ProbabilityTheory.Kernel.condDistrib_trajMeasure (μ₀ := μ₀)
-      (κ := iidκ (α := α) (β := β) K) (a := a))
+  let κ := iidκ (α := α) (β := β) K
+  have hmarkov : ∀ n, IsMarkovKernel (κ n) := by
+    intro n
+    dsimp [κ]
+    infer_instance
+  haveI : StandardBorelSpace ((fun n => IidX (α := α) (β := β) n) (a + 1)) := by
+    simpa [IidX] using (inferInstance : StandardBorelSpace β)
+  haveI : Nonempty ((fun n => IidX (α := α) (β := β) n) (a + 1)) := by
+    simpa [IidX] using (inferInstance : Nonempty β)
+  simpa [iidTrajMeasure, κ] using
+    (@ProbabilityTheory.Kernel.condDistrib_trajMeasure
+      (fun n => IidX (α := α) (β := β) n) (fun n => inferInstance) κ hmarkov μ₀
+      (inferInstance : IsProbabilityMeasure μ₀) a
+      (inferInstance : StandardBorelSpace ((fun n => IidX (α := α) (β := β) n) (a + 1)))
+      (inferInstance : Nonempty ((fun n => IidX (α := α) (β := β) n) (a + 1))))
 
 end General
 

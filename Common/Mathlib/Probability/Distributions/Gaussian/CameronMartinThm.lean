@@ -107,10 +107,9 @@ lemma hasLaw_cameronMartin (x : cameronMartin μ) : HasLaw x (gaussianReal 0 (�
       congr
       rw [← StrongDual.sq_norm_centeredToLp_two (μ := μ) (h := memLp_two_id) (L := y n), hy n]
       unfold L'
-      simp only [AddSubgroupClass.coe_norm, norm_smul, norm_div, norm_norm]
+      simp only [norm_smul, norm_div, norm_norm]
       rw [div_mul_cancel₀]
-      · norm_cast
-        rw [Real.toNNReal_pow (norm_nonneg _), norm_toNNReal]
+      · rw [Real.toNNReal_pow (norm_nonneg _), norm_toNNReal]
       · simp [hn]
     have hL'_map (n : ℕ) (hn : L n ≠ 0) :
         μ.map (L' n) = gaussianReal 0 (‖x‖₊ ^ 2) := by
@@ -158,7 +157,7 @@ lemma hasLaw_cameronMartin (x : cameronMartin μ) : HasLaw x (gaussianReal 0 (�
       ((tendstoInMeasure_of_tendsto_Lp hL'_tendsto).tendstoInDistribution
         (fun _ ↦ by fun_prop)).tendsto
     have h_eq := tendsto_nhds_unique hν_tendsto_2 hν_tendsto_1
-    rwa [Subtype.ext_iff] at h_eq
+    simpa using congrArg (fun ν : ProbabilityMeasure ℝ => (ν : Measure ℝ)) h_eq
 
 /-- The variance of an element of the Cameron-Martin space is the square of its norm. -/
 lemma variance_cameronMartin (x : cameronMartin μ) :
@@ -249,7 +248,21 @@ private lemma integral_exp_sub_mul_I_sub_norm_sq_eq_exp_mul_integral_exp_centere
     ∫ u, exp ((L u - t * x u) * I - ‖x‖ ^ 2 / 2) ∂μ
         = exp (- ‖x‖ ^ 2 / 2) * ∫ u, exp ((L u - t * x u) * I) ∂μ := by
             simp_rw [sub_eq_add_neg, exp_add]
-            rw [integral_mul_const, mul_comm (exp _), neg_div]
+            calc
+              ∫ u : E, exp ((L u + -(t * x u)) * I) * exp (-(↑‖x‖ ^ 2 / 2)) ∂μ
+                  =
+                (∫ u : E, exp ((L u + -(t * x u)) * I) ∂μ)
+                  * exp (-(↑‖x‖ ^ 2 / 2)) := by
+                    exact MeasureTheory.integral_mul_const
+                      (μ := μ) (r := exp (-(↑‖x‖ ^ 2 / 2)))
+                      (f := fun u : E => exp ((L u + -(t * x u)) * I))
+              _ =
+                exp (-↑‖x‖ ^ 2 / 2)
+                  * ∫ u : E, exp ((L u + -(t * x u)) * I) ∂μ := by
+                    rw [mul_comm]
+                    rw [show exp (-(↑‖x‖ ^ 2 / 2)) = exp (-↑‖x‖ ^ 2 / 2) by
+                      congr 1
+                      ring]
     _ = exp (- ‖x‖ ^ 2 / 2) * ∫ u, exp ((L u - μ[L] - t * x u) * I + μ[L] * I) ∂μ := by
           congr with u
           congr
@@ -292,7 +305,27 @@ lemma integral_exp_sub_mul_I_sub_norm_sq_eq_exp_mul_integral_gaussianReal
             rw [exp_add, mul_assoc]
             congr 1
             simp_rw [exp_add]
-            rw [integral_mul_const, mul_comm _ (exp _)]
+            change
+              ∫ u : ℝ, exp (u * I) * exp (μ[L] * I)
+                  ∂(gaussianReal 0 (‖(L : cameronMartin μ) - t • x‖₊ ^ 2))
+                = exp (μ[L] * I)
+                  * ∫ u : ℝ, exp (u * I)
+                    ∂(gaussianReal 0 (‖(L : cameronMartin μ) - t • x‖₊ ^ 2))
+            calc
+              ∫ u : ℝ, exp (u * I) * exp (μ[L] * I)
+                  ∂(gaussianReal 0 (‖(L : cameronMartin μ) - t • x‖₊ ^ 2))
+                  =
+                (∫ u : ℝ, exp (u * I)
+                  ∂(gaussianReal 0 (‖(L : cameronMartin μ) - t • x‖₊ ^ 2)))
+                  * exp (μ[L] * I) := by
+                    exact MeasureTheory.integral_mul_const
+                      (μ := gaussianReal 0 (‖(L : cameronMartin μ) - t • x‖₊ ^ 2))
+                      (r := exp (μ[L] * I)) (f := fun u : ℝ => exp (u * I))
+              _ =
+                exp (μ[L] * I)
+                  * ∫ u : ℝ, exp (u * I)
+                    ∂(gaussianReal 0 (‖(L : cameronMartin μ) - t • x‖₊ ^ 2)) := by
+                    rw [mul_comm]
 
 private lemma integral_exp_sub_mul_I_sub_norm_sq_eq_closed_form
     (x : cameronMartin μ) (L : StrongDual ℝ E) (t : ℝ) :
@@ -309,10 +342,18 @@ private lemma integral_exp_sub_mul_I_sub_norm_sq_eq_closed_form
           conv_lhs => rw [exp_add]
           conv_rhs => rw [add_sub_assoc, exp_add, sub_eq_add_neg, exp_add, ← mul_assoc]
           have h := charFun_gaussianReal (μ := 0) (v := ‖(L : cameronMartin μ) - t • x‖₊ ^ 2) 1
-          simp only [charFun, RCLike.inner_apply, conj_trivial, one_mul, Complex.ofReal_one,
-            Complex.ofReal_zero, mul_zero, zero_mul, NNReal.coe_pow, coe_nnnorm, Complex.ofReal_pow,
-            one_pow, mul_one, zero_sub] at h
-          rw [h]
+          have h' :
+              ∫ u : ℝ, exp (u * I) ∂(gaussianReal 0 (‖(L : cameronMartin μ) - t • x‖₊ ^ 2))
+                = exp (-(↑‖(L : cameronMartin μ) - t • x‖ ^ 2 / 2)) := by
+            have hcf :
+                ∫ u : ℝ, exp (u * I)
+                    ∂(gaussianReal 0 (‖(L : cameronMartin μ) - t • x‖₊ ^ 2))
+                  = charFun (gaussianReal 0 (‖(L : cameronMartin μ) - t • x‖₊ ^ 2)) 1 := by
+              rw [charFun_apply_real]
+              simp
+            rw [hcf, h]
+            simp [NNReal.coe_pow, coe_nnnorm, Complex.ofReal_pow]
+          rw [h']
     _ =
         exp (t * L (cmCoe x) - (1 + t ^ 2) / 2 * ‖x‖ ^ 2 + μ[L] * I - Var[L; μ] / 2) := by
           have h_inner : (t : ℂ) * L (cmCoe x) = ⟪cmOfDual μ L, t • x⟫_ℝ := by
@@ -400,10 +441,29 @@ private lemma integral_exp_sub_mul_I_sub_norm_sq_eq_closed_form_complex
   refine
     AnalyticOnNhd.eqOn_of_preconnected_of_frequently_eq (𝕜 := ℂ) (E := ℂ) (z₀ := 0) ?_ ?_
       isPreconnected_univ (Set.mem_univ 0) ?_
-  · simp_rw [sub_eq_add_neg, exp_add, integral_mul_const]
-    refine AnalyticOnNhd.mul ?_ analyticOnNhd_const
-    simp_rw [← sub_eq_add_neg]
-    exact analyticOnNhd_integral_exp_cameronMartin (μ := μ) x L
+  · have hfun :
+        (fun z : ℂ =>
+            ∫ u, exp ((L u - z * x u) * I - ‖x‖ ^ 2 / 2) ∂μ)
+          =
+        fun z : ℂ =>
+            (∫ u, exp ((L u - z * x u) * I) ∂μ) * exp (- ‖x‖ ^ 2 / 2) := by
+        funext z
+        simp_rw [sub_eq_add_neg, exp_add]
+        calc
+          ∫ u : E, exp ((L u + -(z * x u)) * I) * exp (-(↑‖x‖ ^ 2 / 2)) ∂μ
+              =
+            (∫ u : E, exp ((L u + -(z * x u)) * I) ∂μ)
+              * exp (-(↑‖x‖ ^ 2 / 2)) := by
+                exact MeasureTheory.integral_mul_const
+                  (μ := μ) (r := exp (-(↑‖x‖ ^ 2 / 2)))
+                  (f := fun u : E => exp ((L u + -(z * x u)) * I))
+          _ =
+            (∫ u : E, exp ((L u + -(z * x u)) * I) ∂μ)
+              * exp (-↑‖x‖ ^ 2 / 2) := by
+                congr 1
+                ring_nf
+    rw [hfun]
+    exact (analyticOnNhd_integral_exp_cameronMartin (μ := μ) x L).mul analyticOnNhd_const
   · simp_rw [sub_eq_add_neg, exp_add]
     refine AnalyticOnNhd.mul ?_ analyticOnNhd_const
     refine AnalyticOnNhd.mul ?_ analyticOnNhd_const
@@ -426,8 +486,7 @@ private lemma integral_exp_sub_mul_I_sub_norm_sq_eq_closed_form_complex
     · rw [← Complex.ofReal_zero, tendsto_ofReal_iff]
       exact hx_tendsto.1
     · simpa using hx_tendsto.2
-  · simp only [AddSubgroupClass.coe_norm] at hx_eq
-    simp [hx_eq]
+  · simpa using hx_eq n
 
 private lemma charFunDual_withDensity_exp_cameronMartin (x : cameronMartin μ) (L : StrongDual ℝ E) :
     charFunDual (μ.withDensity fun y ↦ .ofReal (.exp (x y - ‖x‖ ^ 2 / 2))) L
@@ -441,7 +500,12 @@ private lemma charFunDual_withDensity_exp_cameronMartin (x : cameronMartin μ) (
             congr with u
             rw [ENNReal.toReal_ofReal (Real.exp_nonneg _), add_sub_assoc, exp_add,
               mul_comm (exp _)]
-            simp
+            change
+              (Real.exp (x u - ‖x‖ ^ 2 / 2) : ℂ) * exp (L u * I)
+                = exp (↑(x u) - ↑‖x‖ ^ 2 / 2) * exp (L u * I)
+            rw [Complex.ofReal_exp]
+            congr 1
+            norm_num
     _ = exp ((μ[L] + L (cmCoe x)) * I - Var[L; μ] / 2) := by
           have h := integral_exp_sub_mul_I_sub_norm_sq_eq_closed_form_complex (μ := μ) x L I
           simp only [I_sq, add_neg_cancel, zero_div, zero_mul, sub_zero] at h

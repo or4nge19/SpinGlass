@@ -55,12 +55,30 @@ lemma measurable_prefix0 : Measurable (prefix0 (α := α) (β := β)) := by
 
 /-- The infinite-trajectory kernel associated to `K` via Ionescu–Tulcea (i.i.d. given the head). -/
 noncomputable def iidTrajKernel (K : Kernel α β) [IsMarkovKernel K] :
-    Kernel α (Π n, IidX (α := α) (β := β) n) :=
-  (ProbabilityTheory.Kernel.traj (κ := iidκ (α := α) (β := β) K) 0)
-    ∘ₖ ProbabilityTheory.Kernel.deterministic (prefix0 (α := α) (β := β)) (measurable_prefix0 (α := α) (β := β))
+    Kernel α (Π n, IidX (α := α) (β := β) n) := by
+  let κ := iidκ (α := α) (β := β) K
+  have hmarkov : ∀ n, IsMarkovKernel (κ n) := by
+    intro n
+    dsimp [κ]
+    infer_instance
+  exact
+    (@ProbabilityTheory.Kernel.traj
+      (fun n => IidX (α := α) (β := β) n) (fun n => inferInstance) κ hmarkov 0)
+      ∘ₖ ProbabilityTheory.Kernel.deterministic (prefix0 (α := α) (β := β))
+        (measurable_prefix0 (α := α) (β := β))
 
 instance (K : Kernel α β) [IsMarkovKernel K] : IsMarkovKernel (iidTrajKernel (α := α) (β := β) K) := by
   dsimp [iidTrajKernel]
+  let κ := iidκ (α := α) (β := β) K
+  have hmarkov : ∀ n, IsMarkovKernel (κ n) := by
+    intro n
+    dsimp [κ]
+    infer_instance
+  change IsMarkovKernel
+    ((@ProbabilityTheory.Kernel.traj
+      (fun n => IidX (α := α) (β := β) n) (fun n => inferInstance) κ hmarkov 0)
+      ∘ₖ ProbabilityTheory.Kernel.deterministic (prefix0 (α := α) (β := β))
+        (measurable_prefix0 (α := α) (β := β)))
   infer_instance
 
 /--
@@ -70,24 +88,35 @@ This is the precise kernel-level version of “sampling the first replica is gov
 -/
 lemma iidTrajKernel_map_one (K : Kernel α β) [IsMarkovKernel K] :
     (iidTrajKernel (α := α) (β := β) K).map (fun x : (Π n, IidX (α := α) (β := β) n) => x 1) = K := by
+  let κ := iidκ (α := α) (β := β) K
+  have hmarkov : ∀ n, IsMarkovKernel (κ n) := by
+    intro n
+    dsimp [κ]
+    infer_instance
+  letI : ∀ n, IsMarkovKernel (κ n) := hmarkov
   simp [iidTrajKernel, Kernel.map_comp]
   -- Apply Ionescu–Tulcea: time-`1` marginal of `traj` is the step kernel `iidκ K 0`.
   have hstep :
-      (ProbabilityTheory.Kernel.traj (κ := iidκ (α := α) (β := β) K) 0).map
-          (fun x : (Π n, IidX (α := α) (β := β) n) => x 1) = iidκ (α := α) (β := β) K 0 := by
-    simpa using (ProbabilityTheory.Kernel.map_traj_succ_self (κ := iidκ (α := α) (β := β) K) (a := 0))
+      ((@ProbabilityTheory.Kernel.traj
+        (fun n => IidX (α := α) (β := β) n) (fun n => inferInstance) κ hmarkov 0).map
+          (fun x : (Π n, IidX (α := α) (β := β) n) => x 1)) = κ 0 := by
+    simpa using
+      (@ProbabilityTheory.Kernel.map_traj_succ_self
+        (fun n => IidX (α := α) (β := β) n) (fun n => inferInstance) κ hmarkov 0)
   have hstep' :
-      (ProbabilityTheory.Kernel.traj (κ := iidκ (α := α) (β := β) K) 0).map
-          (fun x : (Π n, IidX (α := α) (β := β) n) => x 1)
-        ∘ₖ ProbabilityTheory.Kernel.deterministic (prefix0 (α := α) (β := β))
-            (measurable_prefix0 (α := α) (β := β)) = (iidκ (α := α) (β := β) K 0)
+      (((@ProbabilityTheory.Kernel.traj
+          (fun n => IidX (α := α) (β := β) n) (fun n => inferInstance) κ hmarkov 0).map
+            (fun x : (Π n, IidX (α := α) (β := β) n) => x 1))
           ∘ₖ ProbabilityTheory.Kernel.deterministic (prefix0 (α := α) (β := β))
-              (measurable_prefix0 (α := α) (β := β)) := by
+              (measurable_prefix0 (α := α) (β := β)))
+        =
+        κ 0 ∘ₖ ProbabilityTheory.Kernel.deterministic (prefix0 (α := α) (β := β))
+          (measurable_prefix0 (α := α) (β := β)) := by
     simp [hstep]
   have hhead0 : (head (α := α) (β := β) (n := 0)) ∘ (prefix0 (α := α) (β := β)) = id := by
     funext a
     simp [Cascades.head, prefix0, Cascades.IidX]
-  simpa [iidκ, Kernel.comp_assoc, Kernel.deterministic_comp_deterministic, hhead0,
+  simpa [κ, iidκ, Kernel.comp_assoc, Kernel.deterministic_comp_deterministic, hhead0,
     Kernel.comp_deterministic_eq_comap, Kernel.comap_id] using hstep'
 
 end General

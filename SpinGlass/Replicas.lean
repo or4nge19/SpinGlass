@@ -1477,6 +1477,18 @@ lemma A_disorder_eq_explicit (t : ℝ) (f : ReplicaFun N n) (τ : Config N) (x :
         ∑ x : Fin n, @ite ℝ (τ = σs x) (Fintype.decidablePiFintype τ (σs x)) 1 0 := by
     refine Fintype.sum_congr _ _ (fun x => hite x)
   rw [← hsum]
+  have hsum_comm :
+      (∑ x : Fin n, @ite ℝ (σs x = τ) (Classical.propDecidable (σs x = τ)) 1 0)
+        =
+        ∑ x : Fin n, @ite ℝ (τ = σs x) (Classical.propDecidable (τ = σs x)) 1 0 := by
+    refine Fintype.sum_congr _ _ ?_
+    intro i
+    by_cases hi : τ = σs i
+    · rw [if_pos hi.symm, if_pos hi]
+    · have hστ : ¬ σs i = τ := fun hστ => hi hστ.symm
+      rw [if_neg hστ, if_neg hi]
+  congr 1
+  rw [hsum_comm]
 
 
 
@@ -1496,6 +1508,12 @@ lemma dgibbs_average_n_disorder_eq_sum_A (t : ℝ) (f : ReplicaFun N n) (x : Dis
     classical
     ext σ
     simp [std_basis, FiniteGibbs.std_basis]
+    rw [Finset.sum_eq_single σ]
+    · simp
+    · intro τ _ hτσ
+      simp [hτσ]
+    · intro hσ
+      simp at hσ
   -- Start from the definition, then expand `v` in the `std_basis` and use linearity.
   have hdg : dgibbs_average_n_disorder (N := N) (n := n) (h := h) t f x = T v := by
     simp [dgibbs_average_n_disorder, G, H, v, T]

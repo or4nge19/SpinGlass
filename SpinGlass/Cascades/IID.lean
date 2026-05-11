@@ -33,7 +33,7 @@ variable {α β : Type u} [MeasurableSpace α] [MeasurableSpace β]
 /-! ## The “trajectory type family” for i.i.d. sampling -/
 
 /-- Time-indexed state spaces for an i.i.d. trajectory: time 0 is `α`, time `n+1` is `β`. -/
-def IidX (α β : Type u) : ℕ → Type u
+@[reducible] def IidX (α β : Type u) : ℕ → Type u
   | 0 => α
   | _ + 1 => β
 
@@ -70,14 +70,10 @@ instance (K : Kernel α β) (n : ℕ) [IsMarkovKernel K] :
     IsMarkovKernel (iidκ (α := α) (β := β) K n) := by
   -- composition of Markov kernels is Markov
   dsimp [iidκ]
-  -- help typeclass search: the deterministic kernel is Markov
-  haveI :
-      IsMarkovKernel
-        (ProbabilityTheory.Kernel.deterministic
-          (head (α := α) (β := β) (n := n))
-          (measurable_head (α := α) (β := β) n)) := by
-    infer_instance
-  infer_instance
+  exact ProbabilityTheory.Kernel.IsMarkovKernel.comp K
+    (ProbabilityTheory.Kernel.deterministic
+      (head (α := α) (β := β) (n := n))
+      (measurable_head (α := α) (β := β) n))
 
 /-! ## Finite marginals via `partialTraj` -/
 
@@ -103,13 +99,10 @@ instance (N : ℕ) (n : ℕ) : IsMarkovKernel (gibbsκ N n) := by
   -- `gibbsKernel` is Markov, hence so is the composed step kernel.
   dsimp [gibbsκ, iidκ]
   haveI : IsMarkovKernel (gibbsKernel (N := N)) := by infer_instance
-  haveI :
-      IsMarkovKernel
-        (ProbabilityTheory.Kernel.deterministic
-          (head (α := EnergySpace N) (β := Config N) (n := n))
-          (measurable_head (α := EnergySpace N) (β := Config N) n)) := by
-    infer_instance
-  infer_instance
+  exact ProbabilityTheory.Kernel.IsMarkovKernel.comp (gibbsKernel (N := N))
+    (ProbabilityTheory.Kernel.deterministic
+      (head (α := EnergySpace N) (β := Config N) (n := n))
+      (measurable_head (α := EnergySpace N) (β := Config N) n))
 
 /-- The finite trajectory kernel up to time `b`, starting from a prefix up to time `a`. -/
 noncomputable abbrev gibbsPartialTraj (N : ℕ) (a b : ℕ) :
@@ -129,8 +122,19 @@ lemma map_gibbsPartialTraj_succ_self (a : ℕ) :
     ∀ N : ℕ,
       (gibbsPartialTraj N a (a + 1)).map (fun x ↦ x ⟨a + 1, by simp⟩) = gibbsκ N a := by
   intro N
-  simpa [gibbsPartialTraj, gibbsκ] using
-    (ProbabilityTheory.Kernel.map_partialTraj_succ_self (κ := gibbsκ N) a)
+  let κ := fun n => gibbsκ N n
+  letI : ∀ n, IsMarkovKernel (κ n) := by
+    intro n
+    dsimp [κ]
+    infer_instance
+  have hmarkov : ∀ n, IsMarkovKernel (κ n) := by
+    intro n
+    dsimp [κ]
+    infer_instance
+  simpa [gibbsPartialTraj, gibbsκ, κ] using
+    (@ProbabilityTheory.Kernel.map_partialTraj_succ_self
+      (fun n => IidX (α := EnergySpace N) (β := Config N) n)
+      (fun n => inferInstance) κ hmarkov a)
 
 end SpinGlass
 
