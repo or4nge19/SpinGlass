@@ -4,16 +4,9 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import Mathlib.Analysis.Complex.Trigonometric
 
 /-!
-# Hopfield: the scalar fixed point `m* = tanh(β m* + h)`
+# Hopfield scalar fixed point
 
-Talagrand’s Hopfield localization theorems single out solutions of the scalar fixed-point equation
-
-\[
-  m = \tanh(\beta m + h).
-\]
-
-This file builds a small, **proved** API around existence and a canonical choice of a fixed point
-(`mStar`) using `csSup`/`sSup` for conditionally complete orders.
+Solutions of `m = tanh(β m + h)`. Main: `mStar`. Used in Talagrand’s Hopfield localization.
 -/
 
 open scoped Interval

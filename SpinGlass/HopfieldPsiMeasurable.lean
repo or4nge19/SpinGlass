@@ -1,10 +1,9 @@
 import SpinGlass.Hopfield
 
 /-!
-# Hopfield `ψ`: basic measurability lemmas
+# Hopfield `ψ`: measurability
 
-These are small prerequisites for later “Vol II style” arguments where Hopfield laws are expressed
-via densities involving `Real.exp (hopfieldPsi …)`.
+Measurability of `hopfieldPsi` and of densities `Real.exp (hopfieldPsi …)`.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators

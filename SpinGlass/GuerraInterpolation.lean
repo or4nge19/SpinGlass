@@ -1,20 +1,11 @@
 import SpinGlass.Replicas
 
 /-!
-# Guerra interpolation: analytic differentiation of the expected free energy
+# Guerra interpolation: differentiation
 
-This file provides the **dominated differentiation** step for the Guerra smart path.
-
-Let `H_t = √t • U + √(1-t) • V + H_field` (see `SpinGlass/Replicas.lean`). Define
-
-`φ(t) := 𝔼[ free_energy_density (H_t) ]`.
-
-For `t ∈ (0,1)`, we prove `HasDerivAt φ(t)` and identify the derivative as
-
-`𝔼[ (fderiv free_energy_density (H_t)) (dH_t) ]`.
-
-No Gaussian IBP is used here; this is the analytic layer used before rewriting `φ'(t)` into
-Talagrand’s covariance/Hessian trace form.
+For `H_t = √t • U + √(1-t) • V + H_field` and `φ(t) := 𝔼[free_energy_density (H_t)]`,
+`HasDerivAt φ t` with `φ'(t) = 𝔼[(fderiv free_energy_density (H_t)) (dH_t)]`.
+Main: `hasDerivAt_guerraPhi`.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology
@@ -40,9 +31,7 @@ lemma abs_fderiv_free_energy_density_apply_le (H v : EnergySpace N) :
     FiniteGibbs.free_energy_density, FiniteGibbs.Z, FiniteGibbs.gibbs_pmf] using
     (FiniteGibbs.abs_fderiv_free_energy_density_apply_le (α := Config N) (n := N) (H := H) (v := v))
 
-/--
-Analytic derivative of the expected free energy along the smart path.
--/
+/-- `HasDerivAt` of the expected free energy along the Guerra path. -/
 theorem hasDerivAt_guerraPhi (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
     HasDerivAt (guerraPhi (N := N) (β := β) (h := h) (q := q) sk sim)
       (∫ ω,
@@ -272,14 +261,7 @@ theorem hasDerivAt_guerraPhi (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
       hF_meas hF_int hF'_meas h_bound hbound_int h_diff).2
   simpa [guerraPhi, F, F'] using hMain
 
-/-!
-### First explicit simplification of the derivative value
-
-This rewrites the Fréchet derivative of `free_energy_density` using the closed form
-`fderiv_free_energy_density_apply`.
-
-It is the right interface for the subsequent Gaussian IBP step.
--/
+/-! ### Derivative via `fderiv_free_energy_density_apply` -/
 
 lemma derivative_value_guerraPhi_eq (t : ℝ) :
     (∫ ω,
@@ -339,12 +321,7 @@ lemma derivative_value_guerraPhi_eq (t : ℝ) :
             ∂ℙ := by
           simp [hg]
 
-/-!
-## Rewriting `φ` and `φ'` on the intrinsic disorder space
-
-For the IBP step, it is convenient to push the disorder expectation from `Ω` to the law
-`disorderPairLaw` on `DisorderSpace`.
--/
+/-! ## `φ` and `φ'` on `disorderPairLaw` -/
 
 section DisorderLaw
 

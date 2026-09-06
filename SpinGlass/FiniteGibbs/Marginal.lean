@@ -2,21 +2,11 @@ import SpinGlass.FiniteGibbs.GibbsMeasure
 import Mathlib.Data.Fintype.Prod
 
 /-!
-# Finite Gibbs marginalization (Boltzmann machines / RBMs)
+# Finite Gibbs marginalization
 
-This file provides a **finite-volume** lemma to integrate out hidden variables.
-
-For a Gibbs law on a product space `α × β` with energy `H`, the `α`-marginal is again a Gibbs law,
-with **effective energy**
-\[
-  H_{\mathrm{eff}}(a) := -\log \sum_{b} \exp(-H(a,b)).
-\]
-
-This is a possibe principled bridge between:
-
-- Boltzmann machines / RBMs (joint Gibbs law on visible+hidden),
-- Hopfield-type low-rank energies (visible marginal after Gaussian hidden integration),
-- Talagrand’s Vol II viewpoint (kernels / pushforwards).
+Gibbs law on `α × β` with energy `H` has `α`-marginal equal to the Gibbs law of
+`H_eff(a) = -log ∑_b exp(-H(a,b))`. Main: `marginalEnergy`,
+`map_fst_gibbsMeasure_eq_gibbsMeasure_marginalEnergy`.
 -/
 
 open MeasureTheory Real BigOperators
@@ -46,11 +36,7 @@ lemma condZ_pos (H : EnergySpace (α × β)) (a : α) : 0 < condZ (α := α) (β
 lemma condZ_ne_zero (H : EnergySpace (α × β)) (a : α) : condZ (α := α) (β := β) H a ≠ 0 :=
   (condZ_pos (α := α) (β := β) (H := H) a).ne'
 
-/--
-Effective (visible) energy obtained by summing out the `β` variable:
-
-`H_eff a = - log (∑ b, exp (-H (a,b)))`.
--/
+/-- Effective energy `H_eff a = -log ∑_b exp(-H(a,b))`. -/
 noncomputable def marginalEnergy (H : EnergySpace (α × β)) : EnergySpace α :=
   WithLp.toLp 2 (fun a : α => -Real.log (condZ (α := α) (β := β) H a))
 
@@ -95,12 +81,7 @@ lemma sum_gibbs_pmf_prod_eq_gibbs_pmf_marginalEnergy (H : EnergySpace (α × β)
 
 /-! ## Measure-level marginalization lemma -/
 
-/--
-Marginalizing the Gibbs measure on `α × β` along `Prod.fst` yields the Gibbs measure on `α`
-with the effective energy `marginalEnergy`.
-
-This is the finite-volume “RBM visible marginal = Gibbs of log-sum-exp energy” statement.
--/
+/-- The `α`-marginal of Gibbs on `α × β` is Gibbs of `marginalEnergy`. -/
 theorem map_fst_gibbsMeasure_eq_gibbsMeasure_marginalEnergy (H : EnergySpace (α × β)) :
     (gibbsMeasure (α := α × β) H).map Prod.fst
       =

@@ -4,17 +4,10 @@ import Mathlib.Probability.Kernel.Composition.Lemmas
 import Mathlib.Probability.Kernel.Composition.ParallelComp
 
 /-!
-# Vol II infrastructure: posterior predictive as a conditional distribution
+# Posterior predictive as `condDistrib`
 
-This file expresses the de Finetti/Bayesian picture in the most robust way:
-
-- build the **joint law** of `(prefix replicas, fresh replica)` as `μPrefix ⊗ₘ predictive`;
-- characterize the conditional law of the fresh replica given the prefix as a `condDistrib`;
-- identify it with the posterior predictive kernel.
-
-This is the statement shape that later infinite-dimensional Gaussian tools (Cameron–Martin/Fernique/GIBP)
-will feed into: the analytic work produces statements about the posterior on `H`, while the measure/kernel
-algebra turns them into statements about replica arrays.
+Joint law of `(prefix, fresh replica)` as `μPrefix ⊗ₘ predictive`; the conditional law of the
+fresh replica is the posterior predictive kernel. Main: `condDistrib_snd_fst_gibbsPrefixFreshLaw_ae`.
 -/
 
 open MeasureTheory ProbabilityTheory
@@ -49,15 +42,7 @@ instance : IsFiniteMeasure (gibbsPrefixFreshLaw (N := N) (n := n) μH) := by
   dsimp [gibbsPrefixFreshLaw]
   infer_instance
 
-/-!
-### Bayesian network factorization
-
-These equalities make the “posterior predictive” semantics explicit at the measure level:
-
-1. sample a prefix `σ^{≤n}` from its law,
-2. sample `H` from the posterior given that prefix,
-3. sample a fresh `σ^{n+1}` from `gibbsKernel H`.
--/
+/-! ### Posterior-predictive factorization -/
 
 lemma gibbsPrefixFreshLaw_eq_compPosterior :
     gibbsPrefixFreshLaw (N := N) (n := n) μH
@@ -88,12 +73,7 @@ lemma gibbsPrefixFreshLaw_eq_from_prior :
   -- Substitute into the Bayesian-network factorization.
   simp [gibbsPrefixFreshLaw_eq_compPosterior (N := N) (n := n) (μH := μH), hpost]
 
-/--
-The conditional law of the fresh replica given the prefix under `gibbsPrefixFreshLaw`
-is (a.e.) the posterior predictive kernel.
-
-This is the canonical “posterior predictive = condDistrib” statement.
--/
+/-- Under `gibbsPrefixFreshLaw`, `condDistrib` of the fresh replica is a.e. the posterior predictive. -/
 lemma condDistrib_snd_fst_gibbsPrefixFreshLaw_ae :
     ProbabilityTheory.condDistrib (fun p : (ReplicaSpace N n) × (Config N) => p.2)
         (fun p : (ReplicaSpace N n) × (Config N) => p.1)
@@ -149,18 +129,7 @@ lemma condDistrib_snd_fst_gibbsPrefixFreshLaw_ae :
     (hX := by fun_prop) (hY := by fun_prop) (κ := gibbsPosteriorPredictive (N := N) (n := n) μH) ?_
   simpa using hκ
 
-/-!
-### Prior-driven joint law
-
-This is the “honest generative” joint distribution of `(prefix replicas, fresh replica)` obtained by:
-
-1. sample `H ~ μH`,
-2. sample `n` replicas from `replicaGibbsKernel H`,
-3. sample a fresh replica from `gibbsKernel H`,
-4. forget `H`.
-
-It is definitionally the same measure as `gibbsPrefixFreshLaw` by the posterior identity.
--/
+/-! ### Prior-driven joint law -/
 
 noncomputable def gibbsPriorPrefixFreshLaw : Measure ((ReplicaSpace N n) × (Config N)) :=
   (Kernel.id ∥ₖ gibbsKernel (N := N)) ∘ₘ

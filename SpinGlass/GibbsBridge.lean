@@ -5,16 +5,10 @@ import SpinGlass.FiniteGibbs.GibbsMeasure
 import SpinGlass.SKModel
 
 /-!
-## Talagrand ↔ Georgii bridge (finite `N`)
+# Finite-volume Gibbs as a `ProbabilityMeasure`
 
-Talagrand (Vol. I/II) works with a finite-volume Gibbs distribution on `Config N` given by the
-weights `gibbs_pmf`.
-
-For later “Vol. II structure” work (bracket notation, replicas, conditional kernels), it is
-convenient to bundle these weights as an actual `ProbabilityMeasure` on configurations.
-
-This file provides that in a way that is purely finite-volume and does **not** introduce
-any additional (topological) hypotheses.
+Atomic `ProbabilityMeasure` on `Config N` with weights `gibbs_pmf`. No extra topological
+hypotheses. Main: `gibbsMeasure`.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators

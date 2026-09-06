@@ -9,25 +9,9 @@ import Mathlib.MeasureTheory.Function.L2Space
 /-!
 # Cameron–Martin IBP: analytic layer
 
-This file provides the analytic infrastructure to differentiate the Cameron–Martin tilt functional
-`t ↦ ∫ F(y) · exp(t⟨x,y⟩ - t²‖x‖²/2) dμ(y)` at `t = 0` under the integral sign, yielding
-the Gaussian integration-by-parts identity `∫ ⟨x,y⟩ F(y) dμ(y)`.
-
-## Main results
-
-* `cameronMartinTiltKernel_aeEq_tiltKernel`: the Cameron–Martin tilt kernel agrees a.e. with the
-  1D `tiltKernel` applied to the coordinate `x y`.
-* `integrable_profile_cameronMartin`: the exponential profile `(|x y| + 1) * exp(δ|x y|)` is
-  integrable under `μ`, enabling dominated convergence arguments.
-* `hasDerivAt_tiltFun_at0_of_bounded`: differentiation under the integral for bounded `F`.
-* `hasDerivAt_tiltFun_at0_of_integrable_profile`: differentiation under the integral given
-  explicit integrability of the dominating profile.
-
-## Implementation notes
-
-The key technique is to reduce the infinite-dimensional differentiation problem to 1D by
-composing with the Cameron–Martin direction `x`, then applying the domination bounds from
-`GaussianIntegrationByParts.lean` (specifically `gaussianTilt_deriv_dom_bound`).
+Differentiate `t ↦ ∫ F(y) · exp(t⟨x,y⟩ - t²‖x‖²/2) dμ` at `t = 0`. Main:
+`cameronMartinTiltKernel_aeEq_tiltKernel`, `hasDerivAt_tiltFun_at0_of_bounded`,
+`hasDerivAt_tiltFun_at0_of_integrable_profile`.
 -/
 
 open MeasureTheory Filter
@@ -540,11 +524,7 @@ end CameronMartinIBPAnalytic
 
 open CameronMartinIBPAnalytic
 --set_option maxHeartbeats 1000000 in
-/-- **Gaussian IBP (Cameron–Martin, bounded baseline).**
-
-This is the infinite-dimensional “measure-level” IBP:
-`∫ (x y) * F y dμ = ∫ (fderiv F y) (cmCoe x) dμ`,
-proved by differentiating the Cameron–Martin identity at `t = 0` under the integral sign. -/
+/-- Gaussian IBP for bounded `F`: `∫ (x y) * F y dμ = ∫ (fderiv F y) (cmCoe x) dμ`. -/
 theorem cameronMartin_integral_by_parts_bounded
     (x : cameronMartin μ) (F : E → ℝ)
     (hF_meas : Measurable F)
@@ -560,11 +540,7 @@ theorem cameronMartin_integral_by_parts_bounded
     CameronMartinIBPAnalytic.hasDerivAt_tiltFun_at0_bounded (μ := μ) x F hF_meas hM0
   exact cameronMartin_integral_by_parts_of_hasDerivAt (μ := μ) x F hF_meas hShift hTilt
 
-/-- **Gaussian IBP (Cameron–Martin, polynomial growth).**
-
-This is the measure-level IBP under the natural polynomial growth assumptions on `F` and `fderiv F`,
-with integrability discharged via Fernique + the 1D domination profile along the Cameron–Martin
-coordinate. -/
+/-- Gaussian IBP under polynomial growth of `F` and `fderiv F` (integrability via Fernique). -/
 theorem cameronMartin_integral_by_parts_polyGrowth
     (x : cameronMartin μ) (F : E → ℝ)
     (hF_meas : Measurable F)
@@ -581,11 +557,7 @@ theorem cameronMartin_integral_by_parts_polyGrowth
       x F hF_meas hC hF_growth (δ := 1) (by norm_num)
   exact cameronMartin_integral_by_parts_of_hasDerivAt (μ := μ) x F hF_meas hShift hTilt
 
-/-- **Gaussian IBP (Cameron–Martin, dominated shift + integrable tilt profile).**
-
-This is the same measure-level IBP as `cameronMartin_integral_by_parts_bounded`, but with:
-- shift derivative justified by a *local-in-`t`* domination hypothesis;
-- tilt derivative justified by an *integrable profile* (cf. `hasDerivAt_tiltFun_at0_of_integrable_profile`). -/
+/-- Gaussian IBP under local domination of the shift and an integrable tilt profile. -/
 theorem cameronMartin_integral_by_parts_of_integrable_bound
     (x : cameronMartin μ) (F : E → ℝ)
     (hF_meas : Measurable F)

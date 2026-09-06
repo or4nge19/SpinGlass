@@ -3,22 +3,11 @@ import Mathlib.MeasureTheory.Group.Convolution
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 
 /-!
-# Talagrand Vol. II: Parisi recursive operator `T_{m,v}`
+# Parisi operator `T_{m,v}`
 
-This file introduces the basic “Gaussian log-mgf smoothing” operator
-\[
-T_{m,v}(A)(x) = \frac{1}{m}\log \int \exp(m A(x+z)) \, d\gamma_{0,v}(z),
-\]
-where `γ_{0,v}` is `gaussianReal 0 v`.
-
-The main structural lemma for the Parisi recursion is the semigroup property:
-\[
-T_{m,v₁}(T_{m,v₂}(A)) = T_{m,v₁+v₂}(A),
-\]
-which is a direct consequence of Gaussian convolution and Fubini.
-
-This is intentionally stated under **minimal** hypotheses (measurability + uniform boundedness)
-so it can be used as a core building block in later Vol. II developments.
+Gaussian log-mgf smoothing
+`T_{m,v}(A)(x) = (1/m) log ∫ exp(m A(x+z)) dγ_{0,v}(z)`. Semigroup:
+`T_{m,v₁} ∘ T_{m,v₂} = T_{m,v₁+v₂}`. Talagrand Vol. II.
 -/
 
 open MeasureTheory ProbabilityTheory Real
@@ -30,7 +19,7 @@ namespace Parisi
 
 /-! ### Basic boundedness hypothesis -/
 
-/-- A convenient “uniform bound” hypothesis for real functions. -/
+/-- Uniform bound: `∃ C, ∀ x, |A x| ≤ C`. -/
 def HasUniformBound (A : ℝ → ℝ) : Prop :=
   ∃ C : ℝ, ∀ x, |A x| ≤ C
 

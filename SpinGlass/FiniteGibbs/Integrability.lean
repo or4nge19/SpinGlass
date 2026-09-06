@@ -4,14 +4,10 @@ import Mathlib.Probability.Notation
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
 
 /-!
-# Integrability lemmas for `SpinGlass.FiniteGibbs`
+# Finite Gibbs integrability
 
-This file turns the deterministic growth bounds from `SpinGlass.FiniteGibbs.Calculus` into
-reusable measure-theoretic integrability facts, in a model-agnostic way.
-
-The primary use case is Guerra-type interpolation: we need integrability of the free energy
-functional under (typically Gaussian) disorder laws to justify differentiation under the
-integral sign.
+Growth bounds from `SpinGlass.FiniteGibbs.Calculus` as measure-theoretic integrability, for
+differentiation under the integral along Gaussian disorder.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology

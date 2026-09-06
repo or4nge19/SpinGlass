@@ -3,17 +3,10 @@ import Mathlib.Probability.Distributions.Gaussian.Basic
 import Mathlib.Probability.Distributions.Gaussian.HasGaussianLaw.Basic
 
 /-!
-# Gaussian measures are sub-Gaussian (linear functionals)
+# Gaussian measures are sub-Gaussian
 
-This file provides a bridge between Mathlib's `IsGaussian` predicate and the
-sub-Gaussian mgf API (`ProbabilityTheory.HasSubgaussianMGF`).
-
-The main statement is: for a Gaussian measure `μ` on a real Banach space `E`, any continuous linear
-functional `L : StrongDual ℝ E` is *sub-Gaussian after centering*:
-`x ↦ L x - μ[L]` has sub-Gaussian mgf with parameter `(Var[L; μ]).toNNReal`.
-
-This is an equality-level statement, proved by pushing forward to `ℝ` and using the explicit mgf of
-`gaussianReal`.
+For Gaussian `μ` on a real Banach space, `x ↦ L x - μ[L]` has sub-Gaussian mgf with parameter
+`(Var[L; μ]).toNNReal` for every `L : StrongDual ℝ E`.
 -/
 
 open MeasureTheory ProbabilityTheory

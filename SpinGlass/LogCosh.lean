@@ -8,18 +8,10 @@ import Mathlib.Analysis.Calculus.FDeriv.Congr
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
 /-!
-# `log ∘ cosh` / `tanh` calculus and CLM compositions
+# `log ∘ cosh` / `tanh` calculus
 
-This file provides reusable one-dimensional derivative facts about `Real.tanh` and
-`fun x ↦ Real.log (Real.cosh x)`, and packages Fréchet derivative / Hessian formulas for
-
-`z ↦ Real.log (Real.cosh (β * L z + h))`
-
-where `L : V →L[ℝ] ℝ` is a continuous linear functional.
-
-This is meant as a small, model-agnostic calculus backend for Hopfield-type `ψ` functionals
-and other “sum of one-dimensional nonlinearities composed with linear forms” constructions
-appearing throughout Talagrand (Vol. I/II).
+One-dimensional derivatives of `Real.tanh` and `x ↦ log (cosh x)`, and Fréchet/Hessian formulas
+for `z ↦ log (cosh (β * L z + h))`. Backend for Hopfield `ψ`.
 -/
 
 open scoped BigOperators

@@ -9,18 +9,11 @@ import Mathlib.Topology.Algebra.Module.StrongTopology
 import Mathlib.Probability.Distributions.Gaussian.HasGaussianLaw.Independence
 
 /-!
-# Gaussian Poincaré and `L²` self-averaging for finite Gibbs free energies
+# Gaussian Poincaré for finite Gibbs
 
-This file is Milestone 2 of `Notes/Plan6226.md`:
-
-* a **Gaussian variance bound** (Poincaré inequality) for `IsGaussian` laws on real Hilbert spaces,
-  phrased using the intrinsic covariance operator;
-* a reusable corollary giving `L²` self-averaging for
-  `SpinGlass.FiniteGibbs.free_energy_density` using the existing derivative bounds from
-  `SpinGlass.FiniteGibbs.Calculus`.
-
-The long-term goal is that model-specific self-averaging is a one-line instantiation:
-the model supplies a Gaussian disorder law and a covariance-operator norm estimate.
+Variance bound for `C¹` functionals of a centered Gaussian on a Hilbert space, via
+`covarianceOperator`. Self-averaging of `free_energy_density`. Main:
+`variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq`.
 -/
 
 open scoped BigOperators ENNReal NNReal ProbabilityTheory RealInnerProductSpace Topology
@@ -33,13 +26,7 @@ namespace IsGaussian
 
 noncomputable section
 
-/-!
-## A Gaussian variance bound (Poincaré-type, bounded derivative form)
-
-For the spin-glass applications, we use a Gaussian variance estimate for functionals with a
-**uniform bound** on the Fréchet derivative. This is the right interface for free energies, since
-we already have the global bound `‖fderiv free_energy_density‖ ≤ 1/n`.
--/
+/-! ## Gaussian variance bound (bounded derivative) -/
 
 open scoped Interval
 
@@ -51,12 +38,7 @@ variable {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℝ H] [CompleteS
 noncomputable def gaussMix (t : ℝ) (p : H × H) : H :=
   Real.sqrt t • p.1 + Real.sqrt (1 - t) • p.2
 
-/-!
-We also use the orthogonal companion
-`(x,y) ↦ (√(1-t) • x - √t • y)`.
-
-For `t ∈ [0,1]`, the map `(x,y) ↦ (gaussMix t (x,y), gaussMixOrtho t (x,y))` is an involution.
--/
+/-! ### Orthogonal companion of `gaussMix` -/
 
 /-- The orthogonal companion of `gaussMix`: `√(1-t) • x - √t • y`. -/
 noncomputable def gaussMixOrtho (t : ℝ) (p : H × H) : H :=
@@ -129,13 +111,7 @@ lemma gaussMix_gaussMixOrtho_involutive {t : ℝ} (ht : t ∈ Set.Icc (0 : ℝ) 
         simpa [pow_two] using this
       simp [← add_smul, h1, h2, sub_eq_add_neg]
 
-/-!
-### A smoother (cos/sin) Gaussian mixing map
-
-The `sqrt`-parameterization `gaussMix` is convenient for some algebraic identities, but for the
-Poincaré/variance argument we prefer the rotation-parameterization
-`(x,y) ↦ (cos θ • x + sin θ • y, -sin θ • x + cos θ • y)`, since it has a clean derivative in `θ`.
--/
+/-! ### Rotation mixing map -/
 
 /-- The `θ`-dependent Gaussian rotation mix `cos θ • x + sin θ • y`. -/
 noncomputable def gaussRot (θ : ℝ) (p : H × H) : H :=
@@ -362,7 +338,7 @@ lemma map_gaussRotMap_prod (hmean0 : (∫ x : H, x ∂μ) = 0) (θ : ℝ) :
     simpa using hdiag
   simpa [P, Q] using (ProbabilityTheory.IsGaussian.ext_covarianceBilinDual (μ := P) (ν := Q) hm hv).symm
 
-/-! ### Main variance bound will go here. -/
+/-! ### Auxiliary second-moment bound -/
 
 section PoincareAux
 
@@ -370,10 +346,7 @@ variable {F : Type*} [NormedAddCommGroup F] [InnerProductSpace ℝ F] [CompleteS
 variable [MeasurableSpace F] [BorelSpace F] [SecondCountableTopology F]
 variable {ν : Measure F} [IsGaussian ν]
 
-/-- A (centered) Gaussian second-moment bound for continuous linear functionals.
-
-This is the `L²` input used in the Poincaré/variance argument: under `∫ x, x ∂ν = 0`,
-the second moment of any `L : StrongDual ℝ F` is controlled by `‖covarianceOperator ν‖ * ‖L‖²`. -/
+/-- If `∫ x ∂ν = 0`, then `∫ (L x)² ∂ν ≤ ‖covarianceOperator ν‖ * ‖L‖²`. -/
 lemma integral_sq_dual_le_opNorm_covarianceOperator (hmean0 : (∫ x : F, x ∂ν) = 0)
     (L : StrongDual ℝ F) :
     (∫ x : F, (L x) ^ 2 ∂ν) ≤ ‖covarianceOperator ν‖ * ‖L‖ ^ 2 := by
@@ -430,12 +403,9 @@ private lemma hasDerivAt_comp_gaussRot {f : H → ℝ} (hf : ContDiff ℝ 1 f) (
   simpa using (hF.comp_hasDerivAt θ (hasDerivAt_gaussRot (H := H) θ p))
 
 /-!
-We will need a simple Cauchy–Schwarz estimate for interval integrals:
-\[
-  \Bigl(\int_a^b g(t)\,dt\Bigr)^2 \le (b-a)\int_a^b g(t)^2\,dt.
-\]
+### Cauchy–Schwarz for interval integrals
 
-We prove this via Hölder on the restricted Lebesgue measure on `Ioc a b`.
+\(\bigl(\int_a^b g\bigr)^2 \le (b-a)\int_a^b g^2\).
 -/
 private lemma sq_intervalIntegral_le_sub_mul_integral_sq {a b : ℝ} (hab : a ≤ b)
     {g : ℝ → ℝ} (hg : MemLp g 2 (volume.restrict (Set.Ioc a b))) :
@@ -532,14 +502,7 @@ private lemma sq_intervalIntegral_le_sub_mul_integral_sq {a b : ℝ} (hab : a �
     simpa [sq_abs] using hset
   simpa [hI, hI2] using hset'
 
-/-- **Gaussian variance bound (Poincaré-type, bounded derivative form).**
-
-For a centered Gaussian measure `μ` on a real Hilbert space `H`, any `C¹` functional `f` with a
-uniform derivative bound `‖fderiv f x‖ ≤ K` satisfies
-`Var[f; μ] ≤ (π^2 / 8) * ‖covarianceOperator μ‖ * K^2`.
-
-The constant `π^2 / 8` comes from the rotation smart path on `[0, π/2]` together with a
-Cauchy–Schwarz estimate for interval integrals. -/
+/-- If `μ` is centered Gaussian and `‖fderiv f x‖ ≤ K`, then `Var[f; μ] ≤ (π²/8) ‖covarianceOperator μ‖ K²`. -/
 theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
     (hmean0 : (∫ x : H, x ∂μ) = 0) {f : H → ℝ} (hf : ContDiff ℝ 1 f) {K : ℝ} (hK : 0 ≤ K)
     (hderiv : ∀ x, ‖fderiv ℝ f x‖ ≤ K) :
@@ -999,12 +962,7 @@ theorem memLp_free_energy_density (n : ℕ) :
       _ = (C0 ^ 2) * (1 + ‖H‖) ^ 2 := by ring
   exact (memLp_two_iff_integrable_sq hmeas).2 hIntSq
 
-/-- **Gaussian `L²` self-averaging for the free energy density.**
-
-This is the direct instantiation of the generic Gaussian variance bound
-`ProbabilityTheory.IsGaussian.variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq`
-using the already-proved derivative estimate
-`‖fderiv free_energy_density‖ ≤ 1/n`. -/
+/-- `Var[free_energy_density; μ] ≤ (π²/8) ‖covarianceOperator μ‖ / n²`. -/
 theorem variance_free_energy_density_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_div_n_sq
     (hmean0 : (∫ x : EnergySpace α, x ∂μ) = 0) (n : ℕ) :
     Var[(fun H : EnergySpace α => free_energy_density (α := α) n H); μ]

@@ -3,17 +3,10 @@ import SpinGlass.Defs
 import SpinGlass.SKModel
 
 /-!
-## Guerra interpolation: from IBP to the trace/Hessian form
+# Guerra interpolation: IBP to trace/Hessian
 
-`SpinGlass/GuerraIBP.lean` rewrites the derivative value of the expected free energy density
-into a Gaussian IBP expression involving derivatives of `gibbs_pmf` on the disorder space.
-
-In this file we:
-- expand the covariance-operator vectors into explicit kernel sums (SK vs simple),
-- use the chain rule for the affine map `H_t_disorder` to convert derivatives on the disorder space
-  into derivatives on `EnergySpace`,
-- identify the resulting double sums with Talagrand’s trace/Hessian expression built from
-  `hessian_free_energy`.
+Expands covariance-operator vectors into SK/simple kernel sums and identifies the result with
+Talagrand’s trace/Hessian expression from `hessian_free_energy`.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology
@@ -107,14 +100,7 @@ private lemma hessian_free_energy_std_basis_eq_neg_fderiv_gibbs_pmf
     rw [hf]
     simp [hessian_free_energy, std_basis, FiniteGibbs.std_basis, hστ]
 
-/-!
-### Lemmas for the trace/Hessian step
-
-These isolate the last-mile steps after `derivative_value_guerraPhi_eq_ibp`:
-
-- swapping finite sums with integrals (requires integrability),
-- rewriting the `-(1/N)·fderiv` entries as `hessian_free_energy` entries.
--/
+/-! ### Trace/Hessian bookkeeping -/
 
 private lemma neg_one_div_N_mul_fderiv_eq_hessian
     (H : EnergySpace N) (σ τ : Config N) :
@@ -582,12 +568,7 @@ private lemma right_pointwise_trace
 ### Main trace/Hessian form of the Guerra derivative (disorder-law version)
 -/
 
-/-!
-### (B3) Trace/kernel reduction
-
-This is the “last mile” step after the Gaussian IBP rewriting:
-it turns the covariance-operator contractions into Talagrand’s trace/Hessian expression.
--/
+/-! ### Trace/kernel reduction -/
 
 theorem ibp_value_guerraPhi_eq_trace_integral
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)
@@ -1047,13 +1028,7 @@ theorem ibp_value_guerraPhi_eq_trace_integral
             (1 / 2 : ℝ) * (SK x - SIM x) ∂μ0 := by
       simp [mul_sub, sub_eq_add_neg, mul_add, mul_assoc, mul_left_comm, mul_comm]
 
-/-!
-### Combined derivative value (B2 + B3)
-
-This is the original statement used downstream: the scalar derivative integrand value is equal to
-the trace/Hessian integral. It is now a one-line composition of the IBP identity (B2) and the
-trace/kernel reduction (B3).
--/
+/-! ### Combined derivative value -/
 
 theorem derivative_value_guerraPhi_eq_trace_integral
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)

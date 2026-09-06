@@ -7,14 +7,9 @@ Authors: Maria Grazia
 import Common.Mathlib.Probability.Distributions.Gaussian_IBP_Hilbert
 
 /-!
-# Gaussian integration by parts on Hilbert spaces: public API
+# Hilbert-space Gaussian IBP
 
-This file is the public-facing entry point for the Hilbert-space covariance-operator formulation
-of Gaussian integration by parts.
-
-Downstream developments should import this file (or
-`Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts`), rather than relying on any
-coordinate model.
+Public API for the covariance-operator form of Gaussian IBP.
 -/
 
 export ProbabilityTheory
