@@ -2,61 +2,52 @@ name: Build SpinGlass
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - '**/*.lean'
       - 'lean-toolchain'
       - 'lakefile.toml'
       - 'lake-manifest.json'
   pull_request:
-    branches:
-      - main
+    branches: [main]
     paths:
       - '**/*.lean'
       - 'lean-toolchain'
       - 'lakefile.toml'
       - 'lake-manifest.json'
-  workflow_dispatch: # Allow manual triggering of the workflow from the GitHub Actions interface
+  workflow_dispatch:
 
-# Cancel previous runs if a new commit is pushed to the same PR or branch
 concurrency:
-  group: ${{ github.ref }}  # Group runs by the ref (branch or PR)
-  cancel-in-progress: true  # Cancel any ongoing runs in the same group
+  group: ${{ github.ref }}
+  cancel-in-progress: true
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages and modify PR labels
 permissions:
-  contents: read          # Read access to repository contents
-  pages: write            # Write access to GitHub Pages
-  id-token: write         # Write access to ID tokens
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   build_project:
     runs-on: ubuntu-latest
-    name: Build project
+    name: Build
     steps:
-      - name: Checkout project
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
-          fetch-depth: 0 # Fetch all history for all branches and tags
+          fetch-depth: 0
 
-      - name: Install and configure Lean, and get mathlib cache
+      - name: Lean + mathlib cache
         uses: leanprover/lean-action@c544e89643240c6b398f14a431bcdc6309e36b3e # v1.4.0
         with:
           auto-config: false
           use-github-cache: false
           use-mathlib-cache: true
 
-      - name: "Check that SpinGlass.lean is up to date"
-        run: |
-          ~/.elan/bin/lake exe mk_all --check || echo "ERROR: please ensure that SpinGlass.lean is up to date, for instance by running lake exe mk_all"
-
-      - name: Cache build artifacts
+      - name: Cache .lake/build
         uses: actions/cache@v5
         with:
           path: .lake/build
           key: LakeBuild-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}-${{ hashFiles('lake-manifest.json') }}
           restore-keys: LakeBuild-
 
-      - name: Build project
+      - name: Build
         run: ~/.elan/bin/lake build SpinGlass
