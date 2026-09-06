@@ -2,6 +2,7 @@ import SpinGlass.Algebra
 import SpinGlass.Calculus
 import SpinGlass.Cascades
 import SpinGlass.Defs
+import SpinGlass.FiniteGibbs
 import SpinGlass.FiniteGibbs.Marginal
 import SpinGlass.GibbsBridge
 import SpinGlass.GuerraBound
@@ -14,8 +15,13 @@ import SpinGlass.HopfieldConvolution
 import SpinGlass.HopfieldFixedPoint
 import SpinGlass.HopfieldLocalization
 import SpinGlass.HopfieldPsiDeriv
+import SpinGlass.HopfieldPsiMeasurable
+import SpinGlass.LogCosh
 import SpinGlass.MeanFieldLimit
+import SpinGlass.ParisiOperator
 import SpinGlass.Poincare
+import SpinGlass.ReplicaKernel
+import SpinGlass.ReplicaMeasure
 import SpinGlass.Replicas
 import SpinGlass.SKModel
 import SpinGlass.Talagrand.MainResults
