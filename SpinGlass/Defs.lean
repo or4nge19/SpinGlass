@@ -18,30 +18,20 @@ namespace SpinGlass
 
 variable (N : ℕ) (β : ℝ)
 
-/-! ### Basic Definitions -/
-
 /-!
-### Vol II–style abstraction boundary
+# Finite-volume SK objects
 
-Most of the “thermodynamic” objects used throughout Talagrand Vol I/II (partition function,
-Gibbs weights, free energy, covariance/Hessian identities) only depend on a **finite configuration
-space** `Σ` and an energy function `H : Σ → ℝ`.
-
-In this repository, concrete models use the Ising configuration space
-`Config N := Fin N → Bool` (spins in `{±1}`), and we keep that specialization as the default.
-But we also expose a configuration-agnostic API so that Vol I models become instances of the
-Vol II general framework (Gaussian processes indexed by `Σ`).
+Configuration space `Config N`, energy Hilbert space `EnergySpace`, partition function `Z`,
+Gibbs weights, free energy density, covariance kernels, and Guerra trace identities.
+Talagrand Vol. I, Ch. 1.
 -/
+
+/-! ### Configuration-agnostic partition function -/
 
 /-- A generic finite configuration space. Concrete models will take `Σ := Config N`. -/
 abbrev Conf := Type*
 
-/--
-Generic partition function on a finite configuration space `Σ`.
-
-This is the canonical `log-sum-exp` object of Vol II (Ch. 8–9, Appendix A): any Gaussian
-interpolation/comparison statement is ultimately applied to `H ↦ log (∑ σ, exp (-H σ))`.
--/
+/-- Partition function `∑ σ, exp(-H σ)` on a finite configuration space. -/
 noncomputable def Z' {α : Type*} [Fintype α] (H : α → ℝ) : ℝ :=
   ∑ σ : α, Real.exp (- H σ)
 
@@ -53,14 +43,7 @@ noncomputable def gibbs_pmf' {α : Type*} [Fintype α] (H : α → ℝ) (σ : α
 noncomputable def free_energy_density' {α : Type*} [Fintype α] (N : ℕ) (H : α → ℝ) : ℝ :=
   (1 / (N : ℝ)) * Real.log (Z' H)
 
-/-!
-### Configuration space and “single-site spin” observables
-
-We parameterize configurations by a *single-site* type `S`.  The default choice `S := Bool`
-recovers the Ising case `Fin N → Bool`.  This small generalization is enough to reuse the
-finite-volume calculus (and the overlap-based covariance kernels) for e.g. Potts-type models by
-changing only the single-site space and the real-valued map `spin : S → ℝ`.
--/
+/-! ### Configuration space and single-site spins -/
 
 /-- Configuration space on `N` sites with single-site space `S` (default: `Bool`). -/
 abbrev Config (N : ℕ) (S : Type := Bool) : Type := Fin N → S
@@ -110,13 +93,7 @@ lemma abs_spin_eq_one (σ : Config N) (i : Fin N) : |spin N σ i| = (1 : ℝ) :=
 lemma spin_mul_self (σ : Config N) (i : Fin N) : spin N σ i * spin N σ i = (1 : ℝ) := by
   simpa [spin, spinOf] using isingSpin_mul_self (σ i)
 
-/--
-Energy Hilbert space for Hamiltonians.
-
-We use the \(ℓ^2\) norm on the *finite* configuration space `Config N` (`PiLp 2`), so `‖H‖` is the
-Euclidean norm on `ℝ^{Config N}` (dimension \(2^N\)). Any Lipschitz/derivative constants in the
-finite-volume calculus are with respect to this \(ℓ^2\) convention (not \(ℓ^\infty\)).
--/
+/-- Energy Hilbert space `PiLp 2 (fun _ : Config N ↦ ℝ)` (`ℓ²` on `ℝ^{2^N}`). -/
 abbrev EnergySpace := PiLp 2 (fun _ : Config N => ℝ)
 
 /-! #### Magnetization and overlap -/
@@ -134,14 +111,7 @@ lemma magnetization_eq_magnetizationOf (σ : Config N) :
     magnetization N σ = magnetizationOf (N := N) isingSpin σ := by
   rfl
 
-/--
-External field energy term:
-\[
-H_{\text{field}}(\sigma) = h \sum_{i=1}^N \sigma_i.
-\]
-
-This is the physically correct “magnetic field” contribution (it depends on `σ`).
--/
+/-- External field energy `H_field(σ) = h ∑_i σ_i`. -/
 def magnetic_field_vector (h : ℝ) : EnergySpace N :=
   WithLp.toLp 2 (fun σ : Config N => h * magnetization N σ)
 
@@ -152,11 +122,7 @@ noncomputable instance : FiniteDimensional ℝ (EnergySpace N) := by
   -- `EnergySpace N` is a type synonym of the finite product `∀ σ : Config N, ℝ`.
   infer_instance
 
-/-! ### Vol II basis vector
-
-We deliberately define the concrete `Config N` basis vector by *delegating* to the model-agnostic
-`FiniteGibbs.std_basis` so that all derivative/Hessian lemmas (proved generically) apply without
-definitional mismatches (in particular, avoiding `Decidable`-instance noise inside `ite`). -/
+/-! ### Basis vector `std_basis` -/
 
 noncomputable def std_basis (σ : Config N) : EnergySpace N :=
   FiniteGibbs.std_basis (α := Config N) σ
@@ -277,12 +243,7 @@ noncomputable def gibbs_average (H : EnergySpace N) (f : Config N → ℝ) : ℝ
 
 /-! ### Free energy density and its abstract (Fréchet) Hessian -/
 
-/--
-Free energy density \(F_N(H) := \frac1N \log Z_N(H)\).
-
-Reference: Talagrand, *Mean Field Models for Spin Glasses*, Vol. I, Ch. 1, §1.3
-(definition and basic properties of the finite-volume free energy).
--/
+/-- Free energy density `F_N(H) := (1/N) log Z_N(H)`. Talagrand Vol. I, §1.3. -/
 noncomputable def free_energy_density (H : EnergySpace N) : ℝ :=
   (1 / (N : ℝ)) * Real.log (Z N H)
 
@@ -292,15 +253,7 @@ lemma free_energy_density_eq_free_energy_density' (H : EnergySpace N) :
       free_energy_density' (α := Config N) N (fun σ : Config N => H σ) := by
   rfl
 
-/--
-The Hessian of the free energy density, defined abstractly as the second Fréchet derivative
-`fderiv ℝ (fun H' => fderiv ℝ (free_energy_density N) H') H`.
-
-This is the object that interfaces directly with Gaussian IBP statements.
-
-Reference: Talagrand, Vol. I, Ch. 1, §1.3 (identification of the second derivative of \(\log Z\)
-with a Gibbs covariance; this is the abstract Fréchet form needed for Gaussian IBP).
--/
+/-- Hessian of `free_energy_density` as a second Fréchet derivative. Talagrand Vol. I, §1.3. -/
 noncomputable def hessian_free_energy_fderiv (H : EnergySpace N) :
     EnergySpace N →L[ℝ] EnergySpace N →L[ℝ] ℝ :=
   fderiv ℝ (fun H' => fderiv ℝ (free_energy_density (N := N)) H') H
@@ -509,23 +462,18 @@ lemma hessian_free_energy_fderiv_eq_hessian_free_energy
     (FiniteGibbs.hessian_free_energy_fderiv_eq_hessian_free_energy
       (α := Config N) (n := N) (H := H) (h := h) (k := k))
 
-/-! ### Compatibility aliases (for Gaussian IBP / calculus API) -/
+/-! ### Compatibility aliases -/
 
-/-- An alias for the abstract Fréchet Hessian of the free energy density. -/
+/-- Alias of `hessian_free_energy_fderiv`. -/
 noncomputable abbrev hessian_logZ (H : EnergySpace N) :
     EnergySpace N →L[ℝ] EnergySpace N →L[ℝ] ℝ :=
   hessian_free_energy_fderiv (N := N) H
 
-/-- An alias for the explicit Gibbs covariance bilinear form. -/
+/-- Alias of the Gibbs covariance bilinear form. -/
 def gibbs_covariance (H : EnergySpace N) (h k : EnergySpace N) : ℝ :=
   hessian_free_energy N H h k
 
-/--
-The abstract (Fréchet) Hessian agrees with the explicit Gibbs covariance formula.
-
-Reference: Talagrand, Vol. I, Ch. 1, §1.3 (second derivative of \(\log Z\) as a Gibbs covariance),
-formalized here as an equality between an `fderiv`-based Hessian and a finite-sum covariance.
--/
+/-- Fréchet Hessian of `free_energy_density` equals Gibbs covariance. Talagrand Vol. I, §1.3. -/
 lemma hessian_eq_covariance (H h k : EnergySpace N) :
     (hessian_logZ (N := N) H) h k = gibbs_covariance (N := N) H h k := by
   simpa [hessian_logZ, gibbs_covariance] using
@@ -533,13 +481,7 @@ lemma hessian_eq_covariance (H h k : EnergySpace N) :
 
 /-! ### Trace Formulae and Proofs -/
 
-/--
-The trace of the product of a covariance operator `Cov` and the Hessian of the free energy.
-Algebraically reduces to variance-like terms of the Gibbs measure.
-
-Reference: Talagrand, Vol. I, Ch. 1, §1.3 (trace/Hessian rewriting used in the Guerra
-interpolation after applying Gaussian integration by parts).
--/
+/-- Trace of `Cov` against the free-energy Hessian. Talagrand Vol. I, §1.3. -/
 theorem trace_formula (H : EnergySpace N) (Cov : Config N → Config N → ℝ) :
     (∑ σ, ∑ τ, Cov σ τ * hessian_free_energy N H (std_basis N σ) (std_basis N τ)) =
     (1 / (N : ℝ)) * (
@@ -550,9 +492,7 @@ theorem trace_formula (H : EnergySpace N) (Cov : Config N → Config N → ℝ) 
     gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
     (FiniteGibbs.trace_formula (α := Config N) (n := N) (H := H) (Cov := Cov))
 
-/--
-Self-overlap is always 1.
--/
+/-- Self-overlap is `1`. -/
 theorem overlap_self (hN : 0 < N) (σ : Config N) : overlap N σ σ = 1 := by
   unfold overlap overlapOf
   have hsum : (∑ i : Fin N, isingSpin (σ i) * isingSpin (σ i)) = (N : ℝ) := by
@@ -566,13 +506,7 @@ theorem overlap_self (hN : 0 < N) (σ : Config N) : overlap N σ σ = 1 := by
   have hN0 : (N : ℝ) ≠ 0 := by exact_mod_cast hN.ne'
   simp [spinOf, hsum, hN0, div_eq_mul_inv]
 
-/--
-Trace calculation for the SK model covariance.
-Result: (β²/2) * (1 - ⟨R₁₂²⟩ - 1/N + 1/N) = (β²/2) * (1 - ⟨R₁₂²⟩)
-
-Reference: Talagrand, Vol. I, Ch. 1, §1.3 (the SK trace term in the derivative formula
-leading to Eq. (1.65)).
--/
+/-- SK trace: `(β²/2) * (1 - ⟨R₁₂²⟩)`. Talagrand Vol. I, §1.3, Eq. (1.65). -/
 theorem trace_sk (hN : 0 < N) (H : EnergySpace N) :
     (∑ σ, ∑ τ, sk_cov_kernel N β σ τ * hessian_free_energy N H (std_basis N σ) (std_basis N τ)) =
     (β^2 / 2) * (1 - ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ)^2) := by
@@ -618,12 +552,7 @@ theorem trace_sk (hN : 0 < N) (H : EnergySpace N) :
     _ = (β^2 / 2) * (1 - ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ)^2) := by
             simp [E_R2]
 
-/--
-Trace calculation for Simple Model.
-Result: β² q (1 - ⟨R₁₂⟩)
-
-Reference: Talagrand, Vol. I, Ch. 1, §1.3 (generalized for RSB).
--/
+/-- Simple-model trace: `β² q (1 - ⟨R₁₂⟩)`. Talagrand Vol. I, §1.3. -/
 theorem trace_simple (hN : 0 < N) (H : EnergySpace N) (xi : ℝ → ℝ) :
     (∑ σ, ∑ τ, simple_cov_kernel N β xi σ τ * hessian_free_energy N H (std_basis N σ) (std_basis N τ)) =
     (β^2) * (xi 1 - ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * xi (overlap N σ τ)) := by
@@ -666,14 +595,7 @@ theorem trace_simple (hN : 0 < N) (H : EnergySpace N) (xi : ℝ → ℝ) :
     _ = (β^2) * (xi 1 - ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * xi (overlap N σ τ)) := by
             simp [E_xi]
 
-/--
-**Proof of Guerra's Derivative Bound**
-
-Combinations of the trace formulas imply:
-φ'(t) = (β²/2) * ( (1/2 - ξ(1)) - ⟨R²/2 - ξ(R)⟩ )
-
-Reference: Talagrand, Vol. I, Ch. 1, §1.3, Eq. (1.65) (generalized).
--/
+/-- Guerra derivative: `φ'(t) = (β²/2) * ((1/2 - ξ(1)) - ⟨R²/2 - ξ(R)⟩)`. Talagrand Vol. I, Eq. (1.65). -/
 theorem guerra_derivative_bound_algebra
     (hN : 0 < N) (H : EnergySpace N) (xi : ℝ → ℝ) :
     let term_sk := (∑ σ, ∑ τ, sk_cov_kernel N β σ τ * hessian_free_energy N H (std_basis N σ) (std_basis N τ))

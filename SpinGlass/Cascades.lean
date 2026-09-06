@@ -8,13 +8,9 @@ import SpinGlass.Cascades.Posterior
 import SpinGlass.Cascades.Predictive
 
 /-!
-# Cascades (Vol II / Georgii infrastructure)
+# Cascades (Talagrand Vol. II)
 
-This module is an umbrella import for the kernel/trajectory/cascade layer:
-
-- i.i.d. / Ionescu–Tulcea trajectory kernels (`IID`, `Traj`, `TrajMeasure`, `Process`)
-- overlap arrays (`Overlaps`)
-- GG identities at the replica-law boundary (`GhirlandaGuerra`)
-- posterior / posterior predictive factorization (`Posterior`, `Predictive`)
+Ionescu–Tulcea trajectory kernels (`IID`, `Traj`, `TrajMeasure`, `Process`), overlap arrays
+(`Overlaps`), GG identities (`GhirlandaGuerra`), and posterior/predictive factorization.
 -/
 

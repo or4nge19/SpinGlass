@@ -5,21 +5,16 @@ defaultTargets = ["SpinGlass"]
 pp.unicode.fun = true
 autoImplicit = false
 relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+weak.linter.style.header = false
 
 [[require]]
 name = "mathlib"
 git = "https://github.com/leanprover-community/mathlib4.git"
-
-[[require]]
-name = "LeanArchitect"
-git = "https://github.com/hanwenzhu/LeanArchitect.git"
-rev = "main"
+rev = "v4.34.0-rc2"
 
 [[lean_lib]]
 name = "SpinGlass"
 
 [[lean_lib]]
 name = "Common"
-
-[[lean_lib]]
-name = "GibbsMeasure"

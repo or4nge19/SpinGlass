@@ -5,20 +5,10 @@ import Mathlib.MeasureTheory.MeasurableSpace.PreorderRestrict
 import Mathlib.Order.Restriction
 
 /-!
-# Vol II infrastructure: trajectory *measures* and DLR-style conditional distributions
+# Trajectory measures
 
-Mathlib’s Ionescu–Tulcea theorem provides:
-
-- a kernel `traj κ 0` producing an infinite trajectory from an initial state, and
-- a measure `trajMeasure μ₀ κ` when the initial state is distributed according to `μ₀`.
-
-For Talagrand Vol II / Georgii, the crucial correctness interface is not “finite products”, but
-the **conditional distribution identity**:
-
-> the conditional law of the next coordinate given the past is the kernel `κ a`.
-
-We package this for the i.i.d.-from-a-kernel construction (`iidκ`) and specialize it to the
-finite-volume Gibbs kernel.
+Measure `trajMeasure μ₀ κ` on infinite trajectories with `X₀ ~ μ₀`. Conditional law of the next
+coordinate given the past is `κ a`. Main: `condDistrib_iidTrajMeasure`, `condDistrib_gibbsTrajMeasure`.
 -/
 
 open MeasureTheory ProbabilityTheory
@@ -57,13 +47,7 @@ instance (μ₀ : Measure α) (K : Kernel α β) [IsProbabilityMeasure μ₀] [I
   dsimp [iidTrajMeasure]
   infer_instance
 
-/--
-**DLR/consistency law (kernel form):**
-the conditional distribution of the next coordinate given the prefix up to time `a`
-for the i.i.d. trajectory measure is the step kernel `iidκ K a`.
-
-This is the exact formal statement you want before defining RPC/cascades by prefix-dependent `κ`.
--/
+/-- Under the i.i.d. trajectory measure, the next coordinate given the prefix is `iidκ K a`. -/
 lemma condDistrib_iidTrajMeasure (μ₀ : Measure α) (K : Kernel α β)
     [IsProbabilityMeasure μ₀] [IsMarkovKernel K]
     {a : ℕ} [StandardBorelSpace β] [Nonempty β] :
@@ -96,11 +80,7 @@ instance (μH : Measure (EnergySpace N)) [IsProbabilityMeasure μH] :
   dsimp [gibbsTrajMeasure]
   infer_instance
 
-/--
-**DLR/consistency law for Gibbs replicas:**
-under the trajectory measure, the conditional law of the next configuration given the past
-is exactly `gibbsκ N a`.
--/
+/-- Under the Gibbs trajectory measure, the next configuration given the past is `gibbsκ N a`. -/
 lemma condDistrib_gibbsTrajMeasure (μH : Measure (EnergySpace N)) [IsProbabilityMeasure μH]
     {a : ℕ} :
     condDistrib

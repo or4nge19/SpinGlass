@@ -13,26 +13,9 @@ import Mathlib.Probability.Distributions.Gaussian.Real
 /-!
 # Cameron–Martin theorem
 
-Let `μ` be a Gaussian measure on a real Banach space `E`. The **Cameron–Martin theorem** describes
-how `μ` transforms under translations by vectors coming from the Cameron–Martin space
-`cameronMartin μ`: translating by `cmCoe x` (for `x : cameronMartin μ`) yields an absolutely
-continuous measure with density
-\(y \mapsto \exp(x(y) - \|x\|^2/2)\).
-
-This file provides:
-
-- the fact that elements of `cameronMartin μ` are centered real Gaussians (`hasLaw_cameronMartin`);
-- variance/covariance computations (`variance_cameronMartin`, `covariance_cameronMartin`);
-- the measure-level Cameron–Martin theorem (`map_add_cameronMartin_eq_withDensity`) and the
-  absolute continuity corollary (`absolutelyContinuous_map_add_cameronMartin`).
-
-## References
-
-* V. I. Bogachev, *Gaussian Measures*, AMS, 1998.
-
-## Tags
-
-Gaussian measure, Cameron–Martin theorem, quasi-invariance
+For Gaussian `μ` on a real Banach space and `x : cameronMartin μ`, translating by `cmCoe x` is
+absolutely continuous with density `y ↦ exp(x(y) - ‖x‖²/2)`. Main: `hasLaw_cameronMartin`,
+`map_add_cameronMartin_eq_withDensity`. Bogachev, *Gaussian Measures*.
 -/
 
 
@@ -450,11 +433,7 @@ private lemma charFunDual_withDensity_exp_cameronMartin (x : cameronMartin μ) (
             simp [mul_comm I, sub_mul, mul_assoc]
           · ring
 
-/-- Part of the **Cameron–Martin theorem**: translating `μ` by `cmCoe x` is given by a density.
-
-More precisely, for `x : cameronMartin μ`,
-`μ.map (fun y ↦ y + cmCoe x)` is absolutely continuous with respect to `μ`, with
-density `y ↦ exp (x y - ‖x‖ ^ 2 / 2)`. -/
+/-- `μ.map (y ↦ y + cmCoe x) = μ.withDensity (y ↦ exp(x y - ‖x‖²/2))`. -/
 theorem map_add_cameronMartin_eq_withDensity (x : cameronMartin μ) :
     μ.map (fun y ↦ y + cmCoe x) = μ.withDensity (fun y ↦ .ofReal (.exp (x y - ‖x‖ ^ 2 / 2))) := by
   have := isProbabilityMeasure_withDensity_cameronMartin (μ := μ) x

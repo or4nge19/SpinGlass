@@ -2,13 +2,10 @@ import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
 import Mathlib.Analysis.Calculus.FDeriv.Measurable
 
 /-!
-# Cameron–Martin theorem: random-variable (HasLaw) corollaries
+# Cameron–Martin: HasLaw corollaries
 
-This file transports the measure-level Cameron–Martin shift/tilt identity to random variables
-using `ProbabilityTheory.HasLaw`.
-
-It avoids committing to a specific “Gaussian random variable” structure (finite-dimensional,
-Hilbert, etc.). Downstream files can provide `HasLaw` instances and then use these lemmas.
+Measure-level Cameron–Martin shift/tilt identities transported to random variables via
+`ProbabilityTheory.HasLaw`.
 -/
 
 open MeasureTheory
@@ -69,11 +66,7 @@ theorem HasLaw.lintegral_add_cmCoe_smul_eq (hX : HasLaw X μ P) (x : cameronMart
     _ = ∫⁻ ω, F (X ω) * ENNReal.ofReal (Real.exp ((t • x) (X ω) - ‖t • x‖ ^ 2 / 2)) ∂P := by
           simpa using h_right.symm
 
-/-!
-### Law-level corollaries
-
-These package Cameron–Martin as a statement about the law of the translated random variable.
--/
+/-! ### Law-level corollaries -/
 
 /-- If `X` has law `μ`, then `X + cmCoe (t • x)` has the `withDensity` law from Cameron–Martin. -/
 theorem HasLaw.hasLaw_add_cmCoe_smul_withDensity_raw (hX : HasLaw X μ P) (x : cameronMartin μ) (t : ℝ) :
@@ -95,11 +88,7 @@ theorem HasLaw.hasLaw_add_cmCoe_smul_withDensity_raw (hX : HasLaw X μ P) (x : c
   refine ⟨h_comp'.aemeasurable, ?_⟩
   simpa [hμ'] using h_comp'.map_eq
 
-/-!
-### Random-variable IBP corollaries
-
-These transport the **measure-level** Cameron–Martin IBP to random variables via `HasLaw`.
--/
+/-! ### Random-variable IBP corollaries -/
 
 theorem HasLaw.cameronMartin_integral_by_parts_polyGrowth
     (hX : HasLaw X μ P) (x : cameronMartin μ) (F : E → ℝ)

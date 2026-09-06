@@ -9,18 +9,10 @@ import Mathlib.Analysis.SpecialFunctions.Log.Deriv
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
 /-!
-# Finite Gibbs calculus (Vol II abstraction boundary)
+# Finite Gibbs calculus
 
-This file develops the **model-agnostic finite-volume calculus** for the free energy functional
-
-`H ↦ (1/n) * log (∑ σ, exp (- H σ))`
-
-on a finite configuration space `α`.
-
-The point is to make Talagrand Vol I/II arguments reusable: once a model is packaged as a random
-Hamiltonian taking values in the Hilbert space `PiLp 2 (fun _ : α => ℝ)`, the analytic layer
-(Fréchet derivatives, Hessian = Gibbs covariance, trace formulae) becomes uniform and does not
-depend on the specific structure of `α` (`Config N`, cascades, …).
+Model-agnostic finite-volume free energy `H ↦ (1/n) log (∑ σ, exp(-H σ))` on a finite type `α`.
+Fréchet derivatives, Hessian = Gibbs covariance, trace formulae. Talagrand Vol. I–II.
 -/
 
 open Real BigOperators Filter Topology
@@ -305,11 +297,7 @@ lemma hessian_free_energy_std_basis_eq (n : ℕ) (H : EnergySpace α) (σ τ : �
   refine congrArg (fun t : ℝ => (1 / (n : ℝ)) * t) ?_
   simp [hb, hc, g, sub_eq_add_neg, mul_assoc]
 
-/-- The `std_basis` entries of the free energy Hessian are `-(1/n)` times the `std_basis`-directional
-derivatives of `gibbs_pmf`.
-
-This is the key “Hessian = Gibbs covariance” identity used to pass from Gaussian IBP expressions
-to Talagrand’s trace/Hessian form in Guerra-type interpolations. -/
+/-- Hessian `std_basis` entries equal `-(1/n)` times `fderiv gibbs_pmf` on `std_basis`. -/
 lemma neg_one_div_n_mul_fderiv_gibbs_pmf_apply_std_basis_eq_hessian_free_energy_std_basis
     (n : ℕ) (H : EnergySpace α) (σ τ : α) :
     (-(1 / (n : ℝ))) *
@@ -466,12 +454,12 @@ lemma hessian_free_energy_fderiv_eq_hessian_free_energy (n : ℕ) (H h k : Energ
     _ = hessian_free_energy (α := α) n H h k := by
           simp [hessian_free_energy, g, sub_eq_add_neg, add_comm]
 
-/-- An alias for the abstract Fréchet Hessian of the free energy density. -/
+/-- Alias of `hessian_free_energy_fderiv`. -/
 noncomputable abbrev hessian_logZ (n : ℕ) (H : EnergySpace α) :
     EnergySpace α →L[ℝ] EnergySpace α →L[ℝ] ℝ :=
   hessian_free_energy_fderiv (α := α) n H
 
-/-- An alias for the explicit Gibbs covariance bilinear form. -/
+/-- Alias of the Gibbs covariance bilinear form. -/
 def gibbs_covariance (n : ℕ) (H : EnergySpace α) (h k : EnergySpace α) : ℝ :=
   hessian_free_energy (α := α) n H h k
 

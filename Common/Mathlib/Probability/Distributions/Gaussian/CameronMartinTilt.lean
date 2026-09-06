@@ -1,10 +1,9 @@
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinThm
 
 /-!
-# Cameron–Martin theorem: scalar-parameter corollaries
+# Cameron–Martin: scalar-parameter form
 
-This file provides  lemmas specializing the Cameron–Martin theorem to the common
-“scalar parameter” form `t • x`.
+Cameron–Martin theorem specialized to translations `t • x`.
 -/
 
 open MeasureTheory Filter Complex

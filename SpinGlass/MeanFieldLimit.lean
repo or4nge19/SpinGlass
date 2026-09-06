@@ -1,22 +1,11 @@
 import SpinGlass.Cascades.GhirlandaGuerra
-import GibbsMeasure.Topology.LocalConvergence
+import Mathlib.MeasureTheory.Measure.MeasureSpace
 
 /-!
-# Mean-field limits (law-level interface)
+# Mean-field replica-law limits
 
-In lattice models with short-range interactions, infinite-volume equilibrium states are often
-defined as fixed points of a DLR specification (`GibbsMeasure.Specification`).
-
-For mean-field models (e.g. Sherrington–Kirkpatrick under the \(N^{-1/2}\) scaling), this repository
-does not define the thermodynamic limit via DLR specifications.  Instead, the relevant limit
-objects are formulated through the laws of replicas and overlap identities (Ghirlanda–Guerra,
-cavity invariance, ...).
-
-This file introduces a lightweight structure `SpinGlass.MeanFieldLimit` packaging an infinite
-replica law together with GG₁ identities for its finite-dimensional marginals.
-
-The configuration-space topology used for probability measures on countable products is imported
-from `GibbsMeasure.Topology` (notably the topology of local convergence).
+Infinite replica law with GG₁ identities on finite-dimensional marginals. Main: `MeanFieldLimit`.
+Talagrand Vol. II.
 -/
 
 open MeasureTheory ProbabilityTheory
@@ -41,13 +30,7 @@ noncomputable def replicaMarginal (μ : Measure (ℕ → β)) (k : ℕ) : Measur
 
 /-! ### Mean-field limit interface -/
 
-/--
-A **mean-field limit interface**: an infinite law of replicas together with GG₁ identities for all
-finite-dimensional marginals.
-
-This is the law-level replacement (in the mean-field setting) for DLR/specification-based
-definitions of infinite-volume equilibrium states.
--/
+/-- Infinite replica law with GG₁ on all finite-dimensional marginals. -/
 structure MeanFieldLimit (β : Type u) [MeasurableSpace β] where
   /-- Law of an infinite replica sequence. -/
   μ : Measure (ℕ → β)
@@ -76,4 +59,3 @@ lemma GG1_marginal (n : ℕ) :
 end MeanFieldLimit
 
 end SpinGlass
-

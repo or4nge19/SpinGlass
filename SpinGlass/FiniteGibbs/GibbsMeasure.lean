@@ -3,14 +3,10 @@ import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
 import Mathlib.MeasureTheory.Integral.Lebesgue.Countable
 
 /-!
-# Finite Gibbs measure as an atomic probability measure
+# Finite Gibbs measure
 
-Talagrand (Vol. I/II) frequently treats the finite-volume Gibbs distribution as a probability
-measure on the configuration space.  This file provides the model-agnostic construction for an
-arbitrary finite type `α`, bundling the weights `gibbs_pmf` into an explicit atomic measure.
-
-Everything here depends only on a finite
-configuration space and a Hamiltonian `H : EnergySpace α`.
+Atomic probability measure on a finite type `α` with weights `gibbs_pmf` from Hamiltonian
+`H : EnergySpace α`. Talagrand Vol. I–II finite-volume Gibbs law.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators

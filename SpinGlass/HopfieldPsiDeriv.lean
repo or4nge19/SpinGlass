@@ -10,14 +10,10 @@ import Mathlib.Topology.Order.Compact
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.ArctanDeriv
 
 /-!
-# Hopfield `ψ`: Fréchet derivative formulas
+# Hopfield `ψ`: Fréchet derivatives
 
-This file proves the basic differentiability of Talagrand’s Hopfield function
-
-`hopfieldPsi (N := N) (M := M) β h Ξ : (Fin M → ℝ) → ℝ`
-
-and gives a *fully explicit* Fréchet derivative. These lemmas are intended as the calculus
-backend for later localization arguments (maximizers, stationary points, quadratic expansions).
+Explicit Fréchet derivative of `hopfieldPsi`. Calculus for localization (critical points,
+quadratic expansions). Talagrand Vol. I, §4.3.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators
@@ -252,10 +248,7 @@ lemma differentiable_hopfieldPsi (β h : ℝ) (Ξ : Patterns N M) :
   intro z
   exact (hasFDerivAt_hopfieldPsi (N := N) (M := M) (β := β) (h := h) Ξ z).differentiableAt
 
-/--
-Critical-point equation for Hopfield `ψ` (Talagrand §4.3): if the Fréchet derivative vanishes, then
-each coordinate satisfies the fixed-point identity.
--/
+/-- If `fderiv hopfieldPsi = 0`, each coordinate satisfies the fixed-point equation. Talagrand Vol. I, §4.3. -/
 lemma hopfieldPsi_coord_eq_of_fderiv_eq_zero
     (β h : ℝ) (Ξ : Patterns N M) (z : Fin M → ℝ)
     (hβ : β ≠ 0) (hN : (N : ℝ) ≠ 0)

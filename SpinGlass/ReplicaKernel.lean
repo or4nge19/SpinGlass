@@ -3,16 +3,10 @@ import SpinGlass.ReplicaMeasure
 import SpinGlass.FiniteGibbs.Kernel
 
 /-!
-# Vol II bridge: Gibbs samplers as kernels, replicas as product kernels
+# Gibbs samplers as kernels
 
-Talagrand Vol. II and Georgii-style “structure first” arguments become much cleaner if we can treat
-
-- sampling a configuration from a finite-volume Gibbs law as a **Markov kernel**;
-- sampling `n` replicas as the corresponding **replica kernel**.
-
-This file defines those kernels in a way that is definitionally consistent with the existing
-finite-volume atomic measures (`gibbsMeasure`, `replicaGibbsMeasure`) and proves measurability
-without adding topological assumptions beyond what is already present on `EnergySpace N`.
+Finite-volume Gibbs sampler as a Markov kernel; `n` replicas as the product kernel. Consistent
+with `gibbsMeasure` and `replicaGibbsMeasure`. Talagrand Vol. II.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators

@@ -3,23 +3,10 @@ import Mathlib.Probability.Kernel.IonescuTulcea.Traj
 import Mathlib.Probability.Kernel.Composition.CompMap
 
 /-!
-# Vol II infrastructure: trajectory kernels (Ionescu–Tulcea) as a public API
+# Trajectory kernels (Ionescu–Tulcea)
 
-This file upgrades the finite-marginal (`partialTraj`) viewpoint to the **infinite trajectory**
-kernel `traj` from Mathlib’s Ionescu–Tulcea theorem, and connects it to the “replicas as kernels”
-bridge.
-
-Core principle (Talagrand Vol II / Georgii): **do not** encode replicas via ad-hoc products when a
-canonical stochastic process kernel exists.
-
-We provide:
-
-- `iidTrajKernel`: from a Markov kernel `K : Kernel α β`, build a kernel producing an infinite
-  trajectory `(X₀, X₁, X₂, …)` with `X₀ = α` and `X_{n+1} = β`, sampling i.i.d. from `K` given `X₀`;
-- a sharp sanity lemma: pushing `iidTrajKernel` forward to time `1` recovers exactly `K`;
-- specialization to the finite-volume Gibbs kernel.
-
-All statements reduce to Mathlib’s `map_traj_succ_self` and kernel composition laws.
+Infinite trajectory kernel `traj` from Mathlib, specialized to i.i.d. sampling from `K` and to
+the finite-volume Gibbs kernel. Main: `iidTrajKernel`.
 -/
 
 open MeasureTheory ProbabilityTheory
@@ -63,11 +50,7 @@ instance (K : Kernel α β) [IsMarkovKernel K] : IsMarkovKernel (iidTrajKernel (
   dsimp [iidTrajKernel]
   infer_instance
 
-/--
-**Sanity check:** the time-`1` marginal of `iidTrajKernel K` is exactly `K`.
-
-This is the precise kernel-level version of “sampling the first replica is governed by `K`”.
--/
+/-- Time-`1` marginal of `iidTrajKernel K` is `K`. -/
 lemma iidTrajKernel_map_one (K : Kernel α β) [IsMarkovKernel K] :
     (iidTrajKernel (α := α) (β := β) K).map (fun x : (Π n, IidX (α := α) (β := β) n) => x 1) = K := by
   simp [iidTrajKernel, Kernel.map_comp]

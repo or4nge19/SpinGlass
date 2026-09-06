@@ -10,19 +10,10 @@ import Mathlib.MeasureTheory.Constructions.Pi
 import Mathlib.MeasureTheory.Group.Defs
 
 /-!
-# Hopfield: overlap pushforward and Gaussian convolution (Talagrand §4.2)
+# Hopfield overlap convolution
 
-This file sets up the **measure-level objects** behind Talagrand’s Lemma 4.2.1:
-
-- `G'`: the image of the Gibbs measure under `σ ↦ m(σ)` (Hopfield overlap vector).
-- `Ḡ = G' * γ`: the convolution of `G'` with a (centered) Gaussian `γ` on `ℝ^M`.
-
-We implement this in a Mathlib-idiomatic way using a pushforward of a product measure, so that
-later computations reduce to `lintegral_map` and `lintegral_prod`.
-
-At this stage we keep the Gaussian `γ` abstract: any measure on `Fin M → ℝ` can be used. The
-specialization to Talagrand’s Gaussian (variance \(1/(N\beta)\) per coordinate) is done in the
-next step when deriving the explicit density.
+Pushforward `G'` of Gibbs under `σ ↦ m(σ)`, convolution `Ḡ = G' * γ`. Main objects behind
+Talagrand Vol. I, Lemma 4.2.1.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators
@@ -56,12 +47,7 @@ lemma hopfieldOverlapImageMeasure_Icc_compl (Ξ : Patterns N M) (H : EnergySpace
     simp [hopfieldOverlapVec_mem_Icc (Ξ := Ξ) (σ := σ)]
   simp [hopfieldOverlapImageMeasure, Measure.map_apply, hm, hpre]
 
-/-!
-### Kernel-level API boundary
-
-To make Hopfield compatible with the Vol II “prove statements for samplers/kernels” approach, we
-also package the overlap pushforward as a `Kernel (EnergySpace N) (Fin M → ℝ)`.
--/
+/-! ### Overlap pushforward kernel -/
 
 /-- Kernel sending an energy function `H` to the overlap-image law `(gibbsMeasure H).map m`. -/
 noncomputable def hopfieldOverlapKernel (Ξ : Patterns N M) :
@@ -249,13 +235,7 @@ theorem lintegral_hopfieldConvolution_withDensity
 
 /-! ## Convolution against `volume.withDensity g` has a `withDensity` description -/
 
-/-- If `γ = volume.withDensity g`, then `G' * γ` is also absolutely continuous w.r.t. `volume`,
-with density given by the (additive) convolution formula
-\[
-z \mapsto \int g(z-m)\,dG'(m).
-\]
-
-This is the measure-theoretic core behind Talagrand’s Lemma 4.2.1. -/
+/-- If `γ = volume.withDensity g`, then `G' * γ` has density `z ↦ ∫ g(z-m) dG'(m)`. Talagrand Lemma 4.2.1. -/
 theorem hopfieldConvolution_withDensity_eq_withDensity
     (G' : Measure (Fin M → ℝ)) [SFinite G']
     (g : (Fin M → ℝ) → ℝ≥0∞) (hg : Measurable g) :
@@ -366,16 +346,11 @@ theorem hopfieldConvolution_withDensity_eq_withDensity
 
 /-! ## Talagrand’s Gaussian density and the `ψ`-representation (Lemma 4.2.1 core) -/
 
-/-- Talagrand’s normalization constant \(W = (N\beta/(2\pi))^{M/2}\), written as
-`(sqrt (Nβ/(2π)))^M` to avoid fractional exponents. -/
+/-- Talagrand’s `W = (Nβ/(2π))^{M/2}`, as `(sqrt (Nβ/(2π)))^M`. -/
 noncomputable def talagrandW (N M : ℕ) (β : ℝ) : ℝ :=
   (Real.sqrt ((β * (N : ℝ)) / (2 * Real.pi))) ^ M
 
-/-- Talagrand’s Gaussian density on `ℝ^M` (modeled as `Fin M → ℝ`) w.r.t. Lebesgue `volume`:
-\[
-g(z) = W \exp\left(-\frac{N\beta}{2}\|z\|^2\right).
-\]
-We package it as an `ℝ≥0∞` function suitable for `volume.withDensity`. -/
+/-- Talagrand Gaussian density `g(z) = W exp(-(Nβ/2) ‖z‖²)` on `Fin M → ℝ`. -/
 noncomputable def talagrandGaussianDensity (N M : ℕ) (β : ℝ) : (Fin M → ℝ) → ℝ≥0∞ :=
   fun z =>
     ENNReal.ofReal
@@ -923,8 +898,7 @@ lemma overlapImage_talagrandGaussianDensity_factor
         (hopfieldOverlapVec (N := N) (M := M) Ξ σ))
   simp [hcongr, MeasureTheory.lintegral_const_mul, hmeas]
 
-/-- The exact Talagrand `ψ`-density formula (finite volume) under the “first pattern constant”
-assumption, with explicit normalization by `Z`. -/
+/-- Finite-volume `ψ`-density of the overlap convolution, under `IsConstantPattern`, normalized by `Z`. -/
 theorem hopfieldConvolution_overlapImage_talagrandGaussian_eq_withDensity_psi
     (N M : ℕ) (Ξ : Patterns N M) (β h : ℝ) (k0 : Fin M)
     (hΞ : IsConstantPattern (N := N) Ξ k0) :
@@ -1249,11 +1223,7 @@ theorem hopfieldConvolutionTalagrandKernel_eq_withDensity_psi
     (hopfieldConvolution_overlapImage_talagrandGaussian_eq_withDensity_psi
       (N := N) (M := M) (Ξ := Ξ) (β := β) (h := h) (k0 := k0) hΞ)
 
-/-- Normalization identity obtained by integrating the `ψ`-density formula over `volume`.
-
-This is the partition-function consistency statement: if the Gaussian input measure is a
-probability measure, then the right-hand-side density integrates to `1`. This lemma is used to
-pass from Talagrand’s exact finite-volume `ψ`-representation to subsequent asymptotic arguments. -/
+/-- The Hopfield `ψ`-density integrates to `1` over `volume`. -/
 theorem lintegral_hopfieldPsi_density_eq_one
     (N M : ℕ) (Ξ : Patterns N M) (β h : ℝ) (k0 : Fin M)
     (hΞ : IsConstantPattern (N := N) Ξ k0)

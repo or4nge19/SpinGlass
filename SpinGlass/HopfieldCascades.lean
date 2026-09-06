@@ -4,14 +4,11 @@ import SpinGlass.Cascades.Posterior
 import Mathlib.Probability.Kernel.Composition.ParallelComp
 
 /-!
-# Hopfield × Cascades (Vol II interface)
+# Hopfield × Cascades
 
-This file connects the Hopfield “overlap vector” viewpoint (Talagrand §4.2) with the Vol II
-`Cascades/GhirlandaGuerra` API, whose input is a **replica law** on `Fin (n+1) → β`.
-
-The key bridge is: sample `n+1` Gibbs replicas (kernel level), then push forward by the map
-`σ ↦ m(σ) ∈ ℝ^M`, yielding a law on overlap vectors. GG₁ can then be stated for any relation
-`R : (Fin M → ℝ) → (Fin M → ℝ) → ℝ` without committing to a specific overlap functional.
+Hopfield overlap-vector replica laws as inputs to `Cascades/GhirlandaGuerra`. Main:
+`hopfieldOverlapPosteriorPredictive`, `HopfieldOverlap_GG1Kernel`.
+Talagrand Vol. I, §4.2 / Vol. II.
 -/
 
 open MeasureTheory ProbabilityTheory
@@ -73,10 +70,7 @@ def Hopfield_GG1Kernel (Ξ : Patterns N M)
 
 /-! ## Conditional law of the last overlap vector given the prefix -/
 
-/--
-The regular conditional distribution of the last overlap vector given the first `n` overlap vectors,
-under the Hopfield overlap-vector replica law induced by `μH`.
--/
+/-- Conditional law of the last overlap vector given the first `n`, under the Hopfield replica law. -/
 noncomputable def hopfieldCondDistribLast (Ξ : Patterns N M)
     (μH : Measure (EnergySpace N)) [IsProbabilityMeasure μH] :
     ProbabilityTheory.Kernel (Fin n → (Fin M → ℝ)) (Fin M → ℝ) :=
@@ -100,14 +94,7 @@ lemma hopfieldCondDistribLast_comp_prefix (Ξ : Patterns N M)
 
 open SpinGlass.KernelBridge
 
-/--
-Posterior predictive kernel for the Hopfield *overlap vector* of a fresh replica, given `n` observed
-replicas, under a prior `μH` on energies.
-
-This is simply the composition of:
-- the posterior on `H` given `n` replicas, and
-- the Hopfield overlap pushforward kernel `H ↦ Law(m(σ))`.
--/
+/-- Posterior predictive for a fresh overlap vector, given `n` replicas and prior `μH`. -/
 noncomputable def hopfieldOverlapPosteriorPredictive (Ξ : Patterns N M)
     (μH : Measure (EnergySpace N)) [IsProbabilityMeasure μH] :
     ProbabilityTheory.Kernel (ReplicaSpace N n) (Fin M → ℝ) :=
@@ -120,10 +107,7 @@ instance (Ξ : Patterns N M) (μH : Measure (EnergySpace N)) [IsProbabilityMeasu
   dsimp [hopfieldOverlapPosteriorPredictive]
   infer_instance
 
-/--
-Posterior predictive kernel for Talagrand’s Gaussian-convolved overlap variable `z` (Hopfield §4.2),
-given `n` observed replicas, under a prior `μH` on energies.
--/
+/-- Posterior predictive for the Gaussian-convolved overlap `z`. Talagrand Vol. I, §4.2. -/
 noncomputable def hopfieldTalagrandPosteriorPredictive (Ξ : Patterns N M) (β : ℝ)
     (μH : Measure (EnergySpace N)) [IsProbabilityMeasure μH] :
     ProbabilityTheory.Kernel (ReplicaSpace N n) (Fin M → ℝ) :=
@@ -142,16 +126,7 @@ instance (Ξ : Patterns N M) (β : ℝ) (μH : Measure (EnergySpace N)) [IsProba
 
 end Cascades
 
-/-!
-## Treating patterns `Ξ` as the environment (Vol II semantics)
-
-In the Hopfield model, the disorder/environment is often the random pattern family `Ξ`.
-To reuse the Vol II posterior/GG machinery (which is phrased with an environment law `μH` on
-`EnergySpace N`), we package the *deterministic* map `Ξ ↦ hopfieldEnergyWithField ... Ξ ...`
-as a pushforward law on energies.
-
-This is intentionally abstract: you can plug in any prior `μΞ` on pattern families.
--/
+/-! ## Patterns `Ξ` as environment -/
 
 namespace Cascades
 
@@ -194,10 +169,7 @@ instance : ProbabilityTheory.IsMarkovKernel (hopfieldEnergyWithFieldKernel (N :=
 
 open SpinGlass.KernelBridge
 
-/--
-Replica sampler as a kernel from environments `Ξ` to `(n+1)` replicas, via the deterministic energy map
-followed by the generic `replicaGibbsKernel`.
--/
+/-- Kernel `Ξ ↦ G_{H(Ξ)}^{⊗(n+1)}` via `hopfieldEnergyWithField` then `replicaGibbsKernel`. -/
 noncomputable def hopfieldReplicaKernelWithField (n : ℕ) :
     ProbabilityTheory.Kernel (Patterns N M) (ReplicaSpace N (n + 1)) :=
   (replicaGibbsKernel (N := N) (n := n + 1)) ∘ₖ
@@ -217,10 +189,7 @@ instance (n : ℕ) :
   dsimp [hopfieldReplicaLawWithField]
   infer_instance
 
-/--
-Kernel-level GG₁ for Hopfield replicas *at the configuration overlap level* (Talagrand Vol II shape):
-prove GG₁ for the environment-to-replicas sampler `hopfieldReplicaKernelWithField` under the prior `μΞ`.
--/
+/-- GG₁ for `hopfieldReplicaKernelWithField` under prior `μΞ`. -/
 def Hopfield_SK_GG1Kernel (n : ℕ) : Prop :=
   GG1Kernel (β := Config N) n μΞ
     (hopfieldReplicaKernelWithField (N := N) (M := M) (β := β) (h := h) k0 n) (overlap N)
@@ -235,12 +204,7 @@ def Hopfield_SK_GG1 (n : ℕ) : Prop :=
     Hopfield_SK_GG1 (N := N) (M := M) (β := β) (h := h) k0 μΞ n := by
   rfl
 
-/-!
-### Posterior on patterns (the true Hopfield DLR object)
-
-Vol II arguments want the posterior on the environment given finitely many replicas.
-Here the environment is `Ξ`, not `H`.
--/
+/-! ### Posterior on patterns -/
 
 /-- `r`-replica sampler kernel from patterns `Ξ`. -/
 noncomputable def hopfieldReplicaKernel (r : ℕ) :
@@ -272,9 +236,7 @@ instance : ProbabilityTheory.IsMarkovKernel (hopfieldGibbsKernel (N := N) (M := 
   dsimp [hopfieldGibbsKernel]
   infer_instance
 
-/--
-Posterior predictive kernel for a fresh configuration, given `r` observed replicas, under the prior `μΞ`.
--/
+/-- Posterior predictive for a fresh configuration given `r` replicas, under prior `μΞ`. -/
 noncomputable def hopfieldPosteriorPredictive (r : ℕ) :
     ProbabilityTheory.Kernel (ReplicaSpace N r) (Config N) :=
   (hopfieldGibbsKernel (N := N) (M := M) (β := β) (h := h) k0) ∘ₖ
@@ -285,15 +247,7 @@ instance (r : ℕ) :
   dsimp [hopfieldPosteriorPredictive]
   infer_instance
 
-/-!
-### Hopfield observables under a prior on patterns
-
-To use Vol II / cascades statements that take inputs as *laws on overlap arrays*, we now expose:
-
-- a kernel from `Ξ` to the overlap vector `m(σ)` of a fresh Gibbs sample,
-- a kernel from `Ξ` to the overlap array `(m(σ¹),…,m(σʳ))` of `r` replicas,
-- the corresponding posterior-predictive overlap vector given replicas (posterior on `Ξ`).
--/
+/-! ### Overlap kernels under a pattern prior -/
 
 open scoped ProbabilityTheory
 
@@ -306,10 +260,7 @@ noncomputable def hopfieldOverlapVecOfPair (p : (Patterns N M) × (Config N)) : 
   simpa [hopfieldOverlapVecOfPair] using
     (measurable_of_finite (hopfieldOverlapVecOfPair (N := N) (M := M)))
 
-/--
-Kernel from patterns `Ξ` to the overlap vector `m(σ)` of a fresh Gibbs sample (with field),
-defined as a map of the paired kernel `(Ξ, σ)`.
--/
+/-- Kernel `Ξ ↦ Law(m(σ))` for a fresh Gibbs sample with field. -/
 noncomputable def hopfieldPairGibbsKernel :
     ProbabilityTheory.Kernel (Patterns N M) ((Patterns N M) × (Config N)) :=
   let κσ : ProbabilityTheory.Kernel (Patterns N M) (Config N) :=
@@ -386,12 +337,7 @@ instance (r : ℕ) :
   dsimp [hopfieldOverlapArrayLawOfPatterns]
   infer_instance
 
-/--
-Kernel-level GG₁ for the **Hopfield overlap vector** array under a pattern prior `μΞ`.
-
-Vol II statement: `GG1Kernel n μΞ κ R`, with
-`κ : Kernel (Patterns N M) (Fin (n+1) → (Fin M → ℝ))`.
--/
+/-- GG₁ for Hopfield overlap-vector arrays under pattern prior `μΞ`. -/
 def HopfieldOverlap_GG1Kernel (n : ℕ) (R : (Fin M → ℝ) → (Fin M → ℝ) → ℝ) : Prop :=
   GG1Kernel (β := (Fin M → ℝ)) n μΞ
     (hopfieldOverlapArrayKernelOfPatterns (N := N) (M := M) (β := β) (h := h) k0 (r := n + 1)) R

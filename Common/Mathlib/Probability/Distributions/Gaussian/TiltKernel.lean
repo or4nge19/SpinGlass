@@ -8,28 +8,10 @@ import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Algebra.Order.Ring.Abs
 
 /-!
-# 1D Gaussian tilt kernel: bounds and derivatives
+# 1D Gaussian tilt kernel
 
-This file isolates the purely one-dimensional analytic lemmas about the exponential tilt kernel
-
-`tiltKernel v t x = exp (t * x - v * t^2 / 2)`,
-
-used to justify dominated differentiation in the Cameron–Martin IBP analytic layer.
-
-## Main definitions
-
-- `MeasureTheory.tiltKernel`: the 1D exponential tilt kernel.
-
-## Main results
-
-- `MeasureTheory.hasDerivAt_tiltKernel`: derivative in the tilt parameter.
-- `MeasureTheory.gaussianTilt_deriv_dom_bound`: a uniform domination bound for the derivative
-  integrand (for bounded `|t|`).
-
-## Implementation notes
-
-This file deliberately contains no integration-by-parts statements and no bespoke “test function”
-structures; those live in the intrinsic Cameron–Martin IBP development.
+`tiltKernel v t x = exp(t * x - v * t² / 2)`. Main: `hasDerivAt_tiltKernel`,
+`gaussianTilt_deriv_dom_bound`.
 -/
 
 open MeasureTheory Real

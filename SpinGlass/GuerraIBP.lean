@@ -1,14 +1,10 @@
 import SpinGlass.GuerraInterpolation
 
 /-!
-# Guerra interpolation: Gaussian integration by parts
+# Guerra interpolation: Gaussian IBP
 
-Starting from the derivative identity in `SpinGlass.GuerraInterpolation`, this file rewrites the
-derivative value as an integral against the intrinsic disorder law `disorderPairLaw` and applies
-Hilbert-space Gaussian integration by parts term-by-term.
-
-The main statement is `derivative_value_guerraPhi_eq_ibp`. It is not yet converted into
-Talagrand’s trace/Hessian form; that reduction is carried out in `SpinGlass.GuerraTrace`.
+Rewrites the derivative of `guerraPhi` as an integral against `disorderPairLaw` and applies
+Hilbert-space Gaussian IBP. Main: `derivative_value_guerraPhi_eq_ibp`.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology
@@ -130,12 +126,7 @@ private lemma integrable_right_diag
           hindep t τ)
   simpa [mul_comm, mul_left_comm, mul_assoc] using hint
 
-/--
-The scalar derivative integrand value `∫ ω ⟪∇F_N(H_t ω), dH_t ω⟫ dℙ` is equal to a linear combination
-of IBP expressions over `disorderPairLaw`.
-
-This is the clean “after IBP, before trace/Hessian” form.
--/
+/-- `∫ ⟪∇F_N(H_t), dH_t⟫ dℙ` equals a linear combination of IBP terms on `disorderPairLaw`. -/
 theorem derivative_value_guerraPhi_eq_ibp
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)
     (t : ℝ) :

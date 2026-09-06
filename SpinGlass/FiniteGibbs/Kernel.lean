@@ -4,15 +4,10 @@ import Mathlib.Analysis.Normed.Lp.MeasurableSpace
 import Mathlib.Probability.Kernel.Basic
 
 /-!
-# Finite Gibbs kernels (model-agnostic)
+# Finite Gibbs kernels
 
-This file models the finite-volume Gibbs sampler (and its replica version) as Markov kernels
-in the **Vol II** style:
-
-- `H ↦ G_H` as a kernel `EnergySpace α ⟶ α`,
-- `H ↦ G_H^{⊗ n}` as a kernel `EnergySpace α ⟶ (Fin n → α)`.
-
-Everything is generic in the finite configuration space `α`.
+Markov kernels `H ↦ G_H` (`gibbsKernel`) and `H ↦ G_H^{⊗ n}` (`replicaGibbsKernel`) on a finite
+configuration space `α`. Talagrand Vol. II.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators

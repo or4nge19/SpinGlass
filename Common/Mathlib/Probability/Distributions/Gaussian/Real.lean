@@ -1,8 +1,7 @@
-/-
-Vendored auxiliary lemmas for Gaussian measures.
+/-!
+# Gaussian real: auxiliary lemmas
 
-This file contains small API additions used by the Cameron–Martin development, extracted from
-mathlib4 PR #26291 (Cameron–Martin theorem).
+Vendored API additions for `gaussianReal` from mathlib4 PR #26291 (Cameron–Martin theorem).
 -/
 
 import Mathlib.Probability.Distributions.Gaussian.Real
@@ -12,9 +11,7 @@ open scoped NNReal
 
 namespace ProbabilityTheory
 
-/-- If `X` has Gaussian law `N(μ,v)`, then `X - y` has Gaussian law `N(μ - y, v)`.
-
-This lemma is stated for an arbitrary measure `m` (not necessarily a probability measure). -/
+/-- If `X` has law `N(μ,v)` under `m`, then `X - y` has law `N(μ - y, v)`. -/
 lemma gaussianReal_sub_const' {Ω : Type*} {mΩ : MeasurableSpace Ω} {m : Measure Ω} {X : Ω → ℝ}
     {μ : ℝ} {v : ℝ≥0} (hX : Measure.map X m = gaussianReal μ v) (y : ℝ) :
     Measure.map (fun ω ↦ X ω - y) m = gaussianReal (μ - y) v := by

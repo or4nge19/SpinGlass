@@ -5,21 +5,11 @@ import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinThm
 import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
 
 /-!
-# Gaussian integration by parts on a real Hilbert space (covariance-operator form)
+# Gaussian IBP on Hilbert space
 
-This file provides the **intrinsic** (coordinate-free) integration-by-parts identity for a
-Gaussian measure `μ` on a real Hilbert space `H`, phrased using Mathlib's intrinsic covariance
-operator `ProbabilityTheory.covarianceOperator`.
-
-The proof is a corollary of the Cameron–Martin integration-by-parts theorem
-(`ProbabilityTheory.cameronMartin_integral_by_parts_polyGrowth`) together with an identification
-of the Cameron–Martin direction `cmCoe (cmOfDual (innerSL ℝ h))` with `covarianceOperator μ h` in
-the centered case.
-
-## Main results
-
-- `ProbabilityTheory.IsGaussian.integral_inner_mul_eq_integral_fderiv_covarianceOperator_polyGrowth`
-- `ProbabilityTheory.cmCoe_cmOfDual_innerSL_eq_covarianceOperator`
+For centered Gaussian `μ` on a real Hilbert space, IBP via `covarianceOperator`. Corollary of
+`cameronMartin_integral_by_parts_polyGrowth`. Main:
+`integral_inner_mul_eq_integral_fderiv_covarianceOperator_polyGrowth`.
 -/
 
 open scoped Filter BigOperators Topology ProbabilityTheory ENNReal InnerProductSpace NNReal
@@ -120,14 +110,7 @@ namespace IsGaussian
 
 variable (μ)
 
-/-- **Gaussian IBP on Hilbert spaces (covariance-operator form, polynomial growth).**
-
-For a centered Gaussian measure `μ` on a real Hilbert space `H`, we have
-\[
-  \int \langle x, h\rangle\, F(x)\, d\mu(x)
-  = \int D F(x)\,(\mathrm{covarianceOperator}\ \mu\ h)\, d\mu(x),
-\]
-under polynomial growth assumptions on `F` and `fderiv F`. -/
+/-- Centered Gaussian IBP: `∫ ⟨x,h⟩ F(x) dμ = ∫ DF(x) (covarianceOperator μ h) dμ`, polynomial growth. -/
 theorem integral_inner_mul_eq_integral_fderiv_covarianceOperator_polyGrowth
     (hmean0 : (∫ x : H, x ∂μ) = 0) (h : H)
     (F : H → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)

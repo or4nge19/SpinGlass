@@ -2,10 +2,9 @@ import SpinGlass.Defs
 import SpinGlass.FiniteGibbs.Poincare
 
 /-!
-# Gaussian Poincaré / `L²` self-averaging for `SpinGlass.free_energy_density`
+# Gaussian Poincaré for `free_energy_density`
 
-This file specializes the model-agnostic results in
-`SpinGlass.FiniteGibbs.Poincare` to `Config N` .
+`Config N` instance of `SpinGlass.FiniteGibbs.Poincare`.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology
@@ -25,10 +24,7 @@ theorem memLp_free_energy_density :
   simpa [free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z] using
     (SpinGlass.FiniteGibbs.memLp_free_energy_density (α := Config N) (μ := μ) (n := N))
 
-/-- **Gaussian `L²` self-averaging for `SpinGlass.free_energy_density`.**
-
-This is the `Config N` specialization of
-`SpinGlass.FiniteGibbs.variance_free_energy_density_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_div_n_sq`. -/
+/-- `Config N` instance of `FiniteGibbs` Gaussian self-averaging for `free_energy_density`. -/
 theorem variance_free_energy_density_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_div_N_sq
     (hmean0 : (∫ x : EnergySpace N, x ∂μ) = 0) :
     Var[(fun H : EnergySpace N => free_energy_density (N := N) H); μ]

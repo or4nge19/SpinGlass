@@ -5,22 +5,11 @@ import Mathlib.Topology.Metrizable.Basic
 import Mathlib.Topology.Compactness.Lindelof
 
 /-!
-# Parametric Dominated Convergence for Uniform Bounds
+# Parametric dominated convergence
 
-This file provides distance bounds for integrals and a parametric dominated convergence theorem
-formulated via a uniform Cauchy-style hypothesis.
-
-This module is intentionally placed under `Common/` so it can be imported by both `SpinGlass/` and
-`GibbsMeasure/` without creating cross-dependencies between those directories.
-
-## Main results
-
-* `MeasureTheory.dist_integral_le_of_le_bound`: distance bound for two integrals under a common
-  a.e. bound.
-* `MeasureTheory.dist_integral_le_integral_norm_sub`: distance between integrals bounded by the
-  integral of the norm of the difference.
-* `MeasureTheory.tendstoUniformlyOn_integral_of_dominated`: parametric dominated convergence under
-  a uniform convergence hypothesis on integrals.
+Distance bounds for integrals and uniform convergence of parameterized integrals under a uniform
+Cauchy-style hypothesis. Main: `dist_integral_le_of_le_bound`,
+`tendstoUniformlyOn_integral_of_dominated`.
 -/
 
 open MeasureTheory Metric Filter Topology Set Function
@@ -66,11 +55,7 @@ lemma dist_integral_le_integral_norm_sub {f₁ f₂ : α → E}
 /-! ## Parametric DCT -/
 
 omit [CompleteSpace E] in
-/-- **Parametric Dominated Convergence Theorem**.
-
-Given uniform eventual convergence of integrals (the key hypothesis), we get uniform convergence
-of the parameterized integrals. For finite parameter sets `K`, the uniform hypothesis typically
-follows by finite intersection; for general `K` it must be established separately. -/
+/-- Parametric DCT: uniform eventual convergence of integrals implies uniform convergence of parameterized integrals. -/
 theorem tendstoUniformlyOn_integral_of_dominated {ι : Type*} {l : Filter ι}
     [l.NeBot] [l.IsCountablyGenerated]
     {K : Set β} {F : ι → β → α → E} {f : β → α → E} {g : α → ℝ}

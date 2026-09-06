@@ -18,14 +18,10 @@ open scoped ENNReal NNReal
 namespace SpinGlass
 
 /-!
-# Section 1.4: General Replica Calculus and Latala's Argument
+# Replica calculus and the smart path
 
-To prove concentration, we must manage functions of `n` replicas.
-Differentiation increases the number of replicas by 2.
-
-**Terminology:** this file implements the **interpolation / smart path** method
-(Talagrand Vol. I, §§1.3–1.4). It is *not* the cavity method (Talagrand Vol. I, §1.6),
-which is an induction on `N`.
+Interpolation `H_t = √t U + √(1-t) V + H_field` and Gibbs averages of functions of `n` replicas.
+Talagrand Vol. I, §§1.3–1.4 (not the cavity method, §1.6).
 -/
 
 variable {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
@@ -39,15 +35,7 @@ variable (n : ℕ)
 /-- A generic two-replica interaction kernel `U(σ,τ)` (Talagrand’s `U_{ℓ,ℓ'}`). -/
 abbrev InteractionKernel := Config N → Config N → ℝ
 
-/--
-Interpolated Hamiltonian (Guerra):
-\[
-H_t = \sqrt{t}\,U + \sqrt{1-t}\,V + H_{\text{field}}.
-\]
-
-The external field term uses the **magnetization-dependent** energy
-`magnetic_field_vector` (not a constant shift).
--/
+/-- Guerra path `H_t = √t U + √(1-t) V + H_field` with magnetization-dependent field. -/
 noncomputable def H_gauss (t : ℝ) : Ω → EnergySpace N :=
   fun w =>
     (Real.sqrt t) • sk.U w
@@ -61,21 +49,9 @@ noncomputable def H_t (t : ℝ) : Ω → EnergySpace N :=
     H_gauss (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w
       + H_field (N := N) (h := h)
 
-/-!
-### Gaussian integrability helpers (intrinsic)
+/-! ### Gaussian integrability helpers -/
 
-We avoid the coordinate-based `IsGaussianHilbert` structure. Instead we work with the intrinsic
-law-based predicate `IsGaussian ((ℙ).map g)`. Basic integrability properties are obtained by
-pulling back integrability on the law along the map measure.
--/
-
-/-!
-If a map `g : Ω → E` has a Gaussian pushforward law, then `‖g‖` is integrable.
-
-This is a pullback along `P.map g` of the Fernique-type integrability lemma
-`ProbabilityTheory.IsGaussian.integrable_norm_pow` (proved in
-`Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique`).
--/
+/-! ### Integrability of `‖g‖` under Gaussian law -/
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma integrable_norm_of_isGaussian_map
@@ -100,11 +76,7 @@ noncomputable def gibbs_average_n (t : ℝ) (f : ReplicaFun N n) : Ω → ℝ :=
     let H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w
     gibbs_average_n_det (N := N) (n := n) H f
 
-/-!
-### Basic bounds for `gibbs_average_n_det`
-
-These are used both for integrability and for “moderate growth” hypotheses in Gaussian IBP.
--/
+/-! ### Bounds for `gibbs_average_n_det` -/
 
 lemma abs_gibbs_average_n_det_le (H : EnergySpace N) (f : ReplicaFun N n) :
     |gibbs_average_n_det (N := N) (n := n) H f| ≤ ∑ σs : ReplicaSpace N n, |f σs| := by
@@ -230,11 +202,7 @@ lemma integrable_gibbs_average_n (t : ℝ) (f : ReplicaFun N n) :
     Filter.Eventually.of_forall hbound
   exact Integrable.of_bound (μ := (ℙ : Measure Ω)) hAESM _ hBoundAE
 
-/--
-The Covariance function U(σ^l, σ^l') appearing in the derivative.
-U_{l,l'} = E[u(σ^l)u(σ^l')] - E[v(σ^l)v(σ^l')].
-For SK: U_{l,l'} = (β²/2)(R_{l,l'}^2 - q).
--/
+/-- Interaction kernel `U_{l,l'} = 𝔼[u(σ^l)u(σ^{l'})] - 𝔼[v(σ^l)v(σ^{l'})]`; SK: `(β²/2)(R_{l,l'}^2 - q)`. -/
 def U_interaction (U : InteractionKernel (N := N)) (l l' : Fin n) (σs : ReplicaSpace N n) : ℝ :=
   U (σs l) (σs l')
 
@@ -246,27 +214,9 @@ noncomputable def U_kernel_SK : InteractionKernel (N := N) :=
 noncomputable def U_interaction_SK (l l' : Fin n) (σs : ReplicaSpace N n) : ℝ :=
   U_interaction (N := N) (n := n) (U := U_kernel_SK (N := N) (β := β) (q := q)) l l' σs
 
-/-!
-### Gaussian IBP on the product disorder space
+/-! ### Gaussian IBP on the product disorder space -/
 
-For the IBP step in the smart-path method, it is convenient to view the pair `(U,V)` of Gaussian
-Hamiltonians as a single Gaussian random vector in the product Hilbert space
-`EnergySpace N × EnergySpace N`.
-
-The canonical product-basis vectors `std_basis_left/right` and the bridge lemmas
-`inner_apply_std_basis_left/right` are defined in `SpinGlass/SKModel.lean` so they can be reused
-throughout the project.
--/
-
-/-!
-### Covariance operator of the product disorder law
-
-Under independence and centeredness, the covariance operator of the repackaged law
-`disorderPairLaw` is **block diagonal**: the left coordinate only “sees” the SK disorder `U`, and
-the right coordinate only “sees” the simple disorder `V`.
-
-We record this as explicit identities for `covarianceOperator μ (std_basis_left/right σ)`.
--/
+/-! ### Block-diagonal covariance of `disorderPairLaw` -/
 
 -- `covarianceOperator_disorderPairLaw_std_basis_left/right` moved to `SpinGlass/SKModel.lean`.
 
@@ -300,16 +250,7 @@ theorem ProbabilityTheory.IsGaussian.integral_apply_mul_eq_integral_fderiv_covar
       (μ := μ) (hmean0 := hmean0) (h := std_basis_right (N := N) σ) (F := F)
       hF_meas hF_c1 hC hF_growth hF'_growth)
 
-/-!
-### IBP on the actual disorder law `disorderPairLaw`
-
-The theorems above are “pure Gaussian analysis” on an abstract measure `μ` on `DisorderSpace`.
-In the SK interpolation, we apply them with `μ = disorderPairLaw` (the law of the repackaged pair
-`(U,V)`), using:
-
-- joint Gaussianity from independence (`SKDisorder.simple_joint_isGaussian_disorderPairLaw_of_indep`);
-- centeredness from the model hypotheses (`disorderPairLaw_mean0`).
--/
+/-! ### IBP on `disorderPairLaw` -/
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 theorem integral_disorderPairLaw_left_apply_mul_eq_integral_fderiv_covarianceOperator_polyGrowth
@@ -377,23 +318,9 @@ theorem integral_disorderPairLaw_right_apply_mul_eq_integral_fderiv_covarianceOp
       (N := N) (μ := μ) (hmean0 := hmean0) (σ := σ) (F := F)
       hF_meas hF_c1 hC hF_growth hF'_growth)
 
-/-!
-### The derivative of the Gibbs average with respect to the Hamiltonian
+/-! ### Derivative of the replica Gibbs average -/
 
-All purely finite-volume derivative formulas and uniform bounds for replica Gibbs averages have
-been factored out to `SpinGlass/FiniteGibbs/ReplicaCalculus.lean`.
--/
-
-/-!
-### Differentiation of `ν_t(f)` with respect to `t`
-
-This is the analytic “outer layer” of Talagrand’s Lemma 1.4.2:
-we differentiate the expected Gibbs average along the smart path `H_t`.
-
-At this stage we only push the derivative through the outer expectation;
-the subsequent Gaussian IBP step (turning the derivative into replica–interaction terms)
-is developed later.
--/
+/-! ### Differentiation of `ν_t(f)` (Talagrand Lemma 1.4.2) -/
 
 open scoped Topology
 
@@ -442,12 +369,7 @@ lemma hasDerivAt_H_t (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (w : Ω) :
   simpa [H_t, dH_t, H_field]
     using (hasDerivAt_H_gauss (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ht w).add_const
 
-/-!
-### Uniform control of `dH_t` on a neighborhood (analytic bound)
-
-This is the bound used in the dominated-differentiation proofs: for `x` in a small ball around `t`,
-the singular coefficients `1/√x` and `1/√(1-x)` are controlled by constants depending only on `t`.
--/
+/-! ### Local bound on `dH_t` -/
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma norm_dH_t_le_on_ball
@@ -572,15 +494,9 @@ noncomputable def dgibbs_average_n (t : ℝ) (f : ReplicaFun N n) (w : Ω) : ℝ
     (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w)
     (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w)
 
-/-! The interpolated Hamiltonian and its `t`-derivative, as functions of the disorder pair. -/
+/-! ### Interpolated Hamiltonian on `DisorderSpace` -/
 
-/-!
-### Fréchet derivative of `H_t_disorder` and bounds
-
-These lemmas provide the analytic content needed to apply Hilbert-space Gaussian IBP on
-`DisorderSpace`: we need explicit (polynomial) bounds on the Fréchet derivative of the relevant
-test functions of the disorder pair.
--/
+/-! ### Fréchet derivative of `H_t_disorder` -/
 
 noncomputable def H_t_disorder_lin (t : ℝ) : DisorderSpace (N := N) →L[ℝ] EnergySpace N :=
   (Real.sqrt t) • (WithLp.fstL (p := (2 : ℝ≥0∞)) (𝕜 := ℝ) (α := EnergySpace N) (β := EnergySpace N))
@@ -868,12 +784,7 @@ noncomputable def dgibbs_average_n_disorder (t : ℝ) (f : ReplicaFun N n) :
       (H_t_disorder (N := N) (h := h) t x)
       (dH_t_disorder (N := N) t x)
 
-/-!
-### Algebraic reshaping of `dgibbs_average_n_disorder`
-
-For IBP we want `dgibbs_average_n_disorder` as a finite sum of coordinate functionals
-`x ↦ (WithLp.ofLp x).1 τ` and `x ↦ (WithLp.ofLp x).2 τ` multiplied by smooth bounded factors.
--/
+/-! ### Reshaping `dgibbs_average_n_disorder` -/
 
 noncomputable def gibbs_pmf_disorder (t : ℝ) (σ : Config N) : DisorderSpace (N := N) → ℝ :=
   fun x => gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ
@@ -960,13 +871,7 @@ lemma norm_fderiv_prod_gibbs_pmf_disorder_le (t : ℝ) (σs : ReplicaSpace N n) 
             gcongr
     _ = (n : ℝ) * (2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|)) := by ring
 
-/-!
-`A_disorder t f τ x` is the **directional derivative** of the replica functional
-`H ↦ gibbs_average_n_det H f` in the Hamiltonian direction `std_basis N τ`, evaluated at
-`H = H_t_disorder t x`.
-
-The explicit combinatorial expression (`n * g τ - count`) is provided as a lemma below.
--/
+/-! ### Directional derivative `A_disorder` -/
 noncomputable def A_disorder (t : ℝ) (f : ReplicaFun N n) (τ : Config N) :
     DisorderSpace (N := N) → ℝ :=
   fun x =>
@@ -974,10 +879,7 @@ noncomputable def A_disorder (t : ℝ) (f : ReplicaFun N n) (τ : Config N) :
       (H_t_disorder (N := N) (h := h) t x)
       (std_basis N τ)
 
-/-!
-For analytic estimates/IBP hypotheses it is convenient to have a fully explicit expression for
-`A_disorder` that avoids higher derivatives. We package that as `A_disorder_explicit`.
--/
+/-! ### Explicit form of `A_disorder` -/
 noncomputable def A_disorder_explicit (t : ℝ) (f : ReplicaFun N n) (τ : Config N) :
     DisorderSpace (N := N) → ℝ :=
   fun x =>
@@ -990,7 +892,7 @@ lemma contDiff_A_disorder_explicit (t : ℝ) (f : ReplicaFun N n) (τ : Config N
     ContDiff ℝ 1 (A_disorder_explicit (N := N) (n := n) (h := h) t f τ) := by
   classical
   -- Finite sum over `σs`, each summand is a product of `C^1` functions.
-  -- We use the convenient `ContDiff.sum` lemma for `Finset`.
+  -- `ContDiff.sum` for `Finset`.
   have hsum :
       ContDiff ℝ 1 (fun x : DisorderSpace (N := N) =>
         ∑ σs : ReplicaSpace N n, f σs *
@@ -1562,12 +1464,7 @@ omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
   simp [dgibbs_average_n_disorder, dgibbs_average_n, H_t_disorder_disorderPair,
     dH_t_disorder_disorderPair]
 
-/-!
-### Moving between `ℙ` and `disorderPairLaw`
-
-For Gaussian IBP we integrate over the intrinsic `DisorderSpace` law `disorderPairLaw`, not over `Ω`.
-These lemmas rewrite the relevant disorder expectations accordingly.
--/
+/-! ### Pushforward to `disorderPairLaw` -/
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma measurable_disorderPair :
@@ -2026,14 +1923,7 @@ lemma hasDerivAt_gibbs_average_n (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : Rep
         (sk := sk) (sim := sim) t w)) hG hHt)
   simpa [gibbs_average_n, G, dgibbs_average_n] using hcomp
 
-/-!
-To differentiate `ν_t(f) = 𝔼[⟨f⟩_t]`, we use the dominated differentiation lemma
-`hasDerivAt_integral_of_dominated_loc_of_deriv_le`.
-
-The only nontrivial analytic inputs are:
-- pointwise differentiability of `t ↦ ⟨f⟩_t(ω)`,
-- an integrable uniform (in `t` near `t₀`) bound on the derivative.
--/
+/-! ### Dominated differentiation of `ν_t(f)` -/
 
 set_option maxHeartbeats 600000 in
 theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n) :
@@ -2386,14 +2276,9 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
   simpa [nu, F, F'] using hMain
 
 /-!
-### Gaussian IBP rewriting of the smart-path derivative
+### Gaussian IBP of the smart-path derivative
 
-`hasDerivAt_nu` gives the “outer” derivative formula
-\[
-  \nu_t'(f) = \mathbb{E}[\,\mathrm{d}\langle f\rangle_t\,].
-\]
-Using the intrinsic disorder law `disorderPairLaw` and the Hilbert-space Gaussian IBP lemmas
-packaged above, we can rewrite this derivative as a sum of covariance-operator contractions.
+\(\nu_t'(f) = \mathbb{E}[\mathrm{d}\langle f\rangle_t]\).
 -/
 
 theorem hasDerivAt_nu_ibp (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)
@@ -2463,14 +2348,7 @@ theorem hasDerivAt_nu_ibp (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)
               (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) (n := n)
               (hindep := hindep) (t := t) (f := f))
 
-/-!
-### Kernel-form of the IBP derivative (Talagrand Vol. II ready)
-
-Using the covariance-kernel specifications of `sk`/`sim`, we can expand the covariance-operator
-vectors into explicit finite sums against the canonical basis. This removes `covarianceOperator`
-from the final derivative formula and replaces it by the covariance kernels
-`sk_cov_kernel` / `simple_cov_kernel`.
--/
+/-! ### Kernel form of the IBP derivative -/
 
 -- Kernel expansion lemmas moved to `SpinGlass/SKModel.lean`.
 

@@ -1,14 +1,21 @@
 ## macOS
 .DS_Store
+
 ## Lake
 .lake/*
 .cache/*
-## Blueprint
+
+## Private / copyrighted (not public)
+.axiomatic/
+*.pdf
+
+## Blueprint build artifacts
 /blueprint/print/print.log
 /blueprint/web/
 /blueprint/src/web.paux
 /blueprint/src/web.bbl
 /blueprint/print/
+
 ## TeX
 *.aux
 *.lof
