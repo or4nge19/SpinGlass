@@ -89,7 +89,8 @@ theorem T_add (m : ℝ) (hm : m ≠ 0) (v₁ v₂ : ℝ≥0) {A : ℝ → ℝ}
       have h0univ : (μ₂ Set.univ) = 0 := by simp [h0]
       have : (1 : ℝ≥0∞) = 0 := by simp [hu] at h0univ
       exact one_ne_zero this
-    simpa [I, μ₂] using (MeasureTheory.integral_exp_pos (μ := μ₂) (f := fun z => m * A (t + z)) hint)
+    simpa [I, μ₂] using (MeasureTheory.integral_exp_pos (μ := μ₂) (f := fun z => m * A (t + z))
+      hint)
   have hstep :
       (∫ z : ℝ, Real.exp (m * (T m v₂ A (x + z))) ∂μ₁)
         = ∫ z : ℝ, I (x + z) ∂μ₁ := by

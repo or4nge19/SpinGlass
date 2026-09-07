@@ -55,7 +55,8 @@ private lemma memLp_abs_add_one_gaussianReal (v : ℝ≥0) :
     memLp_id_gaussianReal' (μ := (0 : ℝ)) (v := v) (p := (2 : ℝ≥0∞)) (by simp)
   have habs : MemLp (fun u : ℝ => |u|) (2 : ℝ≥0∞) (gaussianReal 0 v) := by
     simpa [Real.norm_eq_abs] using h2.norm
-  have hone : MemLp (fun _ : ℝ => (1 : ℝ)) (2 : ℝ≥0∞) (gaussianReal 0 v) := memLp_const (c := (1 : ℝ))
+  have hone : MemLp (fun _ : ℝ => (1 : ℝ)) (2 : ℝ≥0∞) (gaussianReal 0 v) := memLp_const (c := (1 :
+    ℝ))
   convert habs.add hone using 1
   ext u
   simp [Pi.add_apply]
@@ -134,7 +135,8 @@ private lemma memLp_exp_abs_sq_gaussianReal (v : ℝ≥0) (δ : ℝ) :
   refine (memLp_two_iff_integrable_sq hmeas).2 ?_
   have h : Integrable (fun u : ℝ => Real.exp ((4 * δ) * |u|)) (gaussianReal 0 v) :=
     integrable_exp_mul_abs_gaussianReal (v := v) (a := 4 * δ)
-  have hsq : (fun u : ℝ => ((Real.exp (δ * |u|)) ^ 2) ^ 2) = fun u : ℝ => Real.exp ((4 * δ) * |u|) := by
+  have hsq : (fun u : ℝ => ((Real.exp (δ * |u|)) ^ 2) ^ 2) = fun u : ℝ => Real.exp ((4 * δ) * |u|)
+    := by
     funext u
     have hsq1 : (Real.exp (δ * |u|)) ^ 2 = Real.exp ((2 * δ) * |u|) := by
       calc
@@ -252,7 +254,8 @@ private lemma hasDerivAt_shiftFun_at0_of_integrable_bound_core
     refine integral_congr_ae (ae_of_all _ (fun y => by simp [G', v, hfderiv y]))
   simpa [cameronMartinShiftFun, G, v, hInt0] using h.2
 
-/-- Differentiate the Cameron–Martin shift functional at `t = 0` under a local domination hypothesis. -/
+/-- Differentiate the Cameron–Martin shift functional at `t = 0` under a local domination
+hypothesis. -/
 theorem hasDerivAt_shiftFun_at0_of_integrable_bound
     (x : cameronMartin μ) (F : E → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)
     {δ : ℝ} (hδ : 0 < δ)
@@ -289,7 +292,6 @@ theorem hasDerivAt_shiftFun_at0_bounded
     hasDerivAt_shiftFun_at0_of_integrable_bound (μ := μ) x F hF_meas hF_c1 (δ := (1 : ℝ))
       (by norm_num) hF_int bound hbound_int hbound
 
-set_option maxHeartbeats 800000 in
 /-- Differentiate the Cameron–Martin shift functional at `t = 0` under polynomial growth. -/
 theorem hasDerivAt_shiftFun_at0_polyGrowth
     (x : cameronMartin μ) (F : E → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)
@@ -312,7 +314,8 @@ theorem hasDerivAt_shiftFun_at0_polyGrowth
     refine ae_of_all _ (fun y t ht => ?_)
     have ht1 : ‖t‖ ≤ (1 : ℝ) := le_of_lt (by simpa [Metric.mem_ball, Real.norm_eq_abs] using ht)
     have hnorm : ‖y + t • v‖ ≤ ‖y‖ + ‖v‖ := by
-      have : ‖t • v‖ ≤ ‖v‖ := by simpa [norm_smul] using mul_le_mul_of_nonneg_right ht1 (norm_nonneg v)
+      have : ‖t • v‖ ≤ ‖v‖ := by simpa [norm_smul] using mul_le_mul_of_nonneg_right ht1 (norm_nonneg
+        v)
       have htmp : ‖y‖ + ‖t • v‖ ≤ ‖y‖ + ‖v‖ := by
         simpa [add_comm] using add_le_add_right this ‖y‖
       exact (norm_add_le _ _).trans htmp
@@ -387,8 +390,8 @@ private lemma cameronMartinTiltFun_eq_integral_tiltKernel
     simp [hy, mul_comm]
   simpa [cameronMartinTiltFun] using integral_congr_ae hker
 
-set_option maxHeartbeats 800000 in
-/-- Differentiate the Cameron–Martin tilt functional at `t = 0`, assuming an integrable domination profile. -/
+/-- Differentiate the Cameron–Martin tilt functional at `t = 0`, assuming an integrable
+domination profile. -/
 theorem hasDerivAt_tiltFun_at0_of_integrable_profile
     (x : cameronMartin μ) (F : E → ℝ) (hF_meas : Measurable F)
     {δ : ℝ} (hδ : 0 < δ)
@@ -487,7 +490,8 @@ theorem hasDerivAt_tiltFun_at0_bounded
             ((|x y| + 1) * Real.exp ((1 : ℝ) * |x y|)) := by
           simp [A, mul_assoc, mul_comm]
   simpa [mul_assoc, mul_left_comm, mul_comm] using
-    hasDerivAt_tiltFun_at0_of_integrable_profile (μ := μ) x F hF_meas (δ := (1 : ℝ)) (by norm_num) hInt
+    hasDerivAt_tiltFun_at0_of_integrable_profile (μ := μ) x F hF_meas (δ := (1 : ℝ)) (by norm_num)
+      hInt
 
 /-- Differentiate the Cameron–Martin tilt functional at `t = 0` under polynomial growth. -/
 theorem hasDerivAt_tiltFun_at0_polyGrowth
@@ -583,7 +587,7 @@ theorem cameronMartin_integral_by_parts_of_integrable_bound
     {δ : ℝ} (hδ : 0 < δ)
     (hF_int : Integrable F μ)
     (bound : E → ℝ) (hbound_int : Integrable bound μ)
-    (hbound :  ∀ᵐ y ∂μ,
+    (hbound : ∀ᵐ y ∂μ,
         ∀ t ∈ Metric.ball (0 : ℝ) δ, ‖(fderiv ℝ F (y + t • cmCoe x)) (cmCoe x)‖ ≤ bound y)
     (hTiltInt : Integrable
         (fun y : E =>

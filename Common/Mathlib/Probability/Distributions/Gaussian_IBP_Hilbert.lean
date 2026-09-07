@@ -9,7 +9,7 @@ import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
 
 For centered Gaussian `μ` on a real Hilbert space, IBP via `covarianceOperator`. Corollary of
 `cameronMartin_integral_by_parts_polyGrowth`. Main:
-`integral_inner_mul_eq_integral_fderiv_covarianceOperator_polyGrowth`.
+`integral_inner_mul_eq_integral_fderiv_covarianceOperator`.
 -/
 
 open scoped Filter BigOperators Topology ProbabilityTheory ENNReal InnerProductSpace NNReal
@@ -78,7 +78,8 @@ private lemma covarianceBilinDual_innerSL_eq_integral_mul
   have hcov' :=
     covarianceBilinDual_apply (μ := μ) (h := hLp2)
       (innerSL ℝ u : StrongDual ℝ H) (innerSL ℝ h : StrongDual ℝ H)
-  simpa [hmean_inner u, hmean_inner h, innerSL_apply_apply, mul_comm, mul_left_comm, mul_assoc] using hcov'
+  simpa [hmean_inner u, hmean_inner h, innerSL_apply_apply, mul_comm, mul_left_comm, mul_assoc]
+    using hcov'
 
 /-- Identify `cmCoe (cmOfDual (innerSL ℝ h))` with the covariance operator in the centered case. -/
 lemma cmCoe_cmOfDual_innerSL_eq_covarianceOperator
@@ -111,8 +112,9 @@ namespace IsGaussian
 
 variable (μ)
 
-/-- Centered Gaussian IBP: `∫ ⟨x,h⟩ F(x) dμ = ∫ DF(x) (covarianceOperator μ h) dμ`, polynomial growth. -/
-theorem integral_inner_mul_eq_integral_fderiv_covarianceOperator_polyGrowth
+/-- Centered Gaussian IBP: `∫ ⟨x,h⟩ F(x) dμ = ∫ DF(x) (covarianceOperator μ h) dμ`, polynomial
+growth. -/
+theorem integral_inner_mul_eq_integral_fderiv_covarianceOperator
     (hmean0 : (∫ x : H, x ∂μ) = 0) (h : H)
     (F : H → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)
     {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
@@ -131,7 +133,8 @@ theorem integral_inner_mul_eq_integral_fderiv_covarianceOperator_polyGrowth
     cmCoe_cmOfDual_innerSL_eq_covarianceOperator (μ := μ) hmean0 h
   have hLHS :
       (∫ x : H,
-          ((cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H) : cameronMartin μ) x) * F x ∂μ)
+          ((cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H) : cameronMartin μ) x) * F x
+            ∂μ)
         = ∫ x : H, ⟪x, h⟫_ℝ * F x ∂μ := by
     refine integral_congr_ae ?_
     filter_upwards [cmOfDual_innerSL_aeEq_inner (μ := μ) hmean0 h] with x hx
@@ -139,12 +142,14 @@ theorem integral_inner_mul_eq_integral_fderiv_covarianceOperator_polyGrowth
   calc
     (∫ x : H, ⟪x, h⟫_ℝ * F x ∂μ)
         = ∫ x : H,
-            ((cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H) : cameronMartin μ) x) * F x ∂μ := by
+            ((cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H) : cameronMartin μ) x) * F x
+              ∂μ := by
               simpa using hLHS.symm
     _ = ∫ x : H,
           (fderiv ℝ F x)
             ((cmCoe (μ := μ))
-              ((cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H) : cameronMartin μ))) ∂μ := hIBP
+              ((cmOfDual (E := H) (μ := μ) (innerSL ℝ h : StrongDual ℝ H) : cameronMartin μ))) ∂μ :=
+                hIBP
     _ = ∫ x : H, (fderiv ℝ F x) (covarianceOperator μ h) ∂μ := by simp [hcm]
 
 end IsGaussian

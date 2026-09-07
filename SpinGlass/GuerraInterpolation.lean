@@ -1,4 +1,4 @@
-import SpinGlass.Replicas
+import SpinGlass.Replicas.Pushforward
 
 /-!
 # Guerra interpolation: differentiation
@@ -17,7 +17,7 @@ noncomputable section
 
 variable {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
 variable {N : ℕ} (β h q : ℝ)
-variable (sk : SKDisorder (Ω := Ω) (N := N) β h) (sim : SimpleDisorder (Ω := Ω) (N := N) β q)
+variable (sk : SKDisorder (Ω := Ω) (N := N) β) (sim : SimpleDisorder (Ω := Ω) (N := N) β q)
 
 /-- Expected free energy density along the interpolated Hamiltonian `H_t`. -/
 noncomputable def guerraPhi (t : ℝ) : ℝ :=
@@ -37,7 +37,7 @@ theorem hasDerivAt_guerraPhi (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
       (∫ ω,
         (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
           (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω))
-          (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω)
+          (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t ω)
         ∂ℙ) t := by
   have ht0 : 0 < t := ht.1
   have ht1 : t < 1 := ht.2
@@ -76,15 +76,16 @@ theorem hasDerivAt_guerraPhi (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
     fun s ω =>
       (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
           (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s ω))
-        (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s ω)
+        (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) s ω)
   have hF_meas : ∀ᶠ s in 𝓝 t, AEStronglyMeasurable (F s) (ℙ : Measure Ω) := by
     refine Filter.Eventually.of_forall (fun s => ?_)
     have hU : Measurable sk.U := sk.measU
-    have hV : Measurable sim.V := sim.measV
+    have hV : Measurable sim.U := sim.measU
     have hHt_meas :
         Measurable (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s) := by
       have h1 : Measurable (fun w => (Real.sqrt s) • sk.U w) := hU.const_smul (Real.sqrt s)
-      have h2 : Measurable (fun w => (Real.sqrt (1 - s)) • sim.V w) := hV.const_smul (Real.sqrt (1 - s))
+      have h2 : Measurable (fun w => (Real.sqrt (1 - s)) • sim.U w) := hV.const_smul (Real.sqrt (1 -
+        s))
       have h3 : Measurable (fun _w : Ω => H_field (N := N) (h := h)) := measurable_const
       exact (h1.add h2).add h3
     have hcont : Continuous (fun H : EnergySpace N => free_energy_density (N := N) H) :=
@@ -98,16 +99,16 @@ theorem hasDerivAt_guerraPhi (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
         simpa [C] using (abs_free_energy_density_le (N := N) (H := H))
       simpa [Real.norm_eq_abs] using this
     have hU_int : Integrable (fun w => ‖sk.U w‖) (ℙ : Measure Ω) :=
-      integrable_norm_of_isGaussian_map (P := (ℙ : Measure Ω)) (g := sk.U) sk.measU sk.hU
-    have hV_int : Integrable (fun w => ‖sim.V w‖) (ℙ : Measure Ω) :=
-      integrable_norm_of_isGaussian_map (P := (ℙ : Measure Ω)) (g := sim.V) sim.measV sim.hV
+      integrable_norm_of_isGaussian_map (P := (ℙ : Measure Ω)) (g := sk.U) sk.measU sk.isGaussian
+    have hV_int : Integrable (fun w => ‖sim.U w‖) (ℙ : Measure Ω) :=
+      integrable_norm_of_isGaussian_map (P := (ℙ : Measure Ω)) (g := sim.U) sim.measU sim.isGaussian
     let D : Ω → ℝ := fun w =>
-      ‖(Real.sqrt t) • sk.U w‖ + ‖(Real.sqrt (1 - t)) • sim.V w‖ + ‖H_field (N := N) (h := h)‖
+      ‖(Real.sqrt t) • sk.U w‖ + ‖(Real.sqrt (1 - t)) • sim.U w‖ + ‖H_field (N := N) (h := h)‖
     have hD_int : Integrable D (ℙ : Measure Ω) := by
       have h1 : Integrable (fun w => ‖(Real.sqrt t) • sk.U w‖) (ℙ : Measure Ω) := by
         have := (hU_int.const_mul |Real.sqrt t|)
         simpa [norm_smul, Real.norm_eq_abs, abs_mul, mul_assoc] using this
-      have h2 : Integrable (fun w => ‖(Real.sqrt (1 - t)) • sim.V w‖) (ℙ : Measure Ω) := by
+      have h2 : Integrable (fun w => ‖(Real.sqrt (1 - t)) • sim.U w‖) (ℙ : Measure Ω) := by
         have := (hV_int.const_mul |Real.sqrt (1 - t)|)
         simpa [norm_smul, Real.norm_eq_abs, abs_mul, mul_assoc] using this
       have h3 : Integrable (fun _w : Ω => ‖H_field (N := N) (h := h)‖) (ℙ : Measure Ω) :=
@@ -121,12 +122,15 @@ theorem hasDerivAt_guerraPhi (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
     refine ae_of_all _ (fun w => ?_)
     have hHt_le :
         ‖H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w‖ ≤ D w := by
-      have h1 := norm_add_le ((Real.sqrt t) • sk.U w + (Real.sqrt (1 - t)) • sim.V w) (H_field (N := N) (h := h))
-      have h2 := norm_add_le ((Real.sqrt t) • sk.U w) ((Real.sqrt (1 - t)) • sim.V w)
-      have : ‖(Real.sqrt t) • sk.U w + (Real.sqrt (1 - t)) • sim.V w + H_field (N := N) (h := h)‖
-            ≤ ‖(Real.sqrt t) • sk.U w‖ + ‖(Real.sqrt (1 - t)) • sim.V w‖ + ‖H_field (N := N) (h := h)‖ := by
-        have : ‖(Real.sqrt t) • sk.U w + (Real.sqrt (1 - t)) • sim.V w + H_field (N := N) (h := h)‖
-              ≤ ‖(Real.sqrt t) • sk.U w + (Real.sqrt (1 - t)) • sim.V w‖ + ‖H_field (N := N) (h := h)‖ := by
+      have h1 := norm_add_le ((Real.sqrt t) • sk.U w + (Real.sqrt (1 - t)) • sim.U w) (H_field (N :=
+        N) (h := h))
+      have h2 := norm_add_le ((Real.sqrt t) • sk.U w) ((Real.sqrt (1 - t)) • sim.U w)
+      have : ‖(Real.sqrt t) • sk.U w + (Real.sqrt (1 - t)) • sim.U w + H_field (N := N) (h := h)‖
+            ≤ ‖(Real.sqrt t) • sk.U w‖ + ‖(Real.sqrt (1 - t)) • sim.U w‖ + ‖H_field (N := N) (h :=
+              h)‖ := by
+        have : ‖(Real.sqrt t) • sk.U w + (Real.sqrt (1 - t)) • sim.U w + H_field (N := N) (h := h)‖
+              ≤ ‖(Real.sqrt t) • sk.U w + (Real.sqrt (1 - t)) • sim.U w‖ + ‖H_field (N := N) (h :=
+                h)‖ := by
           simpa [add_assoc] using h1
         linarith [this, h2]
       simpa [H_t, H_gauss, D, add_assoc] using this
@@ -139,22 +143,23 @@ theorem hasDerivAt_guerraPhi (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
       _ ≤ C * (1 + D w) := by gcongr
   have hF'_meas : AEStronglyMeasurable (F' t) (ℙ : Measure Ω) := by
     have hU : Measurable sk.U := sk.measU
-    have hV : Measurable sim.V := sim.measV
+    have hV : Measurable sim.U := sim.measU
     have hHt_meas :
         Measurable (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t) := by
       have h1 : Measurable (fun w => (Real.sqrt t) • sk.U w) := hU.const_smul (Real.sqrt t)
-      have h2 : Measurable (fun w => (Real.sqrt (1 - t)) • sim.V w) := hV.const_smul (Real.sqrt (1 - t))
+      have h2 : Measurable (fun w => (Real.sqrt (1 - t)) • sim.U w) := hV.const_smul (Real.sqrt (1 -
+        t))
       have h3 : Measurable (fun _w : Ω => H_field (N := N) (h := h)) := measurable_const
       exact (h1.add h2).add h3
     have hdHt_meas :
-        Measurable (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t) := by
+        Measurable (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t) := by
       let aU : ℝ := (Real.sqrt t)⁻¹ * (2 : ℝ)⁻¹
       let aV : ℝ := (Real.sqrt (1 - t))⁻¹ * (2 : ℝ)⁻¹
       have hmeas_simpl :
-          Measurable (fun w => aU • sk.U w - aV • sim.V w) :=
+          Measurable (fun w => aU • sk.U w - aV • sim.U w) :=
         (hU.const_smul aU).sub (hV.const_smul aV)
-      have hEq : (fun w => aU • sk.U w - aV • sim.V w) =
-          (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t) := by
+      have hEq : (fun w => aU • sk.U w - aV • sim.U w) =
+          (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t) := by
         funext w
         simp [aU, aV, dH_t, mul_comm, div_eq_mul_inv]
       simpa [hEq] using hmeas_simpl
@@ -168,7 +173,7 @@ theorem hasDerivAt_guerraPhi (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
         (SpinGlass.contDiff_gibbs_pmf (N := N) (σ := σ)).continuous
       exact hcont.measurable.comp hHt_meas
     have h_dHt_eval : ∀ τ : Config N, Measurable fun w =>
-        (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ := by
+        (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) τ := by
       intro τ
       exact (evalCLM (N := N) τ).measurable.comp hdHt_meas
     have hsum :
@@ -176,13 +181,13 @@ theorem hasDerivAt_guerraPhi (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
           ∑ σ : Config N,
             gibbs_pmf N
                 (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) σ *
-              (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) σ := by
+              (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) σ := by
       simpa using
         (Finset.measurable_sum (s := (Finset.univ : Finset (Config N)))
           (f := fun σ w =>
             gibbs_pmf N
                 (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) σ *
-              (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) σ)
+              (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) σ)
           (hf := by
             intro σ _hσ
             exact (h_gibbs_pmf_meas σ).mul (h_dHt_eval σ)))
@@ -190,30 +195,30 @@ theorem hasDerivAt_guerraPhi (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
         (-(1 / (N : ℝ))) * (∑ σ : Config N,
           gibbs_pmf N
               (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) σ *
-            (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) σ) := by
+            (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) σ) := by
       exact measurable_const.mul hsum
     have hEq : (fun w => F' t w) =
         fun w =>
           (-(1 / (N : ℝ))) * (∑ σ : Config N,
             gibbs_pmf N
                 (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) σ *
-              (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) σ) := by
+              (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) σ) := by
       funext w
       simp [F', fderiv_free_energy_density_apply (N := N)
         (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w)
-        (h := dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w)]
+        (h := dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w)]
     simpa [hEq] using hmeas'.aestronglyMeasurable
   let cU : ℝ := 1 / (2 * Real.sqrt (t / 2))
   let cV : ℝ := 1 / (2 * Real.sqrt ((1 - t) / 2))
-  let bound : Ω → ℝ := fun w => (1 / (N : ℝ)) * (cU * ‖sk.U w‖ + cV * ‖sim.V w‖)
+  let bound : Ω → ℝ := fun w => (1 / (N : ℝ)) * (cU * ‖sk.U w‖ + cV * ‖sim.U w‖)
   have hbound_int : Integrable bound (ℙ : Measure Ω) := by
     have hU_int : Integrable (fun w => ‖sk.U w‖) (ℙ : Measure Ω) :=
-      integrable_norm_of_isGaussian_map (P := (ℙ : Measure Ω)) (g := sk.U) sk.measU sk.hU
-    have hV_int : Integrable (fun w => ‖sim.V w‖) (ℙ : Measure Ω) :=
-      integrable_norm_of_isGaussian_map (P := (ℙ : Measure Ω)) (g := sim.V) sim.measV sim.hV
+      integrable_norm_of_isGaussian_map (P := (ℙ : Measure Ω)) (g := sk.U) sk.measU sk.isGaussian
+    have hV_int : Integrable (fun w => ‖sim.U w‖) (ℙ : Measure Ω) :=
+      integrable_norm_of_isGaussian_map (P := (ℙ : Measure Ω)) (g := sim.U) sim.measU sim.isGaussian
     have h1 : Integrable (fun w => cU * ‖sk.U w‖) (ℙ : Measure Ω) := hU_int.const_mul cU
-    have h2 : Integrable (fun w => cV * ‖sim.V w‖) (ℙ : Measure Ω) := hV_int.const_mul cV
-    have hsum : Integrable (fun w => cU * ‖sk.U w‖ + cV * ‖sim.V w‖) (ℙ : Measure Ω) := h1.add h2
+    have h2 : Integrable (fun w => cV * ‖sim.U w‖) (ℙ : Measure Ω) := hV_int.const_mul cV
+    have hsum : Integrable (fun w => cU * ‖sk.U w‖ + cV * ‖sim.U w‖) (ℙ : Measure Ω) := h1.add h2
     simpa [bound, mul_add, mul_assoc] using hsum.const_mul (1 / (N : ℝ))
   have h_bound :
       ∀ᵐ ω ∂(ℙ : Measure Ω), ∀ x ∈ Metric.ball t ε, ‖F' x ω‖ ≤ bound ω := by
@@ -222,20 +227,21 @@ theorem hasDerivAt_guerraPhi (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
     have hball : x ∈ Metric.ball t ((min t (1 - t)) / 2) := by
       simpa [ε] using hx
     have hdH :
-        ‖dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x ω‖
-          ≤ cU * ‖sk.U ω‖ + cV * ‖sim.V ω‖ := by
+        ‖dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) x ω‖
+          ≤ cU * ‖sk.U ω‖ + cV * ‖sim.U ω‖ := by
       simpa [cU, cV] using
-        (norm_dH_t_le_on_ball (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
+        (norm_dH_t_le_on_ball (Ω := Ω) (N := N) (β := β) (q := q)
           (sk := sk) (sim := sim) (t := t) (x := x) ht hball ω)
     have hFderiv :
-        ‖F' x ω‖ ≤ (1 / (N : ℝ)) * ‖dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x ω‖ := by
+        ‖F' x ω‖ ≤ (1 / (N : ℝ)) * ‖dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim)
+          x ω‖ := by
       have habs :=
         abs_fderiv_free_energy_density_apply_le (N := N)
           (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x ω)
-          (v := dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x ω)
+          (v := dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) x ω)
       simpa [F', Real.norm_eq_abs] using habs
     have : ‖F' x ω‖ ≤ bound ω := by
-      have : ‖F' x ω‖ ≤ (1 / (N : ℝ)) * (cU * ‖sk.U ω‖ + cV * ‖sim.V ω‖) := by
+      have : ‖F' x ω‖ ≤ (1 / (N : ℝ)) * (cU * ‖sk.U ω‖ + cV * ‖sim.U ω‖) := by
         exact le_trans hFderiv (mul_le_mul_of_nonneg_left hdH (by positivity))
       simpa [bound, mul_add, mul_assoc, mul_left_comm, mul_comm] using this
     exact this
@@ -246,14 +252,14 @@ theorem hasDerivAt_guerraPhi (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
     have hxIoo : x ∈ Set.Ioo (0 : ℝ) 1 := hball_Ioo x hx
     have hHt : HasDerivAt
         (fun s => H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s ω)
-        (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x ω) x :=
+        (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) x ω) x :=
       hasDerivAt_H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x hxIoo ω
     simpa [F, F', free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z,
       one_apply_eq_self] using
       (FiniteGibbs.hasDerivAt_free_energy_density_comp (α := Config N) (n := N) (t := x)
         (H := fun s =>
           H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s ω)
-        (H' := dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x ω) hHt)
+        (H' := dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) x ω) hHt)
   have hMain :=
     (hasDerivAt_integral_of_dominated_loc_of_deriv_le
       (μ := (ℙ : Measure Ω)) (F := F) (F' := F') (x₀ := t) (bound := bound)
@@ -268,38 +274,38 @@ lemma derivative_value_guerraPhi_eq (t : ℝ) :
     (∫ ω,
         (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
             (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω))
-          (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω)
+          (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t ω)
         ∂ℙ)
       =
       (-(1 / (N : ℝ))) *  ∫ ω, (∑ σ : Config N,
         gibbs_pmf N (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω) σ *
-        (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω) σ) ∂ℙ := by
+        (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t ω) σ) ∂ℙ := by
   have hpoint :
       (fun ω =>
           (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
               (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω))
-            (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω))
+            (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t ω))
         =
       fun ω =>
         (-(1 / (N : ℝ))) *
           (∑ σ : Config N,
               gibbs_pmf N
                   (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω) σ *
-                (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω) σ) := by
+                (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t ω) σ) := by
     funext ω
     simp [fderiv_free_energy_density_apply (N := N)
         (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω)
-        (h := dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω)]
+        (h := dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t ω)]
   set g : Ω → ℝ := fun ω =>
     (∑ σ : Config N,
         gibbs_pmf N
             (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω) σ *
-          (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω) σ) with hg
+          (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t ω) σ) with hg
   have hpoint' :
       (fun ω =>
           (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
               (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω))
-            (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω))
+            (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t ω))
         =
       fun ω => (-(1 / (N : ℝ))) * g ω := by
     simpa [hg] using hpoint
@@ -307,18 +313,19 @@ lemma derivative_value_guerraPhi_eq (t : ℝ) :
     (∫ ω,
         (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
             (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω))
-          (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω)
+          (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t ω)
         ∂ℙ)
         = ∫ ω, (-(1 / (N : ℝ))) * g ω ∂ℙ := by
             simp [hpoint']
     _ = (-(1 / (N : ℝ))) * ∫ ω, g ω ∂ℙ := by
-          simpa using (MeasureTheory.integral_const_mul (r := (-(1 / (N : ℝ)))) (f := g) (μ := (ℙ : Measure Ω)))
+          simpa using (MeasureTheory.integral_const_mul (r := (-(1 / (N : ℝ)))) (f := g) (μ := (ℙ :
+            Measure Ω)))
     _ = (-(1 / (N : ℝ))) *
           ∫ ω,
             (∑ σ : Config N,
                 gibbs_pmf N
                     (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω) σ *
-                  (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω) σ)
+                  (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t ω) σ)
             ∂ℙ := by
           simp [hg]
 
@@ -326,31 +333,33 @@ lemma derivative_value_guerraPhi_eq (t : ℝ) :
 
 section DisorderLaw
 
+/-- Abbreviation for the joint law of the SK and reference disorders on `DisorderSpace`. -/
 private abbrev μ : Measure (DisorderSpace (N := N)) :=
-  disorderPairLaw (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+  disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma guerraPhi_eq_integral_disorderPairLaw (t : ℝ) :
     guerraPhi (N := N) (β := β) (h := h) (q := q) sk sim t
       =
       ∫ x : DisorderSpace (N := N),
-        free_energy_density (N := N) (H_t_disorder (N := N) (h := h) t x) ∂(μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim) := by
+        free_energy_density (N := N) (H_t_disorder (N := N) (h := h) t x) ∂(μ (Ω := Ω) (N := N) (β
+          := β) (q := q) sk sim) := by
   let φ : Ω → DisorderSpace (N := N) :=
-    disorderPair (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+    disorderPair (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)
   have hφ : AEMeasurable φ (ℙ : Measure Ω) := by
-    have hpair : Measurable fun ω : Ω => (sk.U ω, sim.V ω) := sk.measU.prodMk sim.measV
+    have hpair : Measurable fun ω : Ω => (sk.U ω, sim.U ω) := sk.measU.prodMk sim.measU
     have hmeas : Measurable φ := by
       exact (WithLp.prod_continuous_toLp (p := (2 : ℝ≥0∞))
         (α := EnergySpace N) (β := EnergySpace N)).measurable.comp hpair
     exact hmeas.aemeasurable
-  have hmap : (μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim) = (ℙ : Measure Ω).map φ := by
+  have hmap : (μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim) = (ℙ : Measure Ω).map φ := by
     rfl
   have hf_meas : Measurable fun x : DisorderSpace (N := N) =>
       free_energy_density (N := N) (H_t_disorder (N := N) (h := h) t x) := by
     have hcontF : Continuous (fun H : EnergySpace N => free_energy_density (N := N) H) :=
       (contDiff_free_energy_density (N := N)).continuous
     have hcontH : Continuous (H_t_disorder (N := N) (h := h) t) := by
-      exact (H_t_disorder_lin (N := N) t).continuous.add continuous_const
+      exact (gaussianInterp (E := EnergySpace N) t).continuous.add continuous_const
     exact (hcontF.measurable.comp hcontH.measurable)
   have hf : AEStronglyMeasurable (fun x : DisorderSpace (N := N) =>
       free_energy_density (N := N) (H_t_disorder (N := N) (h := h) t x))
@@ -371,9 +380,12 @@ lemma guerraPhi_eq_integral_disorderPairLaw (t : ℝ) :
           (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω)) := by
     funext ω
     simp [φ,
-      H_t_disorder_disorderPair (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)]
+      H_t_disorder_disorderPair (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim :=
+        sim)]
   simpa [guerraPhi, hmap, hpull] using hmain.symm
 
 end DisorderLaw
 
 end
+
+end SpinGlass

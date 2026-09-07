@@ -48,7 +48,8 @@ lemma measurableSet_hopfieldBallSq (c : Fin M → ℝ) (ρ : ℝ) :
   have hsub : Measurable fun z : Fin M → ℝ => z - c := by fun_prop
   have hnorm : Measurable fun z : Fin M → ℝ => finVecNormSq M (z - c) :=
     (measurable_finVecNormSq (M := M)).comp hsub
-  simpa [hopfieldBallSq] using (measurableSet_le hnorm (measurable_const : Measurable fun _ : (Fin M → ℝ) => ρ ^ 2))
+  simpa [hopfieldBallSq] using (measurableSet_le hnorm (measurable_const : Measurable fun _ : (Fin M
+    → ℝ) => ρ ^ 2))
 
 /-- Union of the `2M` “lump” balls centered at `± m e_k`. -/
 def hopfieldLumps (m ρ : ℝ) : Set (Fin M → ℝ) :=

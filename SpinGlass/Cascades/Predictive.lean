@@ -7,7 +7,8 @@ import Mathlib.Probability.Kernel.Composition.ParallelComp
 # Posterior predictive as `condDistrib`
 
 Joint law of `(prefix, fresh replica)` as `μPrefix ⊗ₘ predictive`; the conditional law of the
-fresh replica is the posterior predictive kernel. Main: `condDistrib_snd_fst_gibbsPrefixFreshLaw_ae`.
+fresh replica is the posterior predictive kernel. Main:
+`condDistrib_snd_fst_gibbsPrefixFreshLaw_ae`.
 -/
 
 open MeasureTheory ProbabilityTheory
@@ -51,7 +52,8 @@ lemma gibbsPrefixFreshLaw_eq_compPosterior :
         ((gibbsPrefixLaw (N := N) (n := n) μH) ⊗ₘ (gibbsPosteriorKernel (N := N) (n := n) μH)) := by
   -- This is exactly `parallelComp_comp_compProd` with `η = gibbsKernel` and `κ = posterior`.
   -- RHS is `μprefix ⊗ₘ (gibbsKernel ∘ₖ posterior)` which is definitionally `gibbsPrefixFreshLaw`.
-  simpa [gibbsPrefixFreshLaw, Cascades.gibbsPosteriorPredictive, Cascades.gibbsPosteriorKernel] using
+  simpa [gibbsPrefixFreshLaw, Cascades.gibbsPosteriorPredictive, Cascades.gibbsPosteriorKernel]
+    using
     (MeasureTheory.Measure.parallelComp_comp_compProd
       (μ := gibbsPrefixLaw (N := N) (n := n) μH)
       (κ := gibbsPosteriorKernel (N := N) (n := n) μH)
@@ -62,7 +64,8 @@ lemma gibbsPrefixFreshLaw_eq_from_prior :
       =
       (Kernel.id ∥ₖ gibbsKernel (N := N)) ∘ₘ
         ((μH ⊗ₘ replicaGibbsKernel (N := N) (n := n)).map Prod.swap) := by
-  -- Use the defining posterior identity to rewrite `μprefix ⊗ₘ posterior` as the swapped prior joint law.
+  -- Use the defining posterior identity to rewrite `μprefix ⊗ₘ posterior` as the swapped prior
+  -- joint law.
   have hpost :
       (gibbsPrefixLaw (N := N) (n := n) μH) ⊗ₘ (gibbsPosteriorKernel (N := N) (n := n) μH)
         =
@@ -73,7 +76,8 @@ lemma gibbsPrefixFreshLaw_eq_from_prior :
   -- Substitute into the Bayesian-network factorization.
   simp [gibbsPrefixFreshLaw_eq_compPosterior (N := N) (n := n) (μH := μH), hpost]
 
-/-- Under `gibbsPrefixFreshLaw`, `condDistrib` of the fresh replica is a.e. the posterior predictive. -/
+/-- Under `gibbsPrefixFreshLaw`, `condDistrib` of the fresh replica is a.e. the posterior
+predictive. -/
 lemma condDistrib_snd_fst_gibbsPrefixFreshLaw_ae :
     ProbabilityTheory.condDistrib (fun p : (ReplicaSpace N n) × (Config N) => p.2)
         (fun p : (ReplicaSpace N n) × (Config N) => p.1)
@@ -131,6 +135,9 @@ lemma condDistrib_snd_fst_gibbsPrefixFreshLaw_ae :
 
 /-! ### Prior-driven joint law -/
 
+/-- The joint law of an `n`-replica prefix together with one fresh replica, both drawn from the
+Gibbs measure of a Hamiltonian distributed according to `μH`. This is the predictive form of the
+replica law: the prefix is the past, the fresh coordinate the next draw. -/
 noncomputable def gibbsPriorPrefixFreshLaw : Measure ((ReplicaSpace N n) × (Config N)) :=
   (Kernel.id ∥ₖ gibbsKernel (N := N)) ∘ₘ
     ((μH ⊗ₘ replicaGibbsKernel (N := N) (n := n)).map Prod.swap)

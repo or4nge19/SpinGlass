@@ -19,12 +19,13 @@ variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] [MeasurableSpace
 
 /-! ## IBP as “derivative of tilt = derivative of shift” -/
 
-/-- If tilt equals shift near `0` and both are differentiable at `0`, the derivative integrals coincide. -/
+/-- If tilt equals shift near `0` and both are differentiable at `0`, the derivative integrals
+coincide. -/
 theorem cameronMartin_integral_by_parts_of_hasDerivAt
     (x : cameronMartin μ) (F : E → ℝ) (hF : Measurable F)
     (hShift : HasDerivAt (fun t => cameronMartinShiftFun (μ := μ) x F t) (∫ y, (fderiv ℝ F y)
     (cmCoe x) ∂μ) 0) (hTilt : HasDerivAt (fun t => cameronMartinTiltFun (μ := μ) x F t)
-        (∫ y, (x y) * F y ∂μ)  0) : (∫ y, (x y) * F y ∂μ) = ∫ y, (fderiv ℝ F y) (cmCoe x) ∂μ := by
+        (∫ y, (x y) * F y ∂μ) 0) : (∫ y, (x y) * F y ∂μ) = ∫ y, (fderiv ℝ F y) (cmCoe x) ∂μ := by
   have hEq : (fun t => cameronMartinShiftFun (μ := μ) x F t) =ᶠ[𝓝 (0 : ℝ)]
       (fun t => cameronMartinTiltFun (μ := μ) x F t) := Filter.Eventually.of_forall (fun t =>
       cameronMartinShiftFun_eq_cameronMartinTiltFun (μ := μ) x F t hF)

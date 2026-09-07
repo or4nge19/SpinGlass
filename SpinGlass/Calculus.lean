@@ -41,7 +41,8 @@ lemma Z_pos_everywhere (H : EnergySpace N) : 0 < Z N H :=
 /-- `free_energy_density` is `C^∞`. Talagrand Vol. I, §1.3. -/
 lemma contDiff_free_energy_density (N : ℕ) :
     ContDiff ℝ (∞) (fun H : EnergySpace N => free_energy_density (N := N) H) := by
-  simpa [free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z, smul_eq_mul, mul_assoc] using
+  simpa [free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z, smul_eq_mul,
+    mul_assoc] using
     (FiniteGibbs.contDiff_free_energy_density (α := Config N) (n := N))
 
 /-!
@@ -84,14 +85,6 @@ variable (N)
 
 lemma abs_apply_le_norm (H : EnergySpace N) (σ : Config N) : |H σ| ≤ ‖H‖ := by
   simpa using (FiniteGibbs.abs_apply_le_norm (α := Config N) (H := H) (σ := σ))
-
-lemma Z_le_card_mul_exp_norm (H : EnergySpace N) :
-    Z N H ≤ (Fintype.card (Config N) : ℝ) * Real.exp (‖H‖) := by
-  simpa [Z, FiniteGibbs.Z] using (FiniteGibbs.Z_le_card_mul_exp_norm (α := Config N) (H := H))
-
-lemma Z_ge_exp_neg_norm (H : EnergySpace N) :
-    Real.exp (-‖H‖) ≤ Z N H := by
-  simpa [Z, FiniteGibbs.Z] using (FiniteGibbs.Z_ge_exp_neg_norm (α := Config N) (H := H))
 
 lemma abs_free_energy_density_le
     (H : EnergySpace N) :

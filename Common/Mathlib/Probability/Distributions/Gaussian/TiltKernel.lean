@@ -85,7 +85,8 @@ private lemma tiltKernel_le_exp_abs_mul
     tiltKernel v t x ≤ Real.exp (δ * |x|) := by
   have h0 : tiltKernel v t x ≤ Real.exp (|t| * |x|) := tiltKernel_le_exp_abs v t x
   have hmul : |t| * |x| ≤ δ * |x| := mul_le_mul_of_nonneg_right ht (abs_nonneg _)
-  exact le_trans h0 (by simpa [mul_comm] using (Real.exp_le_exp.mpr (by simpa [mul_comm] using hmul)))
+  exact le_trans h0 (by simpa [mul_comm] using (Real.exp_le_exp.mpr (by simpa [mul_comm] using
+    hmul)))
 
 private lemma abs_add_abs_mul_le_mul_one_add
     (v : ℝ≥0) (δ : ℝ) (hδ_pos : 0 < δ) (x : ℝ) :

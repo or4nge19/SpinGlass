@@ -37,7 +37,8 @@ lemma lintegral_gibbsMeasure
   simp [gibbsMeasure, gibbsWeightNNReal, FiniteGibbs.lintegral_gibbsMeasure]
 
 lemma gibbsMeasure_univ (H : EnergySpace N) : gibbsMeasure (N := N) H Set.univ = 1 := by
-  simpa [gibbsMeasure, FiniteGibbs.gibbsMeasure] using (FiniteGibbs.gibbsMeasure_univ (α := Config N) (H := H))
+  simpa [gibbsMeasure, FiniteGibbs.gibbsMeasure] using (FiniteGibbs.gibbsMeasure_univ (α := Config
+    N) (H := H))
 
 lemma integral_gibbsMeasure_eq_gibbs_average (H : EnergySpace N) (f : Config N → ℝ) :
     (∫ σ, f σ ∂gibbsMeasure (N := N) H) = gibbs_average (N := N) H f := by

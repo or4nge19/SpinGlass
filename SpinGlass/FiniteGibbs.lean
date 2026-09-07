@@ -7,12 +7,21 @@ import Mathlib.Analysis.Calculus.Deriv.Inv
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 import Mathlib.Analysis.SpecialFunctions.Log.Deriv
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
+import Common.Mathlib.Analysis.SpecialFunctions.LogSumExp
 
 /-!
 # Finite Gibbs calculus
 
 Model-agnostic finite-volume free energy `H ↦ (1/n) log (∑ σ, exp(-H σ))` on a finite type `α`.
 Fréchet derivatives, Hessian = Gibbs covariance, trace formulae. Talagrand Vol. I–II.
+
+These objects **are** the general log-sum-exp objects of
+`Common.Mathlib.Analysis.SpecialFunctions.LogSumExp` evaluated at the negated Hamiltonian —
+`Z_eq_expSum`, `gibbs_pmf_eq_softmax`, `free_energy_density_eq_logSumExp` and
+`hessian_free_energy_eq_logSumExpHess` all hold by `rfl` — so every result below is derived from
+the general theory rather than reproved. The negation `H ↦ -H` is the continuous linear map
+`negCLM`, and the calculus transports along it by `fderiv_comp_clm` and
+`fderiv_fderiv_comp_clm_apply`.
 -/
 
 open Real BigOperators Filter Topology
@@ -42,6 +51,30 @@ noncomputable def std_basis (σ : α) : EnergySpace α := by
     classical
     exact WithLp.toLp 2 (fun τ => if σ = τ then 1 else 0)
 
+omit [Fintype α] [Nonempty α] in
+/-- `std_basis σ` has coordinate `1` at `σ`. -/
+@[simp] lemma std_basis_self_apply (σ : α) : (std_basis (α := α) σ) σ = 1 := by
+  classical
+  simp [std_basis]
+
+omit [Fintype α] [Nonempty α] in
+/-- `std_basis σ` has coordinate `0` away from `σ`. -/
+@[simp] lemma std_basis_apply_of_ne {σ τ : α} (h : σ ≠ τ) :
+    (std_basis (α := α) σ) τ = 0 := by
+  classical
+  simp [std_basis, h]
+
+omit [Fintype α] [Nonempty α] in
+/-- `std_basis` is Mathlib's `PiLp.single`/`EuclideanSpace.single`, since `EnergySpace α` is
+`EuclideanSpace ℝ α`. This is the bridge to Mathlib's orthonormal-basis API. -/
+lemma std_basis_eq_single [DecidableEq α] (σ : α) :
+    std_basis (α := α) σ = EuclideanSpace.single σ (1 : ℝ) := by
+  classical
+  refine WithLp.ofLp_injective (p := 2) (funext fun τ => ?_)
+  by_cases h : σ = τ
+  · subst h; simp
+  · simp [h, Ne.symm h]
+
 omit [Nonempty α] in
 lemma inner_std_basis_apply (σ : α) (H : EnergySpace α) :
     inner ℝ (std_basis (α := α) σ) H = H σ := by
@@ -60,170 +93,99 @@ noncomputable def gibbs_pmf (H : EnergySpace α) (σ : α) : ℝ :=
 noncomputable def free_energy_density (n : ℕ) (H : EnergySpace α) : ℝ :=
   (1 / (n : ℝ)) * Real.log (Z (α := α) H)
 
-lemma Z_pos (H : EnergySpace α) : 0 < Z (α := α) H := by
-  refine Finset.sum_pos ?_ Finset.univ_nonempty
-  intro σ _hσ
-  exact Real.exp_pos _
+/-! ### Identification with the general log-sum-exp objects
 
-lemma Z_ne_zero (H : EnergySpace α) : Z (α := α) H ≠ 0 :=
-  (ne_of_gt (Z_pos (α := α) (H := H)))
+All four identities hold by definition: the finite-volume Gibbs objects are the general
+log-sum-exp objects at the negated Hamiltonian. -/
 
-lemma gibbs_pmf_pos (H : EnergySpace α) (σ : α) : 0 < gibbs_pmf (α := α) H σ := by
-  have hZ : 0 < Z (α := α) H := Z_pos (α := α) (H := H)
-  simpa [gibbs_pmf] using (div_pos (Real.exp_pos _) hZ)
+omit [Nonempty α] in
+lemma Z_eq_expSum (H : EnergySpace α) : Z (α := α) H = Real.expSum (-H) := rfl
+
+omit [Nonempty α] in
+lemma gibbs_pmf_eq_softmax (H : EnergySpace α) (σ : α) :
+    gibbs_pmf (α := α) H σ = Real.softmax (-H) σ := rfl
+
+omit [Nonempty α] in
+lemma free_energy_density_eq_logSumExp (n : ℕ) (H : EnergySpace α) :
+    free_energy_density (α := α) n H = (1 / (n : ℝ)) * Real.logSumExp (-H) := rfl
+
+lemma Z_pos (H : EnergySpace α) : 0 < Z (α := α) H := Real.expSum_pos (-H)
+
+lemma Z_ne_zero (H : EnergySpace α) : Z (α := α) H ≠ 0 := Real.expSum_ne_zero (-H)
+
+lemma gibbs_pmf_pos (H : EnergySpace α) (σ : α) : 0 < gibbs_pmf (α := α) H σ :=
+  Real.softmax_pos (-H) σ
 
 lemma gibbs_pmf_nonneg (H : EnergySpace α) (σ : α) : 0 ≤ gibbs_pmf (α := α) H σ :=
-  le_of_lt (gibbs_pmf_pos (α := α) (H := H) σ)
+  Real.softmax_nonneg (-H) σ
 
-lemma gibbs_pmf_le_one (H : EnergySpace α) (σ : α) : gibbs_pmf (α := α) H σ ≤ 1 := by
-  have hZpos : 0 < Z (α := α) H := Z_pos (α := α) (H := H)
-  have hterm_le : Real.exp (-H σ) ≤ Z (α := α) H := by
-    simpa [Z] using
-      (Finset.single_le_sum (s := (Finset.univ : Finset α))
-        (f := fun τ => Real.exp (-H τ))
-        (hf := fun τ _hτ => (Real.exp_pos _).le)
-        (a := σ) (h := Finset.mem_univ σ))
-  have := (div_le_one hZpos).2 hterm_le
-  simpa [gibbs_pmf] using this
+lemma gibbs_pmf_le_one (H : EnergySpace α) (σ : α) : gibbs_pmf (α := α) H σ ≤ 1 :=
+  Real.softmax_le_one (-H) σ
 
-lemma sum_gibbs_pmf (H : EnergySpace α) : (∑ σ, gibbs_pmf (α := α) H σ) = 1 := by
-  have hZ : Z (α := α) H ≠ 0 := Z_ne_zero (α := α) (H := H)
-  calc
-    (∑ σ, gibbs_pmf (α := α) H σ) = ∑ σ, Real.exp (-H σ) / Z (α := α) H := by rfl
-    _ = ∑ σ, Real.exp (-H σ) * (Z (α := α) H)⁻¹ := by
-      simp [div_eq_mul_inv]
-    _ = (∑ σ, Real.exp (-H σ)) * (Z (α := α) H)⁻¹ := by
-      simpa using
-        (Finset.sum_mul (s := (Finset.univ : Finset α))
-          (f := fun σ => Real.exp (-H σ)) (a := (Z (α := α) H)⁻¹)).symm
-    _ = (Z (α := α) H) * (Z (α := α) H)⁻¹ := by
-      simp [Z]
-    _ = 1 := by simp [hZ]
+lemma sum_gibbs_pmf (H : EnergySpace α) : (∑ σ, gibbs_pmf (α := α) H σ) = 1 :=
+  Real.sum_softmax (-H)
 
-/-! ## Fréchet calculus: derivatives and Hessian identities -/
+/-! ## Fréchet calculus: derivatives and Hessian identities
 
+Everything here is the log-sum-exp calculus of `Common.Mathlib.Analysis.SpecialFunctions.LogSumExp`
+transported along the negation `H ↦ -H`, which is the continuous linear map `negCLM`. -/
+
+/-- Evaluation at a configuration, as a continuous linear functional on `EnergySpace α`: it is
+Mathlib's `PiLp.proj`, not a new object. -/
 noncomputable abbrev evalCLM (σ : α) : EnergySpace α →L[ℝ] ℝ :=
   PiLp.proj (p := (2 : ENNReal)) (fun _ : α => ℝ) σ
 
-noncomputable def grad_free_energy_density (n : ℕ) (H : EnergySpace α) : EnergySpace α →L[ℝ] ℝ :=
-  (-(1 / (n : ℝ))) • ∑ σ : α, (gibbs_pmf (α := α) H σ) • evalCLM (α := α) σ
+/-- Negation of the Hamiltonian, as a continuous linear map. The Gibbs calculus is the
+log-sum-exp calculus precomposed with it. -/
+noncomputable def negCLM : EnergySpace α →L[ℝ] EnergySpace α :=
+  -ContinuousLinearMap.id ℝ (EnergySpace α)
 
 omit [Nonempty α] in
-lemma hasFDerivAt_exp_neg_eval (H : EnergySpace α) (σ : α) :
-    HasFDerivAt (fun H : EnergySpace α => Real.exp (-H σ))
-      ((-(Real.exp (-H σ))) • evalCLM (α := α) σ) H := by
-  have heval :
-      HasFDerivAt (fun H : EnergySpace α => H σ) (evalCLM (α := α) σ) H := by
-    simpa [evalCLM] using
-      (PiLp.hasFDerivAt_apply (𝕜 := ℝ) (p := (2 : ENNReal))
-        (E := fun _ : α => ℝ) (f := H) σ)
-  have hneg :
-      HasFDerivAt (fun H : EnergySpace α => -(H σ)) (-(evalCLM (α := α) σ)) H := by
-    simpa using heval.fun_neg
-  have hexp : HasDerivAt Real.exp (Real.exp (-H σ)) (-H σ) :=
-    Real.hasDerivAt_exp (-H σ)
-  have hcomp :
-      HasFDerivAt (fun H : EnergySpace α => Real.exp (-(H σ)))
-        ((Real.exp (-H σ)) • (-(evalCLM (α := α) σ))) H := by
-    simpa [Function.comp_def] using
-      (HasDerivAt.comp_hasFDerivAt (x := H) hexp hneg)
-  exact hcomp.congr_fderiv (by simp [smul_neg, ← neg_smul])
+@[simp] lemma negCLM_apply (H : EnergySpace α) : negCLM (α := α) H = -H := rfl
 
-omit [Nonempty α] in
-lemma hasFDerivAt_Z (H : EnergySpace α) :
-    HasFDerivAt (fun H : EnergySpace α => Z (α := α) H)
-      (∑ σ : α, (-(Real.exp (-H σ))) • evalCLM (α := α) σ) H := by
-  have hterm :
-      ∀ σ : α,
-        HasFDerivAt (fun H : EnergySpace α => Real.exp (-H σ))
-          ((-(Real.exp (-H σ))) • evalCLM (α := α) σ) H := by
-    intro σ
-    simpa using hasFDerivAt_exp_neg_eval (α := α) (H := H) σ
-  simpa [Z] using
-    (HasFDerivAt.fun_sum (u := (Finset.univ : Finset α))
-      (A := fun σ : α => fun H : EnergySpace α => Real.exp (-H σ))
-      (A' := fun σ : α => (-(Real.exp (-H σ))) • evalCLM (α := α) σ)
-      (x := H)
-      (fun σ _hσ => hterm σ))
+lemma differentiable_logSumExp_neg :
+    Differentiable ℝ (fun H : EnergySpace α => Real.logSumExp (-H)) :=
+  ((Real.contDiff_logSumExp (ι := α)).differentiable (by simp)).comp
+    (negCLM (α := α)).differentiable
 
-lemma hasFDerivAt_inv_Z (H : EnergySpace α) :
-    HasFDerivAt (fun H : EnergySpace α => (Z (α := α) H)⁻¹)
-      ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z (α := α) H ^ 2)⁻¹)).comp
-        (∑ σ : α, (-(Real.exp (-H σ))) • evalCLM (α := α) σ)) H := by
-  have hInv :
-      HasFDerivAt (fun x : ℝ => x⁻¹)
-        (ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z (α := α) H ^ 2)⁻¹) : ℝ →L[ℝ] ℝ)
-        (Z (α := α) H) :=
-    hasFDerivAt_inv (𝕜 := ℝ) (x := Z (α := α) H) (Z_ne_zero (α := α) (H := H))
-  simpa [Function.comp_def] using hInv.comp (x := H) (hasFDerivAt_Z (α := α) (H := H))
+lemma contDiff_two_logSumExp_neg :
+    ContDiff ℝ 2 (fun H : EnergySpace α => Real.logSumExp (-H)) :=
+  ((Real.contDiff_logSumExp (ι := α)).comp (negCLM (α := α)).contDiff).of_le (by simp)
 
-lemma hasFDerivAt_gibbs_pmf (H : EnergySpace α) (σ : α) :
-    HasFDerivAt (fun H : EnergySpace α => gibbs_pmf (α := α) H σ)
-      ((Z (α := α) H)⁻¹ • ((-(Real.exp (-H σ))) • evalCLM (α := α) σ) +
-          (Real.exp (-H σ)) •
-            ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z (α := α) H ^ 2)⁻¹)).comp
-              (∑ τ : α, (-(Real.exp (-H τ))) • evalCLM (α := α) τ))) H := by
-  have hnum :
-      HasFDerivAt (fun H : EnergySpace α => Real.exp (-H σ))
-        ((-(Real.exp (-H σ))) • evalCLM (α := α) σ) H :=
-    hasFDerivAt_exp_neg_eval (α := α) (H := H) σ
-  have hden :
-      HasFDerivAt (fun H : EnergySpace α => (Z (α := α) H)⁻¹)
-        ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z (α := α) H ^ 2)⁻¹)).comp
-          (∑ τ : α, (-(Real.exp (-H τ))) • evalCLM (α := α) τ)) H :=
-    hasFDerivAt_inv_Z (α := α) (H := H)
-  have hmul :
-      HasFDerivAt (fun H : EnergySpace α => Real.exp (-H σ) * (Z (α := α) H)⁻¹)
-        ((Real.exp (-H σ)) •
-            ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z (α := α) H ^ 2)⁻¹)).comp
-              (∑ τ : α, (-(Real.exp (-H τ))) • evalCLM (α := α) τ))
-          + (Z (α := α) H)⁻¹ • ((-(Real.exp (-H σ))) • evalCLM (α := α) σ)) H :=
-    (hnum.mul hden)
-  simpa [gibbs_pmf, div_eq_mul_inv, add_comm, add_left_comm, add_assoc] using hmul
-
+/-- The directional derivative of the Gibbs weights: the softmax derivative, with the sign of the
+negation. -/
 lemma fderiv_gibbs_pmf_apply (H h : EnergySpace α) (σ : α) :
     fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H h =
       (gibbs_pmf (α := α) H σ) *
         ((∑ τ : α, (gibbs_pmf (α := α) H τ) * h τ) - h σ) := by
-  have h' := (hasFDerivAt_gibbs_pmf (α := α) (H := H) σ).fderiv
-  have h_eval :
-      fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H h =
-        (Z (α := α) H)⁻¹ * (-(Real.exp (-H σ)) * h σ) +
-          (Real.exp (-H σ)) *
-            (-(Z (α := α) H ^ 2)⁻¹ *
-              (∑ τ : α, (-(Real.exp (-H τ))) * h τ)) := by
-    -- Evaluate the Fréchet derivative on `h`.
-    simp [h', evalCLM, smul_apply, smul_eq_mul, mul_comm, Finset.mul_sum]
-  have hZ : Z (α := α) H ≠ 0 := Z_ne_zero (α := α) (H := H)
-  have hsum' : (∑ τ : α, (-(Real.exp (-H τ))) * h τ) = -∑ τ : α, (Real.exp (-H τ) * h τ) := by
-    simp [Finset.sum_neg_distrib]
-  have hexp_sum :
-      (∑ τ : α, (Real.exp (-H τ) / Z (α := α) H) * h τ) =
-        (Z (α := α) H)⁻¹ * ∑ τ : α, (Real.exp (-H τ) * h τ) := by
-    simp [div_eq_mul_inv, mul_assoc, mul_comm, Finset.mul_sum]
-  have hZ2 : (Z (α := α) H ^ 2)⁻¹ * (Z (α := α) H) = (Z (α := α) H)⁻¹ := by
-    field_simp [hZ, pow_two, mul_assoc, mul_left_comm, mul_comm]
-  calc
-    fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H h
-        = (Z (α := α) H)⁻¹ * (-(Real.exp (-H σ)) * h σ) +
-            (Real.exp (-H σ)) *
-              (-(Z (α := α) H ^ 2)⁻¹ * (∑ τ : α, (-(Real.exp (-H τ))) * h τ)) := h_eval
-    _ = (Real.exp (-H σ) / Z (α := α) H) *
-          ((∑ τ : α, (Real.exp (-H τ) / Z (α := α) H) * h τ) - h σ) := by
-          simp only [div_eq_mul_inv, pow_two, hsum']
-          ring_nf
-          have hsum_pullZ :
-              (∑ x : α, (Z (α := α) H)⁻¹ * Real.exp (-H.ofLp x) * h.ofLp x) =
-                (Z (α := α) H)⁻¹ * ∑ x : α, Real.exp (-H.ofLp x) * h.ofLp x := by
-            simpa [mul_assoc] using
-              (Eq.symm
-                (Finset.mul_sum (Finset.univ : Finset α)
-                  (fun x : α => Real.exp (-H.ofLp x) * h.ofLp x) (Z (α := α) H)⁻¹))
-          rw [hsum_pullZ]
-          ring_nf
-    _ = (gibbs_pmf (α := α) H σ) *
-          ((∑ τ : α, (gibbs_pmf (α := α) H τ) * h τ) - h σ) := by
-          simp [gibbs_pmf, hexp_sum]
+  have hd : Differentiable ℝ (fun y : EnergySpace α => Real.softmax y σ) :=
+    (Real.contDiff_softmax (ι := α) σ).differentiable (by simp)
+  have hchain : fderiv ℝ (fun H : EnergySpace α => Real.softmax (-H) σ) H
+      = (fderiv ℝ (fun y : EnergySpace α => Real.softmax y σ) (-H)).comp (negCLM (α := α)) :=
+    fderiv_comp_clm hd (negCLM (α := α)) H
+  have : fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H h
+      = fderiv ℝ (fun y : EnergySpace α => Real.softmax y σ) (-H) (-h) := by
+    rw [show (fun H : EnergySpace α => gibbs_pmf (α := α) H σ)
+        = fun H : EnergySpace α => Real.softmax (-H) σ from rfl, hchain]
+    rfl
+  rw [this, Real.fderiv_softmax_apply]
+  have hneg : ∀ τ : α, (-h) τ = -(h τ) := fun _ => rfl
+  simp only [hneg, gibbs_pmf_eq_softmax]
+  rw [show (∑ τ : α, Real.softmax (-H) τ * -h τ)
+      = -∑ τ : α, Real.softmax (-H) τ * h τ by
+    rw [← Finset.sum_neg_distrib]
+    exact Finset.sum_congr rfl fun τ _ => by ring]
+  ring
+
+lemma differentiableAt_gibbs_pmf (H : EnergySpace α) (σ : α) :
+    DifferentiableAt ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H :=
+  (((Real.contDiff_softmax (ι := α) σ).differentiable (by simp)).comp
+    (negCLM (α := α)).differentiable).differentiableAt
+
+lemma hasFDerivAt_gibbs_pmf (H : EnergySpace α) (σ : α) :
+    HasFDerivAt (fun H : EnergySpace α => gibbs_pmf (α := α) H σ)
+      (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H) H :=
+  (differentiableAt_gibbs_pmf (α := α) H σ).hasFDerivAt
 
 omit [Nonempty α] in
 lemma sum_gibbs_pmf_mul_std_basis (H : EnergySpace α) (τ : α) :
@@ -234,23 +196,11 @@ lemma sum_gibbs_pmf_mul_std_basis (H : EnergySpace α) (τ : α) :
 
 lemma fderiv_gibbs_pmf_apply_std_basis (H : EnergySpace α) (σ τ : α) :
     fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H (std_basis (α := α) τ)
-      =
-      (gibbs_pmf (α := α) H σ) * ((gibbs_pmf (α := α) H τ) - (std_basis (α := α) τ σ)) := by
-  classical
-  have hsum :
-      (∑ ρ : α, (gibbs_pmf (α := α) H ρ) * (std_basis (α := α) τ ρ)) = gibbs_pmf (α := α) H τ :=
-    sum_gibbs_pmf_mul_std_basis (α := α) (H := H) τ
-  calc
-    fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H (std_basis (α := α) τ)
-        =
-        (gibbs_pmf (α := α) H σ) *
-          ((∑ ρ : α, (gibbs_pmf (α := α) H ρ) * (std_basis (α := α) τ ρ)) -
-            (std_basis (α := α) τ) σ) := by
-          simpa using
-            (fderiv_gibbs_pmf_apply (α := α) (H := H) (h := std_basis (α := α) τ) σ)
-    _ = (gibbs_pmf (α := α) H σ) * ((gibbs_pmf (α := α) H τ) - (std_basis (α := α) τ σ)) := by
-          simp [hsum]
+      = (gibbs_pmf (α := α) H σ) *
+          ((gibbs_pmf (α := α) H τ) - (std_basis (α := α) τ σ)) := by
+  rw [fderiv_gibbs_pmf_apply, sum_gibbs_pmf_mul_std_basis]
 
+/-- The second Fréchet derivative of the free-energy density, as a bilinear map. -/
 noncomputable def hessian_free_energy_fderiv (n : ℕ) (H : EnergySpace α) :
     EnergySpace α →L[ℝ] EnergySpace α →L[ℝ] ℝ :=
   fderiv ℝ (fun H' => fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) H') H
@@ -263,6 +213,12 @@ def hessian_free_energy (n : ℕ) (H : EnergySpace α) (h k : EnergySpace α) : 
   )
 
 omit [Nonempty α] in
+/-- The Gibbs covariance form is the `softmax` covariance form of the general theory, at `-H`. -/
+lemma hessian_free_energy_eq_logSumExpHess (n : ℕ) (H h k : EnergySpace α) :
+    hessian_free_energy (α := α) n H h k
+      = (1 / (n : ℝ)) * Real.logSumExpHess (-H) h k := rfl
+
+omit [Nonempty α] in
 lemma hessian_free_energy_std_basis_eq (n : ℕ) (H : EnergySpace α) (σ τ : α) :
     hessian_free_energy (α := α) n H (std_basis (α := α) σ) (std_basis (α := α) τ)
       =
@@ -270,183 +226,87 @@ lemma hessian_free_energy_std_basis_eq (n : ℕ) (H : EnergySpace α) (σ τ : �
         ((gibbs_pmf (α := α) H σ) * (std_basis (α := α) τ σ) -
           (gibbs_pmf (α := α) H σ) * (gibbs_pmf (α := α) H τ)) := by
   classical
-  let g : α → ℝ := fun ρ => gibbs_pmf (α := α) H ρ
-  have hb : ∀ σ, (∑ ρ : α, g ρ * std_basis (α := α) σ ρ) = g σ := by
-    intro σ
-    simp [g, std_basis]
-  have hc :
-      ∀ σ τ,
-        (∑ ρ : α, g ρ * (std_basis (α := α) σ ρ * std_basis (α := α) τ ρ)) =
-          g σ * std_basis (α := α) τ σ := by
-    intro σ τ
-    -- only the term `ρ = σ` survives since `std_basis σ ρ = 0` for `ρ ≠ σ`
+  refine congrArg (fun t : ℝ => (1 / (n : ℝ)) * t) ?_
+  have hb : ∀ ρ : α, (∑ ν : α, gibbs_pmf (α := α) H ν * std_basis (α := α) ρ ν)
+      = gibbs_pmf (α := α) H ρ := by
+    intro ρ
+    simp [std_basis]
+  have hc : (∑ ν : α, gibbs_pmf (α := α) H ν
+        * std_basis (α := α) σ ν * std_basis (α := α) τ ν)
+      = gibbs_pmf (α := α) H σ * std_basis (α := α) τ σ := by
     simpa [mul_assoc, std_basis] using
       (Finset.sum_eq_single_of_mem (s := (Finset.univ : Finset α)) (a := σ)
-        (f := fun ρ : α => g ρ * (std_basis (α := α) σ ρ * std_basis (α := α) τ ρ))
+        (f := fun ν : α => gibbs_pmf (α := α) H ν
+          * (std_basis (α := α) σ ν * std_basis (α := α) τ ν))
         (by simp)
-        (fun ρ _hρ hne => by
-          have hne' : σ ≠ ρ := Ne.symm hne
-          simp [g, std_basis, hne']))
-  -- avoid `simp` cancelling the common prefactor `(1/n)`
-  refine congrArg (fun t : ℝ => (1 / (n : ℝ)) * t) ?_
-  simp [hb, hc, g, sub_eq_add_neg, mul_assoc]
+        (fun ν _hν hne => by
+          have hne' : σ ≠ ν := Ne.symm hne
+          simp [std_basis, hne']))
+  rw [hc, hb σ, hb τ]
 
 /-- Hessian `std_basis` entries equal `-(1/n)` times `fderiv gibbs_pmf` on `std_basis`. -/
-lemma neg_one_div_n_mul_fderiv_gibbs_pmf_apply_std_basis_eq_hessian_free_energy_std_basis
+lemma neg_one_div_n_mul_fderiv_gibbs_pmf_apply_std_basis_eq
     (n : ℕ) (H : EnergySpace α) (σ τ : α) :
     (-(1 / (n : ℝ))) *
         fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H (std_basis (α := α) τ)
       =
       hessian_free_energy (α := α) n H (std_basis (α := α) σ) (std_basis (α := α) τ) := by
   classical
-  -- Expand both sides using the explicit basis formulae, then ring.
-  simp [fderiv_gibbs_pmf_apply_std_basis, hessian_free_energy_std_basis_eq, sub_eq_add_neg]
+  rw [fderiv_gibbs_pmf_apply_std_basis, hessian_free_energy_std_basis_eq]
   ring
 
+/-- The gradient of the free-energy density: minus `1/n` times the Gibbs average. -/
 lemma fderiv_free_energy_density_apply (n : ℕ) (H h : EnergySpace α) :
     fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) H h =
       -(1 / (n : ℝ)) * ∑ σ : α, (gibbs_pmf (α := α) H σ) * h σ := by
-  have hZ : HasFDerivAt (fun H : EnergySpace α => Z (α := α) H)
-      (∑ σ : α, (-(Real.exp (-H σ))) • evalCLM (α := α) σ) H :=
-    hasFDerivAt_Z (α := α) (H := H)
-  have hlog :
-      HasFDerivAt (fun H : EnergySpace α => Real.log (Z (α := α) H))
-        ((Z (α := α) H)⁻¹ • (∑ σ : α, (-(Real.exp (-H σ))) • evalCLM (α := α) σ)) H :=
-    (hZ.log (Z_ne_zero (α := α) (H := H)))
-  have hF :
-      HasFDerivAt (fun H : EnergySpace α => free_energy_density (α := α) n H)
-        ((1 / (n : ℝ)) • ((Z (α := α) H)⁻¹ • (∑ σ : α, (-(Real.exp (-H σ))) • evalCLM (α := α) σ))) H := by
-    simpa [free_energy_density, smul_eq_mul, mul_assoc, Pi.smul_def] using
-      (hlog.fun_const_smul (c := (1 / (n : ℝ))))
-  have hF' := hF.fderiv
-  have :
-      fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) H h =
-        (1 / (n : ℝ)) * ((Z (α := α) H)⁻¹ * (-∑ σ : α, Real.exp (-H σ) * h σ)) := by
-    simp [hF', evalCLM, sum_apply, smul_apply, smul_eq_mul]
-  calc
-    fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) H h
-        = (1 / (n : ℝ)) * ((Z (α := α) H)⁻¹ * (-∑ σ : α, Real.exp (-H σ) * h σ)) := this
-    _ = -(1 / (n : ℝ)) * ∑ σ : α, (Real.exp (-H σ) / Z (α := α) H) * h σ := by
-          simp [div_eq_mul_inv, mul_assoc, mul_comm, Finset.mul_sum, Finset.sum_neg_distrib]
-    _ = -(1 / (n : ℝ)) * ∑ σ : α, (gibbs_pmf (α := α) H σ) * h σ := by
-          simp [gibbs_pmf]
+  have hchain : fderiv ℝ (fun H : EnergySpace α => Real.logSumExp (-H)) H
+      = (fderiv ℝ (fun y : EnergySpace α => Real.logSumExp y) (-H)).comp (negCLM (α := α)) :=
+    fderiv_comp_clm ((Real.contDiff_logSumExp (ι := α)).differentiable (by simp))
+      (negCLM (α := α)) H
+  have hscal : fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) H
+      = (1 / (n : ℝ)) • fderiv ℝ (fun H : EnergySpace α => Real.logSumExp (-H)) H := by
+    rw [show (fun H : EnergySpace α => free_energy_density (α := α) n H)
+        = fun H : EnergySpace α => (1 / (n : ℝ)) * Real.logSumExp (-H) from rfl]
+    exact (((differentiable_logSumExp_neg (α := α)) H).hasFDerivAt.const_smul (1 / (n : ℝ))).fderiv
+  rw [hscal, smul_apply, hchain]
+  have happ : ((fderiv ℝ (fun y : EnergySpace α => Real.logSumExp y) (-H)).comp
+      (negCLM (α := α))) h
+      = ∑ σ : α, Real.softmax (-H) σ * (-h) σ := by
+    rw [ContinuousLinearMap.coe_comp, Function.comp_apply, negCLM_apply,
+      Real.fderiv_logSumExp_apply]
+  rw [happ]
+  have hneg : ∀ τ : α, (-h) τ = -(h τ) := fun _ => rfl
+  simp only [hneg, ← gibbs_pmf_eq_softmax, smul_eq_mul]
+  rw [show (∑ τ : α, gibbs_pmf (α := α) H τ * -h τ)
+      = -∑ τ : α, gibbs_pmf (α := α) H τ * h τ by
+    rw [← Finset.sum_neg_distrib]
+    exact Finset.sum_congr rfl fun τ _ => by ring]
+  ring
 
-lemma hasFDerivAt_grad_free_energy_density (n : ℕ) (H : EnergySpace α) :
-    HasFDerivAt (fun H : EnergySpace α => grad_free_energy_density (α := α) n H)
-      ((-(1 / (n : ℝ))) •
-          ∑ σ : α,
-            (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H).smulRight
-              (evalCLM (α := α) σ)) H := by
-  have hterm :
-      ∀ σ : α,
-        HasFDerivAt (fun H : EnergySpace α => (gibbs_pmf (α := α) H σ) • evalCLM (α := α) σ)
-          ((fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H).smulRight
-            (evalCLM (α := α) σ)) H := by
-    intro σ
-    have hg := hasFDerivAt_gibbs_pmf (α := α) (H := H) σ
-    simpa [hg.fderiv] using hg.smul_const (evalCLM (α := α) σ)
-  have hsum :
-      HasFDerivAt (fun H : EnergySpace α => ∑ σ : α, (gibbs_pmf (α := α) H σ) • evalCLM (α := α) σ)
-        (∑ σ : α,
-          (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H).smulRight
-            (evalCLM (α := α) σ)) H := by
-    simpa using
-      (HasFDerivAt.fun_sum (u := (Finset.univ : Finset α))
-        (A := fun σ : α => fun H : EnergySpace α => (gibbs_pmf (α := α) H σ) • evalCLM (α := α) σ)
-        (A' := fun σ : α =>
-          (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H).smulRight (evalCLM (α := α) σ))
-        (x := H)
-        (fun σ _hσ => hterm σ))
-  unfold grad_free_energy_density
-  exact hsum.fun_const_smul (c := (-(1 / (n : ℝ))))
-
-lemma fderiv_free_energy_density_eq (n : ℕ) (H : EnergySpace α) :
-    fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) H =
-      grad_free_energy_density (α := α) n H := by
-  ext h
-  simp [grad_free_energy_density, fderiv_free_energy_density_apply, sum_apply, smul_apply,
-    smul_eq_mul]
-
+/-- **The Hessian of the free-energy density is the Gibbs covariance form.** This is the general
+identity `Real.fderiv_fderiv_logSumExp_apply` transported along the negation, whose two sign
+changes cancel. -/
 lemma hessian_free_energy_fderiv_eq_hessian_free_energy (n : ℕ) (H h k : EnergySpace α) :
     (hessian_free_energy_fderiv (α := α) n H) h k = hessian_free_energy (α := α) n H h k := by
-  have hgrad :
-      (fun H' : EnergySpace α =>
-          fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) H') =
-        fun H' : EnergySpace α => grad_free_energy_density (α := α) n H' := by
-    funext H'
-    exact fderiv_free_energy_density_eq (α := α) (n := n) (H := H')
-  have hfderiv_grad :
-      fderiv ℝ (fun H' : EnergySpace α => grad_free_energy_density (α := α) n H') H =
-        ((-(1 / (n : ℝ))) •
-            ∑ σ : α,
-              (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H).smulRight
-                (evalCLM (α := α) σ)) := by
-    simpa using (hasFDerivAt_grad_free_energy_density (α := α) (n := n) (H := H)).fderiv
-  let g : α → ℝ := fun σ => gibbs_pmf (α := α) H σ
-  calc
-    (hessian_free_energy_fderiv (α := α) n H) h k
-        = ((fderiv ℝ (fun H' : EnergySpace α => grad_free_energy_density (α := α) n H') H) h) k := by
-            simp [hessian_free_energy_fderiv, hgrad]
-    _ = (1 / (n : ℝ)) *
-          (∑ σ : α, g σ * h σ * k σ -
-            (∑ τ : α, g τ * h τ) * (∑ σ : α, g σ * k σ)) := by
-          have h1 :
-              ((fderiv ℝ (fun H' : EnergySpace α => grad_free_energy_density (α := α) n H') H) h) k
-                = -(1 / (n : ℝ)) * ∑ σ : α,
-                    (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H h) * k σ := by
-            simp [hfderiv_grad, evalCLM, sum_apply, smul_apply, smul_eq_mul, mul_comm]
-          have h2 :
-              -(1 / (n : ℝ)) * ∑ σ : α,
-                  (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H h) * k σ
-                = (1 / (n : ℝ)) *
-                    (∑ σ : α, g σ * h σ * k σ -
-                      (∑ τ : α, g τ * h τ) * (∑ σ : α, g σ * k σ)) := by
-            have hsum_fderiv :
-                ∑ σ : α,
-                    (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H h) * k σ
-                  = (∑ σ : α, g σ * k σ) * (∑ τ : α, g τ * h τ) -
-                      ∑ σ : α, g σ * h σ * k σ := by
-              have hterm :
-                  ∀ σ : α,
-                    (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H h) * k σ
-                      = (g σ * k σ) * (∑ τ : α, g τ * h τ) - g σ * h σ * k σ := by
-                intro σ
-                simp [fderiv_gibbs_pmf_apply, g, mul_assoc, mul_left_comm, mul_comm, mul_sub]
-              calc
-                ∑ σ : α,
-                    (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H h) * k σ
-                    = ∑ σ : α, ((g σ * k σ) * (∑ τ : α, g τ * h τ) - g σ * h σ * k σ) := by
-                        refine Finset.sum_congr rfl ?_
-                        intro σ _hσ
-                        exact hterm σ
-                _ = (∑ σ : α, (g σ * k σ) * (∑ τ : α, g τ * h τ)) -
-                      ∑ σ : α, g σ * h σ * k σ := by
-                        simp [Finset.sum_sub_distrib]
-                _ = (∑ σ : α, g σ * k σ) * (∑ τ : α, g τ * h τ) -
-                      ∑ σ : α, g σ * h σ * k σ := by
-                        simpa [mul_assoc, mul_left_comm, mul_comm] using
-                          (Finset.sum_mul (s := (Finset.univ : Finset α))
-                            (f := fun σ : α => g σ * k σ) (a := ∑ τ : α, g τ * h τ)).symm
-            calc
-              -(1 / (n : ℝ)) * ∑ σ : α,
-                    (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H h) * k σ
-                  = -(1 / (n : ℝ)) *
-                      ((∑ σ : α, g σ * k σ) * (∑ τ : α, g τ * h τ) -
-                        ∑ σ : α, g σ * h σ * k σ) := by
-                        simp [hsum_fderiv]
-              _ = (1 / (n : ℝ)) *
-                    (∑ σ : α, g σ * h σ * k σ -
-                      (∑ τ : α, g τ * h τ) * (∑ σ : α, g σ * k σ)) := by
-                        ring
-          calc
-            ((fderiv ℝ (fun H' : EnergySpace α => grad_free_energy_density (α := α) n H') H) h) k
-                = -(1 / (n : ℝ)) * ∑ σ : α,
-                    (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H h) * k σ := h1
-            _ = (1 / (n : ℝ)) *
-                    (∑ σ : α, g σ * h σ * k σ -
-                      (∑ τ : α, g τ * h τ) * (∑ σ : α, g σ * k σ)) := h2
-    _ = hessian_free_energy (α := α) n H h k := by
-          simp [hessian_free_energy, g, sub_eq_add_neg, add_comm]
+  have hfun : (fun H : EnergySpace α => free_energy_density (α := α) n H)
+      = fun H : EnergySpace α => (1 / (n : ℝ)) * Real.logSumExp (-H) := rfl
+  have hL : ((fderiv ℝ (fderiv ℝ (fun H : EnergySpace α =>
+        (1 / (n : ℝ)) * Real.logSumExp (-H))) H) h) k
+      = (1 / (n : ℝ)) * ((fderiv ℝ (fderiv ℝ
+          (fun H : EnergySpace α => Real.logSumExp (-H))) H) h) k :=
+    fderiv_fderiv_const_mul_apply (contDiff_two_logSumExp_neg (α := α)) (1 / (n : ℝ)) H h k
+  have hR : ((fderiv ℝ (fderiv ℝ (fun H : EnergySpace α => Real.logSumExp (-H))) H) h) k
+      = Real.logSumExpHess (-H) h k := by
+    have hfe : (fun H : EnergySpace α => Real.logSumExp (-H))
+        = fun H : EnergySpace α => Real.logSumExp (negCLM (α := α) H) := rfl
+    rw [hfe, fderiv_fderiv_comp_clm_apply ((Real.contDiff_logSumExp (ι := α)).of_le (by simp))
+      (negCLM (α := α)) H h k, Real.fderiv_fderiv_logSumExp_apply, negCLM_apply,
+      show (negCLM (α := α)) h = (-1 : ℝ) • h by rw [negCLM_apply, neg_one_smul],
+      show (negCLM (α := α)) k = (-1 : ℝ) • k by rw [negCLM_apply, neg_one_smul],
+      Real.logSumExpHess_smul_smul]
+    norm_num
+  rw [hessian_free_energy_fderiv, hfun, hL, hR, hessian_free_energy_eq_logSumExpHess]
+
 
 /-- Alias of `hessian_free_energy_fderiv`. -/
 noncomputable abbrev hessian_logZ (n : ℕ) (H : EnergySpace α) :
@@ -516,7 +376,8 @@ theorem trace_formula (n : ℕ) (H : EnergySpace α) (Cov : α → α → ℝ) :
           ((∑ σ, ∑ τ, Cov σ τ * (if σ = τ then g σ else 0)) -
             (∑ σ, ∑ τ, Cov σ τ * (g σ * g τ))) := by
           -- pull out the constant `(1/n)` and distribute over subtraction
-          -- (we do this by rewriting the summand, then using `sum_mul`/`sum_add_distrib`/`sum_sub_distrib`)
+          -- (we do this by rewriting the summand, then using
+          -- `sum_mul`/`sum_add_distrib`/`sum_sub_distrib`)
           have :
               (∑ σ, ∑ τ, Cov σ τ * ((1 / (n : ℝ)) * ((if σ = τ then g σ else 0) - g σ * g τ)))
                 =
@@ -532,7 +393,8 @@ theorem trace_formula (n : ℕ) (H : EnergySpace α) (Cov : α → α → ℝ) :
             _ = (1 / (n : ℝ)) *
                     ((∑ σ, ∑ τ, Cov σ τ * (if σ = τ then g σ else 0)) -
                       (∑ σ, ∑ τ, Cov σ τ * (g σ * g τ))) := by
-                  -- avoid `simp` cancellation of the common factor `(1/n)`; prove the inner sum identity first
+                  -- avoid `simp` cancellation of the common factor `(1/n)`; prove the inner sum
+                  -- identity first
                   have hinner :
                       (∑ σ, ∑ τ, Cov σ τ * ((if σ = τ then g σ else 0) - g σ * g τ))
                         =

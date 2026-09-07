@@ -53,7 +53,8 @@ lemma dist_integral_le_integral_norm_sub {f₁ f₂ : α → E}
 /-! ## Parametric DCT -/
 
 omit [CompleteSpace E] in
-/-- Parametric DCT: uniform eventual convergence of integrals implies uniform convergence of parameterized integrals. -/
+/-- Parametric DCT: uniform eventual convergence of integrals implies uniform convergence of
+parameterized integrals. -/
 theorem tendstoUniformlyOn_integral_of_dominated {ι : Type*} {l : Filter ι}
     [l.NeBot] [l.IsCountablyGenerated]
     {K : Set β} {F : ι → β → α → E} {f : β → α → E} {g : α → ℝ}

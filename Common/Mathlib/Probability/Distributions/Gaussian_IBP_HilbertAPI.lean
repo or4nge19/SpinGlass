@@ -16,5 +16,5 @@ export ProbabilityTheory
   (cmCoe_cmOfDual_innerSL_eq_covarianceOperator)
 
 export ProbabilityTheory.IsGaussian
-  (integral_inner_mul_eq_integral_fderiv_covarianceOperator_polyGrowth)
+  (integral_inner_mul_eq_integral_fderiv_covarianceOperator)
 

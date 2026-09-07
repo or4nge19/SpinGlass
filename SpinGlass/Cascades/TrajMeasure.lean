@@ -8,7 +8,8 @@ import Mathlib.Order.Restriction
 # Trajectory measures
 
 Measure `trajMeasure μ₀ κ` on infinite trajectories with `X₀ ~ μ₀`. Conditional law of the next
-coordinate given the past is `κ a`. Main: `condDistrib_iidTrajMeasure`, `condDistrib_gibbsTrajMeasure`.
+coordinate given the past is `κ a`. Main: `condDistrib_iidTrajMeasure`,
+`condDistrib_gibbsTrajMeasure`.
 -/
 
 open MeasureTheory ProbabilityTheory

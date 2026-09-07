@@ -33,7 +33,8 @@ instance : IsMarkovKernel (gibbsPosteriorKernel (N := N) (n := n) μH) := by
   dsimp [gibbsPosteriorKernel]
   infer_instance
 
-/-- Posterior predictive: Gibbs sampler integrated against the posterior on `H` given `n` replicas. -/
+/-- Posterior predictive: Gibbs sampler integrated against the posterior on `H` given `n`
+replicas. -/
 noncomputable def gibbsPosteriorPredictive :
     ProbabilityTheory.Kernel (ReplicaSpace N n) (Config N) :=
   (gibbsKernel (N := N)) ∘ₖ (gibbsPosteriorKernel (N := N) (n := n) μH)

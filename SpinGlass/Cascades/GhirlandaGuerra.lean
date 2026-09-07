@@ -213,7 +213,8 @@ lemma condExp_prefix_ae_eq_integral_condDistribLast (n : ℕ) (μ : Measure (Fin
     refine ⟨hg.aestronglyMeasurable, ?_⟩
     exact HasFiniteIntegral.of_bounded (μ := μ.map fun σs => (X σs, Y σs))
       (C := C) (hC := ae_of_all _ hC)
-  simpa [prefixMS, condDistribLast, ProbabilityTheory.condDistrib, X, Y, lastReplica, restrictReplicas] using
+  simpa [prefixMS, condDistribLast, ProbabilityTheory.condDistrib, X, Y, lastReplica,
+    restrictReplicas] using
     (ProbabilityTheory.condExp_prod_ae_eq_integral_condDistrib' (μ := μ)
       (X := X) (Y := Y) (f := fun p => g p) hX hY hg_int)
 
@@ -538,7 +539,8 @@ lemma GG1_prefix_of_condExp_lastReplica_ae
               s.sum fun l : Fin n => R (σs 0) (σs (Fin.castSucc l))) := by
           refine Finset.measurable_sum s (fun l hl => ?_)
           have hpair : Measurable (fun σs : (Fin (n + 1) → β) => (σs 0, σs (Fin.castSucc l))) := by
-            exact (measurable_pi_apply (0 : Fin (n + 1))).prodMk (measurable_pi_apply (Fin.castSucc l))
+            exact (measurable_pi_apply (0 : Fin (n + 1))).prodMk (measurable_pi_apply (Fin.castSucc
+              l))
           exact hRmeas.comp hpair
         have hmeas :
             Measurable (fun σs : (Fin (n + 1) → β) =>
@@ -568,9 +570,11 @@ lemma GG1_prefix_of_condExp_lastReplica_ae
             exact hnormsum.trans hsum'
           calc
             ‖G σs * ((1 / (n : ℝ)) * (s.sum fun l : Fin n => R (σs 0) (σs (Fin.castSucc l))))‖
-                ≤ ‖G σs‖ * ‖(1 / (n : ℝ)) * (s.sum fun l : Fin n => R (σs 0) (σs (Fin.castSucc l)))‖ :=
+                ≤ ‖G σs‖ * ‖(1 / (n : ℝ)) * (s.sum fun l : Fin n => R (σs 0) (σs (Fin.castSucc l)))‖
+                  :=
                   norm_mul_le _ _
-            _ ≤ ‖G σs‖ * (‖(1 / (n : ℝ))‖ * ‖s.sum (fun l : Fin n => R (σs 0) (σs (Fin.castSucc l)))‖) := by
+            _ ≤ ‖G σs‖ * (‖(1 / (n : ℝ))‖ * ‖s.sum (fun l : Fin n => R (σs 0) (σs (Fin.castSucc
+              l)))‖) := by
                   gcongr
                   simp
             _ ≤ CG * (‖(1 / (n : ℝ))‖ * (s.card * CR)) := by
@@ -666,7 +670,20 @@ noncomputable def gibbsReplicaLaw (N n : ℕ)
     Measure (ReplicaSpace N n) :=
   (replicaGibbsKernel (N := N) (n := n)) ∘ₘ μH
 
-/-- Kernel-level GG₁ specialized to the Gibbs replica sampler and a disorder law `μH`. -/
+/-- Kernel-level GG₁ specialized to the Gibbs replica sampler and a disorder law `μH`.
+
+**This proposition is false at finite volume**, and is recorded only to name the asymptotic
+target. The Ghirlanda–Guerra identities are exact for asymptotic Gibbs measures (or after a
+perturbation), never for a finite-volume Gibbs measure. Already at `N = n = 1` the sum over
+`Finset.univ.erase 0` in `Fin 1` is empty, so `GG1` reduces to `⟨f R₁₂⟩ = ⟨f⟩⟨R₁₂⟩`; taking
+`f σ = spin σ 0` and writing `m = ⟨spin · 0⟩` this asserts `m = m ^ 3`, which fails for every
+Gibbs measure with `0 < |m| < 1`.
+
+What *is* exact at finite volume is the cavity identity
+`SpinGlass.FiniteGibbs.integral_apply_mul_gibbs_average_n_det`: Gaussian integration by parts
+applied to the Gibbs average as a functional of the Hamiltonian. The Ghirlanda–Guerra identities
+are what remains of it after replacing the Hamiltonian by its mean, which costs the fluctuation of
+`H` and is therefore legitimate only in the limit. -/
 def SK_GG1_gibbsKernel (N n : ℕ)
     (μH : Measure (EnergySpace N)) [IsProbabilityMeasure μH] : Prop :=
   SK_GG1 (N := N) (n := n) (μ := gibbsReplicaLaw (N := N) (n := n + 1) μH)

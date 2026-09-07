@@ -26,23 +26,6 @@ Gibbs weights, free energy density, covariance kernels, and Guerra trace identit
 Talagrand Vol. I, Ch. 1.
 -/
 
-/-! ### Configuration-agnostic partition function -/
-
-/-- A generic finite configuration space. Concrete models will take `Σ := Config N`. -/
-abbrev Conf := Type*
-
-/-- Partition function `∑ σ, exp(-H σ)` on a finite configuration space. -/
-noncomputable def Z' {α : Type*} [Fintype α] (H : α → ℝ) : ℝ :=
-  ∑ σ : α, Real.exp (- H σ)
-
-/-- Generic Gibbs weight on `Σ` (a probability mass function when normalized by `Z'`). -/
-noncomputable def gibbs_pmf' {α : Type*} [Fintype α] (H : α → ℝ) (σ : α) : ℝ :=
-  Real.exp (- H σ) / Z' H
-
-/-- Generic free energy density with an explicit scaling parameter `N` (system size). -/
-noncomputable def free_energy_density' {α : Type*} [Fintype α] (N : ℕ) (H : α → ℝ) : ℝ :=
-  (1 / (N : ℝ)) * Real.log (Z' H)
-
 /-! ### Configuration space and single-site spins -/
 
 /-- Configuration space on `N` sites with single-site space `S` (default: `Bool`). -/
@@ -124,6 +107,8 @@ noncomputable instance : FiniteDimensional ℝ (EnergySpace N) := by
 
 /-! ### Basis vector `std_basis` -/
 
+/-- The Dirac basis vector `e_σ` of `EnergySpace N`; the `Config N` instance of
+`FiniteGibbs.std_basis`. -/
 noncomputable def std_basis (σ : Config N) : EnergySpace N :=
   FiniteGibbs.std_basis (α := Config N) σ
 
@@ -155,61 +140,82 @@ lemma overlapOf_comm {S : Type} (spin : S → ℝ) (σ τ : Config N S) :
 lemma overlap_comm (σ τ : Config N) : overlap N σ τ = overlap N τ σ := by
   simpa [overlap] using overlapOf_comm (N := N) (spin := isingSpin) σ τ
 
-/-! ### Covariance Kernels -/
+/-! ### Covariance kernels
 
-/-- SK covariance kernel induced by a single-site observable `spin : S → ℝ`. -/
-def sk_cov_kernelOf {S : Type} (spin : S → ℝ) (σ τ : Config N S) : ℝ :=
-  (N * β^2 / 2) * (overlapOf (N := N) spin σ τ)^2
+A mean-field Hamiltonian on `N` sites whose covariance depends only on the overlap has
+`𝔼[H_N(σ) H_N(τ)] = N · ξ(R_{σ,τ})` for a single function `ξ` (Talagrand Vol. II, Eq. (14.57);
+for the mixed `p`-spin model `ξ x = ∑ₚ βₚ² xᵖ`). This is the only covariance kernel in the
+development: `skCovXi` and `refCovXi` below are the two choices of `ξ` used in Vol. I, §1.3.
+-/
 
-/-- The SK covariance kernel induced by `spin` is symmetric. -/
-lemma sk_cov_kernelOf_comm {S : Type} (spin : S → ℝ) (σ τ : Config N S) :
-    sk_cov_kernelOf (N := N) (β := β) spin σ τ
-      = sk_cov_kernelOf (N := N) (β := β) spin τ σ := by
-  simp [sk_cov_kernelOf, overlapOf_comm]
+/-- Overlap-driven covariance kernel `N · ξ(R_{σ,τ})` for a single-site observable `spin`.
+Talagrand Vol. II, Eq. (14.57). -/
+def overlapCovKernelOf {S : Type} (spin : S → ℝ) (xi : ℝ → ℝ) (σ τ : Config N S) : ℝ :=
+  (N : ℝ) * xi (overlapOf (N := N) spin σ τ)
 
-/-- The Ising SK covariance kernel (specialization of `sk_cov_kernelOf` to `isingSpin`). -/
+/-- Overlap-driven covariance kernel on Ising configurations. -/
+abbrev overlapCovKernel (xi : ℝ → ℝ) (σ τ : Config N) : ℝ :=
+  overlapCovKernelOf (N := N) isingSpin xi σ τ
+
+/-- Unfolding lemma for `overlapCovKernel` in terms of the Ising `overlap`. -/
+@[simp] lemma overlapCovKernel_apply (xi : ℝ → ℝ) (σ τ : Config N) :
+    overlapCovKernel (N := N) xi σ τ = (N : ℝ) * xi (overlap N σ τ) := rfl
+
+/-- An overlap-driven covariance kernel is symmetric. -/
+lemma overlapCovKernelOf_comm {S : Type} (spin : S → ℝ) (xi : ℝ → ℝ) (σ τ : Config N S) :
+    overlapCovKernelOf (N := N) spin xi σ τ = overlapCovKernelOf (N := N) spin xi τ σ := by
+  simp [overlapCovKernelOf, overlapOf_comm]
+
+/-- The SK choice of `ξ`: `ξ_SK x = β² x² / 2`. Talagrand Vol. I, §1.3. -/
+def skCovXi (β : ℝ) : ℝ → ℝ := fun x => β ^ 2 * x ^ 2 / 2
+
+/-- Guerra's replica-symmetric reference choice of `ξ`, built from a profile `xi`:
+`ξ_ref x = β² · xi x`. Talagrand Vol. I, §1.3. -/
+def refCovXi (β : ℝ) (xi : ℝ → ℝ) : ℝ → ℝ := fun x => β ^ 2 * xi x
+
+/-- The SK covariance kernel `N β² R²/2`, i.e. `overlapCovKernel` at `skCovXi`. Kept
+semireducible so that `simp` and `whnf` do not unfold it in the Guerra computations. -/
 def sk_cov_kernel (σ τ : Config N) : ℝ :=
-  (N * β^2 / 2) * (overlap N σ τ)^2
+  overlapCovKernel (N := N) (skCovXi β) σ τ
 
-/-- `sk_cov_kernel` is `sk_cov_kernelOf` specialized to `isingSpin`. -/
-lemma sk_cov_kernel_eq_sk_cov_kernelOf (σ τ : Config N) :
-    sk_cov_kernel N β σ τ = sk_cov_kernelOf (N := N) (β := β) isingSpin σ τ := by
-  rfl
-
-/-- The Ising SK covariance kernel is symmetric. -/
-lemma sk_cov_kernel_comm (σ τ : Config N) :
-    sk_cov_kernel N β σ τ = sk_cov_kernel N β τ σ := by
-  simp [sk_cov_kernel, overlap_comm]
-
-/-- “Reference” covariance kernel induced by a single-site observable `spin : S → ℝ`. -/
-def simple_cov_kernelOf {S : Type} (xi : ℝ → ℝ) (spin : S → ℝ) (σ τ : Config N S) : ℝ :=
-  N * β^2 * xi (overlapOf (N := N) spin σ τ)
-
-/-- The reference covariance kernel induced by `spin` is symmetric. -/
-lemma simple_cov_kernelOf_comm {S : Type} (xi : ℝ → ℝ) (spin : S → ℝ) (σ τ : Config N S) :
-    simple_cov_kernelOf (N := N) (β := β) xi spin σ τ
-      = simple_cov_kernelOf (N := N) (β := β) xi spin τ σ := by
-  simp [simple_cov_kernelOf, overlapOf_comm]
-
-/-- The Ising reference covariance kernel (specialization of `simple_cov_kernelOf` to `isingSpin`). -/
+/-- Guerra's reference covariance kernel `N β² xi(R)`, i.e. `overlapCovKernel` at `refCovXi`. -/
 def simple_cov_kernel (xi : ℝ → ℝ) (σ τ : Config N) : ℝ :=
-  N * β^2 * xi (overlap N σ τ)
+  overlapCovKernel (N := N) (refCovXi β xi) σ τ
 
-/-- `simple_cov_kernel` is `simple_cov_kernelOf` specialized to `isingSpin`. -/
-lemma simple_cov_kernel_eq_simple_cov_kernelOf (xi : ℝ → ℝ) (σ τ : Config N) :
-    simple_cov_kernel N β xi σ τ
-      = simple_cov_kernelOf (N := N) (β := β) xi isingSpin σ τ := by
-  rfl
+/-- `sk_cov_kernel` is `overlapCovKernel` at `skCovXi`. -/
+lemma sk_cov_kernel_def (σ τ : Config N) :
+    sk_cov_kernel N β σ τ = overlapCovKernel (N := N) (skCovXi β) σ τ := rfl
 
-/-- The Ising reference covariance kernel is symmetric. -/
+/-- `simple_cov_kernel` is `overlapCovKernel` at `refCovXi`. -/
+lemma simple_cov_kernel_def (xi : ℝ → ℝ) (σ τ : Config N) :
+    simple_cov_kernel N β xi σ τ = overlapCovKernel (N := N) (refCovXi β xi) σ τ := rfl
+
+/-- `sk_cov_kernel` in closed form. -/
+lemma sk_cov_kernel_eq (σ τ : Config N) :
+    sk_cov_kernel N β σ τ = (N * β ^ 2 / 2) * (overlap N σ τ) ^ 2 := by
+  simp only [sk_cov_kernel_def, overlapCovKernel_apply, skCovXi]; ring
+
+/-- `simple_cov_kernel` in closed form. -/
+lemma simple_cov_kernel_eq (xi : ℝ → ℝ) (σ τ : Config N) :
+    simple_cov_kernel N β xi σ τ = N * β ^ 2 * xi (overlap N σ τ) := by
+  simp only [simple_cov_kernel_def, overlapCovKernel_apply, refCovXi]; ring
+
+/-- The SK covariance kernel is symmetric. -/
+lemma sk_cov_kernel_comm (σ τ : Config N) :
+    sk_cov_kernel N β σ τ = sk_cov_kernel N β τ σ :=
+  overlapCovKernelOf_comm (N := N) isingSpin (skCovXi β) σ τ
+
+/-- The reference covariance kernel is symmetric. -/
 lemma simple_cov_kernel_comm (xi : ℝ → ℝ) (σ τ : Config N) :
-    simple_cov_kernel N β xi σ τ = simple_cov_kernel N β xi τ σ := by
-  simp [simple_cov_kernel, overlap_comm]
+    simple_cov_kernel N β xi σ τ = simple_cov_kernel N β xi τ σ :=
+  overlapCovKernelOf_comm (N := N) isingSpin (refCovXi β xi) σ τ
 
 /-! ### Thermodynamic Quantities -/
 
+/-- Partition function `Z(H) = ∑_σ exp(-H σ)`. Talagrand Vol. I, §1.1. -/
 def Z (H : EnergySpace N) : ℝ := ∑ σ, Real.exp (- H σ)
 
+/-- Gibbs probability mass function `p_H(σ) = exp(-H σ) / Z(H)`. Talagrand Vol. I, §1.1. -/
 def gibbs_pmf (H : EnergySpace N) (σ : Config N) : ℝ :=
   Real.exp (- H σ) / Z N H
 
@@ -225,21 +231,20 @@ lemma gibbs_pmf_eq_FiniteGibbs_gibbs_pmf (H : EnergySpace N) (σ : Config N) :
     gibbs_pmf (N := N) H σ = FiniteGibbs.gibbs_pmf (α := Config N) H σ := by
   rfl
 
-/-! #### Vol II bridge lemmas (`Config N` specialization) -/
-
-/-- `Z` is the specialization of the Vol II partition function `Z'` to `Σ := Config N`. -/
-lemma Z_eq_Z' (H : EnergySpace N) :
-    Z (N := N) H = Z' (α := Config N) (fun σ : Config N => H σ) := by
-  rfl
-
-/-- `gibbs_pmf` is the specialization of the Vol II Gibbs weight `gibbs_pmf'` to `Σ := Config N`. -/
-lemma gibbs_pmf_eq_gibbs_pmf' (H : EnergySpace N) (σ : Config N) :
-    gibbs_pmf (N := N) H σ = gibbs_pmf' (α := Config N) (fun τ : Config N => H τ) σ := by
-  rfl
-
 /-- Gibbs average \(\langle f \rangle_H\) under the Gibbs weights `gibbs_pmf`. -/
 noncomputable def gibbs_average (H : EnergySpace N) (f : Config N → ℝ) : ℝ :=
   ∑ σ, gibbs_pmf N H σ * f σ
+
+/-! #### The two-replica bracket
+
+Talagrand writes \(\langle f \rangle\) for the average of a function of several replicas under
+independent copies of the Gibbs measure (Vol. I, §1.1). Two replicas is the case that carries the
+overlap `R₁₂`, and hence the whole Guerra/Parisi algebra. -/
+
+/-- The two-replica Gibbs bracket \(\langle f \rangle_H = \sum_{σ,τ} p_H(σ)\,p_H(τ)\,f(σ,τ)\).
+Talagrand Vol. I, §1.1. -/
+noncomputable def gibbs_average₂ (H : EnergySpace N) (f : Config N → Config N → ℝ) : ℝ :=
+  ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * f σ τ
 
 /-! ### Free energy density and its abstract (Fréchet) Hessian -/
 
@@ -247,202 +252,107 @@ noncomputable def gibbs_average (H : EnergySpace N) (f : Config N → ℝ) : ℝ
 noncomputable def free_energy_density (H : EnergySpace N) : ℝ :=
   (1 / (N : ℝ)) * Real.log (Z N H)
 
-/-- `free_energy_density` is the specialization of the Vol II free energy `free_energy_density'`. -/
-lemma free_energy_density_eq_free_energy_density' (H : EnergySpace N) :
-    free_energy_density (N := N) H =
-      free_energy_density' (α := Config N) N (fun σ : Config N => H σ) := by
-  rfl
-
 /-- Hessian of `free_energy_density` as a second Fréchet derivative. Talagrand Vol. I, §1.3. -/
 noncomputable def hessian_free_energy_fderiv (H : EnergySpace N) :
     EnergySpace N →L[ℝ] EnergySpace N →L[ℝ] ℝ :=
   fderiv ℝ (fun H' => fderiv ℝ (free_energy_density (N := N)) H') H
 
-lemma Z_pos (H : EnergySpace N) : 0 < Z N H := by
-  have : 0 < ∑ σ : Config N, Real.exp (- H σ) := by
-    refine Finset.sum_pos ?_ Finset.univ_nonempty
-    intro σ _hσ
-    exact Real.exp_pos _
-  simpa [Z] using this
+lemma Z_pos (H : EnergySpace N) : 0 < Z N H := FiniteGibbs.Z_pos (α := Config N) H
 
-lemma Z_ne_zero (H : EnergySpace N) : Z N H ≠ 0 :=
-  (ne_of_gt (Z_pos (N := N) (H := H)))
+lemma Z_ne_zero (H : EnergySpace N) : Z N H ≠ 0 := FiniteGibbs.Z_ne_zero (α := Config N) H
 
-lemma gibbs_pmf_pos (H : EnergySpace N) (σ : Config N) : 0 < gibbs_pmf N H σ := by
-  have hZ : 0 < Z N H := Z_pos (N := N) (H := H)
-  simpa [gibbs_pmf] using (div_pos (Real.exp_pos _) hZ)
+lemma gibbs_pmf_pos (H : EnergySpace N) (σ : Config N) : 0 < gibbs_pmf N H σ :=
+  FiniteGibbs.gibbs_pmf_pos (α := Config N) H σ
 
 lemma gibbs_pmf_nonneg (H : EnergySpace N) (σ : Config N) : 0 ≤ gibbs_pmf N H σ :=
-  le_of_lt (gibbs_pmf_pos (N := N) (H := H) σ)
+  FiniteGibbs.gibbs_pmf_nonneg (α := Config N) H σ
 
-lemma gibbs_pmf_le_one (H : EnergySpace N) (σ : Config N) : gibbs_pmf N H σ ≤ 1 := by
-  have hZpos : 0 < Z N H := Z_pos (N := N) (H := H)
-  have hterm_le :
-      Real.exp (-H σ) ≤ Z N H := by
-    simpa [Z] using
-      (Finset.single_le_sum (s := (Finset.univ : Finset (Config N)))
-        (f := fun τ => Real.exp (-H τ))
-        (hf := fun τ _hτ => (Real.exp_pos _).le)
-        (a := σ) (h := Finset.mem_univ σ))
-  have := (div_le_one hZpos).2 hterm_le
-  simpa [gibbs_pmf] using this
+lemma gibbs_pmf_le_one (H : EnergySpace N) (σ : Config N) : gibbs_pmf N H σ ≤ 1 :=
+  FiniteGibbs.gibbs_pmf_le_one (α := Config N) H σ
 
-lemma sum_gibbs_pmf (H : EnergySpace N) : (∑ σ, gibbs_pmf N H σ) = 1 := by
-  have hZ : Z N H ≠ 0 := Z_ne_zero (N := N) (H := H)
-  calc
-    (∑ σ, gibbs_pmf N H σ) = ∑ σ, Real.exp (- H σ) / Z N H := by rfl
-    _ = ∑ σ, Real.exp (- H σ) * (Z N H)⁻¹ := by
-      simp [div_eq_mul_inv]
-    _ = (∑ σ, Real.exp (- H σ)) * (Z N H)⁻¹ := by
-      simpa using
-        (Finset.sum_mul (s := (Finset.univ : Finset (Config N)))
-          (f := fun σ => Real.exp (- H σ)) (a := (Z N H)⁻¹)).symm
-    _ = (Z N H) * (Z N H)⁻¹ := by
-      simp [Z]
-    _ = 1 := by simp [hZ]
+lemma sum_gibbs_pmf (H : EnergySpace N) : (∑ σ, gibbs_pmf N H σ) = 1 :=
+  FiniteGibbs.sum_gibbs_pmf (α := Config N) H
 
-/-! ### Differentiation formulas (Fréchet derivatives) -/
+/-! #### Two-replica bracket API -/
 
-noncomputable abbrev evalCLM (σ : Config N) : EnergySpace N →L[ℝ] ℝ :=
-  PiLp.proj (p := (2 : ENNReal)) (fun _ : Config N => ℝ) σ
-
-noncomputable def grad_free_energy_density (H : EnergySpace N) : EnergySpace N →L[ℝ] ℝ :=
-  (-(1 / (N : ℝ))) • ∑ σ : Config N, (gibbs_pmf N H σ) • evalCLM (N := N) σ
-
-lemma hasFDerivAt_exp_neg_eval (H : EnergySpace N) (σ : Config N) :
-    HasFDerivAt (fun H : EnergySpace N => Real.exp (-H σ))
-      ((-(Real.exp (-H σ))) • evalCLM (N := N) σ) H := by
-  have heval :
-      HasFDerivAt (fun H : EnergySpace N => H σ) (evalCLM (N := N) σ) H := by
-    simpa [evalCLM] using
-      (PiLp.hasFDerivAt_apply (𝕜 := ℝ) (p := (2 : ENNReal))
-        (E := fun _ : Config N => ℝ) (f := H) σ)
-  have hneg :
-      HasFDerivAt (fun H : EnergySpace N => -(H σ)) (-(evalCLM (N := N) σ)) H := by
-    simpa using heval.fun_neg
-  have hexp : HasDerivAt Real.exp (Real.exp (-H σ)) (-H σ) :=
-    Real.hasDerivAt_exp (-H σ)
-  have hcomp :
-      HasFDerivAt (fun H : EnergySpace N => Real.exp (-(H σ)))
-        ((Real.exp (-H σ)) • (-(evalCLM (N := N) σ))) H := by
-    simpa [Function.comp_def] using
-      (HasDerivAt.comp_hasFDerivAt (x := H) hexp hneg)
-  exact hcomp.congr_fderiv (by simp [smul_neg, ← neg_smul])
-
-lemma hasFDerivAt_Z (H : EnergySpace N) :
-    HasFDerivAt (fun H : EnergySpace N => Z N H)
-      (∑ σ : Config N, (-(Real.exp (-H σ))) • evalCLM (N := N) σ) H := by
-  have hterm :
-      ∀ σ : Config N,
-        HasFDerivAt (fun H : EnergySpace N => Real.exp (-H σ))
-          ((-(Real.exp (-H σ))) • evalCLM (N := N) σ) H := by
+/-- The two-replica bracket of a constant is that constant. -/
+@[simp] lemma gibbs_average₂_const (H : EnergySpace N) (c : ℝ) :
+    gibbs_average₂ (N := N) H (fun _ _ => c) = c := by
+  have hs1 : (∑ σ, gibbs_pmf N H σ) = 1 := sum_gibbs_pmf (N := N) (H := H)
+  have hinner : ∀ σ : Config N,
+      (∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * c) = gibbs_pmf N H σ * c := by
     intro σ
-    simpa using hasFDerivAt_exp_neg_eval (N := N) (H := H) σ
-  simpa [Z] using
-    (HasFDerivAt.fun_sum (u := (Finset.univ : Finset (Config N)))
-      (A := fun σ : Config N => fun H : EnergySpace N => Real.exp (-H σ))
-      (A' := fun σ : Config N => (-(Real.exp (-H σ))) • evalCLM (N := N) σ)
-      (x := H)
-      (fun σ _hσ => hterm σ))
+    calc
+      (∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * c)
+          = (∑ τ, gibbs_pmf N H τ) * (gibbs_pmf N H σ * c) := by
+            rw [Finset.sum_mul]
+            exact Finset.sum_congr rfl fun τ _ => by ring
+      _ = gibbs_pmf N H σ * c := by rw [hs1, one_mul]
+  calc
+    gibbs_average₂ (N := N) H (fun _ _ => c)
+        = ∑ σ, gibbs_pmf N H σ * c := Finset.sum_congr rfl fun σ _ => hinner σ
+    _ = (∑ σ, gibbs_pmf N H σ) * c := (Finset.sum_mul ..).symm
+    _ = c := by rw [hs1, one_mul]
 
-lemma hasFDerivAt_inv_Z (H : EnergySpace N) :
-    HasFDerivAt (fun H : EnergySpace N => (Z N H)⁻¹)
-      ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z N H ^ 2)⁻¹)).comp
-        (∑ σ : Config N, (-(Real.exp (-H σ))) • evalCLM (N := N) σ)) H := by
-  have hInv :
-      HasFDerivAt (fun x : ℝ => x⁻¹)
-        (ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z N H ^ 2)⁻¹) : ℝ →L[ℝ] ℝ)
-        (Z N H) :=
-    hasFDerivAt_inv (𝕜 := ℝ) (x := Z N H) (Z_ne_zero (N := N) (H := H))
-  simpa [Function.comp_def] using hInv.comp (x := H) (hasFDerivAt_Z (N := N) (H := H))
+/-- Scalars pull out of the two-replica bracket. -/
+lemma gibbs_average₂_const_mul (H : EnergySpace N) (c : ℝ) (f : Config N → Config N → ℝ) :
+    gibbs_average₂ (N := N) H (fun σ τ => c * f σ τ) = c * gibbs_average₂ (N := N) H f := by
+  rw [gibbs_average₂, gibbs_average₂, Finset.mul_sum]
+  refine Finset.sum_congr rfl fun σ _ => ?_
+  rw [Finset.mul_sum]
+  exact Finset.sum_congr rfl fun τ _ => by ring
 
-lemma hasFDerivAt_gibbs_pmf (H : EnergySpace N) (σ : Config N) :
-    HasFDerivAt (fun H : EnergySpace N => gibbs_pmf N H σ)
-      ((Z N H)⁻¹ • ((-(Real.exp (-H σ))) • evalCLM (N := N) σ) +
-          (Real.exp (-H σ)) •
-            ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z N H ^ 2)⁻¹)).comp
-              (∑ τ : Config N, (-(Real.exp (-H τ))) • evalCLM (N := N) τ))) H := by
-  have hnum :
-      HasFDerivAt (fun H : EnergySpace N => Real.exp (-H σ))
-        ((-(Real.exp (-H σ))) • evalCLM (N := N) σ) H :=
-    hasFDerivAt_exp_neg_eval (N := N) (H := H) σ
-  have hden :
-      HasFDerivAt (fun H : EnergySpace N => (Z N H)⁻¹)
-        ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z N H ^ 2)⁻¹)).comp
-          (∑ τ : Config N, (-(Real.exp (-H τ))) • evalCLM (N := N) τ)) H :=
-    hasFDerivAt_inv_Z (N := N) (H := H)
-  have hmul :
-      HasFDerivAt (fun H : EnergySpace N => Real.exp (-H σ) * (Z N H)⁻¹)
-        ((Real.exp (-H σ)) •
-            ((ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z N H ^ 2)⁻¹)).comp
-              (∑ τ : Config N, (-(Real.exp (-H τ))) • evalCLM (N := N) τ))
-          + (Z N H)⁻¹ • ((-(Real.exp (-H σ))) • evalCLM (N := N) σ)) H :=
-    (hnum.mul hden)
-  simpa [gibbs_pmf, div_eq_mul_inv, add_comm, add_left_comm, add_assoc] using hmul
+/-- The two-replica bracket commutes with subtraction. -/
+lemma gibbs_average₂_sub (H : EnergySpace N) (f g : Config N → Config N → ℝ) :
+    gibbs_average₂ (N := N) H (fun σ τ => f σ τ - g σ τ)
+      = gibbs_average₂ (N := N) H f - gibbs_average₂ (N := N) H g := by
+  rw [gibbs_average₂, gibbs_average₂, gibbs_average₂, ← Finset.sum_sub_distrib]
+  refine Finset.sum_congr rfl fun σ _ => ?_
+  rw [← Finset.sum_sub_distrib]
+  exact Finset.sum_congr rfl fun τ _ => by ring
+
+/-- The two-replica bracket preserves nonnegativity. -/
+lemma gibbs_average₂_nonneg (H : EnergySpace N) {f : Config N → Config N → ℝ}
+    (hf : ∀ σ τ, 0 ≤ f σ τ) : 0 ≤ gibbs_average₂ (N := N) H f :=
+  Finset.sum_nonneg fun σ _ => Finset.sum_nonneg fun τ _ =>
+    mul_nonneg (mul_nonneg (gibbs_pmf_nonneg (N := N) (H := H) σ)
+      (gibbs_pmf_nonneg (N := N) (H := H) τ)) (hf σ τ)
+
+/-! ### Differentiation formulas (Fréchet derivatives)
+
+All of these are the model-agnostic `FiniteGibbs` calculus at `α := Config N`, which is in turn
+the general log-sum-exp calculus of `Common.Mathlib.Analysis.SpecialFunctions.LogSumExp`. -/
+
+/-- Evaluation at a configuration, as a continuous linear functional on `EnergySpace N`. -/
+noncomputable abbrev evalCLM (σ : Config N) : EnergySpace N →L[ℝ] ℝ :=
+  FiniteGibbs.evalCLM (α := Config N) σ
 
 lemma differentiableAt_gibbs_pmf (H : EnergySpace N) (σ : Config N) :
     DifferentiableAt ℝ (fun H' => gibbs_pmf N H' σ) H :=
-  (hasFDerivAt_gibbs_pmf (N := N) (H := H) σ).differentiableAt
+  FiniteGibbs.differentiableAt_gibbs_pmf (α := Config N) H σ
 
 lemma differentiable_gibbs_pmf (σ : Config N) :
-    Differentiable ℝ (fun H' => gibbs_pmf N H' σ) := by
-  intro H
-  exact differentiableAt_gibbs_pmf (N := N) (H := H) σ
+    Differentiable ℝ (fun H' => gibbs_pmf N H' σ) :=
+  fun H => differentiableAt_gibbs_pmf (N := N) (H := H) σ
+
+lemma hasFDerivAt_gibbs_pmf (H : EnergySpace N) (σ : Config N) :
+    HasFDerivAt (fun H' : EnergySpace N => gibbs_pmf N H' σ)
+      (fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ) H) H :=
+  (differentiableAt_gibbs_pmf (N := N) (H := H) σ).hasFDerivAt
 
 lemma fderiv_gibbs_pmf_apply (H h : EnergySpace N) (σ : Config N) :
     fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H h =
       (gibbs_pmf N H σ) *
-        ((∑ τ : Config N, (gibbs_pmf N H τ) * h τ) - h σ) := by
-  simpa [gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
-    (FiniteGibbs.fderiv_gibbs_pmf_apply (α := Config N) (H := H) (h := h) σ)
-
-lemma hasFDerivAt_grad_free_energy_density (H : EnergySpace N) :
-    HasFDerivAt (fun H : EnergySpace N => grad_free_energy_density (N := N) H)
-      ((-(1 / (N : ℝ))) •
-          ∑ σ : Config N,
-            (fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H).smulRight
-              (evalCLM (N := N) σ)) H := by
-  have hterm :
-      ∀ σ : Config N,
-        HasFDerivAt (fun H : EnergySpace N => (gibbs_pmf N H σ) • evalCLM (N := N) σ)
-          ((fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H).smulRight (evalCLM (N := N) σ)) H := by
-    intro σ
-    have hg := hasFDerivAt_gibbs_pmf (N := N) (H := H) σ
-    simpa [hg.fderiv] using hg.smul_const (evalCLM (N := N) σ)
-  have hsum :
-      HasFDerivAt (fun H : EnergySpace N => ∑ σ : Config N, (gibbs_pmf N H σ) • evalCLM (N := N) σ)
-        (∑ σ : Config N,
-          (fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H).smulRight (evalCLM (N := N) σ)) H := by
-    simpa using
-      (HasFDerivAt.fun_sum (u := (Finset.univ : Finset (Config N)))
-        (A := fun σ : Config N => fun H : EnergySpace N => (gibbs_pmf N H σ) • evalCLM (N := N) σ)
-        (A' := fun σ : Config N =>
-          (fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H).smulRight (evalCLM (N := N) σ))
-        (x := H)
-        (fun σ _hσ => hterm σ))
-  unfold grad_free_energy_density
-  exact hsum.fun_const_smul (c := (-(1 / (N : ℝ))))
-
-lemma fderiv_Z_apply (H h : EnergySpace N) :
-    fderiv ℝ (fun H : EnergySpace N => Z N H) H h =
-      - ∑ σ : Config N, Real.exp (-H σ) * h σ := by
-  have hZ' := (hasFDerivAt_Z (N := N) (H := H)).fderiv
-  simp [hZ', evalCLM, sum_apply, smul_apply]
+        ((∑ τ : Config N, (gibbs_pmf N H τ) * h τ) - h σ) :=
+  FiniteGibbs.fderiv_gibbs_pmf_apply (α := Config N) H h σ
 
 lemma fderiv_free_energy_density_apply (H h : EnergySpace N) :
     fderiv ℝ (fun H : EnergySpace N => free_energy_density (N := N) H) H h =
-      -(1 / (N : ℝ)) * ∑ σ : Config N, (gibbs_pmf N H σ) * h σ := by
-  simpa [free_energy_density, FiniteGibbs.free_energy_density, Z_eq_FiniteGibbs_Z,
-    gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
-    (FiniteGibbs.fderiv_free_energy_density_apply (α := Config N) (n := N) (H := H) (h := h))
+      -(1 / (N : ℝ)) * ∑ σ : Config N, (gibbs_pmf N H σ) * h σ :=
+  FiniteGibbs.fderiv_free_energy_density_apply (α := Config N) N H h
 
-lemma fderiv_free_energy_density_eq (H : EnergySpace N) :
-    fderiv ℝ (fun H : EnergySpace N => free_energy_density (N := N) H) H =
-      grad_free_energy_density (N := N) H := by
-  ext h
-  simp [grad_free_energy_density, fderiv_free_energy_density_apply, sum_apply,
-    smul_apply, smul_eq_mul]
-
+/-- The Gibbs covariance bilinear form at system size `N`: the Hessian of the free-energy
+density, written out. -/
 def hessian_free_energy (H : EnergySpace N) (h k : EnergySpace N) : ℝ :=
   (1 / (N : ℝ)) * (
     (∑ σ, gibbs_pmf N H σ * h σ * k σ) -
@@ -506,155 +416,60 @@ theorem overlap_self (hN : 0 < N) (σ : Config N) : overlap N σ σ = 1 := by
   have hN0 : (N : ℝ) ≠ 0 := by exact_mod_cast hN.ne'
   simp [spinOf, hsum, hN0, div_eq_mul_inv]
 
-/-- SK trace: `(β²/2) * (1 - ⟨R₁₂²⟩)`. Talagrand Vol. I, §1.3, Eq. (1.65). -/
-theorem trace_sk (hN : 0 < N) (H : EnergySpace N) :
-    (∑ σ, ∑ τ, sk_cov_kernel N β σ τ * hessian_free_energy N H (std_basis N σ) (std_basis N τ)) =
-    (β^2 / 2) * (1 - ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ)^2) := by
-  let E_R2 : ℝ :=
-    ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ)^2
+/-- **Overlap-driven trace identity.** For a covariance kernel `N · ξ(R_{σ,τ})` the trace against
+the free-energy Hessian collapses to `ξ 1 - ⟨ξ(R₁₂)⟩`. This is the single trace identity of the
+development; the SK and replica-symmetric traces are the two instances of `ξ`.
+Talagrand Vol. I, §1.3, Eq. (1.65). -/
+theorem trace_overlapCovKernel (hN : 0 < N) (H : EnergySpace N) (xi : ℝ → ℝ) :
+    (∑ σ, ∑ τ, overlapCovKernel (N := N) xi σ τ *
+        hessian_free_energy N H (std_basis N σ) (std_basis N τ))
+      = xi 1 - gibbs_average₂ (N := N) H (fun σ τ => xi (overlap N σ τ)) := by
+  simp only [gibbs_average₂]
   have hs1 : (∑ σ, gibbs_pmf N H σ) = 1 := sum_gibbs_pmf (N := N) (H := H)
   have hN0 : (N : ℝ) ≠ 0 := by exact_mod_cast hN.ne'
-  rw [trace_formula (N := N) (H := H) (Cov := sk_cov_kernel N β)]
+  rw [trace_formula (N := N) (H := H) (Cov := overlapCovKernel (N := N) xi)]
+  -- Diagonal: `R_{σ,σ} = 1`, so the diagonal sum is `N · ξ 1`.
   have hdiag :
-      (∑ σ, gibbs_pmf N H σ * sk_cov_kernel N β σ σ)
-        = (N * β^2 / 2) := by
-    have hover : ∀ σ : Config N, (overlap N σ σ)^2 = (1 : ℝ) := by
+      (∑ σ, gibbs_pmf N H σ * overlapCovKernel (N := N) xi σ σ) = (N : ℝ) * xi 1 := by
+    have hover : ∀ σ : Config N, overlapCovKernel (N := N) xi σ σ = (N : ℝ) * xi 1 := by
       intro σ
-      simp [overlap_self (N := N) (hN := hN) σ]
+      simp only [overlapCovKernel_apply, overlap_self (N := N) (hN := hN) σ]
     calc
-      (∑ σ, gibbs_pmf N H σ * sk_cov_kernel N β σ σ)
-          = ∑ σ, gibbs_pmf N H σ * (N * β^2 / 2) := by
-              refine Finset.sum_congr rfl ?_
-              intro σ _hσ
-              simp [sk_cov_kernel, hover, mul_comm]
-      _ = (∑ σ, gibbs_pmf N H σ) * (N * β^2 / 2) := by
-              simpa using
-                (Finset.sum_mul (s := (Finset.univ : Finset (Config N)))
-                  (f := fun σ => gibbs_pmf N H σ) (a := (N * β^2 / 2))).symm
-      _ = (N * β^2 / 2) := by simp [hs1]
+      (∑ σ, gibbs_pmf N H σ * overlapCovKernel (N := N) xi σ σ)
+          = ∑ σ, gibbs_pmf N H σ * ((N : ℝ) * xi 1) := by
+              exact Finset.sum_congr rfl fun σ _ => by rw [hover σ]
+      _ = (∑ σ, gibbs_pmf N H σ) * ((N : ℝ) * xi 1) := (Finset.sum_mul ..).symm
+      _ = (N : ℝ) * xi 1 := by rw [hs1, one_mul]
+  -- Off-diagonal: the `N` factors out of the double sum.
   have hoff :
-      (∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * sk_cov_kernel N β σ τ)
-        = (N * β^2 / 2) * E_R2 := by
-    simp [sk_cov_kernel, E_R2, Finset.mul_sum, mul_assoc, mul_left_comm]
-  have hcancel : (1 / (N : ℝ)) * (N * β^2 / 2) = (β^2 / 2) := by
-    field_simp [hN0]
-  calc
-    (1 / (N : ℝ)) *
-        ((∑ σ, gibbs_pmf N H σ * sk_cov_kernel N β σ σ) -
-          (∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * sk_cov_kernel N β σ τ))
-        = (1 / (N : ℝ)) * ((N * β^2 / 2) - ((N * β^2 / 2) * E_R2)) := by
-            simp [hdiag, hoff]
-    _ = (1 / (N : ℝ)) * ((N * β^2 / 2) * (1 - E_R2)) := by ring
-    _ = ((1 / (N : ℝ)) * (N * β^2 / 2)) * (1 - E_R2) := by
-            simp [mul_assoc]
-    _ = (β^2 / 2) * (1 - E_R2) := by
-            simpa [mul_assoc] using congrArg (fun z => z * (1 - E_R2)) hcancel
-    _ = (β^2 / 2) * (1 - ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ)^2) := by
-            simp [E_R2]
-
-/-- Simple-model trace: `β² q (1 - ⟨R₁₂⟩)`. Talagrand Vol. I, §1.3. -/
-theorem trace_simple (hN : 0 < N) (H : EnergySpace N) (xi : ℝ → ℝ) :
-    (∑ σ, ∑ τ, simple_cov_kernel N β xi σ τ * hessian_free_energy N H (std_basis N σ) (std_basis N τ)) =
-    (β^2) * (xi 1 - ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * xi (overlap N σ τ)) := by
-  let E_xi : ℝ :=
-    ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * xi (overlap N σ τ)
-  have hs1 : (∑ σ, gibbs_pmf N H σ) = 1 := sum_gibbs_pmf (N := N) (H := H)
-  have hN0 : (N : ℝ) ≠ 0 := by exact_mod_cast hN.ne'
-  rw [trace_formula (N := N) (H := H) (Cov := simple_cov_kernel N β xi)]
-  have hdiag :
-      (∑ σ, gibbs_pmf N H σ * simple_cov_kernel N β xi σ σ) = N * β^2 * xi 1 := by
-    have hover : ∀ σ : Config N, overlap N σ σ = 1 := by
-      intro σ
-      simpa using overlap_self (N := N) (hN := hN) σ
-    calc
-      (∑ σ, gibbs_pmf N H σ * simple_cov_kernel N β xi σ σ)
-          = ∑ σ, gibbs_pmf N H σ * (N * β^2 * xi 1) := by
-              simp [simple_cov_kernel, hover, mul_assoc, mul_comm]
-      _ = (∑ σ, gibbs_pmf N H σ) * (N * β^2 * xi 1) := by
-              simpa using
-                (Finset.sum_mul (s := (Finset.univ : Finset (Config N)))
-                  (f := fun σ => gibbs_pmf N H σ) (a := (N * β^2 * xi 1))).symm
-      _ = N * β^2 * xi 1 := by simp [hs1]
-  have hoff :
-      (∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * simple_cov_kernel N β xi σ τ)
-        = (N * β^2) * E_xi := by
-    simp [simple_cov_kernel, E_xi, Finset.mul_sum, mul_assoc, mul_left_comm]
-  have hcancel : (1 / (N : ℝ)) * (N * β^2) = (β^2) := by
-    field_simp [hN0]
-  calc
-    (1 / (N : ℝ)) *
-        ((∑ σ, gibbs_pmf N H σ * simple_cov_kernel N β xi σ σ) -
-          (∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * simple_cov_kernel N β xi σ τ))
-        = (1 / (N : ℝ)) * ((N * β^2 * xi 1) - ((N * β^2) * E_xi)) := by
-            simp [hdiag, hoff]
-    _ = (1 / (N : ℝ)) * ((N * β^2) * (xi 1 - E_xi)) := by ring
-    _ = ((1 / (N : ℝ)) * (N * β^2)) * (xi 1 - E_xi) := by
-            simp [mul_assoc]
-    _ = (β^2) * (xi 1 - E_xi) := by
-            simpa [mul_assoc] using congrArg (fun z => z * (xi 1 - E_xi)) hcancel
-    _ = (β^2) * (xi 1 - ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * xi (overlap N σ τ)) := by
-            simp [E_xi]
-
-/-- Guerra derivative: `φ'(t) = (β²/2) * ((1/2 - ξ(1)) - ⟨R²/2 - ξ(R)⟩)`. Talagrand Vol. I, Eq. (1.65). -/
-theorem guerra_derivative_bound_algebra
-    (hN : 0 < N) (H : EnergySpace N) (xi : ℝ → ℝ) :
-    let term_sk := (∑ σ, ∑ τ, sk_cov_kernel N β σ τ * hessian_free_energy N H (std_basis N σ) (std_basis N τ))
-    let term_simple := (∑ σ, ∑ τ, simple_cov_kernel N β xi σ τ * hessian_free_energy N H (std_basis N σ) (std_basis N τ))
-    (1 / 2) * (term_sk - term_simple) = (β^2 / 2) * ((1/2 - xi 1) - ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * ((overlap N σ τ)^2 / 2 - xi (overlap N σ τ))) := by
-  dsimp
-  rw [trace_sk (N := N) (β := β) (hN := hN) (H := H),
-      trace_simple (N := N) (β := β) (xi := xi) (hN := hN) (H := H)]
-  let E_xi := ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * xi (overlap N σ τ)
-  let E_R2 := ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ)^2
-  have h_main : (1 / 2) * ((β^2 / 2) * (1 - E_R2) - (β^2) * (xi 1 - E_xi)) =
-                (β^2 / 2) * ((1/2 - xi 1) - (1/2 * E_R2 - E_xi)) := by
+      (∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * overlapCovKernel (N := N) xi σ τ)
+        = (N : ℝ) * ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * xi (overlap N σ τ) := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun σ _ => ?_
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun τ _ => ?_
+    simp only [overlapCovKernel_apply]
     ring
-  rw [h_main]
-  congr 1
-  congr 1
-  simp [E_R2, E_xi]
-  have hhalf :
-      (2⁻¹ : ℝ) *
-          (∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ) ^ 2)
-        =
-          ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * ((overlap N σ τ) ^ 2 / 2) := by
-    simp [div_eq_mul_inv]
-    calc
-      (2⁻¹ : ℝ) *
-          (∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ) ^ 2)
-          =
-          ∑ σ, (2⁻¹ : ℝ) *
-            (∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ) ^ 2) := by
-            simpa using
-              (Finset.mul_sum (s := (Finset.univ : Finset (Config N)))
-                (f := fun σ =>
-                  ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ) ^ 2)
-                (a := (2⁻¹ : ℝ)))
-      _ =
-          ∑ σ, ∑ τ, (2⁻¹ : ℝ) *
-            (gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ) ^ 2) := by
-            refine Finset.sum_congr rfl ?_
-            intro σ _hσ
-            simpa using
-              (Finset.mul_sum (s := (Finset.univ : Finset (Config N)))
-                (f := fun τ =>
-                  gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ) ^ 2)
-                (a := (2⁻¹ : ℝ)))
-      _ =
-          ∑ σ, ∑ τ,
-            gibbs_pmf N H σ * gibbs_pmf N H τ * ((overlap N σ τ) ^ 2 * (2⁻¹ : ℝ)) := by
-            refine Finset.sum_congr rfl ?_
-            intro σ _hσ
-            refine Finset.sum_congr rfl ?_
-            intro τ _hτ
-            ring
-  rw [hhalf]
-  rw [← Finset.sum_sub_distrib]
-  apply Finset.sum_congr rfl
-  intro σ _
-  rw [← Finset.sum_sub_distrib]
-  apply Finset.sum_congr rfl
-  intro τ _
+  rw [hdiag, hoff]
+  field_simp
+
+/-- **Guerra's interpolation identity, algebraic core.** For two overlap-driven covariance kernels
+the half-difference of the Hessian traces is governed by `ξ₁ - ξ₂` alone. Specializing
+`ξ₁ = skCovXi β` and `ξ₂ = refCovXi β xi` gives Talagrand Vol. I, Eq. (1.65). -/
+theorem half_trace_sub_overlapCovKernel (hN : 0 < N) (H : EnergySpace N) (xi₁ xi₂ : ℝ → ℝ) :
+    (1 / 2 : ℝ) *
+        ((∑ σ, ∑ τ, overlapCovKernel (N := N) xi₁ σ τ *
+              hessian_free_energy N H (std_basis N σ) (std_basis N τ))
+          - (∑ σ, ∑ τ, overlapCovKernel (N := N) xi₂ σ τ *
+              hessian_free_energy N H (std_basis N σ) (std_basis N τ)))
+      = (1 / 2 : ℝ) *
+          ((xi₁ 1 - xi₂ 1)
+            - gibbs_average₂ (N := N) H
+                (fun σ τ => xi₁ (overlap N σ τ) - xi₂ (overlap N σ τ))) := by
+  rw [trace_overlapCovKernel (N := N) (hN := hN) (H := H) (xi := xi₁),
+      trace_overlapCovKernel (N := N) (hN := hN) (H := H) (xi := xi₂),
+      gibbs_average₂_sub (N := N) (H := H)
+        (f := fun σ τ => xi₁ (overlap N σ τ)) (g := fun σ τ => xi₂ (overlap N σ τ))]
   ring
 
 end

@@ -105,8 +105,10 @@ variable {Ω E : Type*} [MeasurableSpace Ω] {P : Measure Ω}
 variable [NormedAddCommGroup E] [NormedSpace ℝ E] [MeasurableSpace E] [BorelSpace E]
 variable {X : Ω → E}
 
-/-- A Gaussian random variable has sub-Gaussian mgf after applying a linear functional and centering. -/
-theorem hasSubgaussianMGF_centered_dual (hX : ProbabilityTheory.HasGaussianLaw X P) (L : StrongDual ℝ E) :
+/-- A Gaussian random variable has sub-Gaussian mgf after applying a linear functional and
+centering. -/
+theorem hasSubgaussianMGF_centered_dual (hX : ProbabilityTheory.HasGaussianLaw X P) (L : StrongDual
+    ℝ E) :
     ProbabilityTheory.HasSubgaussianMGF
         (fun ω : Ω => L (X ω) - P[fun ω : Ω => L (X ω)])
         (Var[fun ω : Ω => L (X ω); P]).toNNReal P := by
@@ -143,7 +145,8 @@ theorem measure_ge_le_centered_dual (hX : ProbabilityTheory.HasGaussianLaw X P) 
   simpa using (hasSubgaussianMGF_centered_dual (X := X) (P := P) hX L).measure_ge_le hε
 
 /-- Two-sided tail bound for a centered Gaussian linear functional of a Gaussian RV. -/
-theorem measure_ge_le_abs_centered_dual (hX : ProbabilityTheory.HasGaussianLaw X P) (L : StrongDual ℝ E)
+theorem measure_ge_le_abs_centered_dual (hX : ProbabilityTheory.HasGaussianLaw X P) (L : StrongDual
+    ℝ E)
     {ε : ℝ} (hε : 0 ≤ ε) :
     P.real {ω : Ω | ε ≤ |L (X ω) - P[fun ω : Ω => L (X ω)]|}
       ≤ (2 : ℝ) * rexp (-ε ^ 2 / (2 * (Var[fun ω : Ω => L (X ω); P]).toNNReal)) := by

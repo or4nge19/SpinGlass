@@ -1,4 +1,4 @@
-import SpinGlass.HopfieldConvolution
+import SpinGlass.Hopfield.Psi
 import SpinGlass.Cascades.GhirlandaGuerra
 import SpinGlass.Cascades.Posterior
 import Mathlib.Probability.Kernel.Composition.ParallelComp
@@ -70,7 +70,8 @@ def Hopfield_GG1Kernel (Ξ : Patterns N M)
 
 /-! ## Conditional law of the last overlap vector given the prefix -/
 
-/-- Conditional law of the last overlap vector given the first `n`, under the Hopfield replica law. -/
+/-- Conditional law of the last overlap vector given the first `n`, under the Hopfield replica
+law. -/
 noncomputable def hopfieldCondDistribLast (Ξ : Patterns N M)
     (μH : Measure (EnergySpace N)) [IsProbabilityMeasure μH] :
     ProbabilityTheory.Kernel (Fin n → (Fin M → ℝ)) (Fin M → ℝ) :=
@@ -102,7 +103,8 @@ noncomputable def hopfieldOverlapPosteriorPredictive (Ξ : Patterns N M)
     (gibbsPosteriorKernel (N := N) (n := n) μH)
 
 instance (Ξ : Patterns N M) (μH : Measure (EnergySpace N)) [IsProbabilityMeasure μH] :
-    ProbabilityTheory.IsMarkovKernel (hopfieldOverlapPosteriorPredictive (N := N) (M := M) (n := n) Ξ μH) := by
+    ProbabilityTheory.IsMarkovKernel (hopfieldOverlapPosteriorPredictive (N := N) (M := M) (n := n)
+      Ξ μH) := by
   classical
   dsimp [hopfieldOverlapPosteriorPredictive]
   infer_instance
@@ -123,7 +125,8 @@ lemma isMarkovKernel_hopfieldTalagrandPosteriorPredictive
       (hopfieldTalagrandPosteriorPredictive (N := N) (M := M) (n := n) Ξ β μH) := by
   classical
   -- need the Markov property of the Talagrand convolution kernel
-  have : ProbabilityTheory.IsMarkovKernel (hopfieldConvolutionTalagrandKernel (N := N) (M := M) Ξ β) :=
+  have : ProbabilityTheory.IsMarkovKernel (hopfieldConvolutionTalagrandKernel (N := N) (M := M) Ξ β)
+    :=
     isMarkovKernel_hopfieldConvolutionTalagrandKernel (N := N) (M := M) (Ξ := Ξ) (β := β) hβ hβN
   dsimp [hopfieldTalagrandPosteriorPredictive]
   infer_instance
@@ -145,19 +148,22 @@ variable (μΞ : Measure (Patterns N M)) [IsProbabilityMeasure μΞ]
 noncomputable def hopfieldEnergyWithFieldOfPatterns (Ξ : Patterns N M) : EnergySpace N :=
   hopfieldEnergyWithField (N := N) (M := M) β h Ξ k0
 
-@[measurability] lemma measurable_hopfieldEnergyWithFieldOfPatterns :
+@[fun_prop] lemma measurable_hopfieldEnergyWithFieldOfPatterns :
     Measurable (hopfieldEnergyWithFieldOfPatterns (N := N) (M := M) (β := β) (h := h) k0) := by
   simpa [hopfieldEnergyWithFieldOfPatterns] using
-    (measurable_of_finite (hopfieldEnergyWithFieldOfPatterns (N := N) (M := M) (β := β) (h := h) k0))
+    (measurable_of_finite (hopfieldEnergyWithFieldOfPatterns (N := N) (M := M) (β := β) (h := h)
+      k0))
 
 /-- The induced disorder law on energies, obtained by pushing `μΞ` forward along `Ξ ↦ H(Ξ)`. -/
 noncomputable def hopfieldEnergyLawWithField : Measure (EnergySpace N) :=
   μΞ.map (hopfieldEnergyWithFieldOfPatterns (N := N) (M := M) (β := β) (h := h) k0)
 
-instance : IsProbabilityMeasure (hopfieldEnergyLawWithField (N := N) (M := M) (β := β) (h := h) k0 μΞ) := by
+instance : IsProbabilityMeasure (hopfieldEnergyLawWithField (N := N) (M := M) (β := β) (h := h) k0
+    μΞ) := by
   have hf :
       AEMeasurable (hopfieldEnergyWithFieldOfPatterns (N := N) (M := M) (β := β) (h := h) k0) μΞ :=
-    (measurable_hopfieldEnergyWithFieldOfPatterns (N := N) (M := M) (β := β) (h := h) (k0 := k0)).aemeasurable
+    (measurable_hopfieldEnergyWithFieldOfPatterns (N := N) (M := M) (β := β) (h := h) (k0 :=
+      k0)).aemeasurable
   simpa [hopfieldEnergyLawWithField] using (Measure.isProbabilityMeasure_map (μ := μΞ) hf)
 
 /-- Deterministic kernel `Ξ ↦ H(Ξ)` (the Hopfield environment-to-energy map). -/
@@ -167,7 +173,8 @@ noncomputable def hopfieldEnergyWithFieldKernel :
     (hopfieldEnergyWithFieldOfPatterns (N := N) (M := M) (β := β) (h := h) k0)
     (measurable_hopfieldEnergyWithFieldOfPatterns (N := N) (M := M) (β := β) (h := h) (k0 := k0))
 
-instance : ProbabilityTheory.IsMarkovKernel (hopfieldEnergyWithFieldKernel (N := N) (M := M) (β := β) (h := h) k0) := by
+instance : ProbabilityTheory.IsMarkovKernel (hopfieldEnergyWithFieldKernel (N := N) (M := M) (β :=
+    β) (h := h) k0) := by
   dsimp [hopfieldEnergyWithFieldKernel]
   infer_instance
 
@@ -180,7 +187,8 @@ noncomputable def hopfieldReplicaKernelWithField (n : ℕ) :
     (hopfieldEnergyWithFieldKernel (N := N) (M := M) (β := β) (h := h) k0)
 
 instance (n : ℕ) :
-    ProbabilityTheory.IsMarkovKernel (hopfieldReplicaKernelWithField (N := N) (M := M) (β := β) (h := h) k0 n) := by
+    ProbabilityTheory.IsMarkovKernel (hopfieldReplicaKernelWithField (N := N) (M := M) (β := β) (h
+      := h) k0 n) := by
   dsimp [hopfieldReplicaKernelWithField]
   infer_instance
 
@@ -189,7 +197,8 @@ noncomputable def hopfieldReplicaLawWithField (n : ℕ) : Measure (ReplicaSpace 
   (hopfieldReplicaKernelWithField (N := N) (M := M) (β := β) (h := h) k0 n) ∘ₘ μΞ
 
 instance (n : ℕ) :
-    IsProbabilityMeasure (hopfieldReplicaLawWithField (N := N) (M := M) (β := β) (h := h) k0 μΞ n) := by
+    IsProbabilityMeasure (hopfieldReplicaLawWithField (N := N) (M := M) (β := β) (h := h) k0 μΞ n)
+      := by
   dsimp [hopfieldReplicaLawWithField]
   infer_instance
 
@@ -200,7 +209,8 @@ def Hopfield_SK_GG1Kernel (n : ℕ) : Prop :=
 
 /-- Measure-level GG₁ statement for the Hopfield replica law under the pattern prior `μΞ`. -/
 def Hopfield_SK_GG1 (n : ℕ) : Prop :=
-  SK_GG1 (N := N) (n := n) (μ := hopfieldReplicaLawWithField (N := N) (M := M) (β := β) (h := h) k0 μΞ n)
+  SK_GG1 (N := N) (n := n) (μ := hopfieldReplicaLawWithField (N := N) (M := M) (β := β) (h := h) k0
+    μΞ n)
 
 @[simp] lemma Hopfield_SK_GG1Kernel_iff (n : ℕ) :
     Hopfield_SK_GG1Kernel (N := N) (M := M) (β := β) (h := h) k0 μΞ n
@@ -217,7 +227,8 @@ noncomputable def hopfieldReplicaKernel (r : ℕ) :
     (hopfieldEnergyWithFieldKernel (N := N) (M := M) (β := β) (h := h) k0)
 
 instance (r : ℕ) :
-    ProbabilityTheory.IsMarkovKernel (hopfieldReplicaKernel (N := N) (M := M) (β := β) (h := h) k0 r) := by
+    ProbabilityTheory.IsMarkovKernel (hopfieldReplicaKernel (N := N) (M := M) (β := β) (h := h) k0
+      r) := by
   dsimp [hopfieldReplicaKernel]
   infer_instance
 
@@ -227,7 +238,8 @@ noncomputable def hopfieldPosteriorKernel (r : ℕ) :
   (hopfieldReplicaKernel (N := N) (M := M) (β := β) (h := h) k0 r)†μΞ
 
 instance (r : ℕ) :
-    ProbabilityTheory.IsMarkovKernel (hopfieldPosteriorKernel (N := N) (M := M) (β := β) (h := h) k0 μΞ r) := by
+    ProbabilityTheory.IsMarkovKernel (hopfieldPosteriorKernel (N := N) (M := M) (β := β) (h := h) k0
+      μΞ r) := by
   dsimp [hopfieldPosteriorKernel]
   infer_instance
 
@@ -236,7 +248,8 @@ noncomputable def hopfieldGibbsKernel :
     ProbabilityTheory.Kernel (Patterns N M) (Config N) :=
   (gibbsKernel (N := N)) ∘ₖ (hopfieldEnergyWithFieldKernel (N := N) (M := M) (β := β) (h := h) k0)
 
-instance : ProbabilityTheory.IsMarkovKernel (hopfieldGibbsKernel (N := N) (M := M) (β := β) (h := h) k0) := by
+instance : ProbabilityTheory.IsMarkovKernel (hopfieldGibbsKernel (N := N) (M := M) (β := β) (h := h)
+    k0) := by
   dsimp [hopfieldGibbsKernel]
   infer_instance
 
@@ -247,7 +260,8 @@ noncomputable def hopfieldPosteriorPredictive (r : ℕ) :
     (hopfieldPosteriorKernel (N := N) (M := M) (β := β) (h := h) k0 μΞ r)
 
 instance (r : ℕ) :
-    ProbabilityTheory.IsMarkovKernel (hopfieldPosteriorPredictive (N := N) (M := M) (β := β) (h := h) k0 μΞ r) := by
+    ProbabilityTheory.IsMarkovKernel (hopfieldPosteriorPredictive (N := N) (M := M) (β := β) (h :=
+      h) k0 μΞ r) := by
   dsimp [hopfieldPosteriorPredictive]
   infer_instance
 
@@ -259,7 +273,7 @@ open scoped ProbabilityTheory
 noncomputable def hopfieldOverlapVecOfPair (p : (Patterns N M) × (Config N)) : Fin M → ℝ :=
   hopfieldOverlapVec (N := N) (M := M) p.1 p.2
 
-@[measurability] lemma measurable_hopfieldOverlapVecOfPair :
+@[fun_prop] lemma measurable_hopfieldOverlapVecOfPair :
     Measurable (hopfieldOverlapVecOfPair (N := N) (M := M)) := by
   simpa [hopfieldOverlapVecOfPair] using
     (measurable_of_finite (hopfieldOverlapVecOfPair (N := N) (M := M)))
@@ -271,16 +285,20 @@ noncomputable def hopfieldPairGibbsKernel :
     hopfieldGibbsKernel (N := N) (M := M) (β := β) (h := h) k0
   (ProbabilityTheory.Kernel.id ∥ₖ κσ) ∘ₖ (ProbabilityTheory.Kernel.copy (Patterns N M))
 
-instance : ProbabilityTheory.IsMarkovKernel (hopfieldPairGibbsKernel (N := N) (M := M) (β := β) (h := h) k0) := by
+instance : ProbabilityTheory.IsMarkovKernel (hopfieldPairGibbsKernel (N := N) (M := M) (β := β) (h
+    := h) k0) := by
   dsimp [hopfieldPairGibbsKernel]
   infer_instance
 
+/-- The kernel sending a pattern matrix to the law of the overlap vector of a single Gibbs
+replica. -/
 noncomputable def hopfieldOverlapKernelOfPatterns :
     ProbabilityTheory.Kernel (Patterns N M) (Fin M → ℝ) :=
   (hopfieldPairGibbsKernel (N := N) (M := M) (β := β) (h := h) k0).map
     (hopfieldOverlapVecOfPair (N := N) (M := M))
 
-instance : ProbabilityTheory.IsMarkovKernel (hopfieldOverlapKernelOfPatterns (N := N) (M := M) (β := β) (h := h) k0) := by
+instance : ProbabilityTheory.IsMarkovKernel (hopfieldOverlapKernelOfPatterns (N := N) (M := M) (β :=
+    β) (h := h) k0) := by
   have hm : Measurable (hopfieldOverlapVecOfPair (N := N) (M := M)) :=
     measurable_hopfieldOverlapVecOfPair (N := N) (M := M)
   simpa [hopfieldOverlapKernelOfPatterns] using
@@ -292,7 +310,8 @@ instance : ProbabilityTheory.IsMarkovKernel (hopfieldOverlapKernelOfPatterns (N 
 noncomputable def hopfieldOverlapLawOfPatterns : Measure (Fin M → ℝ) :=
   (hopfieldOverlapKernelOfPatterns (N := N) (M := M) (β := β) (h := h) k0) ∘ₘ μΞ
 
-instance : IsProbabilityMeasure (hopfieldOverlapLawOfPatterns (N := N) (M := M) (β := β) (h := h) k0 μΞ) := by
+instance : IsProbabilityMeasure (hopfieldOverlapLawOfPatterns (N := N) (M := M) (β := β) (h := h) k0
+    μΞ) := by
   dsimp [hopfieldOverlapLawOfPatterns]
   infer_instance
 
@@ -301,7 +320,7 @@ noncomputable def hopfieldOverlapArrayOfPair (r : ℕ) (p : (Patterns N M) × (R
     Fin r → (Fin M → ℝ) :=
   hopfieldOverlapArray (N := N) (M := M) (n := r) p.1 p.2
 
-@[measurability] lemma measurable_hopfieldOverlapArrayOfPair (r : ℕ) :
+@[fun_prop] lemma measurable_hopfieldOverlapArrayOfPair (r : ℕ) :
     Measurable (hopfieldOverlapArrayOfPair (N := N) (M := M) r) := by
   simpa [hopfieldOverlapArrayOfPair] using
     (measurable_of_finite (hopfieldOverlapArrayOfPair (N := N) (M := M) r))
@@ -314,17 +333,21 @@ noncomputable def hopfieldPairReplicaKernel (r : ℕ) :
   (ProbabilityTheory.Kernel.id ∥ₖ κr) ∘ₖ (ProbabilityTheory.Kernel.copy (Patterns N M))
 
 instance (r : ℕ) :
-    ProbabilityTheory.IsMarkovKernel (hopfieldPairReplicaKernel (N := N) (M := M) (β := β) (h := h) k0 r) := by
+    ProbabilityTheory.IsMarkovKernel (hopfieldPairReplicaKernel (N := N) (M := M) (β := β) (h := h)
+      k0 r) := by
   dsimp [hopfieldPairReplicaKernel]
   infer_instance
 
+/-- The kernel sending a pattern matrix to the joint law of the overlap vectors of `r` Gibbs
+replicas. -/
 noncomputable def hopfieldOverlapArrayKernelOfPatterns (r : ℕ) :
     ProbabilityTheory.Kernel (Patterns N M) (Fin r → (Fin M → ℝ)) :=
   (hopfieldPairReplicaKernel (N := N) (M := M) (β := β) (h := h) k0 r).map
     (hopfieldOverlapArrayOfPair (N := N) (M := M) r)
 
 instance (r : ℕ) :
-    ProbabilityTheory.IsMarkovKernel (hopfieldOverlapArrayKernelOfPatterns (N := N) (M := M) (β := β) (h := h) k0 r) := by
+    ProbabilityTheory.IsMarkovKernel (hopfieldOverlapArrayKernelOfPatterns (N := N) (M := M) (β :=
+      β) (h := h) k0 r) := by
   have hm : Measurable (hopfieldOverlapArrayOfPair (N := N) (M := M) r) :=
     measurable_hopfieldOverlapArrayOfPair (N := N) (M := M) r
   simpa [hopfieldOverlapArrayKernelOfPatterns] using
@@ -337,7 +360,8 @@ noncomputable def hopfieldOverlapArrayLawOfPatterns (r : ℕ) : Measure (Fin r �
   (hopfieldOverlapArrayKernelOfPatterns (N := N) (M := M) (β := β) (h := h) k0 r) ∘ₘ μΞ
 
 instance (r : ℕ) :
-    IsProbabilityMeasure (hopfieldOverlapArrayLawOfPatterns (N := N) (M := M) (β := β) (h := h) k0 μΞ r) := by
+    IsProbabilityMeasure (hopfieldOverlapArrayLawOfPatterns (N := N) (M := M) (β := β) (h := h) k0
+      μΞ r) := by
   dsimp [hopfieldOverlapArrayLawOfPatterns]
   infer_instance
 
@@ -353,7 +377,8 @@ noncomputable def hopfieldOverlapPosteriorPredictiveOfPatterns (r : ℕ) :
     (hopfieldPosteriorKernel (N := N) (M := M) (β := β) (h := h) k0 μΞ r)
 
 instance (r : ℕ) :
-    ProbabilityTheory.IsMarkovKernel (hopfieldOverlapPosteriorPredictiveOfPatterns (N := N) (M := M) (β := β) (h := h) k0 μΞ r) := by
+    ProbabilityTheory.IsMarkovKernel (hopfieldOverlapPosteriorPredictiveOfPatterns (N := N) (M := M)
+      (β := β) (h := h) k0 μΞ r) := by
   dsimp [hopfieldOverlapPosteriorPredictiveOfPatterns]
   infer_instance
 

@@ -51,6 +51,31 @@ lake exe cache get
 lake build
 ```
 
-## References
+## Acknowledgements
+
+Cameron–Martin in `Common/Mathlib/Probability/Distributions/Gaussian/` is adapted from Rémy
+Degenne’s mathlib4 PRs
+[#26291](https://github.com/leanprover-community/mathlib4/pull/26291) (open as of 2026-01),
+[#30582](https://github.com/leanprover-community/mathlib4/pull/30582), and
+[#27608](https://github.com/leanprover-community/mathlib4/pull/27608).
+Fernique is in Mathlib ([#24430](https://github.com/leanprover-community/mathlib4/pull/24430)).
+
+## How to cite
+
+Please cite this repository as:
+
+```bibtex
+@software{Cipollina_SpinGlass_2026,
+  author = {Cipollina, Matteo},
+  title  = {{SpinGlass}: a {Lean} 4 formalization of {Talagrand}'s
+            {Mean Field Models for Spin Glasses}},
+  year   = {2026},
+  url    = {https://github.com/or4nge19/SpinGlass},
+  note   = {Cameron--Martin layer adapted from R\'{e}my Degenne,
+            mathlib4 PR 26291}
+}
+```
+
+Talagrand’s books remain the mathematical source:
 
 M. Talagrand, *Mean Field Models for Spin Glasses*, Vol. I–II.

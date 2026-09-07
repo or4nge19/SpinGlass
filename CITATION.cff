@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it as below.
+type: software
+title: "SpinGlass: a Lean 4 formalization of Talagrand's Mean Field Models for Spin Glasses"
+authors:
+  - family-names: Cipollina
+    given-names: Matteo
+url: https://github.com/or4nge19/SpinGlass
+repository-code: https://github.com/or4nge19/SpinGlass
+license: Apache-2.0
+date-released: "2026-09-07"

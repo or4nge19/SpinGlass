@@ -398,7 +398,8 @@ lemma norm_fderiv_prod_gibbs_pmf_le (n : ℕ) (H : EnergySpace α) (σs : Replic
       ≤ (2 * (n : ℝ)) * ‖v‖ := by
     calc
       ‖fderiv ℝ (fun H' : EnergySpace α => ∏ l : Fin n, gibbs_pmf (α := α) H' (σs l)) H v‖
-          = |fderiv ℝ (fun H' : EnergySpace α => ∏ l : Fin n, gibbs_pmf (α := α) H' (σs l)) H v| := by
+          = |fderiv ℝ (fun H' : EnergySpace α => ∏ l : Fin n, gibbs_pmf (α := α) H' (σs l)) H v| :=
+            by
               simp [Real.norm_eq_abs]
       _ = |(∏ l : Fin n, gibbs_pmf (α := α) H (σs l)) *
             ∑ l : Fin n, ((∑ τ : α, gibbs_pmf (α := α) H τ * v τ) - v (σs l))| := by

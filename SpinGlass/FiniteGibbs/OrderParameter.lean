@@ -50,7 +50,8 @@ lemma orderKernel_isMarkovKernel (u : α → β) (hu : Measurable u) :
 noncomputable def orderArray (u : α → β) (n : ℕ) (σs : ReplicaSpace (α := α) n) : Fin n → β :=
   fun ℓ => u (σs ℓ)
 
-omit [Fintype α] [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α] [MeasurableSpace β] in
+omit [Fintype α] [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α] [MeasurableSpace β]
+  in
 @[simp]
 lemma orderArray_apply (u : α → β) (n : ℕ) (σs : ReplicaSpace (α := α) n) (ℓ : Fin n) :
     orderArray (α := α) (β := β) u n σs ℓ = u (σs ℓ) := rfl
@@ -100,7 +101,8 @@ lemma orderKernel_comp (u : α → β) (hu : Measurable u) (v : β → γ) (hv :
   simpa [orderKernel] using
     (ProbabilityTheory.Kernel.map_comp_right (κ := gibbsKernel (α := α)) (hf := hu) (hg := hv))
 
-lemma orderArrayKernel_comp (u : α → β) (n : ℕ) (hu : Measurable u) (v : β → γ) (hv : Measurable v) :
+lemma orderArrayKernel_comp (u : α → β) (n : ℕ) (hu : Measurable u) (v : β → γ) (hv : Measurable v)
+    :
     orderArrayKernel (α := α) (β := γ) (v ∘ u) n =
       (orderArrayKernel (α := α) (β := β) u n).map (fun xs : Fin n → β => fun ℓ => v (xs ℓ)) := by
   have hmeas_u : Measurable (orderArray (α := α) (β := β) u n) := by

@@ -1,14 +1,15 @@
 /-
-Copyright (c) 2026 Matteo Cipollina. All rights reserved.
+Copyright (c) 2025 Rémy Degenne, 2026 Matteo Cipollina. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Matteo Cipollina
+Authors: Rémy Degenne, Matteo Cipollina
 -/
 import Mathlib.Probability.Distributions.Gaussian.Real
 
 /-!
 # Gaussian real: auxiliary lemmas
 
-Vendored API additions for `gaussianReal` from mathlib4 PR #26291 (Cameron–Martin theorem).
+`gaussianReal_sub_const'` from Rémy Degenne, mathlib4
+[#26291](https://github.com/leanprover-community/mathlib4/pull/26291).
 -/
 
 open MeasureTheory ProbabilityTheory
