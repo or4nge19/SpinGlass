@@ -29,6 +29,8 @@ unconditionally.
 ## Main statements
 
 - `MeasureTheory.GibbsMeasure.continuous_permute`: coordinate permutation is continuous.
+- `MeasureTheory.GibbsMeasure.isExchangeable_bind`: a **mixture** of exchangeable laws is
+  exchangeable.
 - `MeasureTheory.GibbsMeasure.isExchangeable_of_tendsto`: **exchangeability passes to weak
   limits**.
 - `MeasureTheory.GibbsMeasure.existsUnique_mixing_of_tendsto`: de Finetti applied to a limit law.
@@ -50,6 +52,23 @@ theorem continuous_permute (σ : Equiv.Perm ℕ) : Continuous (permute (E := E) 
   continuous_pi fun i => continuous_apply (σ i)
 
 end Continuity
+
+section Mixture
+
+variable {E : Type*} [MeasurableSpace E]
+
+/-- **A mixture of exchangeable laws is exchangeable.** Pushing the mixture forward is the mixture
+of the pushforwards (`Measure.map_bind`), and each of those is unchanged. This is what makes the
+*disorder-averaged* replica law of a random Hamiltonian exchangeable, so that de Finetti's mixing
+measure is the law of the random asymptotic Gibbs measure. -/
+theorem isExchangeable_bind {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω}
+    {κ : Ω → Measure (ℕ → E)} (hκ : Measurable κ) (hex : ∀ ω, IsExchangeable (κ ω)) :
+    IsExchangeable (P.bind κ) := by
+  intro σ hσ
+  have h : (fun ω => (κ ω).map (permute σ)) = κ := funext fun ω => hex ω σ hσ
+  rw [Measure.map_bind hκ (measurable_permute σ), h]
+
+end Mixture
 
 section Limits
 

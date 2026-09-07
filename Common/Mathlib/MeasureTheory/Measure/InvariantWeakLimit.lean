@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Matteo Cipollina
 -/
 import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
+import Mathlib.MeasureTheory.Measure.Portmanteau
 
 /-!
 # Invariance under a continuous map is a closed condition
@@ -27,9 +28,13 @@ asymptotic replica law of a spin glass.
   measures is invariant.
 - `MeasureTheory.Measure.map_eq_of_tendsto_probabilityMeasure`: the same, stated for the underlying
   measures, which is the form a `Measure`-valued invariance predicate consumes.
+- `MeasureTheory.ProbabilityMeasure.measure_eq_one_of_tendsto_of_isClosed`: a **closed** almost-sure
+  property survives a weak limit. Together with the above this is what lets a limit law inherit both
+  the symmetries and the pointwise constraints of the approximating laws.
 -/
 
 open Filter Topology
+open scoped ENNReal
 
 namespace MeasureTheory
 
@@ -52,6 +57,23 @@ theorem map_eq_of_tendsto {ι : Type*} {L : Filter ι} [L.NeBot]
     (hinv : ∀ᶠ i in L, (μs i).map hg.measurable.aemeasurable = μs i) :
     μ.map hg.measurable.aemeasurable = μ :=
   (isClosed_setOf_map_eq hg).mem_of_tendsto hlim hinv
+
+/-- **A closed almost-sure property survives a weak limit.** If every `μs i` gives full mass to a
+closed set, so does the limit — the portmanteau inequality for closed sets, read at mass one. -/
+theorem measure_eq_one_of_tendsto_of_isClosed {ι : Type*} {L : Filter ι} [L.NeBot]
+    {μs : ι → ProbabilityMeasure Ω} {μ : ProbabilityMeasure Ω}
+    (hlim : Tendsto μs L (𝓝 μ)) {C : Set Ω} (hC : IsClosed C)
+    (hone : ∀ᶠ i in L, (μs i : Measure Ω) C = 1) :
+    (μ : Measure Ω) C = 1 := by
+  have hle : (L.limsup fun i => (μs i : Measure Ω) C) ≤ (μ : Measure Ω) C :=
+    ProbabilityMeasure.limsup_measure_closed_le_of_tendsto hlim hC
+  have hcong : (L.limsup fun i => (μs i : Measure Ω) C) = 1 := by
+    have h : (L.limsup fun i => (μs i : Measure Ω) C) = L.limsup fun _ : ι => (1 : ℝ≥0∞) :=
+      Filter.limsup_congr hone
+    rw [h]
+    exact Filter.limsup_const 1
+  refine le_antisymm ?_ (hcong ▸ hle)
+  exact prob_le_one
 
 end ProbabilityMeasure
 

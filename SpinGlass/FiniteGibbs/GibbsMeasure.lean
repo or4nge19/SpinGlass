@@ -1,5 +1,6 @@
 import SpinGlass.FiniteGibbs
 import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
+import Mathlib.Analysis.Normed.Lp.MeasurableSpace
 import Mathlib.MeasureTheory.Integral.Lebesgue.Countable
 
 /-!
@@ -40,6 +41,12 @@ variable [MeasurableSpace α]
 noncomputable def gibbsMeasure (H : EnergySpace α) : Measure α :=
   (Finset.univ : Finset α).sum fun σ =>
     ((gibbsWeightNNReal (α := α) H σ : ℝ≥0∞) • Measure.dirac σ)
+
+omit [MeasurableSpace α] in
+/-- The Gibbs weights depend continuously on the Hamiltonian. -/
+lemma continuous_gibbs_pmf (σ : α) :
+    Continuous fun H : EnergySpace α => gibbs_pmf (α := α) H σ :=
+  continuous_iff_continuousAt.2 fun H => (differentiableAt_gibbs_pmf (α := α) H σ).continuousAt
 
 /-- The atoms of the Gibbs measure are the Gibbs weights. -/
 @[simp] lemma gibbsMeasure_apply_singleton (H : EnergySpace α) (σ : α)
@@ -115,6 +122,22 @@ lemma gibbsMeasure_univ (H : EnergySpace α) : gibbsMeasure (α := α) H Set.uni
       (∑ σ : α, (gibbsWeightNNReal (α := α) H σ : ℝ≥0∞)) = (1 : ℝ≥0∞) := by
     simpa using congrArg (fun x : ℝ≥0 => (x : ℝ≥0∞)) hsumNNReal
   simpa [h_univ] using hsumENNReal
+
+/-- **The Gibbs measure depends measurably on the Hamiltonian.** The atoms are the Gibbs weights,
+which are continuous in `H`; this is what lets a random Hamiltonian be integrated out. -/
+lemma measurable_gibbsMeasure [MeasurableSingletonClass α] :
+    Measurable (fun H : EnergySpace α => gibbsMeasure (α := α) H) := by
+  classical
+  refine Measure.measurable_of_measurable_coe _ fun s hs => ?_
+  have hval : ∀ H : EnergySpace α, gibbsMeasure (α := α) H s
+      = ∑ σ : α, ENNReal.ofReal (gibbs_pmf (α := α) H σ) *
+          Set.indicator s (fun _ => (1 : ℝ≥0∞)) σ := by
+    intro H
+    simp [gibbsMeasure, Measure.dirac_apply' _ hs, Set.indicator_apply]
+  simp_rw [hval]
+  refine Finset.measurable_sum _ fun σ _ => ?_
+  exact (ENNReal.measurable_ofReal.comp (continuous_gibbs_pmf (α := α) σ).measurable).mul
+    measurable_const
 
 instance (H : EnergySpace α) : IsProbabilityMeasure (gibbsMeasure (α := α) H) :=
   ⟨gibbsMeasure_univ (α := α) (H := H)⟩

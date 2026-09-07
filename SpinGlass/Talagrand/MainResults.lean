@@ -326,6 +326,87 @@ Panchenko's *asymptotic Gibbs measure*.
   arbitrary sequence of Hamiltonians and an arbitrary family of embeddings, some subsequence of the
   replica-array laws converges, and the limit is `∫ λ^{⊗ℕ} m(dλ)` for a *unique* probability
   measure `m` on the probability measures of the spin space. Unconditional.
+- `MeasureTheory.GibbsMeasure.isExchangeable_bind` — a **mixture** of exchangeable laws is
+  exchangeable (`Measure.map_bind`: pushing a mixture forward is the mixture of the pushforwards).
+- `FiniteGibbs.continuous_gibbs_pmf`, `FiniteGibbs.measurable_gibbsMeasure` — **the Gibbs measure
+  depends measurably on the Hamiltonian**, which is what lets a random Hamiltonian be integrated
+  out.
+- `SpinGlass.annealedReplicaArrayLaw`, `SpinGlass.isExchangeable_annealedReplicaArrayLaw`,
+  `SpinGlass.exists_asymptoticGibbsMeasure_random` — the same for a **random** Hamiltonian: the
+  disorder-averaged replica array is a mixture of exchangeable laws, hence exchangeable, and de
+  Finetti's mixing measure of its limit is the **law of the random asymptotic Gibbs measure**. This
+  is Panchenko's object; the statement is unconditional in the sequence of random Hamiltonians.
+
+## Proved: the asymptotic overlap array (Vol. II, Ch. 12–15; the Dovbysh–Sudakov hypothesis)
+
+De Finetti is about exchangeable *sequences*; Vol. II is about exchangeable **arrays** — the
+overlap array `R_{l,l'}`, invariant under the *diagonal* action of a permutation of the replica
+index. Its law lives on `[-1,1]^{ℕ×ℕ}`, compact metrizable **independently of `N`**, which is why
+the thermodynamic limit is taken there and not on the configuration space.
+
+- `MeasureTheory.GibbsMeasure.permuteArray`, `MeasureTheory.GibbsMeasure.IsJointlyExchangeable` —
+  the diagonal action and joint (weak) exchangeability; `measurable_permuteArray`,
+  `continuous_permuteArray`.
+- `MeasureTheory.GibbsMeasure.pairArray`,
+  `MeasureTheory.GibbsMeasure.isJointlyExchangeable_map_of_isExchangeable` — **the array of
+  pairwise values of an exchangeable sequence is jointly exchangeable**, for an arbitrary
+  two-variable measurable function. This is how the overlap array acquires the hypothesis of
+  Aldous–Hoover and Dovbysh–Sudakov, and it is the bridge from de Finetti-style exchangeability to
+  array exchangeability. Absent from Mathlib and from the `GibbsMeasure` package.
+- `MeasureTheory.GibbsMeasure.isJointlyExchangeable_bind`,
+  `..._of_tendsto`, `exists_subseq_tendsto_jointlyExchangeable` — mixtures, weak limits, and
+  Prokhorov limit points, exactly as for sequences.
+- `MeasureTheory.ProbabilityMeasure.measure_eq_one_of_tendsto_of_isClosed` — **a closed
+  almost-sure property survives a weak limit** (portmanteau at mass one). With
+  `isClosed_setOf_map_eq` this is the pair of general facts that let a limit law inherit both the
+  symmetries and the pointwise constraints of the approximating laws.
+- `SpinGlass.abs_overlap_le_one`, `SpinGlass.overlapUnit` — the overlap valued in `[-1,1]`;
+  `SpinGlass.configReplicaArrayLaw`, `SpinGlass.overlapArrayLaw`, `SpinGlass.overlapArray` and
+  `SpinGlass.isJointlyExchangeable_overlapArrayLaw`.
+- `SpinGlass.gramArray`, `SpinGlass.isClosed_gramArray`,
+  `SpinGlass.pairArray_overlapUnit_mem_gramArray` — the **Gram condition** (symmetric, unit
+  diagonal, positive semidefinite) is closed, and every finite-`N` overlap array satisfies it: the
+  positive semidefiniteness is the identity
+  `∑_{l,l'} c_l c_{l'} R(σ^l,σ^{l'}) = (1/N) ∑_i (∑_l c_l σ^l_i)²`.
+- `SpinGlass.exists_asymptoticOverlapArray` and
+  `SpinGlass.exists_asymptoticOverlapArray_random` — **the asymptotic overlap array exists**, is
+  jointly exchangeable, and is almost surely a Gram array, for an arbitrary sequence of (random)
+  Hamiltonians on arbitrary positive system sizes. Unconditional. This is precisely the hypothesis
+  of the Dovbysh–Sudakov theorem.
+
+## Proved: the §15.3 ontology and its stability (Vol. II, Definitions 15.3.1–15.3.4)
+
+Talagrand Vol. II, §15.3 fixes the three properties expected of the limiting law `μ*` of the
+overlap array. `IsJointlyExchangeable` is his Definition 15.3.1 (*symmetric*, i.e. weakly
+exchangeable) and `gramArray` is his `𝓒⁺`; that `μ*(𝓒⁺) = 1`, which he asserts, is
+`exists_asymptoticOverlapArray`. The remaining two definitions and everything structural about them
+are here. Talagrand's Definition 15.3.4 is stated with *continuous* test functions, which is what is
+formalised; Panchenko writes the same identities with bounded measurable ones.
+
+- `SpinGlass.IsUltrametric` (Definition 15.3.2, form (15.38); Panchenko (1.3)) and
+  `SpinGlass.isUltrametric_iff_forall` — **the equivalence with form (15.39)**, which Talagrand
+  states without proof: the complement of the ultrametric set is the countable union over the
+  rationals of the sets of (15.39).
+- `SpinGlass.isClosed_ultrametricSet`, `SpinGlass.isUltrametric_of_tendsto` — ultrametricity is a
+  closed condition, hence passes to weak limits.
+- `SpinGlass.SatisfiesGhirlandaGuerra` (Definition 15.3.4, equation (15.40); Panchenko (1.1)),
+  with `SpinGlass.DependsOnFirst` for Talagrand's restriction on the test function.
+- `SpinGlass.satisfiesGhirlandaGuerra_of_tendsto` — **the Ghirlanda–Guerra identities pass to weak
+  limits**: every term of (15.40) is the integral of a fixed continuous function, hence a
+  continuous function of the measure, so the identity is a closed condition.
+- `SpinGlass.satisfiesGhirlandaGuerra_map` — **Exercise 15.3.5**: the identities survive an
+  entrywise continuous change of variable.
+- `SpinGlass.oneOverlapLaw`, `SpinGlass.map_entry_eq_oneOverlapLaw` — **all pairwise overlaps of a
+  weakly exchangeable array are equidistributed**, so "the limiting law of the overlap" of (15.41)
+  is well defined. The permutation carrying `(0,1)` to `(l,l')` is built from two transpositions.
+- `SpinGlass.tendsto_asymptoticArrayLaw` — the four properties (weak exchangeability, the Gram
+  condition, ultrametricity, Ghirlanda–Guerra) **all pass to weak limits simultaneously**, so each
+  may be verified along any approximating sequence.
+
+In this ontology, Talagrand's Research Problem 15.3.7 — do the Ghirlanda–Guerra identities on `𝓒⁺`
+imply ultrametricity? — reads `SatisfiesGhirlandaGuerra μ → μ gramArray = 1 → IsUltrametric μ`. It
+was answered affirmatively by Panchenko (*The Parisi ultrametricity conjecture*, Ann. of Math. 177
+(2013), Theorem 1) and is the next capstone.
 
 ## Proved: Gaussian concentration (Vol. I, §1.3)
 
