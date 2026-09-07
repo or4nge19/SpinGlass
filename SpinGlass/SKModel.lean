@@ -25,11 +25,18 @@ Main: `GaussianDisorder`, `disorderPairLaw`, `covarianceOperator_disorderPairLaw
 Talagrand Vol. I.
 -/
 
-variable {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
+/-! ### Gaussian disorder specifications
+
+The structure is stated over a bare `MeasurableSpace` and an arbitrary measure `P`: it is a
+property of `(P, U)`, and nothing about it refers to a canonical `volume`. This is what lets it be
+instantiated at the canonical Gaussian laws on `EnergySpace N` itself, whose `volume` is Lebesgue
+measure and hence not a probability measure. The `ℙ`-based probability layer resumes below. -/
+
+section Def
+
+variable {Ω : Type*} [MeasurableSpace Ω]
 
 variable (N : ℕ)
-
-/-! ### Gaussian disorder specifications -/
 
 /-- A **centered Gaussian Hamiltonian with prescribed covariance kernel**: a random Hamiltonian
 `U : Ω → EnergySpace N` whose law under `P` is Gaussian and centered, and whose covariance operator
@@ -55,17 +62,14 @@ namespace GaussianDisorder
 
 variable {N} {P : Measure Ω} {K : Config N → Config N → ℝ}
 
-omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 /-- The law of a Gaussian disorder is a Gaussian measure. -/
 lemma isGaussian (G : GaussianDisorder (Ω := Ω) (N := N) P K) :
     ProbabilityTheory.IsGaussian (P.map G.U) := G.hU.isGaussian_map
 
-omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 /-- A Gaussian disorder is integrable. -/
 lemma integrable (G : GaussianDisorder (Ω := Ω) (N := N) P K) : Integrable G.U P :=
   G.hU.integrable
 
-omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 /-- Centeredness read as a Bochner integral over the base space: `𝔼 U = 0`. -/
 lemma integral_eq_zero (G : GaussianDisorder (Ω := Ω) (N := N) P K) :
     (∫ ω, G.U ω ∂P) = 0 := by
@@ -74,7 +78,6 @@ lemma integral_eq_zero (G : GaussianDisorder (Ω := Ω) (N := N) P K) :
       G.measU.aemeasurable measurable_id.aestronglyMeasurable)
   simpa [hmap] using G.mean0
 
-omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 /-- The pair of two Gaussian disorders — on possibly *different* systems — is centered. -/
 lemma integral_prodMk_eq_zero {N₁ N₂ : ℕ}
     {K₁ : Config N₁ → Config N₁ → ℝ} {K₂ : Config N₂ → Config N₂ → ℝ}
@@ -93,6 +96,14 @@ lemma integral_prodMk_eq_zero {N₁ N₂ : ℕ}
     rw [hf]; exact G₂.integral_eq_zero
 
 end GaussianDisorder
+
+end Def
+
+/-! ### The probability layer -/
+
+variable {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
+
+variable (N : ℕ)
 
 /-- SK disorder: a centered Gaussian Hamiltonian with the SK covariance kernel. -/
 abbrev SKDisorder (β : ℝ) : Type _ :=
@@ -290,8 +301,9 @@ variable {N : ℕ} {K : Config N → Config N → ℝ}
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 /-- The covariance bilinear form of a centered Gaussian measure whose covariance operator has
-kernel `K` in the Dirac basis, expanded in coordinates. -/
-private lemma covarianceBilin_of_kernel (μ : Measure (EnergySpace N))
+kernel `K` in the Dirac basis, expanded in coordinates. Two such measures therefore have the same
+covariance form, which is what `ProbabilityTheory.IsGaussian.ext` consumes. -/
+lemma covarianceBilin_eq_of_cov_std_basis (μ : Measure (EnergySpace N))
     [ProbabilityTheory.IsGaussian μ] (hmean : (∫ x : EnergySpace N, x ∂μ) = 0)
     (hK : ∀ σ τ, inner ℝ (ProbabilityTheory.covarianceOperator μ (std_basis N σ))
       (std_basis N τ) = K σ τ) (x y : EnergySpace N) :
@@ -342,8 +354,8 @@ theorem GaussianDisorder.map_U_eq {Ω' : Type*} [MeasureSpace Ω']
   refine ProbabilityTheory.IsGaussian.ext ?_ ?_
   · simp [G.mean0, G'.mean0]
   · ext x y
-    rw [covarianceBilin_of_kernel (K := K) _ G.mean0 G.cov_eq x y,
-      covarianceBilin_of_kernel (K := K) _ G'.mean0 G'.cov_eq x y]
+    rw [covarianceBilin_eq_of_cov_std_basis (K := K) _ G.mean0 G.cov_eq x y,
+      covarianceBilin_eq_of_cov_std_basis (K := K) _ G'.mean0 G'.cov_eq x y]
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 /-- **Every disorder average depends only on the covariance kernel.** -/
