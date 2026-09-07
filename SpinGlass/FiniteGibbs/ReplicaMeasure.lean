@@ -48,6 +48,7 @@ noncomputable def replicaGibbsMeasure (n : ℕ) (H : EnergySpace α) : Measure (
 
 /-! ## Normalization and bracket-as-integral -/
 
+omit [MeasurableSpace α] [MeasurableSingletonClass α] in
 /-- Product Gibbs weights on `n` replicas sum to `1`. -/
 lemma sum_prod_gibbs_pmf_eq_one (n : ℕ) (H : EnergySpace α) :
     (∑ σs : ReplicaSpace (α := α) n, ∏ l, gibbs_pmf (α := α) H (σs l)) = 1 := by
@@ -83,6 +84,7 @@ lemma sum_prod_gibbs_pmf_eq_one (n : ℕ) (H : EnergySpace α) :
         _ = ∑ σ₀ : α, p σ₀ := by simp
         _ = 1 := hs1
 
+omit [MeasurableSingletonClass α] in
 lemma replicaGibbsMeasure_univ (n : ℕ) (H : EnergySpace α) :
     replicaGibbsMeasure (α := α) (n := n) H Set.univ = 1 := by
   classical

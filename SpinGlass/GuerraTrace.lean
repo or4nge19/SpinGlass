@@ -147,6 +147,7 @@ private lemma measurable_gibbs_pmf_disorder (t : ℝ) (σ : Config N) :
   exact (contDiff_gibbs_pmf_disorder (N := N) (h := h) (t := t) σ).continuous.measurable
 
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma aestronglyMeasurable_hessian_std_basis_disorder (t : ℝ) (σ τ : Config N) :
     AEStronglyMeasurable (fun x : DisorderSpace (N := N) =>
       hessian_free_energy N (H_t_disorder (N := N) (h := h) t x) (std_basis N σ) (std_basis N τ))
@@ -254,6 +255,7 @@ private lemma hessian_free_energy_std_basis_symm (H : EnergySpace N) (σ τ : Co
     -- both sides reduce to the same explicit formula (the diagonal term vanishes)
     simp [hessian_free_energy_std_basis_eq (N := N) (H := H), hστ, eq_comm, mul_comm]
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma left_pointwise_trace
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)
     (t : ℝ) (hsqt : Real.sqrt t ≠ 0) (x : DisorderSpace (N := N)) (τ : Config N) :
@@ -407,6 +409,7 @@ private lemma left_pointwise_trace
         congrArg (fun y =>
             (1 / 2 : ℝ) * (sk_cov_kernel N β τ σ * y)) hconv
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma right_pointwise_trace
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)
     (t : ℝ) (hsqt1 : Real.sqrt (1 - t) ≠ 0) (x : DisorderSpace (N := N)) (τ : Config N) :

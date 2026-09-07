@@ -52,6 +52,7 @@ noncomputable def gaussMixCLM (t : ℝ) : (H × H) →L[ℝ] H :=
   (Real.sqrt t) • ContinuousLinearMap.fst ℝ H H
     + (Real.sqrt (1 - t)) • ContinuousLinearMap.snd ℝ H H
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 @[simp] lemma gaussMixCLM_apply (t : ℝ) (p : H × H) :
     gaussMixCLM (H := H) t p = gaussMix (H := H) t p := by
   rfl
@@ -61,6 +62,7 @@ noncomputable def gaussMixOrthoCLM (t : ℝ) : (H × H) →L[ℝ] H :=
   (Real.sqrt (1 - t)) • ContinuousLinearMap.fst ℝ H H
     - (Real.sqrt t) • ContinuousLinearMap.snd ℝ H H
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 @[simp] lemma gaussMixOrthoCLM_apply (t : ℝ) (p : H × H) :
     gaussMixOrthoCLM (H := H) t p = gaussMixOrtho (H := H) t p := by
   rfl
@@ -69,19 +71,24 @@ noncomputable def gaussMixOrthoCLM (t : ℝ) : (H × H) →L[ℝ] H :=
 noncomputable def gaussMixMap (t : ℝ) : (H × H) →L[ℝ] (H × H) :=
   (gaussMixCLM (H := H) t).prod (gaussMixOrthoCLM (H := H) t)
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 @[simp] lemma gaussMixMap_apply (t : ℝ) (p : H × H) :
     gaussMixMap (H := H) t p = (gaussMix (H := H) t p, gaussMixOrtho (H := H) t p) := by
   rfl
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 @[simp] lemma gaussMix_zero (p : H × H) : gaussMix (H := H) 0 p = p.2 := by
   simp [gaussMix]
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 @[simp] lemma gaussMix_one (p : H × H) : gaussMix (H := H) 1 p = p.1 := by
   simp [gaussMix]
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 @[simp] lemma gaussMixOrtho_zero (p : H × H) : gaussMixOrtho (H := H) 0 p = p.1 := by
   simp [gaussMixOrtho]
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 @[simp] lemma gaussMixOrtho_one (p : H × H) : gaussMixOrtho (H := H) 1 p = -p.2 := by
   simp [gaussMixOrtho]
 
@@ -94,6 +101,7 @@ private lemma sq_sqrt_one_sub_of_mem_Icc {t : ℝ} (ht : t ∈ Set.Icc (0 : ℝ)
   have : 0 ≤ (1 - t) := sub_nonneg.2 ht.2
   simpa [pow_two] using (Real.sq_sqrt this)
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 lemma gaussMix_gaussMixOrtho_involutive {t : ℝ} (ht : t ∈ Set.Icc (0 : ℝ) 1) (p : H × H) :
     (gaussMix (H := H) t (gaussMix (H := H) t p, gaussMixOrtho (H := H) t p),
       gaussMixOrtho (H := H) t (gaussMix (H := H) t p, gaussMixOrtho (H := H) t p))
@@ -129,6 +137,7 @@ noncomputable def gaussRotCLM (θ : ℝ) : (H × H) →L[ℝ] H :=
   (Real.cos θ) • ContinuousLinearMap.fst ℝ H H
     + (Real.sin θ) • ContinuousLinearMap.snd ℝ H H
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 @[simp] lemma gaussRotCLM_apply (θ : ℝ) (p : H × H) :
     gaussRotCLM (H := H) θ p = gaussRot (H := H) θ p := by
   rfl
@@ -138,6 +147,7 @@ noncomputable def gaussRotOrthoCLM (θ : ℝ) : (H × H) →L[ℝ] H :=
   (-Real.sin θ) • ContinuousLinearMap.fst ℝ H H
     + (Real.cos θ) • ContinuousLinearMap.snd ℝ H H
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 @[simp] lemma gaussRotOrthoCLM_apply (θ : ℝ) (p : H × H) :
     gaussRotOrthoCLM (H := H) θ p = gaussRotOrtho (H := H) θ p := by
   rfl
@@ -146,10 +156,12 @@ noncomputable def gaussRotOrthoCLM (θ : ℝ) : (H × H) →L[ℝ] H :=
 noncomputable def gaussRotMap (θ : ℝ) : (H × H) →L[ℝ] (H × H) :=
   (gaussRotCLM (H := H) θ).prod (gaussRotOrthoCLM (H := H) θ)
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 @[simp] lemma gaussRotMap_apply (θ : ℝ) (p : H × H) :
     gaussRotMap (H := H) θ p = (gaussRot (H := H) θ p, gaussRotOrtho (H := H) θ p) := by
   rfl
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 private lemma gaussRot_gaussRotMap_neg (θ : ℝ) (p : H × H) :
     gaussRot (H := H) θ (gaussRotMap (H := H) (-θ) p) = p.1 := by
   rcases p with ⟨x, y⟩
@@ -162,6 +174,7 @@ private lemma gaussRot_gaussRotMap_neg (θ : ℝ) (p : H × H) :
   have hcross : -(Real.cos θ * Real.sin θ) + Real.sin θ * Real.cos θ = (0 : ℝ) := by ring
   simp [← add_smul, hcos]
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 private lemma gaussRotOrtho_gaussRotMap_neg (θ : ℝ) (p : H × H) :
     gaussRotOrtho (H := H) θ (gaussRotMap (H := H) (-θ) p) = p.2 := by
   rcases p with ⟨x, y⟩
@@ -393,11 +406,13 @@ open scoped Interval
 
 variable (hmean0 : (∫ x : H, x ∂μ) = 0)
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 private lemma hasDerivAt_gaussRot (θ : ℝ) (p : H × H) :
     HasDerivAt (fun t : ℝ => gaussRot (H := H) t p) (gaussRotOrtho (H := H) θ p) θ := by
   simpa [gaussRot, gaussRotOrtho, add_comm, add_left_comm, add_assoc, sub_eq_add_neg, smul_add] using
     ((Real.hasDerivAt_cos θ).smul_const p.1).fun_add ((Real.hasDerivAt_sin θ).smul_const p.2)
 
+omit [CompleteSpace H] [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H] in
 private lemma hasDerivAt_comp_gaussRot {f : H → ℝ} (hf : ContDiff ℝ 1 f) (θ : ℝ) (p : H × H) :
     HasDerivAt (fun t : ℝ => f (gaussRot (H := H) t p))
       ((fderiv ℝ f (gaussRot (H := H) θ p)) (gaussRotOrtho (H := H) θ p)) θ := by

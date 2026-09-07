@@ -263,6 +263,7 @@ theorem hasDerivAt_guerraPhi (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
 
 /-! ### Derivative via `fderiv_free_energy_density_apply` -/
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma derivative_value_guerraPhi_eq (t : ℝ) :
     (∫ ω,
         (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
@@ -328,6 +329,7 @@ section DisorderLaw
 private abbrev μ : Measure (DisorderSpace (N := N)) :=
   disorderPairLaw (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma guerraPhi_eq_integral_disorderPairLaw (t : ℝ) :
     guerraPhi (N := N) (β := β) (h := h) (q := q) sk sim t
       =

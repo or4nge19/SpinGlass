@@ -27,12 +27,16 @@ variable [MeasurableSpace β] [MeasurableSingletonClass β]
 noncomputable def condZ (H : EnergySpace (α × β)) (a : α) : ℝ :=
   ∑ b : β, Real.exp (-H (a, b))
 
+omit [Fintype α] [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α]
+  [MeasurableSpace β] [MeasurableSingletonClass β] in
 lemma condZ_pos (H : EnergySpace (α × β)) (a : α) : 0 < condZ (α := α) (β := β) H a := by
   classical
   refine Finset.sum_pos ?_ Finset.univ_nonempty
   intro b _hb
   exact Real.exp_pos _
 
+omit [Fintype α] [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α]
+  [MeasurableSpace β] [MeasurableSingletonClass β] in
 lemma condZ_ne_zero (H : EnergySpace (α × β)) (a : α) : condZ (α := α) (β := β) H a ≠ 0 :=
   (condZ_pos (α := α) (β := β) (H := H) a).ne'
 
@@ -40,6 +44,8 @@ lemma condZ_ne_zero (H : EnergySpace (α × β)) (a : α) : condZ (α := α) (β
 noncomputable def marginalEnergy (H : EnergySpace (α × β)) : EnergySpace α :=
   WithLp.toLp 2 (fun a : α => -Real.log (condZ (α := α) (β := β) H a))
 
+omit [Fintype α] [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α]
+  [MeasurableSpace β] [MeasurableSingletonClass β] in
 lemma exp_neg_marginalEnergy (H : EnergySpace (α × β)) (a : α) :
     Real.exp (-(marginalEnergy (α := α) (β := β) H) a)
       = condZ (α := α) (β := β) H a := by
@@ -49,16 +55,22 @@ lemma exp_neg_marginalEnergy (H : EnergySpace (α × β)) (a : α) :
 
 /-! ## Partition function and pmf after marginalization -/
 
+omit [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α] [MeasurableSpace β]
+  [MeasurableSingletonClass β] in
 lemma Z_marginalEnergy (H : EnergySpace (α × β)) :
     Z (α := α) (marginalEnergy (α := α) (β := β) H) = Z (α := α × β) H := by
   simp [Z, exp_neg_marginalEnergy, condZ, Fintype.sum_prod_type]
 
+omit [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α] [MeasurableSpace β]
+  [MeasurableSingletonClass β] in
 lemma gibbs_pmf_marginalEnergy (H : EnergySpace (α × β)) (a : α) :
     gibbs_pmf (α := α) (marginalEnergy (α := α) (β := β) H) a
       =
       (∑ b : β, Real.exp (-H (a, b))) / Z (α := α × β) H := by
   simp [gibbs_pmf, Z_marginalEnergy, exp_neg_marginalEnergy, condZ]
 
+omit [MeasurableSpace α] [MeasurableSingletonClass α] [MeasurableSpace β]
+  [MeasurableSingletonClass β] in
 lemma sum_gibbs_pmf_prod_eq_gibbs_pmf_marginalEnergy (H : EnergySpace (α × β)) (a : α) :
     (∑ b : β, gibbs_pmf (α := α × β) H (a, b))
       = gibbs_pmf (α := α) (marginalEnergy (α := α) (β := β) H) a := by

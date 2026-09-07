@@ -23,6 +23,7 @@ section
 private abbrev μ : Measure (DisorderSpace (N := N)) :=
   disorderPairLaw (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma integrable_coord_left (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) (τ : Config N) :
     Integrable (fun x : DisorderSpace (N := N) => ((WithLp.ofLp x).1 τ))
       (μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim) := by
@@ -42,6 +43,7 @@ private lemma integrable_coord_left (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] si
     simpa [real_inner_comm] using this
   simpa [μ', inner_apply_std_basis_left (N := N) (σ := τ)] using this
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma integrable_coord_right (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) (τ : Config N) :
     Integrable (fun x : DisorderSpace (N := N) => ((WithLp.ofLp x).2 τ))
       (μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim) := by
@@ -61,8 +63,8 @@ private lemma integrable_coord_right (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] s
     simpa [real_inner_comm] using this
   simpa [μ', inner_apply_std_basis_right (N := N) (σ := τ)] using this
 
-private lemma aestronglyMeasurable_gibbs_pmf_disorder
-    (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) (t : ℝ) (σ : Config N) :
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+private lemma aestronglyMeasurable_gibbs_pmf_disorder (t : ℝ) (σ : Config N) :
     AEStronglyMeasurable
         (fun x : DisorderSpace (N := N) => gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ)
         (μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim) := by
@@ -76,8 +78,8 @@ private lemma aestronglyMeasurable_gibbs_pmf_disorder
     (hcont_g.comp hcont_H).measurable
   exact hmeas.aestronglyMeasurable
 
-private lemma ae_bound_norm_gibbs_pmf_disorder
-    (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) (t : ℝ) (σ : Config N) :
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+private lemma ae_bound_norm_gibbs_pmf_disorder (t : ℝ) (σ : Config N) :
     (∀ᵐ x ∂(μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim),
       ‖gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ‖ ≤ (1 : ℝ)) := by
   refine Filter.Eventually.of_forall (fun x => ?_)
@@ -87,6 +89,7 @@ private lemma ae_bound_norm_gibbs_pmf_disorder
     gibbs_pmf_nonneg (N := N) (H := H_t_disorder (N := N) (h := h) t x) (σ := σ)
   simpa [Real.norm_eq_abs, abs_of_nonneg hn] using hle
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma integrable_left_diag
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) (t : ℝ) (τ : Config N) :
     Integrable (fun x : DisorderSpace (N := N) =>
@@ -101,12 +104,13 @@ private lemma integrable_left_diag
         (μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim) := by
     refine (integrable_coord_left (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
         hindep τ).bdd_mul
-        (aestronglyMeasurable_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-          hindep t τ)
-        (ae_bound_norm_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-          hindep t τ)
+        (aestronglyMeasurable_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) t τ)
+        (ae_bound_norm_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) t τ)
   simpa [mul_comm, mul_left_comm, mul_assoc] using hint
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma integrable_right_diag
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) (t : ℝ) (τ : Config N) :
     Integrable (fun x : DisorderSpace (N := N) =>
@@ -119,12 +123,13 @@ private lemma integrable_right_diag
         (μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim) := by
     refine (integrable_coord_right (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
         hindep τ).bdd_mul
-        (aestronglyMeasurable_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-          hindep t τ)
-        (ae_bound_norm_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-          hindep t τ)
+        (aestronglyMeasurable_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) t τ)
+        (ae_bound_norm_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) t τ)
   simpa [mul_comm, mul_left_comm, mul_assoc] using hint
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 /-- `∫ ⟪∇F_N(H_t), dH_t⟫ dℙ` equals a linear combination of IBP terms on `disorderPairLaw`. -/
 theorem derivative_value_guerraPhi_eq_ibp
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)

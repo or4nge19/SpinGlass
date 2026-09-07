@@ -21,6 +21,7 @@ variable {β : Type u} [MeasurableSpace β]
 def takeReplicas (k : ℕ) (σs : ℕ → β) : Fin k → β :=
   fun i => σs i
 
+omit [MeasurableSpace β] in
 @[simp] lemma takeReplicas_apply (k : ℕ) (σs : ℕ → β) (i : Fin k) :
     takeReplicas (β := β) k σs i = σs i := rfl
 

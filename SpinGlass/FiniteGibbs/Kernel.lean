@@ -22,9 +22,11 @@ variable {α : Type*} [Fintype α] [Nonempty α] [MeasurableSpace α] [Measurabl
 
 /-! ## Measurability helpers -/
 
+omit [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α] in
 lemma measurable_eval (σ : α) : Measurable fun H : EnergySpace α => H σ := by
   simpa [evalCLM] using (evalCLM σ).continuous.measurable
 
+omit [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α] in
 lemma measurable_Z : Measurable fun H : EnergySpace α => Z H := by
   have hmeas_term :
       ∀ σ ∈ (Finset.univ : Finset α),
@@ -34,6 +36,7 @@ lemma measurable_Z : Measurable fun H : EnergySpace α => Z H := by
     fun_prop
   simpa [Z] using (Finset.measurable_sum (s := (Finset.univ : Finset α)) hmeas_term)
 
+omit [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α] in
 lemma measurable_gibbs_pmf (σ : α) :
     Measurable fun H : EnergySpace α => gibbs_pmf H σ := by
   have hmeas_num : Measurable fun H : EnergySpace α => Real.exp (-H σ) := by
@@ -43,6 +46,7 @@ lemma measurable_gibbs_pmf (σ : α) :
     measurable_Z
   simpa [gibbs_pmf] using hmeas_num.fun_div hmeas_den
 
+omit [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α] in
 lemma measurable_gibbsWeightENNReal (σ : α) :
     Measurable fun H : EnergySpace α => ENNReal.ofReal (gibbs_pmf H σ) := by
   exact (measurable_gibbs_pmf (σ := σ)).ennreal_ofReal
@@ -71,6 +75,7 @@ noncomputable def gibbsKernel : Kernel (EnergySpace α) α where
       · simp [hσ']
     simpa [hsum] using (Finset.measurable_sum (s := (Finset.univ : Finset α)) hterm)
 
+omit [MeasurableSingletonClass α] in
 @[simp] lemma gibbsKernel_apply (H : EnergySpace α) :
     gibbsKernel (α := α) H = gibbsMeasure (α := α) H := rfl
 
@@ -139,6 +144,7 @@ noncomputable def replicaGibbsKernel (n : ℕ) :
     simpa [hsum] using
       (Finset.measurable_sum (s := (Finset.univ : Finset (ReplicaSpace (α := α) n))) hterm)
 
+omit [MeasurableSingletonClass α] in
 @[simp] lemma replicaGibbsKernel_apply (n : ℕ) (H : EnergySpace α) :
     replicaGibbsKernel (α := α) n H =
       replicaGibbsMeasure (α := α) (n := n) H := rfl

@@ -25,17 +25,20 @@ variable {β : Type*} [MeasurableSpace β]
 noncomputable def orderKernel (u : α → β) : Kernel (EnergySpace α) β :=
   (gibbsKernel (α := α)).map u
 
+omit [MeasurableSingletonClass α] in
 lemma orderKernel_apply (u : α → β) (hu : Measurable u) (H : EnergySpace α) :
     orderKernel (α := α) u H = (gibbsMeasure (α := α) H).map u := by
   simpa [orderKernel, gibbsKernel_apply] using
     (ProbabilityTheory.Kernel.map_apply (κ := gibbsKernel (α := α)) (f := u) hu H)
 
+omit [MeasurableSingletonClass α] in
 lemma orderKernel_apply' (u : α → β) (hu : Measurable u) (H : EnergySpace α)
     {s : Set β} (hs : MeasurableSet s) :
     orderKernel (α := α) u H s = gibbsMeasure (α := α) H (u ⁻¹' s) := by
   simpa [orderKernel, gibbsKernel_apply] using
     (ProbabilityTheory.Kernel.map_apply' (κ := gibbsKernel (α := α)) (f := u) hu H hs)
 
+omit [MeasurableSingletonClass α] in
 lemma orderKernel_isMarkovKernel (u : α → β) (hu : Measurable u) :
     IsMarkovKernel (orderKernel (α := α) u) := by
   simpa [orderKernel] using
@@ -91,6 +94,7 @@ lemma orderArrayKernel_isMarkovKernel (u : α → β) (n : ℕ) (hu : Measurable
 
 variable {γ : Type*} [MeasurableSpace γ]
 
+omit [MeasurableSingletonClass α] in
 lemma orderKernel_comp (u : α → β) (hu : Measurable u) (v : β → γ) (hv : Measurable v) :
     orderKernel (α := α) (β := γ) (v ∘ u) = (orderKernel (α := α) (β := β) u).map v := by
   simpa [orderKernel] using

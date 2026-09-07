@@ -103,6 +103,7 @@ def SimpleDisorder.toGaussianDisorder {β q : ℝ} (sim : SimpleDisorder (Ω := 
 
 /-! ### Gaussian `L²` self-averaging for the free energy density -/
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 theorem GaussianDisorder.variance_free_energy_density_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_div_N_sq
     {N : ℕ} (G : GaussianDisorder (Ω := Ω) (N := N)) :
     Var[(fun ω : Ω => free_energy_density (N := N) (G.U ω)); (ℙ : Measure Ω)]
@@ -140,6 +141,7 @@ theorem GaussianDisorder.variance_free_energy_density_le_pi_sq_div_eight_mul_opN
           (1 / (N : ℝ)) ^ 2 := by
           simp [μ]
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 theorem SKDisorder.variance_free_energy_density_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_div_N_sq
     {N : ℕ} {β h : ℝ} (sk : SKDisorder (Ω := Ω) (N := N) β h) :
     Var[(fun ω : Ω => free_energy_density (N := N) (sk.U ω)); (ℙ : Measure Ω)]
@@ -149,6 +151,7 @@ theorem SKDisorder.variance_free_energy_density_le_pi_sq_div_eight_mul_opNorm_co
     (GaussianDisorder.variance_free_energy_density_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_div_N_sq
       (Ω := Ω) (G := SKDisorder.toGaussianDisorder (Ω := Ω) (N := N) sk))
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 theorem SimpleDisorder.variance_free_energy_density_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_div_N_sq
     {N : ℕ} {β q : ℝ} (sim : SimpleDisorder (Ω := Ω) (N := N) β q) :
     Var[(fun ω : Ω => free_energy_density (N := N) (sim.V ω)); (ℙ : Measure Ω)]
