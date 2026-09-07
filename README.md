@@ -12,19 +12,6 @@ free energy, and replica measures are built from `Real.logSumExp` / softmax. `Sp
 is the shared calculus layer; SK, Hopfield, and mixed \(p\)-spin are instances. Gaussian IBP and
 comparison live in `Common.Mathlib.Probability.Distributions.Gaussian.*`.
 
-## Entry points
-
-| Import | Content |
-|---|---|
-| `SpinGlass` | full library |
-| `SpinGlass.FiniteGibbs` | finite Gibbs calculus |
-| `SpinGlass.GuerraPipeline` | Guerra interpolation |
-| `SpinGlass.Talagrand.MainResults` | theorem index |
-| `Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinAPI` | Cameron–Martin / IBP |
-| `Common.Mathlib.Probability.Distributions.Gaussian_IBP_HilbertAPI` | Hilbert covariance IBP |
-
-Plans: `Notes/Vol1##.md`, `Notes/Vol2##.md`.
-
 ## Build
 
 Lean / Mathlib `v4.34.0-rc2`. Lake dependencies: [Mathlib](https://github.com/leanprover-community/mathlib4) and

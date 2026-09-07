@@ -39,6 +39,8 @@ import SpinGlass.SKDisorderExists
 import SpinGlass.SKModel
 import SpinGlass.Split
 import SpinGlass.Talagrand.MainResults
+import SpinGlass.ReplicaSymmetricBound
+import SpinGlass.ThermodynamicLimit
 import Common.Mathlib.MeasureTheory.ParametricDominatedConvergence
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinAPI
 import Common.Mathlib.Probability.Distributions.Gaussian_IBP_HilbertAPI

@@ -171,7 +171,12 @@ turn out to *be* them (see below), so there is one theory rather than two.
 
 `GaussianDisorder P K` is **one** structure: a random Hamiltonian whose law under `P` is Gaussian
 and centered with covariance kernel `K` in the Dirac basis, with Gaussianity carried by Mathlib's
-`ProbabilityTheory.HasGaussianLaw`. The SK and reference disorders are abbreviations for it at two
+`ProbabilityTheory.HasGaussianLaw`. It is stated over a bare `MeasurableSpace` and an arbitrary
+measure `P` — it is a property of the pair `(P, U)` and nothing in it refers to a canonical
+`volume`. (It previously demanded `[MeasureSpace Ω]` and `[IsProbabilityMeasure (ℙ : Measure Ω)]`,
+which made it *uninhabitable at its most natural instance*: a disorder on `EnergySpace N` itself,
+whose `volume` is Lebesgue measure and hence not a probability measure. The `ℙ`-based probability
+layer resumes below the structure.) The SK and reference disorders are abbreviations for it at two
 kernels,
 
 `SKDisorder β := GaussianDisorder ℙ (sk_cov_kernel N β)`,
@@ -394,15 +399,63 @@ comparison is one theorem with two instances: the replica-symmetric bound and th
   coordinate expansion of `covarianceBilin`), and `GaussianDisorder.integral_comp_eq` — hence every
   disorder average is a function of the kernel alone.
 
-Still missing for `p = lim p_N`:
+## Proved: the thermodynamic limit (Vol. I, Theorem 1.3.9)
 
-* a canonical probability space carrying, for each `N₁, N₂`, the three disorders of
-  `mul_integral_free_energy_density_add_le` with the two required independences — a three-fold
-  product of `multivariateGaussian` measures; with `GaussianDisorder.integral_comp_eq` this turns
-  the superadditivity above into superadditivity of the *sequence* `N ↦ N p_N`, where
-  `p_N = ∫ F_N(H + H_field N h) d(multivariateGaussian 0 (skCovMatrix N β))`;
-* an upper bound on `p_N` uniform in `N` (Jensen: `𝔼 log Z ≤ log 𝔼 Z = N(log 2 + β²/4) + N|h|`),
-  which is the `BddAbove` hypothesis of `Superadditive.tendsto_lim`.
+**`SpinGlass.tendsto_skFreeEnergy : ∀ β h, Tendsto (fun N => skFreeEnergy N β h) atTop`**
+**`(nhds (skFreeEnergyLimit β h))`** — unconditional, no hypotheses. The chain:
+
+- `skFreeEnergy N β h` — the SK free energy as a *function of `N`, `β`, `h` alone*, computed on the
+  canonical Gaussian disorder law `multivariateGaussian 0 (skCovMatrix N β)`. That this is
+  legitimate is `GaussianDisorder.map_U_eq_multivariateGaussian` (the law of a Gaussian disorder is
+  the canonical multivariate Gaussian at its kernel matrix) and
+  `integral_free_energy_density_eq_skFreeEnergy` (every SK disorder on every probability space
+  computes it).
+- `SplitSample`, `splitSampleLaw`, `map_blockOne_splitSampleLaw` and its two siblings — the
+  canonical probability space for the splitting comparison: the product of the two block Gaussian
+  laws with the whole-system one. Its three coordinates are SK disorders, the two blocks are
+  independent (`indepFun_iff_map_prod_eq_prod_map_map`, their joint law being the first factor),
+  and their non-interacting composite is independent of the whole-system Hamiltonian
+  (`indepFun_prod`).
+- `mul_skFreeEnergy_add_le` — hence `N₁ p_{N₁} + N₂ p_{N₂} ≤ (N₁+N₂) p_{N₁+N₂}` for the sequence,
+  and `superadditive_mul_skFreeEnergy` — `N ↦ N p_N` is `Superadditive` (the degenerate cases
+  `N = 0` are trivial).
+- `simpleDisorderZero` — the trivial disorder: the zero Hamiltonian is a centered Gaussian disorder
+  at the replica-symmetric kernel with `q = 0`, which vanishes identically. It is independent of
+  everything (`indepFun_const_right`), so Guerra's bound applies to it with no construction.
+- `free_energy_density_le_of_neg_le` (`F_N(H) ≤ log 2 + b/N` when `-H σ ≤ b`; there are `2^N`
+  configurations), `abs_magnetization_le` (`|m(σ)| ≤ N`) and `free_energy_density_H_field_le` — the
+  free energy of the pure external field is at most `log 2 + |h|`.
+- `skFreeEnergy_le` — Guerra's bound at `q = 0` compares `p_N` with that deterministic free energy:
+  `p_N ≤ log 2 + |h| + β²/4`, **uniformly in `N`**. This is the `BddAbove` hypothesis of Fekete.
+- `tendsto_skFreeEnergy` and `skFreeEnergy_le_limit` — Fekete's lemma in superadditive form:
+  `p_N → p` and `p = sup_N p_N`.
+- `gaussFreeEnergy N S h` and `integral_free_energy_density_eq_gaussFreeEnergy` — the free energy
+  of *any* centered Gaussian disorder, as a function of `(N, S, h)` alone; `skFreeEnergy` and
+  `refFreeEnergy` are its two instances.
+- `exists_disorder_triple` — three independent Gaussian disorders at any three positive
+  semidefinite covariances, with the composite of the first two independent of the third. This is
+  the data a splitting comparison consumes, and both the SK superadditivity and the reference
+  additivity are obtained from it.
+
+## Proved: the replica-symmetric upper bound, explicitly (Vol. I, §1.3, Eq. (1.73))
+
+**`SpinGlass.skFreeEnergyLimit_le_rs : ∀ β q h, 0 ≤ q →`**
+**`p(β,h) ≤ 𝔼 log (2 cosh (β√q z + h)) + (β²/4)(1-q)²`** — unconditional, `z` a standard Gaussian.
+Guerra's bound made quantitative in the thermodynamic limit. The chain:
+
+- `simple_cov_kernel_eq_splitCovKernel` — the replica-symmetric kernel `N β² q R` is **additive
+  over sites**: it *is* its own split kernel, because `N R = N₁ R₁ + N₂ R₂`. Consequently
+- `mul_refFreeEnergy_add` — the reference free energy is *additive*, not merely superadditive, so
+- `refFreeEnergy_eq_one` — `p^ref_N = p^ref_1` for every `N ≥ 1`: the reference model has no
+  size dependence at all.
+- `oneSiteRefDisorder` — on one site the reference Hamiltonian is `V(σ) = β√q z σ` for a standard
+  Gaussian `z`, realised as a continuous linear image of `z` on `Ω = ℝ` with the law
+  `gaussianReal 0 1` (which the `MeasurableSpace`-only form of `GaussianDisorder` now permits
+  directly, with no wrapper type).
+- `Z_one_oneSiteRef` — hence `Z₁ = 2 cosh(β√q z + h)`, and `refFreeEnergy_one_eq` —
+  `p^ref_1 = 𝔼 log (2 cosh(β√q z + h))`.
+- `skFreeEnergy_le_refFreeEnergy`, `skFreeEnergyLimit_le`, `skFreeEnergy_le_rs`,
+  `skFreeEnergyLimit_le_rs` — Guerra's bound at every size and in the limit, in closed form.
 
 ## Proved: Hopfield (Vol. I Ch. 4 / Vol. II Ch. 10)
 
