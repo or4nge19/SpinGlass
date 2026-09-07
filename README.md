@@ -7,10 +7,20 @@ Poisson–Dirichlet cascades, Parisi formula.
 
 ## Architecture
 
-On a finite type `α`, `EnergySpace α := PiLp 2 (fun _ : α => ℝ)` carries Hamiltonians; Gibbs weights,
-free energy, and replica measures are built from `Real.logSumExp` / softmax. `SpinGlass.FiniteGibbs`
-is the shared calculus layer; SK, Hopfield, and mixed \(p\)-spin are instances. Gaussian IBP and
-comparison live in `Common.Mathlib.Probability.Distributions.Gaussian.*`.
+Two libraries: `Common` (Mathlib gaps — Gaussian IBP/comparison/concentration, superadditivity,
+invariant weak limits) and `SpinGlass` (Talagrand). Proved vs statement-layer index:
+`SpinGlass.Talagrand.MainResults`.
+
+Finite volume: `EnergySpace α := PiLp 2 (fun _ : α => ℝ)`; `SpinGlass.FiniteGibbs` builds Gibbs
+weights, free energy, and replica calculus from `Real.logSumExp`. SK and Hopfield are the models in
+code. Vol. I §1.3 for SK is proved (Guerra, concentration, `tendsto_skFreeEnergy`, RS bound in the
+limit).
+
+Limit layer: `GibbsMeasure` (exchangeability, de Finetti); `SpinGlass.Limit` embeds `Config N` into
+the spin space `ℕ → Bool`, bridges finite replica arrays to weak limits, and proves
+`exists_asymptoticGibbsMeasure`. Cascades, `Parisi.T`, and finite-volume GG defect/error are
+scaffolding toward Vol. II. Gardner, perceptron, Parisi equality, ultrametricity are not yet
+discharged.
 
 ## Build
 
