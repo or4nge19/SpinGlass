@@ -53,7 +53,7 @@ lemma lintegral_gibbsMeasure_ofReal
       ENNReal.ofReal (∑ σ : α, (gibbs_pmf (α := α) H σ) * f σ) := by
   have h :=
     lintegral_gibbsMeasure (α := α) (H := H) (f := fun σ => ENNReal.ofReal (f σ))
-  simp [gibbsWeightNNReal_coe_ennreal (α := α) (H := H)] at h
+  simp only [gibbsWeightNNReal_coe_ennreal (α := α) (H := H)] at h
   have hprod :
       (∑ σ : α, ENNReal.ofReal (gibbs_pmf (α := α) H σ) * ENNReal.ofReal (f σ)) =
         ∑ σ : α, ENNReal.ofReal (gibbs_pmf (α := α) H σ * f σ) := by

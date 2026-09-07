@@ -74,7 +74,8 @@ section SpinGlass
 
 open SpinGlass.KernelBridge
 
-/-- The i.i.d. kernel family whose next-step law is always `gibbsKernel N` based on the initial energy. -/
+/-- The i.i.d. kernel family whose next-step law is always `gibbsKernel N` based on the initial
+energy. -/
 noncomputable def gibbsκ (N : ℕ) (n : ℕ) :
     Kernel ((i : ↑(Finset.Iic n)) → Cascades.IidX (EnergySpace N) (Config N) i)
       (Cascades.IidX (EnergySpace N) (Config N) (n + 1)) :=

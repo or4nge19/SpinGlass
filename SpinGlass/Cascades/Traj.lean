@@ -44,15 +44,18 @@ lemma measurable_prefix0 : Measurable (prefix0 (α := α) (β := β)) := by
 noncomputable def iidTrajKernel (K : Kernel α β) [IsMarkovKernel K] :
     Kernel α (Π n, IidX (α := α) (β := β) n) :=
   (ProbabilityTheory.Kernel.traj (κ := iidκ (α := α) (β := β) K) 0)
-    ∘ₖ ProbabilityTheory.Kernel.deterministic (prefix0 (α := α) (β := β)) (measurable_prefix0 (α := α) (β := β))
+    ∘ₖ ProbabilityTheory.Kernel.deterministic (prefix0 (α := α) (β := β)) (measurable_prefix0 (α :=
+      α) (β := β))
 
-instance (K : Kernel α β) [IsMarkovKernel K] : IsMarkovKernel (iidTrajKernel (α := α) (β := β) K) := by
+instance (K : Kernel α β) [IsMarkovKernel K] : IsMarkovKernel (iidTrajKernel (α := α) (β := β) K) :=
+    by
   dsimp [iidTrajKernel]
   infer_instance
 
 /-- Time-`1` marginal of `iidTrajKernel K` is `K`. -/
 lemma iidTrajKernel_map_one (K : Kernel α β) [IsMarkovKernel K] :
-    (iidTrajKernel (α := α) (β := β) K).map (fun x : (Π n, IidX (α := α) (β := β) n) => x 1) = K := by
+    (iidTrajKernel (α := α) (β := β) K).map (fun x : (Π n, IidX (α := α) (β := β) n) => x 1) = K :=
+      by
   -- Ionescu–Tulcea: the time-`1` marginal of `traj` is the step kernel `iidκ K 0`.
   have hstep :
       (ProbabilityTheory.Kernel.traj (κ := iidκ (α := α) (β := β) K) 0).map

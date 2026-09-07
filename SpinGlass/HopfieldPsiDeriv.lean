@@ -85,11 +85,13 @@ noncomputable def hopfieldEtaDotCLM (Ξ : Patterns N M) (i : Fin N) : (Fin M →
   ∑ k : Fin M, (hopfieldEta (N := N) (M := M) Ξ i k) • (ContinuousLinearMap.proj (R := ℝ) k)
 
 lemma hopfieldEtaDotCLM_apply (Ξ : Patterns N M) (i : Fin N) (v : Fin M → ℝ) :
-    hopfieldEtaDotCLM (N := N) (M := M) Ξ i v = ∑ k : Fin M, hopfieldEta (N := N) (M := M) Ξ i k * v k := by
+    hopfieldEtaDotCLM (N := N) (M := M) Ξ i v = ∑ k : Fin M, hopfieldEta (N := N) (M := M) Ξ i k * v
+      k := by
   simp [hopfieldEtaDotCLM, sum_apply, smul_eq_mul]
 
 @[simp] lemma hopfieldEtaDotCLM_piSingle_one (Ξ : Patterns N M) (i : Fin N) (k : Fin M) :
-    hopfieldEtaDotCLM (N := N) (M := M) Ξ i (Pi.single k (1 : ℝ)) = hopfieldEta (N := N) (M := M) Ξ i k := by
+    hopfieldEtaDotCLM (N := N) (M := M) Ξ i (Pi.single k (1 : ℝ)) = hopfieldEta (N := N) (M := M) Ξ
+      i k := by
   -- evaluate the linear functional on a coordinate basis vector
   simp [hopfieldEtaDotCLM, sum_apply, Pi.single_apply, smul_eq_mul]
 
@@ -99,7 +101,8 @@ lemma hopfieldEtaDotCLM_apply (Ξ : Patterns N M) (i : Fin N) (v : Fin M → ℝ
   simp [hopfieldEtaDot, hopfieldEtaDotCLM, sum_apply, smul_eq_mul]
 
 @[fun_prop] lemma hasFDerivAt_hopfieldEtaDot (Ξ : Patterns N M) (i : Fin N) (z : Fin M → ℝ) :
-    HasFDerivAt (hopfieldEtaDot (N := N) (M := M) Ξ i) (hopfieldEtaDotCLM (N := N) (M := M) Ξ i) z := by
+    HasFDerivAt (hopfieldEtaDot (N := N) (M := M) Ξ i) (hopfieldEtaDotCLM (N := N) (M := M) Ξ i) z
+      := by
   simpa [hopfieldEtaDot_eq_hopfieldEtaDotCLM (N := N) (M := M) (Ξ := Ξ) (i := i)] using
     (hopfieldEtaDotCLM (N := N) (M := M) Ξ i).hasFDerivAt
 
@@ -172,7 +175,8 @@ lemma hopfieldPsi_eq_neg_mul_finVecNormSq_add_sum (β h : ℝ) (Ξ : Patterns N 
       =
       (fun z : Fin M → ℝ =>
         -(((N : ℝ) * β / 2) * finVecNormSq M z)
-          + ∑ i : Fin N, Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))) := by
+          + ∑ i : Fin N, Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))) :=
+            by
   funext z
   simp [hopfieldPsi, neg_mul]
 
@@ -235,14 +239,16 @@ lemma hopfieldPsi_eq_neg_mul_finVecNormSq_add_sum (β h : ℝ) (Ξ : Patterns N 
         simpa using hasFDerivAt_hopfieldPsi_logcosh (N := N) (M := M) (β := β) (h := h) Ξ i z))
 
 @[fun_prop] lemma hasFDerivAt_hopfieldPsi (β h : ℝ) (Ξ : Patterns N M) (z : Fin M → ℝ) :
-    HasFDerivAt (hopfieldPsi (N := N) (M := M) β h Ξ) (hopfieldPsiFDeriv (N := N) (M := M) β h Ξ z) z := by
+    HasFDerivAt (hopfieldPsi (N := N) (M := M) β h Ξ) (hopfieldPsiFDeriv (N := N) (M := M) β h Ξ z)
+      z := by
   simpa [hopfieldPsiFDeriv,
       hopfieldPsi_eq_neg_mul_finVecNormSq_add_sum (N := N) (M := M) (β := β) (h := h) Ξ] using
     (hasFDerivAt_hopfieldPsi_quadratic (N := N) (M := M) (β := β) z).fun_add
       (hasFDerivAt_hopfieldPsi_sum_logcosh (N := N) (M := M) (β := β) (h := h) Ξ z)
 
 lemma fderiv_hopfieldPsi (β h : ℝ) (Ξ : Patterns N M) (z : Fin M → ℝ) :
-    fderiv ℝ (hopfieldPsi (N := N) (M := M) β h Ξ) z = hopfieldPsiFDeriv (N := N) (M := M) β h Ξ z :=
+    fderiv ℝ (hopfieldPsi (N := N) (M := M) β h Ξ) z = hopfieldPsiFDeriv (N := N) (M := M) β h Ξ z
+      :=
   (hasFDerivAt_hopfieldPsi (N := N) (M := M) (β := β) (h := h) Ξ z).fderiv
 
 lemma differentiable_hopfieldPsi (β h : ℝ) (Ξ : Patterns N M) :
@@ -250,7 +256,8 @@ lemma differentiable_hopfieldPsi (β h : ℝ) (Ξ : Patterns N M) :
   intro z
   exact (hasFDerivAt_hopfieldPsi (N := N) (M := M) (β := β) (h := h) Ξ z).differentiableAt
 
-/-- If `fderiv hopfieldPsi = 0`, each coordinate satisfies the fixed-point equation. Talagrand Vol. I, §4.3. -/
+/-- If `fderiv hopfieldPsi = 0`, each coordinate satisfies the fixed-point equation. Talagrand Vol.
+I, §4.3. -/
 lemma hopfieldPsi_coord_eq_of_fderiv_eq_zero
     (β h : ℝ) (Ξ : Patterns N M) (z : Fin M → ℝ)
     (hβ : β ≠ 0) (hN : (N : ℝ) ≠ 0)
@@ -400,7 +407,8 @@ lemma abs_coord_le_one_of_fderiv_eq_zero
       (z := z) hβ hN hz k
   -- abbreviate the summand
   set a : Fin N → ℝ :=
-    fun i => hopfieldEta (N := N) (M := M) Ξ i k * Real.tanh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)
+    fun i => hopfieldEta (N := N) (M := M) Ξ i k * Real.tanh (β * hopfieldEtaDot (N := N) (M := M) Ξ
+      i z + h)
   have ha : z k = (1 / (N : ℝ)) * ∑ i : Fin N, a i := by
     simpa [a] using hcoord
   have habs_le : ∀ i : Fin N, |a i| ≤ (1 : ℝ) := by
@@ -585,7 +593,8 @@ lemma hopfieldPsi_le_quadratic_norm
   calc
     hopfieldPsi (N := N) (M := M) β h Ξ z
         = -((N : ℝ) * β / 2) * finVecNormSq M z
-            + ∑ i : Fin N, Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) := hψ
+            + ∑ i : Fin N, Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) :=
+              hψ
     _ ≤ -((N : ℝ) * β / 2) * (‖z‖ ^ 2)
           + (N : ℝ) * (|β| * (M : ℝ) * ‖z‖ + |h|) := by
           exact add_le_add hquad hlog
@@ -720,7 +729,8 @@ lemma hopfieldEtaDot_smul_piSingle_one
 lemma hopfieldEtaDot_smul_piSingle_one_of_isConstantPattern
     {Ξ : Patterns N M} {k0 : Fin M} (hΞ : IsConstantPattern (N := N) Ξ k0)
     (i : Fin N) (m : ℝ) :
-    hopfieldEtaDot (N := N) (M := M) Ξ i (m • Pi.single (M := fun _ : Fin M => ℝ) k0 (1 : ℝ)) = m := by
+    hopfieldEtaDot (N := N) (M := M) Ξ i (m • Pi.single (M := fun _ : Fin M => ℝ) k0 (1 : ℝ)) = m :=
+      by
   simp [hopfieldEta_eq_one_of_isConstantPattern (N := N) (hΞ := hΞ) (i := i),
     hopfieldEtaDot_smul_piSingle_one (N := N) (M := M) (Ξ := Ξ) (i := i) (m := m) (k := k0)]
 
@@ -743,7 +753,8 @@ lemma fixedPoint_tanh_of_hopfieldPsi_critical_on_axis
 
 /-- Second derivative of `finVecNormSq`. Constant map (as a bilinear map). -/
 noncomputable def finVecNormSqFDeriv2 : (Fin M → ℝ) →L[ℝ] (Fin M → ℝ) →L[ℝ] ℝ :=
-  ∑ k : Fin M, (2 : ℝ) • (ContinuousLinearMap.proj (R := ℝ) k).smulRight (ContinuousLinearMap.proj (R := ℝ) k)
+  ∑ k : Fin M, (2 : ℝ) • (ContinuousLinearMap.proj (R := ℝ) k).smulRight (ContinuousLinearMap.proj
+    (R := ℝ) k)
 
 lemma finVecNormSqFDeriv_eq_finVecNormSqFDeriv2 (z : Fin M → ℝ) :
     finVecNormSqFDeriv (M := M) z = finVecNormSqFDeriv2 (M := M) z := by
@@ -764,7 +775,8 @@ noncomputable def hopfieldPsiFDeriv2 (β h : ℝ) (Ξ : Patterns N M) (z : Fin M
   -(((N : ℝ) * β / 2) • finVecNormSqFDeriv2 (M := M))
     + ∑ i : Fin N,
         ((1 - Real.tanh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h) ^ 2) * β ^ 2)
-          • (hopfieldEtaDotCLM (N := N) (M := M) Ξ i).smulRight (hopfieldEtaDotCLM (N := N) (M := M) Ξ i)
+          • (hopfieldEtaDotCLM (N := N) (M := M) Ξ i).smulRight (hopfieldEtaDotCLM (N := N) (M := M)
+            Ξ i)
 
 @[fun_prop] lemma hasFDerivAt_hopfieldPsiFDeriv (β h : ℝ) (Ξ : Patterns N M) (z : Fin M → ℝ) :
     HasFDerivAt (hopfieldPsiFDeriv (N := N) (M := M) β h Ξ)

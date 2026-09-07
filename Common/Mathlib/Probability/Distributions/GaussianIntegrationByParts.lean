@@ -87,7 +87,8 @@ private lemma gaussianReal_polyGrowth_fderiv_norm
   simpa [hn, Real.norm_eq_abs] using hF'_growth x
 
 private lemma gaussianReal_cmOfDual_idDual_ae (μ : ℝ) (v : ℝ≥0) :
-    (fun x : ℝ => (cmOfDual (μ := gaussianReal μ v) idDual) x) =ᵐ[gaussianReal μ v] fun x => x - μ := by
+    (fun x : ℝ => (cmOfDual (μ := gaussianReal μ v) idDual) x) =ᵐ[gaussianReal μ v] fun x => x - μ
+      := by
   let μR : Measure ℝ := gaussianReal μ v
   have hmean : (∫ x : ℝ, x ∂μR) = μ := by simp [μR]
   have hcent' :=
@@ -149,7 +150,8 @@ private lemma integrable_id_mul_polyGrowth
   refine IsGaussian.integrable_of_abs_le_mul_one_add_norm_pow (μ := gaussianReal (0 : ℝ) v) hmeas
     (C := C) (m := m + 1) hC ?_
   intro x
-  simpa [Real.norm_eq_abs] using (abs_id_mul_polyGrowth_bound (F := F) (C := C) (m := m) hF_growth x)
+  simpa [Real.norm_eq_abs] using (abs_id_mul_polyGrowth_bound (F := F) (C := C) (m := m) hF_growth
+    x)
 
 private lemma integrable_deriv_polyGrowth
     {v : ℝ≥0} {F : ℝ → ℝ} (hF_c1 : ContDiff ℝ 1 F) {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
@@ -177,7 +179,8 @@ theorem gaussian_integration_by_parts_general
   calc
     ∫ x, (x - μ) * F x ∂μR
         = ∫ x, ((cmOfDual (μ := μR) idDual) x) * F x ∂μR := by
-            simpa [μR] using (gaussianReal_integral_cmOfDual_idDual_mul (μ := μ) (v := v) (F := F)).symm
+            simpa [μR] using (gaussianReal_integral_cmOfDual_idDual_mul (μ := μ) (v := v) (F :=
+              F)).symm
     _ = ∫ x, (fderiv ℝ F x) (cmCoe (μ := μR) (cmOfDual (μ := μR) idDual)) ∂μR := by
           simpa using
             (cameronMartin_integral_by_parts_polyGrowth (μ := μR) (x := (cmOfDual (μ := μR) idDual))

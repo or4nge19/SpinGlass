@@ -1,7 +1,7 @@
 /-
-Copyright (c) 2025 Rémy Degenne. All rights reserved.
+Copyright (c) 2025 Rémy Degenne, 2026 Matteo Cipollina. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Rémy Degenne
+Authors: Rémy Degenne, Matteo Cipollina
 -/
 
 import Mathlib.Analysis.InnerProductSpace.Completion
@@ -21,6 +21,10 @@ import Mathlib.Topology.Algebra.Module.ClosedSubmodule
 Hilbert space associated to a finite-second-moment Borel measure `μ` on a real Banach space `E`:
 closure of the range of `StrongDual.centeredToLp μ` in `Lp ℝ 2 μ`. Main: `cameronMartin`, `cmCoe`,
 `cmOfBounded`. Bogachev, *Gaussian Measures*; Kuo, LNM 463.
+
+Adapted from Rémy Degenne, mathlib4
+[#26291](https://github.com/leanprover-community/mathlib4/pull/26291) (`HasTwoMoments`:
+[#27608](https://github.com/leanprover-community/mathlib4/pull/27608)); both open as of 2026-01.
 -/
 
 --@[expose] public section
@@ -122,7 +126,8 @@ lemma centeredToLp_apply [IsFiniteMeasure μ] (h : MemLp id 2 μ) (L : _root_.St
   simpa [c, Pi.sub_apply] using h_sub
 
 /-- The `L²` inner product of centered dual functionals is the covariance bilinear form. -/
-lemma centeredToLp_two_inner [IsFiniteMeasure μ] (h : MemLp id 2 μ) (L₁ L₂ : _root_.StrongDual ℝ E) :
+lemma centeredToLp_two_inner [IsFiniteMeasure μ] (h : MemLp id 2 μ) (L₁ L₂ : _root_.StrongDual ℝ E)
+    :
     ⟪StrongDual.centeredToLp (E := E) μ L₁, StrongDual.centeredToLp (E := E) μ L₂⟫_ℝ =
       covarianceBilinDual μ L₁ L₂ := by
   have h1 := centeredToLp_apply (μ := μ) h L₁
@@ -215,7 +220,8 @@ instance [SecondCountableTopology E] (μ : Measure E) [HasTwoMoments μ] :
 /-- Inclusion from the StrongDual into the Cameron-Martin space, as a linear map. -/
 noncomputable
 def cmOfDual (μ : Measure E) [HasTwoMoments μ] : StrongDual ℝ E →ₗ[ℝ] cameronMartin μ :=
-  (coeClosureCLM _).toLinearMap.comp ((StrongDual.centeredToLp (E := E) μ).toLinearMap.rangeRestrict)
+  (coeClosureCLM _).toLinearMap.comp ((StrongDual.centeredToLp (E := E)
+    μ).toLinearMap.rangeRestrict)
 
 noncomputable
 instance : Coe (StrongDual ℝ E) (cameronMartin μ) := ⟨cmOfDual μ⟩
@@ -302,7 +308,8 @@ lemma evalL2_eq (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y 
       StrongDual.centeredToLp (E := E) μ (LinearMap.mem_range.mp x.2).choose = (x : Lp ℝ 2 μ) := by
     simpa using (LinearMap.mem_range.mp x.2).choose_spec
   calc
-    StrongDual.centeredToLp (E := E) μ (LinearMap.mem_range.mp x.2).choose = (x : Lp ℝ 2 μ) := hchoose
+    StrongDual.centeredToLp (E := E) μ (LinearMap.mem_range.mp x.2).choose = (x : Lp ℝ 2 μ) :=
+      hchoose
     _ = StrongDual.centeredToLp (E := E) μ L := by simpa using hL.symm
 
 lemma evalL2_centeredToLp_eq (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M)
@@ -315,7 +322,8 @@ end CameronMartinAux
 
 open CameronMartinAux
 
-/-- Evaluation on `cameronMartin μ` at `y` of bounded Cameron–Martin norm; `cmEval μ y hy (cmOfDual μ L) = L y`. -/
+/-- Evaluation on `cameronMartin μ` at `y` of bounded Cameron–Martin norm; `cmEval μ y hy (cmOfDual
+μ L) = L y`. -/
 noncomputable
 def cmEval (μ : Measure E) [HasTwoMoments μ] (y : E)
     (hy : ∃ M, ∀ L : StrongDual ℝ E, Var[L; μ] ≤ 1 → L y ≤ M) :
@@ -334,7 +342,8 @@ def cmEval (μ : Measure E) [HasTwoMoments μ] (y : E)
             simpa using hL₂
           calc
             StrongDual.centeredToLp (E := E) μ (L₁ + L₂)
-                = StrongDual.centeredToLp (E := E) μ L₁ + StrongDual.centeredToLp (E := E) μ L₂ := by
+                = StrongDual.centeredToLp (E := E) μ L₁ + StrongDual.centeredToLp (E := E) μ L₂ :=
+                  by
                     simp
             _ = (x₁ : Lp ℝ 2 μ) + (x₂ : Lp ℝ 2 μ) := by simp [hL₁', hL₂']
             _ = (x₁ + x₂ : LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap) := rfl
@@ -345,7 +354,8 @@ def cmEval (μ : Measure E) [HasTwoMoments μ] (y : E)
         · have hL' : StrongDual.centeredToLp (E := E) μ L = (x : Lp ℝ 2 μ) := by
             simpa using hL
           calc
-            StrongDual.centeredToLp (E := E) μ (r • L) = r • StrongDual.centeredToLp (E := E) μ L := by
+            StrongDual.centeredToLp (E := E) μ (r • L) = r • StrongDual.centeredToLp (E := E) μ L :=
+              by
               simp
             _ = r • (x : Lp ℝ 2 μ) := by simp [hL']
             _ = (r • x : LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap) := rfl }
@@ -391,14 +401,16 @@ variable [SecondCountableTopology E] [HasTwoMoments μ]
 
 namespace CameronMartinAux -- namespace for auxiliary definitions and lemmas
 
-/-- Auxiliary Bochner integral reconstructing a point of `E` from `x` in the range of `centeredToLp μ`. -/
+/-- Auxiliary Bochner integral reconstructing a point of `E` from `x` in the range of `centeredToLp
+μ`. -/
 noncomputable
 def toInit (μ : Measure E) [IsFiniteMeasure μ]
     (x : LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap) : E :=
   ∫ y, (LinearMap.mem_range.mp x.2).choose (y - ∫ z, z ∂μ) • (y - ∫ z, z ∂μ) ∂μ
 
 omit [CompleteSpace E] [SecondCountableTopology E] in
-lemma toInit_eq (x : LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap) {L : StrongDual ℝ E}
+lemma toInit_eq (x : LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap) {L :
+    StrongDual ℝ E}
     (hL : StrongDual.centeredToLp (E := E) μ L = x) :
     toInit μ x = ∫ y, L (y - ∫ z, z ∂μ) • (y - ∫ z, z ∂μ) ∂μ :=
   calc toInit μ x
@@ -415,7 +427,8 @@ lemma toInit_eq (x : LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLin
     filter_upwards [StrongDual.centeredToLp_apply memLp_two_id L] with y hy
     simp [hy]
 
-lemma apply_toInit (x : LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap) (L : StrongDual ℝ E) :
+lemma apply_toInit (x : LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap) (L :
+    StrongDual ℝ E) :
     L (toInit μ x)
       = ∫ y, (LinearMap.mem_range.mp x.2).choose (y - ∫ z, z ∂μ) * L (y - ∫ z, z ∂μ) ∂μ := by
   rw [toInit, ← L.integral_comp_comm]
@@ -484,7 +497,7 @@ lemma apply_cmCoe_eq_inner (x : cameronMartin μ) (L : StrongDual ℝ E) :
       ?_
     intro a
     have hcm : cmCoe (μ := μ) (coeClosureCLM s a) = toInit μ a := by
-      simp [cmCoe]
+      simp only [cmCoe]
       exact closureExtensionCLM_coe s _ a
     have hleft : L (cmCoe (μ := μ) (coeClosureCLM s a)) = L (toInit μ a) := by simp [hcm]
     have hright :

@@ -1,7 +1,7 @@
 /-
-Copyright (c) 2025 Rémy Degenne. All rights reserved.
+Copyright (c) 2025 Rémy Degenne, 2026 Matteo Cipollina. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Rémy Degenne
+Authors: Rémy Degenne, Matteo Cipollina
 -/
 
 import Mathlib.MeasureTheory.Function.ConvergenceInDistribution
@@ -16,6 +16,10 @@ import Mathlib.Probability.Distributions.Gaussian.Real
 For Gaussian `μ` on a real Banach space and `x : cameronMartin μ`, translating by `cmCoe x` is
 absolutely continuous with density `y ↦ exp(x(y) - ‖x‖²/2)`. Main: `hasLaw_cameronMartin`,
 `map_add_cameronMartin_eq_withDensity`. Bogachev, *Gaussian Measures*.
+
+Adapted from Rémy Degenne, mathlib4
+[#26291](https://github.com/leanprover-community/mathlib4/pull/26291) (open, 2026-01; mutually
+singular direction still WIP upstream).
 -/
 
 
@@ -40,11 +44,13 @@ lemma hasLaw_cameronMartin (x : cameronMartin μ) : HasLaw x (gaussianReal 0 (�
       simp
     have hx_norm_pos : 0 < ‖x‖ := by simp [norm_pos_iff, hx0]
     have h := x.2
-    -- `x` is in the closure of the range of `centeredToLp`, so it is the `Lp`-limit of such elements.
+    -- `x` is in the closure of the range of `centeredToLp`, so it is the `Lp`-limit of such
+    -- elements.
     have h' :
         (x : Lp ℝ 2 μ) ∈
           closure
-            ((LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap : Submodule ℝ (Lp ℝ 2 μ)) :
+            ((LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap : Submodule ℝ (Lp ℝ 2
+              μ)) :
               Set (Lp ℝ 2 μ)) := by
       -- `x.2` is membership in `topologicalClosure`; rewrite the goal accordingly.
       let s : Submodule ℝ (Lp ℝ 2 μ) :=
@@ -54,7 +60,8 @@ lemma hasLaw_cameronMartin (x : cameronMartin μ) : HasLaw x (gaussianReal 0 (�
         dsimp [s]
         have hx' :
             (x : Lp ℝ 2 μ) ∈
-              ((LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap).topologicalClosure :
+              ((LinearMap.range (StrongDual.centeredToLp (E := E) μ).toLinearMap).topologicalClosure
+                :
                 Set (Lp ℝ 2 μ)) := by
           -- `x.2` is membership in `cameronMartin μ`; unfold it.
           have hx0 :
@@ -92,8 +99,7 @@ lemma hasLaw_cameronMartin (x : cameronMartin μ) : HasLaw x (gaussianReal 0 (�
       unfold L'
       simp only [norm_smul, norm_div, norm_norm]
       rw [div_mul_cancel₀]
-      · norm_cast
-        rw [Real.toNNReal_pow (norm_nonneg _), norm_toNNReal]
+      · rw [Real.toNNReal_pow (norm_nonneg _), norm_toNNReal]
       · simp [hn]
     have hL'_map (n : ℕ) (hn : L n ≠ 0) :
         μ.map (L' n) = gaussianReal 0 (‖x‖₊ ^ 2) := by
@@ -213,7 +219,8 @@ lemma isProbabilityMeasure_withDensity_cameronMartin (x : cameronMartin μ) :
             have h := mgf_id_gaussianReal (μ := (0 : ℝ)) (v := ‖x‖₊ ^ 2)
             rw [funext_iff] at h
             specialize h 1
-            simp only [mgf, id_eq, one_mul, mul_one, NNReal.coe_pow, coe_nnnorm, one_pow, zero_add] at h
+            simp only [mgf, id_eq, one_mul, mul_one, NNReal.coe_pow, coe_nnnorm, one_pow, zero_add]
+              at h
             rw [← h, ofReal_integral_eq_lintegral_ofReal]
             · simpa using
                 (integrable_exp_mul_gaussianReal (μ := (0 : ℝ)) (v := ‖x‖₊ ^ 2) 1)
@@ -309,7 +316,8 @@ private lemma integral_exp_sub_mul_I_sub_norm_sq_eq_closed_form
             Complex.ofReal_ofNat]
           ring_nf
 
-private lemma hasDerivAt_integral_exp_cameronMartin (x : cameronMartin μ) (L : StrongDual ℝ E) (z : ℂ) :
+private lemma hasDerivAt_integral_exp_cameronMartin (x : cameronMartin μ) (L : StrongDual ℝ E) (z :
+    ℂ) :
     HasDerivAt (fun z ↦ ∫ u, exp ((L u - z * x u) * I) ∂μ)
       (∫ u, - x u * I * exp ((L u - z * x u) * I) ∂μ) z := by
   refine (hasDerivAt_integral_of_dominated_loc_of_deriv_le
@@ -442,7 +450,8 @@ theorem map_add_cameronMartin_eq_withDensity (x : cameronMartin μ) :
   congr
   ring
 
-/-- Part of the **Cameron–Martin theorem**: translating `μ` by `cmCoe x` is absolutely continuous. -/
+/-- Part of the **Cameron–Martin theorem**: translating `μ` by `cmCoe x` is absolutely
+continuous. -/
 theorem absolutelyContinuous_map_add_cameronMartin (x : cameronMartin μ) :
     μ.map (fun y ↦ y + cmCoe x) ≪ μ := by
   rw [map_add_cameronMartin_eq_withDensity (μ := μ) x]

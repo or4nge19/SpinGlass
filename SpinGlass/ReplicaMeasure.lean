@@ -32,7 +32,8 @@ noncomputable def gibbs_average_n_det (N n : ℕ) (H : EnergySpace N) (f : Repli
 /-! ### Replica Gibbs measure (finite-volume, atomic) -/
 
 /-- The `n`-replica Gibbs weight (as `ℝ≥0`): \( \prod_{l=1}^n \mathrm{gibbs\_pmf}(H,\sigma^l)\). -/
-noncomputable def replicaGibbsWeightNNReal (N n : ℕ) (H : EnergySpace N) (σs : ReplicaSpace N n) : ℝ≥0 :=
+noncomputable def replicaGibbsWeightNNReal (N n : ℕ) (H : EnergySpace N) (σs : ReplicaSpace N n) :
+    ℝ≥0 :=
   FiniteGibbs.replicaGibbsWeightNNReal (α := Config N) (n := n) H σs
 
 /-- The `n`-replica Gibbs measure as an explicit finite atomic measure on `ReplicaSpace N n`. -/

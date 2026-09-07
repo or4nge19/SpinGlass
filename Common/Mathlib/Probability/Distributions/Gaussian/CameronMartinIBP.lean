@@ -74,7 +74,8 @@ theorem integral_add_cmCoe_smul_eq
   calc
     (∫ y, F (y + cmCoe (t • x)) ∂μ)
         = ∫ y, F y ∂(Measure.map g μ) := h_map
-    _ = ∫ y, F y ∂(μ.withDensity (fun y ↦ ENNReal.ofReal (Real.exp ((t • x) y - ‖t • x‖ ^ 2 / 2)))) := by
+    _ = ∫ y, F y ∂(μ.withDensity (fun y ↦ ENNReal.ofReal (Real.exp ((t • x) y - ‖t • x‖ ^ 2 / 2))))
+      := by
           simp [hμ]
     _ = ∫ y, (ENNReal.ofReal (Real.exp ((t • x) y - ‖t • x‖ ^ 2 / 2))).toReal • F y ∂μ := hwd
     _ = ∫ y, Real.exp ((t • x) y - ‖t • x‖ ^ 2 / 2) * F y ∂μ := by

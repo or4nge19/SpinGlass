@@ -69,7 +69,8 @@ theorem HasLaw.lintegral_add_cmCoe_smul_eq (hX : HasLaw X μ P) (x : cameronMart
 /-! ### Law-level corollaries -/
 
 /-- If `X` has law `μ`, then `X + cmCoe (t • x)` has the `withDensity` law from Cameron–Martin. -/
-theorem HasLaw.hasLaw_add_cmCoe_smul_withDensity_raw (hX : HasLaw X μ P) (x : cameronMartin μ) (t : ℝ) :
+theorem HasLaw.hasLaw_add_cmCoe_smul_withDensity_raw (hX : HasLaw X μ P) (x : cameronMartin μ) (t :
+    ℝ) :
     HasLaw (fun ω : Ω ↦ X ω + cmCoe (t • x))
       (μ.withDensity (fun y ↦ ENNReal.ofReal (Real.exp ((t • x) y - ‖t • x‖ ^ 2 / 2)))) P := by
   set g : E → E := fun y ↦ y + cmCoe (t • x)
@@ -132,7 +133,7 @@ theorem HasLaw.cameronMartin_integral_by_parts_of_integrable_bound
     {δ : ℝ} (hδ : 0 < δ)
     (hF_int : Integrable F μ)
     (bound : E → ℝ) (hbound_int : Integrable bound μ)
-    (hbound :  ∀ᵐ y ∂μ,
+    (hbound : ∀ᵐ y ∂μ,
         ∀ t ∈ Metric.ball (0 : ℝ) δ, ‖(fderiv ℝ F (y + t • cmCoe x)) (cmCoe x)‖ ≤ bound y)
     (hTiltInt : Integrable
         (fun y : E =>

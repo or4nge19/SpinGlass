@@ -262,9 +262,11 @@ lemma sum_exp_hopfield_linear_eq_two_pow_mul_exp_sum_log_cosh
   have hprod' :
       (∏ i : Fin N, (2 * Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)))
         =
-        (2 : ℝ) ^ N * (∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) := by
+        (2 : ℝ) ^ N * (∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) :=
+          by
     simp [Finset.prod_mul_distrib]
-  have hcosh_pos : 0 < (∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) := by
+  have hcosh_pos : 0 < (∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) :=
+    by
     refine Finset.prod_pos ?_
     intro i hi
     simpa using (Real.cosh_pos (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))
@@ -283,7 +285,8 @@ lemma sum_exp_hopfield_linear_eq_two_pow_mul_exp_sum_log_cosh
         ∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h) := by
     calc
       Real.exp (∑ i : Fin N, Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)))
-          = Real.exp (Real.log (∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))) := by
+          = Real.exp (Real.log (∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z +
+            h))) := by
               simp [hlog]
       _ = ∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h) := by
               simpa using (Real.exp_log hcosh_pos)
@@ -295,7 +298,8 @@ lemma sum_exp_hopfield_linear_eq_two_pow_mul_exp_sum_log_cosh
               + Real.exp (-(β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))) := by
             simpa [neg_mul, sub_eq_add_neg] using hfac
     _ = ∏ i : Fin N, (2 * Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) := hprod
-    _ = (2 : ℝ) ^ N * (∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) := hprod'
+    _ = (2 : ℝ) ^ N * (∏ i : Fin N, Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) :=
+      hprod'
     _ = (2 : ℝ) ^ N
           * Real.exp (∑ i : Fin N,
               Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))) := by
@@ -349,12 +353,14 @@ theorem hubbardStratonovich_stdGaussian (M : ℕ) (c : ℝ) (hc : 0 ≤ c) (m : 
   have hL :
       (∫ z : Fin M → ℝ, Real.exp ((Real.sqrt c) * (∑ k : Fin M, m k * z k)) ∂μ)
         =
-        ProbabilityTheory.mgf ((Finset.univ : Finset (Fin M)).sum fun k => X k) μ (Real.sqrt c) := by
+        ProbabilityTheory.mgf ((Finset.univ : Finset (Fin M)).sum fun k => X k) μ (Real.sqrt c) :=
+          by
     simp [ProbabilityTheory.mgf, X, μ, Finset.mul_sum, mul_assoc, mul_comm]
   have hmgf_sum :
       ProbabilityTheory.mgf ((Finset.univ : Finset (Fin M)).sum fun k => X k) μ (Real.sqrt c)
         = ∏ k : Fin M, ProbabilityTheory.mgf (X k) μ (Real.sqrt c) := by
-    simpa using (h_indep'.mgf_sum (μ := μ) (t := Real.sqrt c) hX_meas (Finset.univ : Finset (Fin M)))
+    simpa using (h_indep'.mgf_sum (μ := μ) (t := Real.sqrt c) hX_meas (Finset.univ : Finset (Fin
+      M)))
   have hmgf_one (k : Fin M) :
       ProbabilityTheory.mgf (X k) μ (Real.sqrt c) =
         Real.exp (((Real.sqrt c) * m k) ^ 2 / 2) := by
@@ -372,14 +378,16 @@ theorem hubbardStratonovich_stdGaussian (M : ℕ) (c : ℝ) (hc : 0 ≤ c) (m : 
         (ProbabilityTheory.mgf_const_mul (μ := μ) (X := fun z : Fin M → ℝ => z k) (α := m k)
           (t := Real.sqrt c))
     have hgauss :
-        ProbabilityTheory.mgf id (ProbabilityTheory.gaussianReal 0 (1 : ℝ≥0)) ((m k) * (Real.sqrt c))
+        ProbabilityTheory.mgf id (ProbabilityTheory.gaussianReal 0 (1 : ℝ≥0)) ((m k) * (Real.sqrt
+          c))
           = Real.exp ((((m k) * (Real.sqrt c)) ^ 2) / 2) := by
       simpa using congrArg (fun F => F ((m k) * (Real.sqrt c)))
         (ProbabilityTheory.mgf_id_gaussianReal (μ := (0 : ℝ)) (v := (1 : ℝ≥0)))
     calc
       ProbabilityTheory.mgf (X k) μ (Real.sqrt c)
           = ProbabilityTheory.mgf (fun z : Fin M → ℝ => z k) μ ((m k) * (Real.sqrt c)) := hscale
-      _ = ProbabilityTheory.mgf id (ProbabilityTheory.gaussianReal 0 (1 : ℝ≥0)) ((m k) * (Real.sqrt c)) := hmap_val
+      _ = ProbabilityTheory.mgf id (ProbabilityTheory.gaussianReal 0 (1 : ℝ≥0)) ((m k) * (Real.sqrt
+        c)) := hmap_val
       _ = Real.exp (((m k) * (Real.sqrt c)) ^ 2 / 2) := hgauss
       _ = Real.exp (((Real.sqrt c) * m k) ^ 2 / 2) := by ring_nf
   have :
@@ -409,7 +417,8 @@ theorem hubbardStratonovich_stdGaussian (M : ℕ) (c : ℝ) (hc : 0 ≤ c) (m : 
             simp [this]
   calc
     (∫ z : Fin M → ℝ, Real.exp ((Real.sqrt c) * (∑ k : Fin M, m k * z k)) ∂μ)
-        = ProbabilityTheory.mgf ((Finset.univ : Finset (Fin M)).sum fun k => X k) μ (Real.sqrt c) := hL
+        = ProbabilityTheory.mgf ((Finset.univ : Finset (Fin M)).sum fun k => X k) μ (Real.sqrt c) :=
+          hL
     _ = ∏ k : Fin M, ProbabilityTheory.mgf (X k) μ (Real.sqrt c) := hmgf_sum
     _ = Real.exp ((c / 2) * ∑ k : Fin M, (m k) ^ 2) := this
 
@@ -424,7 +433,8 @@ noncomputable def talagrandGaussianMeasure (N M : ℕ) (β : ℝ) (hβ : 0 ≤ �
   Measure.infinitePi (fun _ : Fin M =>
     ProbabilityTheory.gaussianReal 0 (talagrandGaussianVar (N := N) β hβ))
 
-instance (N M : ℕ) (β : ℝ) (hβ : 0 ≤ β) : IsProbabilityMeasure (talagrandGaussianMeasure N M β hβ) := by
+instance (N M : ℕ) (β : ℝ) (hβ : 0 ≤ β) : IsProbabilityMeasure (talagrandGaussianMeasure N M β hβ)
+    := by
   dsimp [talagrandGaussianMeasure]
   infer_instance
 
@@ -502,7 +512,8 @@ theorem hubbardStratonovich_talagrandGaussian
         ProbabilityTheory.mgf (X k) μ t
           = ProbabilityTheory.mgf (fun z : Fin M → ℝ => z k) μ ((m k) * t) := by
       simpa [X, mul_assoc, mul_left_comm, mul_comm] using
-        (ProbabilityTheory.mgf_const_mul (μ := μ) (X := fun z : Fin M → ℝ => z k) (α := m k) (t := t))
+        (ProbabilityTheory.mgf_const_mul (μ := μ) (X := fun z : Fin M → ℝ => z k) (α := m k) (t :=
+          t))
     have hgauss :
         ProbabilityTheory.mgf id (ProbabilityTheory.gaussianReal 0 v) ((m k) * t)
           = Real.exp ((v : ℝ) * ((m k) * t) ^ 2 / 2) := by
@@ -562,13 +573,15 @@ theorem hubbardStratonovich_hopfield
     Real.exp (-(hopfieldEnergy (N := N) (M := M) β Ξ) σ)
       =
       ∫ z : Fin M → ℝ,
-        Real.exp ((Real.sqrt (β * (N : ℝ))) * (∑ k : Fin M, (hopfieldOverlapVec (N := N) (M := M) Ξ σ k) * z k))
+        Real.exp ((Real.sqrt (β * (N : ℝ))) * (∑ k : Fin M, (hopfieldOverlapVec (N := N) (M := M) Ξ
+          σ k) * z k))
           ∂(stdGaussianMeasure M) := by
   have hβN : 0 ≤ β * (N : ℝ) := mul_nonneg hβ (by exact_mod_cast (Nat.zero_le N))
   have hHS :=
     (hubbardStratonovich_stdGaussian (M := M) (c := β * (N : ℝ)) hβN
       (m := hopfieldOverlapVec (N := N) (M := M) Ξ σ))
-  simpa [hopfieldEnergy, hHS, hopfieldOverlapVec, hopfieldOverlap, mul_assoc, mul_left_comm, mul_comm,
+  simpa [hopfieldEnergy, hHS, hopfieldOverlapVec, hopfieldOverlap, mul_assoc, mul_left_comm,
+    mul_comm,
     sub_eq_add_neg, add_assoc, add_left_comm, add_comm] using hHS.symm
 
 /-! ### Hubbard–Stratonovich at `m(σ)` -/

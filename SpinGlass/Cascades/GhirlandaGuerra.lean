@@ -213,7 +213,8 @@ lemma condExp_prefix_ae_eq_integral_condDistribLast (n : ℕ) (μ : Measure (Fin
     refine ⟨hg.aestronglyMeasurable, ?_⟩
     exact HasFiniteIntegral.of_bounded (μ := μ.map fun σs => (X σs, Y σs))
       (C := C) (hC := ae_of_all _ hC)
-  simpa [prefixMS, condDistribLast, ProbabilityTheory.condDistrib, X, Y, lastReplica, restrictReplicas] using
+  simpa [prefixMS, condDistribLast, ProbabilityTheory.condDistrib, X, Y, lastReplica,
+    restrictReplicas] using
     (ProbabilityTheory.condExp_prod_ae_eq_integral_condDistrib' (μ := μ)
       (X := X) (Y := Y) (f := fun p => g p) hX hY hg_int)
 
@@ -538,7 +539,8 @@ lemma GG1_prefix_of_condExp_lastReplica_ae
               s.sum fun l : Fin n => R (σs 0) (σs (Fin.castSucc l))) := by
           refine Finset.measurable_sum s (fun l hl => ?_)
           have hpair : Measurable (fun σs : (Fin (n + 1) → β) => (σs 0, σs (Fin.castSucc l))) := by
-            exact (measurable_pi_apply (0 : Fin (n + 1))).prodMk (measurable_pi_apply (Fin.castSucc l))
+            exact (measurable_pi_apply (0 : Fin (n + 1))).prodMk (measurable_pi_apply (Fin.castSucc
+              l))
           exact hRmeas.comp hpair
         have hmeas :
             Measurable (fun σs : (Fin (n + 1) → β) =>
@@ -568,9 +570,11 @@ lemma GG1_prefix_of_condExp_lastReplica_ae
             exact hnormsum.trans hsum'
           calc
             ‖G σs * ((1 / (n : ℝ)) * (s.sum fun l : Fin n => R (σs 0) (σs (Fin.castSucc l))))‖
-                ≤ ‖G σs‖ * ‖(1 / (n : ℝ)) * (s.sum fun l : Fin n => R (σs 0) (σs (Fin.castSucc l)))‖ :=
+                ≤ ‖G σs‖ * ‖(1 / (n : ℝ)) * (s.sum fun l : Fin n => R (σs 0) (σs (Fin.castSucc l)))‖
+                  :=
                   norm_mul_le _ _
-            _ ≤ ‖G σs‖ * (‖(1 / (n : ℝ))‖ * ‖s.sum (fun l : Fin n => R (σs 0) (σs (Fin.castSucc l)))‖) := by
+            _ ≤ ‖G σs‖ * (‖(1 / (n : ℝ))‖ * ‖s.sum (fun l : Fin n => R (σs 0) (σs (Fin.castSucc
+              l)))‖) := by
                   gcongr
                   simp
             _ ≤ CG * (‖(1 / (n : ℝ))‖ * (s.card * CR)) := by

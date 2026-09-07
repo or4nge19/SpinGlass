@@ -35,14 +35,16 @@ noncomputable def gibbs_average_n_det (n : ℕ) (H : EnergySpace α) (f : Replic
 /-! ## Replica Gibbs measure (finite-volume, atomic) -/
 
 /-- The `n`-replica Gibbs weight (as `ℝ≥0`). -/
-noncomputable def replicaGibbsWeightNNReal (n : ℕ) (H : EnergySpace α) (σs : ReplicaSpace (α := α) n) : ℝ≥0 :=
+noncomputable def replicaGibbsWeightNNReal (n : ℕ) (H : EnergySpace α) (σs : ReplicaSpace (α := α)
+    n) : ℝ≥0 :=
   .mk (∏ l, gibbs_pmf (α := α) H (σs l)) (by
     refine Finset.prod_nonneg ?_
     intro l _hl
     exact gibbs_pmf_nonneg (α := α) (H := H) (σ := σs l))
 
 /-- The `n`-replica Gibbs measure as an explicit finite atomic measure on `ReplicaSpace α n`. -/
-noncomputable def replicaGibbsMeasure (n : ℕ) (H : EnergySpace α) : Measure (ReplicaSpace (α := α) n) :=
+noncomputable def replicaGibbsMeasure (n : ℕ) (H : EnergySpace α) : Measure (ReplicaSpace (α := α)
+    n) :=
   (Finset.univ : Finset (ReplicaSpace (α := α) n)).sum fun σs =>
     ((replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) • Measure.dirac σs)
 
@@ -91,10 +93,12 @@ lemma replicaGibbsMeasure_univ (n : ℕ) (H : EnergySpace α) :
   have h_univ :
       replicaGibbsMeasure (α := α) (n := n) H Set.univ
         =
-        ∑ σs : ReplicaSpace (α := α) n, (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) := by
+        ∑ σs : ReplicaSpace (α := α) n, (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) :=
+          by
     simp [replicaGibbsMeasure, replicaGibbsWeightNNReal]
   have hsumNNReal :
-      (∑ σs : ReplicaSpace (α := α) n, replicaGibbsWeightNNReal (α := α) (n := n) H σs) = (1 : ℝ≥0) := by
+      (∑ σs : ReplicaSpace (α := α) n, replicaGibbsWeightNNReal (α := α) (n := n) H σs) = (1 : ℝ≥0)
+        := by
     apply NNReal.coe_injective
     simp [replicaGibbsWeightNNReal, NNReal.coe_sum, sum_prod_gibbs_pmf_eq_one]
   have hsumENNReal :

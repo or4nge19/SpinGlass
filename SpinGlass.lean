@@ -1,12 +1,15 @@
 import SpinGlass.Algebra
 import SpinGlass.Calculus
 import SpinGlass.Cascades
+import SpinGlass.CovariancePosSemidef
 import SpinGlass.Defs
 import SpinGlass.FiniteGibbs
 import SpinGlass.FiniteGibbs.Marginal
+import SpinGlass.GaussianTrace
 import SpinGlass.GibbsBridge
 import SpinGlass.GuerraBound
-import SpinGlass.GuerraIBP
+import SpinGlass.GuerraDerivativeTrace
+import SpinGlass.GuerraInequality
 import SpinGlass.GuerraInterpolation
 import SpinGlass.GuerraPipeline
 import SpinGlass.Hopfield
@@ -23,6 +26,7 @@ import SpinGlass.Poincare
 import SpinGlass.ReplicaKernel
 import SpinGlass.ReplicaMeasure
 import SpinGlass.Replicas
+import SpinGlass.SKDisorderExists
 import SpinGlass.SKModel
 import SpinGlass.Talagrand.MainResults
 import Common.Mathlib.MeasureTheory.ParametricDominatedConvergence

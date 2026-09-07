@@ -1,7 +1,7 @@
 /-
-Copyright (c) 2025 Rémy Degenne. All rights reserved.
+Copyright (c) 2025 Rémy Degenne, 2026 Matteo Cipollina. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Rémy Degenne
+Authors: Rémy Degenne, Matteo Cipollina
 -/
 
 import Mathlib.Analysis.InnerProductSpace.Dual
@@ -15,7 +15,9 @@ import Mathlib.Topology.GDelta.MetrizableSpace
 /-!
 # Completion results (vendored)
 
-Vendored from mathlib4 PR #26291 (Cameron–Martin theorem), pending upstream merge.
+Closure extension of continuous linear maps on submodules. Adapted from Rémy Degenne, mathlib4
+[#26291](https://github.com/leanprover-community/mathlib4/pull/26291) and
+[#30582](https://github.com/leanprover-community/mathlib4/pull/30582) (both open as of 2026-01).
 -/
 
 @[expose] public section
@@ -100,7 +102,8 @@ def coeClosure {M R : Type*} [Semiring R] [AddCommMonoid M] [Module R M] [Topolo
   ⟨x.1, (Submodule.le_topologicalClosure s) x.2⟩
 
 -- This coercion existed upstream; we reintroduce it for the vendored development.
-instance coeTC_submodule_topologicalClosure {M R : Type*} [Semiring R] [AddCommMonoid M] [Module R M]
+instance coeTC_submodule_topologicalClosure {M R : Type*} [Semiring R] [AddCommMonoid M] [Module R
+    M]
     [TopologicalSpace M] [ContinuousAdd M] [ContinuousConstSMul R M]
     (s : Submodule R M) : CoeTC s s.topologicalClosure :=
   ⟨coeClosure s⟩
@@ -151,8 +154,10 @@ lemma IsUniformInducing_coeClosureCLM {M R : Type*} [Semiring R] [AddCommMonoid 
     funext x
     simp [v, u, p, coeClosure]
   calc
-    Filter.comap (fun x : s × s ↦ (coeClosureCLM s x.1, coeClosureCLM s x.2)) (uniformity s.topologicalClosure)
-        = Filter.comap (v ∘ fun x : s × s ↦ (coeClosure s x.1, coeClosure s x.2)) (uniformity M) := by
+    Filter.comap (fun x : s × s ↦ (coeClosureCLM s x.1, coeClosureCLM s x.2)) (uniformity
+      s.topologicalClosure)
+        = Filter.comap (v ∘ fun x : s × s ↦ (coeClosure s x.1, coeClosure s x.2)) (uniformity M) :=
+          by
             simp [uniformity_subtype, Filter.comap_comap, v, coeClosureCLM, coeClosure]
     _ = Filter.comap u (uniformity M) := by
           simp [p, hp]
