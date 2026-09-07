@@ -283,15 +283,49 @@ exactly. Nothing here is asymptotic — every statement holds at every finite vo
 
 ## Dependencies
 
-`GibbsMeasure` (branch `mc3`, rev `8a158f0`) is declared as a dependency for its exchangeability
-layer: `IsExchangeable`, the Hewitt–Savage zero-one law, and `existsUnique_mixing_of_isExchangeable`
-(de Finetti in Dynkin's form, with uniqueness over a standard Borel space). Mathlib has none of
-these, and they are the ancestors of Aldous–Hoover and Dovbysh–Sudakov, which Vol. II Ch. 12–15
-needs. **Nothing is imported from it yet**: the exchangeability used here is finite-volume and is
-proved in-tree (`FiniteGibbs.measurePreserving_comp_perm_replicaGibbsMeasure`, an instance of
-`Measure.pi` invariance). The dependency becomes load-bearing only at the asymptotic layer, where
-the replica law is a limit rather than a finite product. The DLR/specification half of that
-repository is not imported.
+`matteo-ax/GibbsMeasure` (rev `8a158f0`) is pinned for **one** layer: exchangeability, the
+Hewitt–Savage zero-one law, and `existsUnique_mixing_of_isExchangeable` (de Finetti in Dynkin's
+form, with uniqueness over a standard Borel space). Mathlib has none of these, and they are the
+ancestors of Aldous–Hoover and Dovbysh–Sudakov, which Vol. II Ch. 12–15 needs. It is imported
+through `SpinGlass/Limit/Exchangeability.lean` and used in `SpinGlass/Limit/AsymptoticGibbs.lean`.
+The DLR/specification half of that repository is not imported.
+
+## Proved: the asymptotic Gibbs measure (Vol. II, Ch. 12; Panchenko)
+
+The limit layer that Vol. II starts from. The finite-volume replicas are i.i.d., hence
+exchangeable; the state spaces are unified by embedding `Config N` into the compact metrizable
+spin space `ℕ → Bool`; Prokhorov gives limit points; exchangeability survives the limit; de Finetti
+represents the limit as a mixture of i.i.d. product measures. The mixing measure is Talagrand's and
+Panchenko's *asymptotic Gibbs measure*.
+
+- `MeasureTheory.ProbabilityMeasure.isClosed_setOf_map_eq` — **invariance under a continuous map is
+  a closed condition** in the topology of convergence in distribution: the invariance locus is the
+  equaliser of `ProbabilityMeasure.continuous_map` and the identity, and the space of probability
+  measures is Hausdorff. `map_eq_of_tendsto` and
+  `Measure.map_eq_of_tendsto_probabilityMeasure` are the limit forms. Absent from Mathlib; it is
+  the mechanism behind Krylov–Bogolyubov and behind every infinite-volume limit construction.
+- `MeasureTheory.GibbsMeasure.continuous_permute`,
+  `MeasureTheory.GibbsMeasure.isExchangeable_of_tendsto` — hence **exchangeability passes to weak
+  limits**, which is the step that makes de Finetti applicable to a *limit* law rather than to a
+  fixed one, and `existsUnique_mixing_of_tendsto` is that composition.
+- `MeasureTheory.GibbsMeasure.exists_subseq_tendsto_mixing` — on a compact standard Borel state
+  space, **every** sequence of exchangeable laws has a subsequence converging to a unique de
+  Finetti mixture. No hypothesis on the sequence.
+- `MeasureTheory.Measure.map_comp_infinitePi_const` — the finite-dimensional marginals of an
+  i.i.d. infinite product along an arbitrary *injective reindexing* (Mathlib has only the canonical
+  `Finset.restrict` marginal, `Measure.infinitePi_map_restrict`).
+- `SpinGlass.spinLaw`, `SpinGlass.replicaArrayLaw`, `SpinGlass.replicaArray`,
+  `SpinGlass.isExchangeable_replicaArrayLaw` — the one-replica and replica-array laws of a
+  finite-volume Gibbs measure, read on the spin space along an arbitrary embedding, and their
+  exchangeability.
+- `SpinGlass.map_take_replicaArrayLaw` — **the bridge**: the first `n` replicas of the replica array
+  are exactly `FiniteGibbs.replicaGibbsMeasure n H` transported along the embedding, so the finite
+  replica calculus (`gibbs_average_n_det`, the Ghirlanda–Guerra brackets) is the
+  finite-dimensional shadow of the asymptotic object.
+- `SpinGlass.exists_asymptoticGibbsMeasure` — **the asymptotic Gibbs measure exists**: for an
+  arbitrary sequence of Hamiltonians and an arbitrary family of embeddings, some subsequence of the
+  replica-array laws converges, and the limit is `∫ λ^{⊗ℕ} m(dλ)` for a *unique* probability
+  measure `m` on the probability measures of the spin space. Unconditional.
 
 ## Proved: Gaussian concentration (Vol. I, §1.3)
 

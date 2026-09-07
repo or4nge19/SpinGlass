@@ -4,8 +4,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Matteo Cipollina
 -/
 import SpinGlass.Limit.Exchangeability
-import SpinGlass.FiniteGibbs.GibbsMeasure
+import SpinGlass.FiniteGibbs.ReplicaMeasure
 import SpinGlass.Defs
+import Common.Mathlib.Probability.InfinitePiMarginal
 
 /-!
 # The asymptotic Gibbs measure
@@ -82,6 +83,22 @@ def replicaArray : ProbabilityMeasure (ℕ → SpinSpace) :=
 
 @[simp] lemma replicaArray_toMeasure :
     (replicaArray N H e : Measure (ℕ → SpinSpace)) = replicaArrayLaw N H e := rfl
+
+/-- **The first `n` replicas of the replica array are the finite `n`-replica Gibbs measure**,
+transported along the embedding of configurations into the spin space. This is the bridge between
+the finite replica calculus of `SpinGlass.FiniteGibbs.ReplicaMeasure` — where the Gibbs brackets
+`gibbs_average_n_det` and the Ghirlanda–Guerra identities live — and the asymptotic layer. -/
+theorem map_take_replicaArrayLaw (n : ℕ) :
+    (replicaArrayLaw N H e).map (fun ω (l : Fin n) => ω (l : ℕ))
+      = (FiniteGibbs.replicaGibbsMeasure (α := Config N) n H).map
+          (fun σs (l : Fin n) => e (σs l)) := by
+  rw [replicaArrayLaw,
+    Measure.map_comp_infinitePi_const (ν := spinLaw N H e) (f := fun l : Fin n => (l : ℕ))
+      Fin.val_injective,
+    FiniteGibbs.replicaGibbsMeasure,
+    Measure.pi_map_pi (f := fun _ : Fin n => e)
+      (fun _ => (Measurable.of_discrete (f := e)).aemeasurable)]
+  rfl
 
 /-! ### The asymptotic Gibbs measure -/
 

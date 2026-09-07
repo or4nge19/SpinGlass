@@ -26,6 +26,8 @@ import SpinGlass.HopfieldFixedPoint
 import SpinGlass.HopfieldLocalization
 import SpinGlass.HopfieldPsiDeriv
 import SpinGlass.HopfieldPsiMeasurable
+import SpinGlass.Limit.AsymptoticGibbs
+import SpinGlass.Limit.Exchangeability
 import SpinGlass.LogCosh
 import SpinGlass.MeanFieldLimit
 import SpinGlass.ParisiOperator
