@@ -403,6 +403,25 @@ formalised; Panchenko writes the same identities with bounded measurable ones.
   condition, ultrametricity, Ghirlanda–Guerra) **all pass to weak limits simultaneously**, so each
   may be verified along any approximating sequence.
 
+- `SpinGlass.satisfiesGhirlandaGuerra_of_dense` — **the identities need only be checked on a dense
+  set of test functions**: for fixed `n` and `f` they are linear in `φ` and each term is bounded by
+  `‖φ‖‖f‖` (`lipschitzWith_integral_comp_mul`), so the set of `φ` satisfying them is closed. This is
+  the gateway from a family of models whose covariance profiles span the polynomials to the
+  identities for *every* continuous `φ`, by Stone–Weierstrass.
+- `SpinGlass.SatisfiesGhirlandaGuerra'` and
+  `SpinGlass.satisfiesGhirlandaGuerra_iff_of_isJointlyExchangeable` — **Talagrand's (15.40) and
+  Panchenko's (1.1) are the same condition for a weakly exchangeable law**: the two differ only in
+  whether the isolated factor is `𝔼ψ(R_{1,n+1})` or `𝔼ψ(R_{1,2})`, and those agree by
+  `map_entry_eq_oneOverlapLaw`.
+- `SpinGlass.isUltrametric_bind` — ultrametricity, being almost sure, survives mixtures.
+- `SpinGlass.constArray`, `SpinGlass.rsArrayLaw` and
+  `isJointlyExchangeable_rsArrayLaw`, `constArray_mem_gramArray`, `gramArray_rsArrayLaw`,
+  `isUltrametric_rsArrayLaw`, `satisfiesGhirlandaGuerra_rsArrayLaw`, `oneOverlapLaw_rsArrayLaw` —
+  **the ontology is non-vacuous**: for `q ∈ [0,1]` the array with all off-diagonal entries `q`
+  satisfies *every* §15.3 property at once, with one-overlap law `δ_q`. It is the
+  replica-symmetric `μ*` of Talagrand's Theorem 15.3.6 at `μ = δ_q`, and it shows that the four
+  conditions are jointly satisfiable — a definition with no instance would be worthless.
+
 In this ontology, Talagrand's Research Problem 15.3.7 — do the Ghirlanda–Guerra identities on `𝓒⁺`
 imply ultrametricity? — reads `SatisfiesGhirlandaGuerra μ → μ gramArray = 1 → IsUltrametric μ`. It
 was answered affirmatively by Panchenko (*The Parisi ultrametricity conjecture*, Ann. of Math. 177

@@ -16,11 +16,18 @@ weights, free energy, and replica calculus from `Real.logSumExp`. SK and Hopfiel
 code. Vol. I §1.3 for SK is proved (Guerra, concentration, `tendsto_skFreeEnergy`, RS bound in the
 limit).
 
-Limit layer: `GibbsMeasure` (exchangeability, de Finetti); `SpinGlass.Limit` embeds `Config N` into
-the spin space `ℕ → Bool`, bridges finite replica arrays to weak limits, and proves
-`exists_asymptoticGibbsMeasure`. Cascades, `Parisi.T`, and finite-volume GG defect/error are
-scaffolding toward Vol. II. Gardner, perceptron, Parisi equality, ultrametricity are not yet
-discharged.
+Limit layer (`SpinGlass.Limit`, on the `GibbsMeasure` exchangeability / de Finetti pin):
+`Exchangeability` and `AsymptoticGibbs` embed `Config N` into the spin space `ℕ → Bool` and prove
+`exists_asymptoticGibbsMeasure`; `ExchangeableArray` and `OverlapArray` carry the overlap array on
+the compact `[-1,1]^{ℕ×ℕ}` and prove `exists_asymptoticOverlapArray` — the limit is jointly
+(weakly) exchangeable and almost surely a Gram array, which is the Dovbysh–Sudakov hypothesis;
+`AsymptoticArrayLaws` is Talagrand Vol. II §15.3 verbatim — `IsUltrametric` (Def. 15.3.2, both
+forms), `SatisfiesGhirlandaGuerra` (Def. 15.3.4), their stability under weak limits, Exercise
+15.3.5, and the replica-symmetric array as a worked instance of all of it.
+
+Cascades, `Parisi.T`, and the finite-volume GG defect/error are scaffolding toward the Vol. II
+capstones. Panchenko's ultrametricity theorem (Talagrand's Research Problem 15.3.7), the Parisi
+equality, broken-RSB Guerra, Gardner and the Hopfield limits are not yet discharged.
 
 ## Build
 
