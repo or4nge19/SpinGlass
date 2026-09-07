@@ -344,7 +344,8 @@ lemma guerraPhi_eq_integral_disorderPairLaw (t : ℝ) :
     guerraPhi (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) t
       =
       ∫ x : DisorderSpace (N := N),
-        free_energy_density (N := N) (H_t_disorder N (H_field N h) t x) ∂(μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) := by
+        free_energy_density (N := N) (H_t_disorder N (H_field N h) t x)
+        ∂(μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) := by
   let φ : Ω → DisorderSpace (N := N) :=
     disorderPair (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)
   have hφ : AEMeasurable φ (ℙ : Measure Ω) := by

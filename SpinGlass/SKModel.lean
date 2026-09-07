@@ -73,6 +73,24 @@ lemma integral_eq_zero (G : GaussianDisorder (Ω := Ω) (N := N) P K) :
       G.measU.aemeasurable measurable_id.aestronglyMeasurable)
   simpa [hmap] using G.mean0
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+/-- The pair of two Gaussian disorders — on possibly *different* systems — is centered. -/
+lemma integral_prodMk_eq_zero {N₁ N₂ : ℕ}
+    {K₁ : Config N₁ → Config N₁ → ℝ} {K₂ : Config N₂ → Config N₂ → ℝ}
+    (G₁ : GaussianDisorder (Ω := Ω) (N := N₁) P K₁)
+    (G₂ : GaussianDisorder (Ω := Ω) (N := N₂) P K₂) :
+    (∫ ω, (G₁.U ω, G₂.U ω) ∂P) = (0, 0) := by
+  have hpair : Integrable (fun ω => (G₁.U ω, G₂.U ω)) P := G₁.integrable.prodMk G₂.integrable
+  refine Prod.ext ?_ ?_
+  · have hf := ((ContinuousLinearMap.fst ℝ (EnergySpace N₁) (EnergySpace N₂)).integral_comp_comm
+      (μ := P) hpair).symm
+    simp only [ContinuousLinearMap.coe_fst'] at hf
+    rw [hf]; exact G₁.integral_eq_zero
+  · have hf := ((ContinuousLinearMap.snd ℝ (EnergySpace N₁) (EnergySpace N₂)).integral_comp_comm
+      (μ := P) hpair).symm
+    simp only [ContinuousLinearMap.coe_snd'] at hf
+    rw [hf]; exact G₂.integral_eq_zero
+
 end GaussianDisorder
 
 /-- SK disorder: a centered Gaussian Hamiltonian with the SK covariance kernel. -/
@@ -355,17 +373,8 @@ lemma disorderPair_integral_eq_zero :
   have hint := integrable_disorderPair (Ω := Ω) (N := N) G₁ G₂
   have hpair_int : Integrable (fun ω => (G₁.U ω, G₂.U ω)) (ℙ : Measure Ω) :=
     G₁.integrable.prodMk G₂.integrable
-  have h1 : (∫ ω, (G₁.U ω, G₂.U ω) ∂(ℙ : Measure Ω)).1 = 0 := by
-    have hf := ((ContinuousLinearMap.fst ℝ (EnergySpace N) (EnergySpace N)).integral_comp_comm
-      (μ := (ℙ : Measure Ω)) hpair_int).symm
-    simp only [ContinuousLinearMap.coe_fst'] at hf
-    rw [hf]; exact G₁.integral_eq_zero
-  have h2 : (∫ ω, (G₁.U ω, G₂.U ω) ∂(ℙ : Measure Ω)).2 = 0 := by
-    have hf := ((ContinuousLinearMap.snd ℝ (EnergySpace N) (EnergySpace N)).integral_comp_comm
-      (μ := (ℙ : Measure Ω)) hpair_int).symm
-    simp only [ContinuousLinearMap.coe_snd'] at hf
-    rw [hf]; exact G₂.integral_eq_zero
-  have hpair : (∫ ω, (G₁.U ω, G₂.U ω) ∂(ℙ : Measure Ω)) = (0, 0) := Prod.ext h1 h2
+  have hpair : (∫ ω, (G₁.U ω, G₂.U ω) ∂(ℙ : Measure Ω)) = (0, 0) :=
+    GaussianDisorder.integral_prodMk_eq_zero G₁ G₂
   refine e.injective ?_
   have hcomm := e.toContinuousLinearMap.integral_comp_comm (μ := (ℙ : Measure Ω)) hint
   have hsimp : (fun ω => e (disorderPair (Ω := Ω) (N := N) G₁ G₂ ω))

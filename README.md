@@ -8,16 +8,9 @@ not DLR specifications.
 
 ## Scope
 
-**In.** SK / mixed \(p\)-spin, perceptron/Gardner, Hopfield, Guerra interpolation, cavity, GG,
+SK / mixed \(p\)-spin, perceptron/Gardner, Hopfield, Guerra interpolation, cavity, GG,
 Poisson–Dirichlet cascades, Parisi formula. Vol. I models are instances of the Vol. II
 Gaussian-process / covariance language.
-
-**Out.** Lattice DLR/Georgii, 4D triviality / random currents, arithmetic models, extra Lake pins.
-DLR: [`or4nge19/GibbsMeasure@mc3`](https://github.com/or4nge19/GibbsMeasure/tree/mc3) (not a
-dependency).
-
-Plans: `Notes/Vol1##.md`, `Notes/Vol2##.md`. Index: `SpinGlass.Talagrand.MainResults`.
-Book extracts are local and gitignored (`.axiomatic/`).
 
 ## Architecture
 
@@ -60,6 +53,18 @@ Degenne’s mathlib4 PRs
 [#27608](https://github.com/leanprover-community/mathlib4/pull/27608).
 Fernique is in Mathlib ([#24430](https://github.com/leanprover-community/mathlib4/pull/24430)).
 
+## References
+
+Primary mathematical sources:
+
+- M. Talagrand, *Mean Field Models for Spin Glasses*, Vol. I–II (Springer, 2010/2011).
+- M. Talagrand, [The Parisi formula](https://annals.math.princeton.edu/2006/163-1/p04),
+  *Annals of Mathematics* **163** (2006), 221–263.
+  [doi:10.4007/annals.2006.163.221](https://doi.org/10.4007/annals.2006.163.221)
+- D. Panchenko, [The Parisi ultrametricity conjecture](https://annals.math.princeton.edu/2013/177-1/p08),
+  *Annals of Mathematics* **177** (2013), 383–393.
+  [doi:10.4007/annals.2013.177.1.8](https://doi.org/10.4007/annals.2013.177.1.8)
+
 ## How to cite
 
 Please cite this repository as:
@@ -75,7 +80,3 @@ Please cite this repository as:
             mathlib4 PR 26291}
 }
 ```
-
-Talagrand’s books remain the mathematical source:
-
-M. Talagrand, *Mean Field Models for Spin Glasses*, Vol. I–II.
