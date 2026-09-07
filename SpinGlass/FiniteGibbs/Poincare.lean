@@ -1,4 +1,5 @@
 import SpinGlass.FiniteGibbs.Calculus
+import Common.Mathlib.Probability.Distributions.Gaussian_Concentration
 import Common.Mathlib.Probability.Distributions.Gaussian_Poincare
 
 /-!
@@ -156,6 +157,38 @@ lemma gradient_free_energy_density (n : ℕ) (H : EnergySpace α) :
   rw [inner_gradient_left, fderiv_free_energy_density_apply, real_inner_smul_left, sum_inner]
   simp only [real_inner_smul_left, inner_std_basis_apply, Finset.mul_sum]
 
+omit [ProbabilityTheory.IsGaussian μ] in
+/-- **The Dirichlet energy of the free energy density is a two-replica bracket.** Since the
+gradient of `F_n` is `-1/n` times the Gibbs measure, `⟪C ∇F_n, ∇F_n⟫` is `1/n²` times the Gibbs
+average of the covariance kernel over two independent replicas. -/
+lemma inner_covarianceOperator_gradient_free_energy_density (n : ℕ) (H : EnergySpace α) :
+    ⟪ProbabilityTheory.covarianceOperator μ
+        (∇ (fun H' : EnergySpace α => free_energy_density (α := α) n H') H),
+      ∇ (fun H' : EnergySpace α => free_energy_density (α := α) n H') H⟫
+      = (1 / (n : ℝ)) ^ 2 * ∑ σ : α, ∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ
+          * (ProbabilityTheory.covarianceOperator μ (std_basis (α := α) σ)) τ := by
+  classical
+  set v : EnergySpace α := ∑ σ : α, gibbs_pmf (α := α) H σ • std_basis (α := α) σ with hv
+  have hCv : ⟪ProbabilityTheory.covarianceOperator μ v, v⟫
+      = ∑ σ : α, ∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ
+          * (ProbabilityTheory.covarianceOperator μ (std_basis (α := α) σ)) τ := by
+    have hmap : ProbabilityTheory.covarianceOperator μ v
+        = ∑ σ : α, gibbs_pmf (α := α) H σ
+            • ProbabilityTheory.covarianceOperator μ (std_basis (α := α) σ) := by
+      rw [hv, map_sum]
+      exact Finset.sum_congr rfl fun σ _ => map_smul _ _ _
+    rw [hmap, sum_inner]
+    refine Finset.sum_congr rfl fun σ _ => ?_
+    rw [real_inner_smul_left, hv, inner_sum, Finset.mul_sum]
+    refine Finset.sum_congr rfl fun τ _ => ?_
+    rw [real_inner_smul_right, real_inner_comm, inner_std_basis_apply]
+    ring
+  have hgrad : ∇ (fun H' : EnergySpace α => free_energy_density (α := α) n H') H
+      = (-(1 / (n : ℝ))) • v := by
+    rw [gradient_free_energy_density (α := α) n H, hv]
+  rw [hgrad, map_smul, real_inner_smul_left, real_inner_smul_right, hCv]
+  ring
+
 /-- **Self-averaging of the free energy density, sharp form.** The variance is bounded by the
 disorder average of the Gibbs average of the covariance kernel over two independent replicas,
 divided by `n²`. For a mixed `p`-spin model the inner double sum is `N ξ(R₁₂)`, so this is a
@@ -177,26 +210,89 @@ theorem variance_free_energy_density_le_gibbs_covariance
     (ProbabilityTheory.IsGaussian.variance_le_integral_inner_covarianceOperator_gradient
       (μ := μ) hmean0 hf hderiv) (le_of_eq ?_)
   rw [← MeasureTheory.integral_const_mul]
-  refine integral_congr_ae (Filter.Eventually.of_forall fun H => ?_)
-  set v : EnergySpace α := ∑ σ : α, gibbs_pmf (α := α) H σ • std_basis (α := α) σ with hv
-  have hCv : ⟪ProbabilityTheory.covarianceOperator μ v, v⟫
-      = ∑ σ : α, ∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ
-          * (ProbabilityTheory.covarianceOperator μ (std_basis (α := α) σ)) τ := by
-    have hmap : ProbabilityTheory.covarianceOperator μ v
-        = ∑ σ : α, gibbs_pmf (α := α) H σ
-            • ProbabilityTheory.covarianceOperator μ (std_basis (α := α) σ) := by
-      rw [hv, map_sum]
-      exact Finset.sum_congr rfl fun σ _ => map_smul _ _ _
-    rw [hmap, sum_inner]
-    refine Finset.sum_congr rfl fun σ _ => ?_
-    rw [real_inner_smul_left, hv, inner_sum, Finset.mul_sum]
-    refine Finset.sum_congr rfl fun τ _ => ?_
-    rw [real_inner_smul_right, real_inner_comm, inner_std_basis_apply]
-    ring
-  simp only []
-  rw [gradient_free_energy_density (α := α) n H, ← hv, map_smul, real_inner_smul_left,
-    real_inner_smul_right, hCv]
-  ring
+  exact integral_congr_ae (Filter.Eventually.of_forall fun H =>
+    inner_covarianceOperator_gradient_free_energy_density (α := α) (μ := μ) n H)
+
+/-! ### Sub-Gaussian concentration -/
+
+/-- **Sub-Gaussian concentration of the free energy density.** If the covariance kernel is bounded
+by `D`, then `F_n` is sub-Gaussian with parameter `D / n²`. For a mixed `p`-spin model
+`c σ τ = N ξ(R_{στ})`, so `D = N ξ(1)` and, at `n = N`, the parameter is `ξ(1) / N`: the free
+energy density concentrates at the Gaussian rate `exp (-N ε² / (2 ξ(1)))`. Talagrand,
+*Mean Field Models for Spin Glasses*, Vol. I, Theorem 1.3.4. -/
+theorem hasSubgaussianMGF_free_energy_density
+    (hmean0 : (∫ x : EnergySpace α, x ∂μ) = 0) (n : ℕ) {D : ℝ}
+    (hD : ∀ σ τ : α, (ProbabilityTheory.covarianceOperator μ (std_basis (α := α) σ)) τ ≤ D) :
+    ProbabilityTheory.HasSubgaussianMGF
+      (fun H : EnergySpace α => free_energy_density (α := α) n H
+        - μ[fun H : EnergySpace α => free_energy_density (α := α) n H])
+      ((1 / (n : ℝ)) ^ 2 * D).toNNReal μ := by
+  classical
+  have hfInf : ContDiff ℝ (⊤ : ℕ∞) (fun H : EnergySpace α => free_energy_density (α := α) n H) := by
+    simpa using (contDiff_free_energy_density (α := α) (n := n))
+  have hf : ContDiff ℝ 1 (fun H : EnergySpace α => free_energy_density (α := α) n H) :=
+    hfInf.of_le (by simp)
+  have hderiv : ∀ x : EnergySpace α,
+      ‖fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) x‖
+        ≤ (1 / (n : ℝ)) := fun x => by
+    simpa using (norm_fderiv_free_energy_density_le (α := α) (n := n) x)
+  refine ProbabilityTheory.IsGaussian.hasSubgaussianMGF_sub_integral_of_inner_covarianceOperator_le
+    (ν := μ) hmean0 hf hderiv fun H => ?_
+  rw [inner_covarianceOperator_gradient_free_energy_density (α := α) (μ := μ) n H]
+  refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+  have hrow : ∀ σ : α, (∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ
+      * (ProbabilityTheory.covarianceOperator μ (std_basis (α := α) σ)) τ)
+        ≤ gibbs_pmf (α := α) H σ * D := by
+    intro σ
+    calc (∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ
+          * (ProbabilityTheory.covarianceOperator μ (std_basis (α := α) σ)) τ)
+        ≤ ∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ * D := by
+          refine Finset.sum_le_sum fun τ _ => ?_
+          exact mul_le_mul_of_nonneg_left (hD σ τ)
+            (mul_nonneg (gibbs_pmf_nonneg (α := α) H σ) (gibbs_pmf_nonneg (α := α) H τ))
+      _ = gibbs_pmf (α := α) H σ * D := by
+          rw [← Finset.sum_mul, ← Finset.mul_sum, sum_gibbs_pmf, mul_one]
+  calc (∑ σ : α, ∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ
+        * (ProbabilityTheory.covarianceOperator μ (std_basis (α := α) σ)) τ)
+      ≤ ∑ σ : α, gibbs_pmf (α := α) H σ * D := Finset.sum_le_sum fun σ _ => hrow σ
+    _ = D := by rw [← Finset.sum_mul, sum_gibbs_pmf, one_mul]
+
+/-- The Gaussian tail bound for the free energy density: Talagrand's Theorem 1.3.4 for `log Z`. -/
+theorem measure_abs_ge_le_free_energy_density
+    (hmean0 : (∫ x : EnergySpace α, x ∂μ) = 0) (n : ℕ) {D : ℝ}
+    (hD : ∀ σ τ : α, (ProbabilityTheory.covarianceOperator μ (std_basis (α := α) σ)) τ ≤ D)
+    {ε : ℝ} (hε : 0 ≤ ε) :
+    μ.real {H : EnergySpace α | ε ≤ |free_energy_density (α := α) n H
+        - μ[fun H : EnergySpace α => free_energy_density (α := α) n H]|}
+      ≤ 2 * Real.exp (-ε ^ 2 / (2 * ((1 / (n : ℝ)) ^ 2 * D).toNNReal)) := by
+  have hsub := hasSubgaussianMGF_free_energy_density (α := α) (μ := μ) hmean0 n hD
+  have hpos : μ.real {H : EnergySpace α | ε ≤ free_energy_density (α := α) n H
+        - μ[fun H : EnergySpace α => free_energy_density (α := α) n H]}
+      ≤ Real.exp (-ε ^ 2 / (2 * ((1 / (n : ℝ)) ^ 2 * D).toNNReal)) := by
+    simpa using hsub.measure_ge_le hε
+  have hneg : μ.real {H : EnergySpace α | ε ≤ -(free_energy_density (α := α) n H
+        - μ[fun H : EnergySpace α => free_energy_density (α := α) n H])}
+      ≤ Real.exp (-ε ^ 2 / (2 * ((1 / (n : ℝ)) ^ 2 * D).toNNReal)) := by
+    simpa using hsub.neg.measure_ge_le hε
+  have hsubset : {H : EnergySpace α | ε ≤ |free_energy_density (α := α) n H
+        - μ[fun H : EnergySpace α => free_energy_density (α := α) n H]|}
+      ⊆ {H : EnergySpace α | ε ≤ free_energy_density (α := α) n H
+            - μ[fun H : EnergySpace α => free_energy_density (α := α) n H]}
+        ∪ {H : EnergySpace α | ε ≤ -(free_energy_density (α := α) n H
+            - μ[fun H : EnergySpace α => free_energy_density (α := α) n H])} := by
+    intro H hH
+    rcases abs_cases (free_energy_density (α := α) n H
+      - μ[fun H : EnergySpace α => free_energy_density (α := α) n H]) with ⟨h1, _⟩ | ⟨h1, _⟩
+    · exact Or.inl (by simpa [h1] using hH)
+    · exact Or.inr (by simpa [h1] using hH)
+  have hunion : μ.real {H : EnergySpace α | ε ≤ |free_energy_density (α := α) n H
+        - μ[fun H : EnergySpace α => free_energy_density (α := α) n H]|}
+      ≤ μ.real {H : EnergySpace α | ε ≤ free_energy_density (α := α) n H
+            - μ[fun H : EnergySpace α => free_energy_density (α := α) n H]}
+        + μ.real {H : EnergySpace α | ε ≤ -(free_energy_density (α := α) n H
+            - μ[fun H : EnergySpace α => free_energy_density (α := α) n H])} :=
+    le_trans (measureReal_mono hsubset) (measureReal_union_le _ _)
+  linarith
 
 end
 

@@ -17,6 +17,7 @@ import Common.Mathlib.Probability.Distributions.Gaussian_IBP2_Hilbert
 import Common.Mathlib.Probability.Distributions.Gaussian_IBP_Temperate
 import Common.Mathlib.Probability.Distributions.Gaussian_ComparisonIndep
 import Common.Mathlib.Probability.Distributions.Gaussian_Interpolation
+import Common.Mathlib.Probability.Distributions.Gaussian_Concentration
 import Common.Mathlib.Probability.Distributions.Gaussian_Rotation
 import Common.Mathlib.Probability.Distributions.Gaussian_ProdCovariance
 import Common.Mathlib.Probability.Distributions.Gaussian_SudakovFernique

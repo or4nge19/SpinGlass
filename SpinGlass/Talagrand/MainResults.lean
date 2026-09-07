@@ -278,11 +278,15 @@ exactly. Nothing here is asymptotic — every statement holds at every finite vo
 
 ## Dependencies
 
-`GibbsMeasure` (branch `mc3`, rev `8a158f0`) is required for its exchangeability layer only:
-`IsExchangeable`, the Hewitt–Savage zero-one law, and `existsUnique_mixing_of_isExchangeable`
+`GibbsMeasure` (branch `mc3`, rev `8a158f0`) is declared as a dependency for its exchangeability
+layer: `IsExchangeable`, the Hewitt–Savage zero-one law, and `existsUnique_mixing_of_isExchangeable`
 (de Finetti in Dynkin's form, with uniqueness over a standard Borel space). Mathlib has none of
-these. They are the ancestors of Aldous–Hoover and Dovbysh–Sudakov, which Vol. II Ch. 12–15 needs.
-The DLR/specification half of that repository is not imported.
+these, and they are the ancestors of Aldous–Hoover and Dovbysh–Sudakov, which Vol. II Ch. 12–15
+needs. **Nothing is imported from it yet**: the exchangeability used here is finite-volume and is
+proved in-tree (`FiniteGibbs.measurePreserving_comp_perm_replicaGibbsMeasure`, an instance of
+`Measure.pi` invariance). The dependency becomes load-bearing only at the asymptotic layer, where
+the replica law is a limit rather than a finite product. The DLR/specification half of that
+repository is not imported.
 
 ## Proved: Gaussian concentration (Vol. I, §1.3)
 

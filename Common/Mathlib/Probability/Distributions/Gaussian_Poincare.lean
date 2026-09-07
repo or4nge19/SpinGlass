@@ -510,6 +510,131 @@ private lemma abs_integral_prod_mul_fderiv_gaussRot_le_half_add
         rw [integral_div, integral_add (h1.const_mul lam) (h2.div_const lam),
           integral_const_mul, integral_div, hfst qg, hrot_law]
 
+/-- The slice bound with the gradient of `g` left inside the integral: `|slice θ| ≤ |sin θ| Kf ‖C‖
+∫ ‖∇g‖`. Unlike the quadratic-form bound this is *asymmetric* — it costs only the `L¹` norm of
+`∇g`, which is what an exponential `g` needs, since its gradient is not uniformly small but is
+controlled by `g` itself. -/
+private lemma abs_integral_prod_mul_fderiv_gaussRot_le_integral
+    (hmean0 : (∫ x : H, x ∂μ) = 0)
+    {f g : H → ℝ} (hf : ContDiff ℝ 1 f) (hg : ContDiff ℝ 1 g)
+    {Kf Kg : ℝ} (hKf : ∀ x, ‖fderiv ℝ f x‖ ≤ Kf) (hKg : ∀ x, ‖fderiv ℝ g x‖ ≤ Kg) (θ : ℝ) :
+    |∫ p : H × H,
+        f p.1 * (fderiv ℝ g (gaussRot (H := H) θ p)) (gaussRotOrtho (H := H) θ p) ∂(μ.prod μ)|
+      ≤ |Real.sin θ| * (Kf * (‖covarianceOperator μ‖ * ∫ x : H, ‖∇ g x‖ ∂μ)) := by
+  classical
+  have hKf0 : 0 ≤ Kf := le_trans (norm_nonneg _) (hKf 0)
+  have hKg0 : 0 ≤ Kg := le_trans (norm_nonneg _) (hKg 0)
+  have hcg : Continuous fun x : H => ‖∇ g x‖ :=
+    (ContDiff.continuous_gradient hg).norm
+  have hIg : Integrable (fun x : H => ‖∇ g x‖) μ := by
+    refine Integrable.mono' (integrable_const Kg) hcg.aestronglyMeasurable
+      (Filter.Eventually.of_forall fun x => ?_)
+    rw [Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _), norm_gradient]
+    exact hKg x
+  have hIgP : Integrable (fun p : H × H => Kf * (‖covarianceOperator μ‖ * ‖∇ g p.1‖))
+      (μ.prod μ) := ((hIg.comp_fst μ).const_mul _).const_mul _
+  rw [integral_prod_mul_fderiv_gaussRot_eq (μ := μ) hmean0 hf hg hKf hKg θ, abs_mul, abs_neg]
+  refine mul_le_mul_of_nonneg_left ?_ (abs_nonneg _)
+  have hbound : ∀ p : H × H,
+      ‖(fderiv ℝ f (gaussRot (H := H) (-θ) p)) (covarianceOperator μ (∇ g p.1))‖
+        ≤ Kf * (‖covarianceOperator μ‖ * ‖∇ g p.1‖) := by
+    intro p
+    calc ‖(fderiv ℝ f (gaussRot (H := H) (-θ) p)) (covarianceOperator μ (∇ g p.1))‖
+        ≤ ‖fderiv ℝ f (gaussRot (H := H) (-θ) p)‖
+            * ‖covarianceOperator μ (∇ g p.1)‖ := ContinuousLinearMap.le_opNorm _ _
+      _ ≤ Kf * (‖covarianceOperator μ‖ * ‖∇ g p.1‖) :=
+          mul_le_mul (hKf _) ((covarianceOperator μ).le_opNorm _) (norm_nonneg _) hKf0
+  calc |∫ p : H × H, (fderiv ℝ f (gaussRot (H := H) (-θ) p))
+          (covarianceOperator μ (∇ g p.1)) ∂(μ.prod μ)|
+      ≤ ∫ p : H × H, ‖(fderiv ℝ f (gaussRot (H := H) (-θ) p))
+          (covarianceOperator μ (∇ g p.1))‖ ∂(μ.prod μ) := by
+        simpa [Real.norm_eq_abs] using norm_integral_le_integral_norm (μ := μ.prod μ)
+          (fun p : H × H => (fderiv ℝ f (gaussRot (H := H) (-θ) p))
+            (covarianceOperator μ (∇ g p.1)))
+    _ ≤ ∫ p : H × H, Kf * (‖covarianceOperator μ‖ * ‖∇ g p.1‖) ∂(μ.prod μ) :=
+        integral_mono_of_nonneg (Filter.Eventually.of_forall fun _ => norm_nonneg _)
+          hIgP (Filter.Eventually.of_forall hbound)
+    _ = Kf * (‖covarianceOperator μ‖ * ∫ x : H, ‖∇ g x‖ ∂μ) := by
+        rw [MeasureTheory.integral_const_mul, MeasureTheory.integral_const_mul]
+        congr 2
+        simpa [probReal_univ] using
+          integral_fun_fst (μ := μ) (ν := μ) (f := fun x : H => ‖∇ g x‖)
+
+/-- The slice bound in the form Talagrand's concentration inequality needs: the derivative of `f`
+is charged only through the Dirichlet density `⟪C ∇f, ∇f⟫`, and the gradient of `g` only through
+the `L¹` norm of `√⟪C ∇g, ∇g⟫`. Both are strictly smaller than the operator-norm surrogates
+`‖C‖ Kf²` and `‖C‖ Kg` whenever the gradients avoid the top eigenspace of `C`. -/
+private lemma abs_integral_prod_mul_fderiv_gaussRot_le_integral_sqrt
+    (hmean0 : (∫ x : H, x ∂μ) = 0)
+    {f g : H → ℝ} (hf : ContDiff ℝ 1 f) (hg : ContDiff ℝ 1 g)
+    {Kf Kg : ℝ} (hKf : ∀ x, ‖fderiv ℝ f x‖ ≤ Kf) (hKg : ∀ x, ‖fderiv ℝ g x‖ ≤ Kg)
+    {A : ℝ} (hA : ∀ x, ⟪covarianceOperator μ (∇ f x), ∇ f x⟫ ≤ A) (θ : ℝ) :
+    |∫ p : H × H,
+        f p.1 * (fderiv ℝ g (gaussRot (H := H) θ p)) (gaussRotOrtho (H := H) θ p) ∂(μ.prod μ)|
+      ≤ |Real.sin θ|
+          * (Real.sqrt A * ∫ x : H, Real.sqrt ⟪covarianceOperator μ (∇ g x), ∇ g x⟫ ∂μ) := by
+  classical
+  have hKg0 : 0 ≤ Kg := le_trans (norm_nonneg _) (hKg 0)
+  have hpos : (covarianceOperator μ).toLinearMap.IsPositive := isPositive_covarianceOperator
+  have hqbound : ∀ {h : H → ℝ} {L : ℝ}, (∀ x, ‖fderiv ℝ h x‖ ≤ L) →
+      ∀ x, ⟪covarianceOperator μ (∇ h x), ∇ h x⟫ ≤ ‖covarianceOperator μ‖ * L ^ 2 := by
+    intro h L hL x
+    have hnx : ‖∇ h x‖ ≤ L := by rw [norm_gradient]; exact hL x
+    calc ⟪covarianceOperator μ (∇ h x), ∇ h x⟫
+        ≤ ‖covarianceOperator μ (∇ h x)‖ * ‖∇ h x‖ := real_inner_le_norm _ _
+      _ ≤ (‖covarianceOperator μ‖ * ‖∇ h x‖) * ‖∇ h x‖ :=
+          mul_le_mul_of_nonneg_right ((covarianceOperator μ).le_opNorm _) (norm_nonneg _)
+      _ ≤ (‖covarianceOperator μ‖ * L) * L := by
+          have hL0 : 0 ≤ L := le_trans (norm_nonneg _) (hL 0)
+          exact mul_le_mul (mul_le_mul_of_nonneg_left hnx (norm_nonneg _)) hnx (norm_nonneg _)
+            (by positivity)
+      _ = ‖covarianceOperator μ‖ * L ^ 2 := by ring
+  have hcqg : Continuous fun x : H => Real.sqrt ⟪covarianceOperator μ (∇ g x), ∇ g x⟫ :=
+    Real.continuous_sqrt.comp (continuous_inner.comp
+      (((covarianceOperator μ).continuous.comp (ContDiff.continuous_gradient hg)).prodMk
+        (ContDiff.continuous_gradient hg)))
+  have hIsq : Integrable (fun x : H => Real.sqrt ⟪covarianceOperator μ (∇ g x), ∇ g x⟫) μ := by
+    refine Integrable.mono' (integrable_const (Real.sqrt (‖covarianceOperator μ‖ * Kg ^ 2)))
+      hcqg.aestronglyMeasurable (Filter.Eventually.of_forall fun x => ?_)
+    rw [Real.norm_eq_abs, abs_of_nonneg (Real.sqrt_nonneg _)]
+    exact Real.sqrt_le_sqrt (hqbound hKg x)
+  have hIsqP : Integrable
+      (fun p : H × H => Real.sqrt A * Real.sqrt ⟪covarianceOperator μ (∇ g p.1), ∇ g p.1⟫)
+      (μ.prod μ) := (hIsq.comp_fst μ).const_mul _
+  rw [integral_prod_mul_fderiv_gaussRot_eq (μ := μ) hmean0 hf hg hKf hKg θ, abs_mul, abs_neg]
+  refine mul_le_mul_of_nonneg_left ?_ (abs_nonneg _)
+  have hbound : ∀ p : H × H,
+      ‖(fderiv ℝ f (gaussRot (H := H) (-θ) p)) (covarianceOperator μ (∇ g p.1))‖
+        ≤ Real.sqrt A * Real.sqrt ⟪covarianceOperator μ (∇ g p.1), ∇ g p.1⟫ := by
+    intro p
+    have hrepr : (fderiv ℝ f (gaussRot (H := H) (-θ) p)) (covarianceOperator μ (∇ g p.1))
+        = ⟪covarianceOperator μ (∇ g p.1), ∇ f (gaussRot (H := H) (-θ) p)⟫ := by
+      rw [← inner_gradient_left, real_inner_comm]
+    rw [hrepr, Real.norm_eq_abs]
+    have hcs := LinearMap.IsPositive.abs_inner_le_sqrt_mul_sqrt hpos (∇ g p.1)
+      (∇ f (gaussRot (H := H) (-θ) p))
+    simp only [ContinuousLinearMap.coe_coe] at hcs
+    refine le_trans hcs ?_
+    rw [mul_comm]
+    exact mul_le_mul_of_nonneg_right
+      (Real.sqrt_le_sqrt (hA (gaussRot (H := H) (-θ) p))) (Real.sqrt_nonneg _)
+  calc |∫ p : H × H, (fderiv ℝ f (gaussRot (H := H) (-θ) p))
+          (covarianceOperator μ (∇ g p.1)) ∂(μ.prod μ)|
+      ≤ ∫ p : H × H, ‖(fderiv ℝ f (gaussRot (H := H) (-θ) p))
+          (covarianceOperator μ (∇ g p.1))‖ ∂(μ.prod μ) := by
+        simpa [Real.norm_eq_abs] using norm_integral_le_integral_norm (μ := μ.prod μ)
+          (fun p : H × H => (fderiv ℝ f (gaussRot (H := H) (-θ) p))
+            (covarianceOperator μ (∇ g p.1)))
+    _ ≤ ∫ p : H × H,
+          Real.sqrt A * Real.sqrt ⟪covarianceOperator μ (∇ g p.1), ∇ g p.1⟫ ∂(μ.prod μ) :=
+        integral_mono_of_nonneg (Filter.Eventually.of_forall fun _ => norm_nonneg _)
+          hIsqP (Filter.Eventually.of_forall hbound)
+    _ = Real.sqrt A * ∫ x : H, Real.sqrt ⟪covarianceOperator μ (∇ g x), ∇ g x⟫ ∂μ := by
+        rw [MeasureTheory.integral_const_mul]
+        congr 1
+        simpa [probReal_univ] using integral_fun_fst (μ := μ) (ν := μ)
+          (f := fun x : H => Real.sqrt ⟪covarianceOperator μ (∇ g x), ∇ g x⟫)
+
 /-! ### From a slice bound to a covariance bound -/
 
 /-- **The rotation argument, packaged.** Any bound `|slice θ| ≤ |sin θ| M` on the rotated integral
@@ -764,6 +889,40 @@ theorem abs_covariance_le_half_add_integral_inner_covarianceOperator
         + ∫ x : H, ⟪covarianceOperator μ (∇ g x), ∇ g x⟫ ∂μ) / 2 := by
   simpa using abs_covariance_le_half_add_smul_integral_inner_covarianceOperator
     (μ := μ) hmean0 hf hg hKf hKg (lam := 1) one_pos
+
+/-- **The Gaussian covariance inequality, asymmetric form.** For `C¹` functionals with bounded
+derivatives,
+
+`|cov[f, g; μ]| ≤ Kf · ‖C‖ · ∫ ‖∇g‖ dμ`.
+
+Only the `L¹` norm of `∇g` is charged, not a uniform bound on it. This is the form that drives the
+Gaussian concentration inequality: applied with `g = exp (λ (f - 𝔼f))`, whose gradient is `λ ∇f g`,
+it gives `cov[f, g] ≤ λ Kf² ‖C‖ 𝔼[g]`, a differential inequality for the moment generating
+function whose solution is the sharp sub-Gaussian bound. -/
+theorem abs_covariance_le_mul_integral_norm_gradient
+    (hmean0 : (∫ x : H, x ∂μ) = 0)
+    {f g : H → ℝ} (hf : ContDiff ℝ 1 f) (hg : ContDiff ℝ 1 g)
+    {Kf Kg : ℝ} (hKf : ∀ x, ‖fderiv ℝ f x‖ ≤ Kf) (hKg : ∀ x, ‖fderiv ℝ g x‖ ≤ Kg) :
+    |cov[f, g; μ]| ≤ Kf * (‖covarianceOperator μ‖ * ∫ x : H, ‖∇ g x‖ ∂μ) :=
+  abs_covariance_le_of_slice_le (μ := μ) hf hg hKf hKg
+    (abs_integral_prod_mul_fderiv_gaussRot_le_integral (μ := μ) hmean0 hf hg hKf hKg)
+
+/-- **The Gaussian covariance inequality in Dirichlet form.** If `⟪C ∇f, ∇f⟫ ≤ A` pointwise then
+
+`|cov[f, g; μ]| ≤ √A · ∫ √⟪C ∇g, ∇g⟫ dμ`.
+
+Applied with `g = exp (λ (f - 𝔼f))`, whose Dirichlet density is `λ² g² ⟪C ∇f, ∇f⟫ ≤ λ² g² A`, it
+gives `cov[f, g] ≤ λ A 𝔼[g]`, the differential inequality behind the Gaussian concentration
+inequality with Talagrand's sharp constant `A`. -/
+theorem abs_covariance_le_sqrt_mul_integral_sqrt
+    (hmean0 : (∫ x : H, x ∂μ) = 0)
+    {f g : H → ℝ} (hf : ContDiff ℝ 1 f) (hg : ContDiff ℝ 1 g)
+    {Kf Kg : ℝ} (hKf : ∀ x, ‖fderiv ℝ f x‖ ≤ Kf) (hKg : ∀ x, ‖fderiv ℝ g x‖ ≤ Kg)
+    {A : ℝ} (hA : ∀ x, ⟪covarianceOperator μ (∇ f x), ∇ f x⟫ ≤ A) :
+    |cov[f, g; μ]|
+      ≤ Real.sqrt A * ∫ x : H, Real.sqrt ⟪covarianceOperator μ (∇ g x), ∇ g x⟫ ∂μ :=
+  abs_covariance_le_of_slice_le (μ := μ) hf hg hKf hKg
+    (abs_integral_prod_mul_fderiv_gaussRot_le_integral_sqrt (μ := μ) hmean0 hf hg hKf hKg hA)
 
 /-- **The Gaussian Poincaré inequality**, in its sharp form: if `μ` is a centered Gaussian measure
 on a real Hilbert space and `f` is `C¹` with `‖fderiv ℝ f x‖ ≤ K`, then
