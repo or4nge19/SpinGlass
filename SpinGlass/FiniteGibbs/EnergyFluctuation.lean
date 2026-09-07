@@ -398,6 +398,253 @@ theorem ghirlandaGuerra_error_le_energy_fluctuation
   rw [hmean] at h
   rwa [integral_gibbs_average_sub_mean_sq (μ := μ) hmean0 hdiag] at h
 
+
+/-! ### Closing the fluctuation into covariance brackets -/
+
+omit [Nonempty α] [IsGaussian μ] in
+/-- The two-replica Gibbs bracket, as an explicit double sum. -/
+lemma gibbs_average_two (H : EnergySpace α) (F : α → α → ℝ) :
+    gibbs_average_n_det (α := α) (n := 2) H (fun σs => F (σs 0) (σs 1))
+      = ∑ σ : α, ∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ * F σ τ := by
+  classical
+  rw [gibbs_average_n_det, ← Equiv.sum_comp (finTwoArrowEquiv α).symm, Fintype.sum_prod_type]
+  refine Finset.sum_congr rfl fun σ _ => Finset.sum_congr rfl fun τ _ => ?_
+  simp only [finTwoArrowEquiv_symm_apply, Fin.prod_univ_two, Matrix.cons_val_zero,
+    Matrix.cons_val_one]
+  ring
+
+/-- **The energy fluctuation as a covariance bracket.** For a centered Gaussian Hamiltonian with
+constant-diagonal covariance kernel `c`, with `A = 𝔼⟨c(σ¹,σ²)⟩`,
+
+`𝔼⟨(H - 𝔼⟨H⟩)²⟩ = d + 2 𝔼⟨c(σ¹,σ²) c(σ¹,σ³)⟩ - 𝔼⟨c(σ¹,σ²)²⟩ - A²`.
+
+Nothing on the right-hand side mentions the Hamiltonian: the fluctuation of the energy of a
+Gaussian spin glass is a function of its covariance kernel alone. The three brackets are the
+three-replica, two-replica and one-replica averages of the kernel; centring them turns the
+right-hand side into `d + 2 𝔼⟨(c₁₂ - A)(c₁₃ - A)⟩ - 𝔼⟨(c₁₂ - A)²⟩`, which is `O(N)` for a mixed
+`p`-spin model exactly when the overlap fluctuations cancel — the content of the Ghirlanda–Guerra
+identities.
+
+The proof is the cavity identity `integral_gibbs_average_n_det_energy_mul` at two replicas applied
+to the covariance kernel itself, removing the last Hamiltonian from
+`integral_gibbs_average_sub_mean_sq`. -/
+theorem integral_gibbs_average_sub_mean_sq_eq_covariance
+    (hmean0 : (∫ x : EnergySpace α, x ∂μ) = 0) {d : ℝ}
+    (hdiag : ∀ σ : α, (covarianceOperator μ (std_basis (α := α) σ)) σ = d) :
+    (∫ H : EnergySpace α, (∑ σ : α, gibbs_pmf (α := α) H σ
+        * (H σ - ∫ H' : EnergySpace α,
+            (∑ τ : α, gibbs_pmf (α := α) H' τ * H' τ) ∂μ) ^ 2) ∂μ)
+      = d
+        + 2 * (∫ H : EnergySpace α,
+            (∑ σ : α, gibbs_pmf (α := α) H σ * freshCov μ H σ ^ 2) ∂μ)
+        - (∫ H : EnergySpace α, (∑ σ : α, ∑ τ : α, gibbs_pmf (α := α) H σ
+            * gibbs_pmf (α := α) H τ
+            * ((covarianceOperator μ (std_basis (α := α) σ)) τ) ^ 2) ∂μ)
+        - (∫ H : EnergySpace α,
+            (∑ σ : α, gibbs_pmf (α := α) H σ * freshCov μ H σ) ∂μ) ^ 2 := by
+  classical
+  have hK0 : (0 : ℝ) ≤ ‖covarianceOperator μ‖ := norm_nonneg _
+  set A : EnergySpace α → ℝ :=
+    fun H => ∑ σ : α, gibbs_pmf (α := α) H σ * freshCov μ H σ with hA
+  set T : EnergySpace α → ℝ :=
+    fun H => ∑ σ : α, gibbs_pmf (α := α) H σ * freshCov μ H σ ^ 2 with hT
+  set S : EnergySpace α → ℝ :=
+    fun H => ∑ σ : α, ∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ
+      * ((covarianceOperator μ (std_basis (α := α) σ)) τ) ^ 2 with hS
+  -- all three brackets are bounded and continuous, hence integrable
+  have hIA : Integrable A μ := by
+    refine integrable_of_bounded_growth (μ := μ)
+      (continuous_finsetSum _ fun σ _ =>
+        (contDiff_gibbs_pmf (α := α) σ).continuous.mul (continuous_freshCov (μ := μ) σ))
+      (C := ‖covarianceOperator μ‖) (m := 0) hK0 fun H => ?_
+    calc |A H| ≤ ∑ σ : α, |gibbs_pmf (α := α) H σ * freshCov μ H σ| :=
+          Finset.abs_sum_le_sum_abs _ _
+      _ ≤ ∑ σ : α, gibbs_pmf (α := α) H σ * ‖covarianceOperator μ‖ := by
+          refine Finset.sum_le_sum fun σ _ => ?_
+          rw [abs_mul, abs_of_nonneg (gibbs_pmf_nonneg (α := α) H σ)]
+          exact mul_le_mul_of_nonneg_left (abs_freshCov_le (μ := μ) H σ)
+            (gibbs_pmf_nonneg (α := α) H σ)
+      _ = ‖covarianceOperator μ‖ * (1 + ‖H‖) ^ 0 := by
+          rw [← Finset.sum_mul, sum_gibbs_pmf]; simp
+  have hIT : Integrable T μ := by
+    refine integrable_of_bounded_growth (μ := μ)
+      (continuous_finsetSum _ fun σ _ =>
+        (contDiff_gibbs_pmf (α := α) σ).continuous.mul
+          ((continuous_freshCov (μ := μ) σ).pow 2))
+      (C := ‖covarianceOperator μ‖ ^ 2) (m := 0) (by positivity) fun H => ?_
+    calc |T H| ≤ ∑ σ : α, |gibbs_pmf (α := α) H σ * freshCov μ H σ ^ 2| :=
+          Finset.abs_sum_le_sum_abs _ _
+      _ ≤ ∑ σ : α, gibbs_pmf (α := α) H σ * ‖covarianceOperator μ‖ ^ 2 := by
+          refine Finset.sum_le_sum fun σ _ => ?_
+          rw [abs_mul, abs_of_nonneg (gibbs_pmf_nonneg (α := α) H σ), abs_pow]
+          refine mul_le_mul_of_nonneg_left ?_ (gibbs_pmf_nonneg (α := α) H σ)
+          exact pow_le_pow_left₀ (abs_nonneg _) (abs_freshCov_le (μ := μ) H σ) 2
+      _ = ‖covarianceOperator μ‖ ^ 2 * (1 + ‖H‖) ^ 0 := by
+          rw [← Finset.sum_mul, sum_gibbs_pmf]; simp
+  have hIS : Integrable S μ := by
+    refine integrable_of_bounded_growth (μ := μ)
+      (continuous_finsetSum _ fun σ _ => continuous_finsetSum _ fun τ _ =>
+        ((contDiff_gibbs_pmf (α := α) σ).continuous.mul
+          (contDiff_gibbs_pmf (α := α) τ).continuous).mul continuous_const)
+      (C := ‖covarianceOperator μ‖ ^ 2) (m := 0) (by positivity) fun H => ?_
+    have hrow : ∀ σ : α, |∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ
+        * ((covarianceOperator μ (std_basis (α := α) σ)) τ) ^ 2|
+          ≤ gibbs_pmf (α := α) H σ * ‖covarianceOperator μ‖ ^ 2 := by
+      intro σ
+      calc |∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ
+              * ((covarianceOperator μ (std_basis (α := α) σ)) τ) ^ 2|
+          ≤ ∑ τ : α, |gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ
+              * ((covarianceOperator μ (std_basis (α := α) σ)) τ) ^ 2| :=
+            Finset.abs_sum_le_sum_abs _ _
+        _ ≤ ∑ τ : α, (gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ)
+              * ‖covarianceOperator μ‖ ^ 2 := by
+            refine Finset.sum_le_sum fun τ _ => ?_
+            have hpp : (0:ℝ) ≤ gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ :=
+              mul_nonneg (gibbs_pmf_nonneg (α := α) H σ) (gibbs_pmf_nonneg (α := α) H τ)
+            rw [abs_mul, abs_of_nonneg hpp, abs_pow]
+            refine mul_le_mul_of_nonneg_left ?_ hpp
+            exact pow_le_pow_left₀ (abs_nonneg _)
+              (abs_covarianceOperator_std_basis_apply_le (μ := μ) σ τ) 2
+        _ = gibbs_pmf (α := α) H σ * ‖covarianceOperator μ‖ ^ 2 := by
+            rw [← Finset.sum_mul, ← Finset.mul_sum, sum_gibbs_pmf, mul_one]
+    calc |S H| ≤ ∑ σ : α, |∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ
+            * ((covarianceOperator μ (std_basis (α := α) σ)) τ) ^ 2| :=
+          Finset.abs_sum_le_sum_abs _ _
+      _ ≤ ∑ σ : α, gibbs_pmf (α := α) H σ * ‖covarianceOperator μ‖ ^ 2 :=
+          Finset.sum_le_sum fun σ _ => hrow σ
+      _ = ‖covarianceOperator μ‖ ^ 2 * (1 + ‖H‖) ^ 0 := by
+          rw [← Finset.sum_mul, sum_gibbs_pmf]; simp
+  -- the mean energy in terms of `A`
+  have hone : (∫ H : EnergySpace α, (∑ σ : α, gibbs_pmf (α := α) H σ * H σ) ∂μ)
+      = (∫ H : EnergySpace α, A H ∂μ) - d := by
+    have h1 : (∫ H : EnergySpace α,
+          gibbs_average_n_det (α := α) (n := 1) H (fun τs => H (τs 0)) ∂μ)
+        = ∫ H : EnergySpace α, (∑ σ : α, gibbs_pmf (α := α) H σ * H σ) ∂μ :=
+      integral_congr_ae (Filter.Eventually.of_forall fun H => gibbs_average_one_energy (α := α) H)
+    have h2 : (∫ H : EnergySpace α,
+          gibbs_average_n_det (α := α) (n := 1) H (fun τs => freshCov μ H (τs 0)) ∂μ)
+        = ∫ H : EnergySpace α, A H ∂μ := by
+      refine integral_congr_ae (Filter.Eventually.of_forall fun H => ?_)
+      simp only []
+      rw [gibbs_average_one, hA]
+      exact Finset.sum_congr rfl fun τ _ => mul_comm _ _
+    rw [← h1, ← h2]
+    exact integral_gibbs_average_one_energy (μ := μ) hmean0 hdiag
+  -- the cavity identity at two replicas, applied to the covariance kernel itself
+  have hcav := integral_gibbs_average_n_det_energy_mul (μ := μ) hmean0 2
+    (fun σs => (covarianceOperator μ (std_basis (α := α) (σs 0))) (σs 1)) 0
+  have hcavL : ∀ H : EnergySpace α,
+      gibbs_average_n_det (α := α) (n := 2) H
+          (fun σs => H (σs 0) * (covarianceOperator μ (std_basis (α := α) (σs 0))) (σs 1))
+        = ∑ σ : α, gibbs_pmf (α := α) H σ * (H σ * freshCov μ H σ) := by
+    intro H
+    rw [gibbs_average_two (α := α) H
+      (fun σ τ => H σ * (covarianceOperator μ (std_basis (α := α) σ)) τ)]
+    simp only [freshCov, Finset.mul_sum]
+    exact Finset.sum_congr rfl fun σ _ => Finset.sum_congr rfl fun τ _ => by ring
+  have hcavR : ∀ H : EnergySpace α,
+      (((2 : ℕ) : ℝ) * gibbs_average_n_det (α := α) (n := 2) H
+            (fun σs => (covarianceOperator μ (std_basis (α := α) (σs 0))) (σs 1)
+              * (∑ τ : α, gibbs_pmf (α := α) H τ
+                  * (covarianceOperator μ (std_basis (α := α) (σs 0))) τ))
+          - ∑ l : Fin 2, gibbs_average_n_det (α := α) (n := 2) H
+              (fun σs => (covarianceOperator μ (std_basis (α := α) (σs 0))) (σs 1)
+                * (covarianceOperator μ (std_basis (α := α) (σs 0))) (σs l)))
+        = 2 * T H - d * A H - S H := by
+    intro H
+    have e1 : gibbs_average_n_det (α := α) (n := 2) H
+        (fun σs => (covarianceOperator μ (std_basis (α := α) (σs 0))) (σs 1)
+          * (∑ τ : α, gibbs_pmf (α := α) H τ
+              * (covarianceOperator μ (std_basis (α := α) (σs 0))) τ)) = T H := by
+      rw [gibbs_average_two (α := α) H (fun σ τ =>
+        (covarianceOperator μ (std_basis (α := α) σ)) τ
+          * ∑ ρ : α, gibbs_pmf (α := α) H ρ
+              * (covarianceOperator μ (std_basis (α := α) σ)) ρ)]
+      simp only [hT, freshCov]
+      refine Finset.sum_congr rfl fun σ _ => ?_
+      have hrow : (∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ
+            * ((covarianceOperator μ (std_basis (α := α) σ)) τ
+              * ∑ ρ : α, gibbs_pmf (α := α) H ρ
+                  * (covarianceOperator μ (std_basis (α := α) σ)) ρ))
+          = (gibbs_pmf (α := α) H σ * ∑ ρ : α, gibbs_pmf (α := α) H ρ
+                * (covarianceOperator μ (std_basis (α := α) σ)) ρ)
+            * ∑ τ : α, gibbs_pmf (α := α) H τ
+                * (covarianceOperator μ (std_basis (α := α) σ)) τ := by
+        rw [Finset.mul_sum]
+        exact Finset.sum_congr rfl fun τ _ => by ring
+      rw [hrow]
+      ring
+    have e2 : gibbs_average_n_det (α := α) (n := 2) H
+        (fun σs => (covarianceOperator μ (std_basis (α := α) (σs 0))) (σs 1)
+          * (covarianceOperator μ (std_basis (α := α) (σs 0))) (σs 0)) = d * A H := by
+      rw [gibbs_average_two (α := α) H (fun σ τ =>
+        (covarianceOperator μ (std_basis (α := α) σ)) τ
+          * (covarianceOperator μ (std_basis (α := α) σ)) σ)]
+      simp only [hdiag, hA, freshCov, Finset.mul_sum]
+      exact Finset.sum_congr rfl fun σ _ => Finset.sum_congr rfl fun τ _ => by ring
+    have e3 : gibbs_average_n_det (α := α) (n := 2) H
+        (fun σs => (covarianceOperator μ (std_basis (α := α) (σs 0))) (σs 1)
+          * (covarianceOperator μ (std_basis (α := α) (σs 0))) (σs 1)) = S H := by
+      rw [gibbs_average_two (α := α) H (fun σ τ =>
+        (covarianceOperator μ (std_basis (α := α) σ)) τ
+          * (covarianceOperator μ (std_basis (α := α) σ)) τ)]
+      simp only [hS]
+      exact Finset.sum_congr rfl fun σ _ => Finset.sum_congr rfl fun τ _ => by ring
+    rw [Fin.sum_univ_two, e1, e2, e3]
+    ring
+  have hmixed : (∫ H : EnergySpace α,
+        (∑ σ : α, gibbs_pmf (α := α) H σ * (H σ * freshCov μ H σ)) ∂μ)
+      = 2 * (∫ H : EnergySpace α, T H ∂μ) - d * (∫ H : EnergySpace α, A H ∂μ)
+        - ∫ H : EnergySpace α, S H ∂μ := by
+    rw [← integral_congr_ae (Filter.Eventually.of_forall hcavL), hcav,
+      integral_congr_ae (Filter.Eventually.of_forall hcavR)]
+    have hIsub : Integrable (fun H : EnergySpace α => 2 * T H - d * A H) μ :=
+      (hIT.const_mul 2).sub (hIA.const_mul d)
+    rw [MeasureTheory.integral_sub hIsub hIS,
+      MeasureTheory.integral_sub (hIT.const_mul 2) (hIA.const_mul d),
+      MeasureTheory.integral_const_mul, MeasureTheory.integral_const_mul]
+  rw [integral_gibbs_average_sub_mean_sq (μ := μ) hmean0 hdiag, hmixed, hone]
+  ring
+
+/-- **Ghirlanda–Guerra with a covariance-kernel error term, in closed form.** For a centered
+Gaussian Hamiltonian with constant-diagonal covariance kernel `c`, the Ghirlanda–Guerra
+combination of an `m`-replica test function bounded by `B` obeys
+
+`|GG(f)| ≤ B √(d + 2 𝔼⟨c₁₂ c₁₃⟩ - 𝔼⟨c₁₂²⟩ - (𝔼⟨c₁₂⟩)²)`
+
+at every finite volume. Neither the Hamiltonian nor the observable appears on the right: the
+Ghirlanda–Guerra error of a Gaussian spin glass is bounded by an expression in the covariance
+kernel alone, made of the three-, two- and one-replica averages of the kernel. -/
+theorem ghirlandaGuerra_error_le_covariance
+    (hmean0 : (∫ x : EnergySpace α, x ∂μ) = 0) {d : ℝ}
+    (hdiag : ∀ σ : α, (covarianceOperator μ (std_basis (α := α) σ)) σ = d)
+    (m : ℕ) (f : ReplicaFun (α := α) m) (i : Fin m) {B : ℝ} (hB : ∀ σs, |f σs| ≤ B) :
+    |(m : ℝ) * (∫ H : EnergySpace α,
+          gibbs_average_n_det (α := α) (n := m) H
+            (fun σs => f σs * freshCov μ H (σs i)) ∂μ)
+        - (∫ H : EnergySpace α, gibbs_average_n_det (α := α) (n := m) H f ∂μ)
+            * (∫ H : EnergySpace α,
+                gibbs_average_n_det (α := α) (n := 1) H (fun τs => freshCov μ H (τs 0)) ∂μ)
+        - ∑ l ∈ Finset.univ.erase i, ∫ H : EnergySpace α,
+            gibbs_average_n_det (α := α) (n := m) H
+              (fun σs => f σs
+                * (covarianceOperator μ (std_basis (α := α) (σs i))) (σs l)) ∂μ|
+      ≤ B * Real.sqrt (d
+          + 2 * (∫ H : EnergySpace α,
+              (∑ σ : α, gibbs_pmf (α := α) H σ * freshCov μ H σ ^ 2) ∂μ)
+          - (∫ H : EnergySpace α, (∑ σ : α, ∑ τ : α, gibbs_pmf (α := α) H σ
+              * gibbs_pmf (α := α) H τ
+              * ((covarianceOperator μ (std_basis (α := α) σ)) τ) ^ 2) ∂μ)
+          - (∫ H : EnergySpace α,
+              (∑ σ : α, gibbs_pmf (α := α) H σ * freshCov μ H σ) ∂μ) ^ 2) := by
+  have hmean : (∫ H : EnergySpace α,
+        gibbs_average_n_det (α := α) (n := 1) H (fun τs => H (τs 0)) ∂μ)
+      = ∫ H : EnergySpace α, (∑ σ : α, gibbs_pmf (α := α) H σ * H σ) ∂μ :=
+    integral_congr_ae (Filter.Eventually.of_forall fun H => gibbs_average_one_energy (α := α) H)
+  have h := ghirlandaGuerra_error_le (μ := μ) hmean0 hdiag m f i hB
+  rw [hmean] at h
+  rwa [integral_gibbs_average_sub_mean_sq_eq_covariance (μ := μ) hmean0 hdiag] at h
+
 end
 
 end FiniteGibbs
