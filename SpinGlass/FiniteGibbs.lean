@@ -420,6 +420,37 @@ theorem trace_formula (n : ℕ) (H : EnergySpace α) (Cov : α → α → ℝ) :
             simp [g, mul_comm]
           rw [hdiag', hprod']
 
+/-- **The comparison sign for Gaussian free energies.** If two covariance kernels agree on the
+diagonal and the first is pointwise below the second, then the trace of the free-energy Hessian is
+*larger* for the first.
+
+This is Slepian's sign condition for `log Z`. Along Talagrand's smart path between two centered
+Gaussian Hamiltonians the derivative of the interpolated free energy is half this trace
+difference, so a Hamiltonian whose covariance is smaller off the diagonal — with the same variance
+on it — has the larger expected free energy. Guerra's replica-symmetric bound and the
+Guerra–Toninelli superadditivity interpolation are its two instances; in both the diagonal is the
+same for the two kernels, and the off-diagonal comparison is a Cauchy–Schwarz inequality. -/
+theorem trace_le_trace_of_kernel_le (n : ℕ) (H : EnergySpace α) {Cov₁ Cov₂ : α → α → ℝ}
+    (hdiag : ∀ σ, Cov₁ σ σ = Cov₂ σ σ) (hle : ∀ σ τ, Cov₁ σ τ ≤ Cov₂ σ τ) :
+    (∑ σ, ∑ τ, Cov₂ σ τ
+        * hessian_free_energy (α := α) n H (std_basis (α := α) σ) (std_basis (α := α) τ))
+      ≤ ∑ σ, ∑ τ, Cov₁ σ τ
+          * hessian_free_energy (α := α) n H (std_basis (α := α) σ) (std_basis (α := α) τ) := by
+  classical
+  rw [trace_formula (α := α) (n := n) (H := H) (Cov := Cov₁),
+    trace_formula (α := α) (n := n) (H := H) (Cov := Cov₂)]
+  have hdiagsum : (∑ σ : α, gibbs_pmf (α := α) H σ * Cov₁ σ σ)
+      = ∑ σ : α, gibbs_pmf (α := α) H σ * Cov₂ σ σ :=
+    Finset.sum_congr rfl fun σ _ => by rw [hdiag σ]
+  have hoff : (∑ σ : α, ∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ * Cov₁ σ τ)
+      ≤ ∑ σ : α, ∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ * Cov₂ σ τ := by
+    refine Finset.sum_le_sum fun σ _ => Finset.sum_le_sum fun τ _ => ?_
+    exact mul_le_mul_of_nonneg_left (hle σ τ)
+      (mul_nonneg (gibbs_pmf_nonneg (α := α) H σ) (gibbs_pmf_nonneg (α := α) H τ))
+  have hn0 : (0 : ℝ) ≤ 1 / (n : ℝ) := by positivity
+  rw [hdiagsum]
+  exact mul_le_mul_of_nonneg_left (sub_le_sub_left hoff _) hn0
+
 end
 
 end FiniteGibbs

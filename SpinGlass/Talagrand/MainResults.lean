@@ -338,6 +338,72 @@ Applied to the free energy:
   Dirichlet-energy form is what makes the bound thermodynamically meaningful. The SK and reference
   disorders are instances of `GaussianDisorder` (see below), so this one statement covers both.
 
+## Proved: Guerra–Toninelli superadditivity (Vol. I, Thm 1.3.9)
+
+The whole interpolation pipeline is now general in the two covariance kernels, so Guerra's
+comparison is one theorem with two instances: the replica-symmetric bound and the splitting bound.
+
+- `SpinGlass.guerraTrace` — the pointwise Guerra trace `½(∑∑K₁ D²F - ∑∑K₂ D²F)` of a pair of
+  covariance kernels at a Hamiltonian.
+- `derivative_value_guerraPhi_eq_trace_integral`, `hasDerivAt_guerraPhi_eq_trace_integral` — the
+  interpolation derivative equals the disorder average of the Guerra trace, for an **arbitrary**
+  independent pair of centered Gaussian Hamiltonians with symmetric kernels `K₁`, `K₂`. `β` and `q`
+  no longer occur: the SK/reference pair is an instance, not the setting.
+- `hasDerivAt_guerraPhi_le`, `deriv_guerraPhi_le`, `guerraPhi_one_le`,
+  `integral_free_energy_density_le` — **Guerra's comparison theorem**: any pointwise bound
+  `guerraTrace K₁ K₂ H ≤ C` gives `𝔼F(U₁ + c) ≤ 𝔼F(U₂ + c) + C`. The replica-symmetric bound is the
+  instance `integral_free_energy_density_le_rs` (`C = (β²/4)(1-q)²`, supplied by
+  `guerra_trace_sub_rs_le`); the splitting bound is the instance with `C = 0`, supplied by
+  `trace_le_trace_of_kernel_le`.
+- `SpinGlass.trace_le_trace_of_kernel_le` (and its general-`α` source
+  `FiniteGibbs.trace_le_trace_of_kernel_le`) — **Slepian's sign condition for `log Z`**: if two
+  covariance kernels agree on the diagonal and the first is pointwise below the second, the trace
+  of the free-energy Hessian is larger for the first.
+- `FiniteGibbs.sumEnergy` — the Hamiltonian of a **non-interacting composite system**, along a
+  relabelling `α ≃ β × γ` of the configuration space, as a continuous linear map of the pair of
+  subsystem Hamiltonians; `FiniteGibbs.Z_sumEnergy` (`Z = Z₁·Z₂`),
+  `FiniteGibbs.log_Z_sumEnergy` and `FiniteGibbs.mul_free_energy_density_sumEnergy`
+  (`n F_n = n₁ F_{n₁} + n₂ F_{n₂}`).
+- `SpinGlass.configSplit`, `cast_mul_overlap_split` (`N R = N₁R₁ + N₂R₂`), `splitCovKernel`,
+  `sk_cov_kernel_le_splitCovKernel` and `sk_cov_kernel_diag_eq_splitCovKernel` — the SK kernel is
+  **dominated** by the split kernel and **agrees with it on the diagonal**, which are exactly the
+  two hypotheses of `trace_le_trace_of_kernel_le`. The domination is Sedrakyan's inequality
+  `Real.sq_add_div_add_le`, the two-term case of Mathlib's `Finset.sq_sum_div_le_sum_sq_div`.
+- `GaussianDisorder.split` — **the non-interacting composite disorder**: two independent Gaussian
+  disorders on the two blocks, assembled into a centered Gaussian Hamiltonian on the composite
+  configuration space with kernel `splitCovKernel`. Its covariance is computed from the
+  block-diagonal covariance of the joint law, not by hand.
+- `SpinGlass.H_field_eq_sumEnergy` — the external field does not couple the two blocks.
+- `SpinGlass.guerraTrace_splitCovKernel_nonpos` — the Guerra trace of the splitting comparison is
+  nonpositive.
+- `SpinGlass.mul_integral_free_energy_density_add_le` — **Guerra–Toninelli superadditivity**:
+  `N₁ 𝔼F_{N₁} + N₂ 𝔼F_{N₂} ≤ (N₁+N₂) 𝔼F_{N₁+N₂}`.
+- `Superadditive` and `Superadditive.tendsto_lim` — **Fekete's lemma in superadditive form**:
+  if `u m + u n ≤ u (m + n)` and the averages are bounded above then `u n / n → sSup`. Mathlib has
+  only the subadditive form (`Subadditive.tendsto_lim`); the superadditive one is the shape the
+  thermodynamic limit takes, with `u N = N p_N`.
+
+## Proved: the law of a Gaussian disorder is determined by its kernel
+
+- `ProbabilityTheory.covarianceOperator_map_toLp_prodMk` and its two block corollaries are now
+  stated for a pair of random vectors valued in **two different** Hilbert spaces. That is what a
+  splitting argument needs (the two blocks live on different configuration spaces) and it is the
+  general form of the statement; the same-space case used by Guerra's interpolation is an instance.
+- `GaussianDisorder.map_U_eq` — two Gaussian Hamiltonians with the same covariance kernel, carried
+  by any two probability spaces, have the same law (`ProbabilityTheory.IsGaussian.ext` at the
+  coordinate expansion of `covarianceBilin`), and `GaussianDisorder.integral_comp_eq` — hence every
+  disorder average is a function of the kernel alone.
+
+Still missing for `p = lim p_N`:
+
+* a canonical probability space carrying, for each `N₁, N₂`, the three disorders of
+  `mul_integral_free_energy_density_add_le` with the two required independences — a three-fold
+  product of `multivariateGaussian` measures; with `GaussianDisorder.integral_comp_eq` this turns
+  the superadditivity above into superadditivity of the *sequence* `N ↦ N p_N`, where
+  `p_N = ∫ F_N(H + H_field N h) d(multivariateGaussian 0 (skCovMatrix N β))`;
+* an upper bound on `p_N` uniform in `N` (Jensen: `𝔼 log Z ≤ log 𝔼 Z = N(log 2 + β²/4) + N|h|`),
+  which is the `BddAbove` hypothesis of `Superadditive.tendsto_lim`.
+
 ## Proved: Hopfield (Vol. I Ch. 4 / Vol. II Ch. 10)
 
 - §4.2 / Lemma 4.2.1: `hopfieldConvolution_overlapImage_talagrandGaussian_eq_withDensity_psi`.

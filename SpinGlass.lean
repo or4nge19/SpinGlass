@@ -5,6 +5,7 @@ import SpinGlass.CovariancePosSemidef
 import SpinGlass.Defs
 import SpinGlass.FiniteGibbs
 import SpinGlass.FiniteGibbs.Cavity
+import SpinGlass.FiniteGibbs.Product
 import SpinGlass.FiniteGibbs.GGDefect
 import SpinGlass.FiniteGibbs.EnergyFluctuation
 import SpinGlass.FiniteGibbs.GGError
@@ -16,6 +17,7 @@ import SpinGlass.GuerraDerivativeTrace
 import SpinGlass.GuerraInequality
 import SpinGlass.GuerraInterpolation
 import SpinGlass.GuerraPipeline
+import SpinGlass.GuerraToninelli
 import SpinGlass.Hopfield
 import SpinGlass.HopfieldCascades
 import SpinGlass.Hopfield.Psi
@@ -35,6 +37,7 @@ import SpinGlass.Replicas.Derivative
 import SpinGlass.Replicas.Pushforward
 import SpinGlass.SKDisorderExists
 import SpinGlass.SKModel
+import SpinGlass.Split
 import SpinGlass.Talagrand.MainResults
 import Common.Mathlib.MeasureTheory.ParametricDominatedConvergence
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinAPI

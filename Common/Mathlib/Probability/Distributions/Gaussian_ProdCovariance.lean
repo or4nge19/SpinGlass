@@ -12,9 +12,13 @@ import Mathlib.Analysis.InnerProductSpace.ProdL2
 /-!
 # The `L²`-joint law of an independent pair, and its block-diagonal covariance
 
-Given `E`-valued random variables `X` and `Y` on `Ω`, the pair repackages as a single random
-variable `ω ↦ (X ω, Y ω)` valued in the Hilbert space `WithLp 2 (E × E)`. This file records the
-three facts about its law that every Gaussian comparison or interpolation argument needs:
+Given random variables `X` (valued in a Hilbert space `E`) and `Y` (valued in a Hilbert space
+`F`) on `Ω`, the pair repackages as a single random variable `ω ↦ (X ω, Y ω)` valued in the
+Hilbert space `WithLp 2 (E × F)`. The two spaces need not agree: a Guerra-style interpolation
+compares two Hamiltonians on the same configuration space, but a splitting argument compares a
+system with a pair of subsystems, and there the two blocks live in different spaces. This file
+records the three facts about the joint law that every Gaussian comparison or interpolation
+argument needs:
 
 * it is Gaussian when `X` and `Y` are Gaussian and independent
   (`ProbabilityTheory.isGaussian_map_toLp_prodMk`);
@@ -35,68 +39,16 @@ noncomputable section
 
 namespace ProbabilityTheory
 
-variable {Ω E : Type*} [MeasurableSpace Ω] {P : Measure Ω}
+variable {Ω E F : Type*} [MeasurableSpace Ω] {P : Measure Ω}
 variable [NormedAddCommGroup E] [InnerProductSpace ℝ E] [CompleteSpace E]
 variable [MeasurableSpace E] [BorelSpace E] [SecondCountableTopology E]
-variable {X Y : Ω → E}
+variable {X : Ω → E}
 
-omit [InnerProductSpace ℝ E] [CompleteSpace E] in
-/-- The pair `ω ↦ (X ω, Y ω)`, valued in the Hilbert space `WithLp 2 (E × E)`, is measurable. -/
-lemma measurable_toLp_prodMk (hX : Measurable X) (hY : Measurable Y) :
-    Measurable (fun ω => WithLp.toLp 2 (X ω, Y ω)) := by
-  have hpair : Measurable fun ω : Ω => (X ω, Y ω) := hX.prodMk hY
-  exact (WithLp.prod_continuous_toLp (p := (2 : ℝ≥0∞)) (α := E) (β := E)).measurable.comp hpair
+/-! ### Second moments of a single Gaussian variable -/
 
-/-- **The `L²`-joint law of an independent Gaussian pair is Gaussian.** -/
-lemma isGaussian_map_toLp_prodMk (hXg : HasGaussianLaw X P) (hYg : HasGaussianLaw Y P)
-    (hindep : X ⟂ᵢ[P] Y) :
-    IsGaussian (P.map fun ω => WithLp.toLp 2 (X ω, Y ω)) := by
-  have hXY : HasGaussianLaw (fun ω => (X ω, Y ω)) P :=
-    IndepFun.hasGaussianLaw (P := P) hXg hYg hindep
-  have : Fact ((1 : ℝ≥0∞) ≤ (2 : ℝ≥0∞)) := ⟨by norm_num⟩
-  exact (HasGaussianLaw.toLp_prodMk (X := X) (Y := Y) (P := P) (p := (2 : ℝ≥0∞)) hXY).isGaussian_map
+section SingleVariable
 
-omit [MeasurableSpace Ω] [CompleteSpace E] [MeasurableSpace E] [BorelSpace E]
-  [SecondCountableTopology E] in
-/-- Coordinates of the `L²`-joint variable, in inner-product form. -/
-lemma inner_toLp_prodMk (x : WithLp 2 (E × E)) (ω : Ω) :
-    ⟪x, WithLp.toLp 2 (X ω, Y ω)⟫_ℝ
-      = ⟪(WithLp.ofLp x).1, X ω⟫_ℝ + ⟪(WithLp.ofLp x).2, Y ω⟫_ℝ := by
-  simp [WithLp.prod_inner_apply]
-
-/-- **The `L²`-joint law of a centered pair is centered.** -/
-lemma integral_id_map_toLp_prodMk_eq_zero (hX : Measurable X) (hY : Measurable Y)
-    (hXi : Integrable X P) (hYi : Integrable Y P)
-    (hX0 : (∫ ω, X ω ∂P) = 0) (hY0 : (∫ ω, Y ω ∂P) = 0)
-    [IsGaussian (P.map fun ω => WithLp.toLp 2 (X ω, Y ω))] :
-    (∫ p : WithLp 2 (E × E), p ∂(P.map fun ω => WithLp.toLp 2 (X ω, Y ω))) = 0 := by
-  set μ : Measure (WithLp 2 (E × E)) := P.map fun ω => WithLp.toLp 2 (X ω, Y ω) with hμdef
-  have hpair : Measurable (fun ω => WithLp.toLp 2 (X ω, Y ω)) := measurable_toLp_prodMk hX hY
-  have hint : Integrable (fun p : WithLp 2 (E × E) => p) μ := IsGaussian.integrable_id (μ := μ)
-  refine ext_inner_right ℝ fun y => ?_
-  rw [inner_zero_left, real_inner_comm, ← integral_inner hint y]
-  have hmap : (∫ p : WithLp 2 (E × E), ⟪y, p⟫_ℝ ∂μ)
-      = ∫ ω, ⟪y, WithLp.toLp 2 (X ω, Y ω)⟫_ℝ ∂P := by
-    rw [hμdef]
-    exact MeasureTheory.integral_map hpair.aemeasurable
-      (innerSL ℝ y).continuous.aestronglyMeasurable
-  rw [hmap, MeasureTheory.integral_congr_ae
-    (Filter.Eventually.of_forall fun ω => inner_toLp_prodMk (X := X) (Y := Y) y ω)]
-  have hI1 : Integrable (fun ω => ⟪(WithLp.ofLp y).1, X ω⟫_ℝ) P :=
-    (innerSL ℝ (WithLp.ofLp y).1).integrable_comp hXi
-  have hI2 : Integrable (fun ω => ⟪(WithLp.ofLp y).2, Y ω⟫_ℝ) P :=
-    (innerSL ℝ (WithLp.ofLp y).2).integrable_comp hYi
-  have h1 : (∫ ω, ⟪(WithLp.ofLp y).1, X ω⟫_ℝ ∂P) = 0 := by
-    have := (innerSL ℝ (WithLp.ofLp y).1).integral_comp_comm (μ := P) hXi
-    simpa [hX0] using this
-  have h2 : (∫ ω, ⟪(WithLp.ofLp y).2, Y ω⟫_ℝ ∂P) = 0 := by
-    have := (innerSL ℝ (WithLp.ofLp y).2).integral_comp_comm (μ := P) hYi
-    simpa [hY0] using this
-  rw [MeasureTheory.integral_add hI1 hI2, h1, h2, add_zero]
-
-section Covariance
-
-variable [IsGaussian (P.map X)] [IsGaussian (P.map Y)]
+variable [IsGaussian (P.map X)]
 
 omit [CompleteSpace E] [SecondCountableTopology E] in
 /-- Second moments of a coordinate functional are finite, for a Gaussian variable. -/
@@ -119,6 +71,74 @@ lemma inner_covarianceOperator_map (hX : Measurable X) (x y : E) :
     MeasureTheory.integral_map hX.aemeasurable hmeas.aestronglyMeasurable
   rw [hcov, hmap]
 
+end SingleVariable
+
+/-! ### The `L²`-joint law of a pair -/
+
+variable [NormedAddCommGroup F] [InnerProductSpace ℝ F] [CompleteSpace F]
+variable [MeasurableSpace F] [BorelSpace F] [SecondCountableTopology F]
+variable {Y : Ω → F}
+
+omit [InnerProductSpace ℝ E] [CompleteSpace E] [SecondCountableTopology E]
+  [InnerProductSpace ℝ F] [CompleteSpace F] in
+/-- The pair `ω ↦ (X ω, Y ω)`, valued in the Hilbert space `WithLp 2 (E × F)`, is measurable. -/
+lemma measurable_toLp_prodMk (hX : Measurable X) (hY : Measurable Y) :
+    Measurable (fun ω => WithLp.toLp 2 (X ω, Y ω)) := by
+  have hpair : Measurable fun ω : Ω => (X ω, Y ω) := hX.prodMk hY
+  exact (WithLp.prod_continuous_toLp (p := (2 : ℝ≥0∞)) (α := E) (β := F)).measurable.comp hpair
+
+/-- **The `L²`-joint law of an independent Gaussian pair is Gaussian.** -/
+lemma isGaussian_map_toLp_prodMk (hXg : HasGaussianLaw X P) (hYg : HasGaussianLaw Y P)
+    (hindep : X ⟂ᵢ[P] Y) :
+    IsGaussian (P.map fun ω => WithLp.toLp 2 (X ω, Y ω)) := by
+  have hXY : HasGaussianLaw (fun ω => (X ω, Y ω)) P :=
+    IndepFun.hasGaussianLaw (P := P) hXg hYg hindep
+  have : Fact ((1 : ℝ≥0∞) ≤ (2 : ℝ≥0∞)) := ⟨by norm_num⟩
+  exact (HasGaussianLaw.toLp_prodMk (X := X) (Y := Y) (P := P) (p := (2 : ℝ≥0∞)) hXY).isGaussian_map
+
+omit [MeasurableSpace Ω] [CompleteSpace E] [MeasurableSpace E] [BorelSpace E]
+  [SecondCountableTopology E] [CompleteSpace F] [MeasurableSpace F] [BorelSpace F]
+  [SecondCountableTopology F] in
+/-- Coordinates of the `L²`-joint variable, in inner-product form. -/
+lemma inner_toLp_prodMk (x : WithLp 2 (E × F)) (ω : Ω) :
+    ⟪x, WithLp.toLp 2 (X ω, Y ω)⟫_ℝ
+      = ⟪(WithLp.ofLp x).1, X ω⟫_ℝ + ⟪(WithLp.ofLp x).2, Y ω⟫_ℝ := by
+  simp [WithLp.prod_inner_apply]
+
+/-- **The `L²`-joint law of a centered pair is centered.** -/
+lemma integral_id_map_toLp_prodMk_eq_zero (hX : Measurable X) (hY : Measurable Y)
+    (hXi : Integrable X P) (hYi : Integrable Y P)
+    (hX0 : (∫ ω, X ω ∂P) = 0) (hY0 : (∫ ω, Y ω ∂P) = 0)
+    [IsGaussian (P.map fun ω => WithLp.toLp 2 (X ω, Y ω))] :
+    (∫ p : WithLp 2 (E × F), p ∂(P.map fun ω => WithLp.toLp 2 (X ω, Y ω))) = 0 := by
+  set μ : Measure (WithLp 2 (E × F)) := P.map fun ω => WithLp.toLp 2 (X ω, Y ω) with hμdef
+  have hpair : Measurable (fun ω => WithLp.toLp 2 (X ω, Y ω)) := measurable_toLp_prodMk hX hY
+  have hint : Integrable (fun p : WithLp 2 (E × F) => p) μ := IsGaussian.integrable_id (μ := μ)
+  refine ext_inner_right ℝ fun y => ?_
+  rw [inner_zero_left, real_inner_comm, ← integral_inner hint y]
+  have hmap : (∫ p : WithLp 2 (E × F), ⟪y, p⟫_ℝ ∂μ)
+      = ∫ ω, ⟪y, WithLp.toLp 2 (X ω, Y ω)⟫_ℝ ∂P := by
+    rw [hμdef]
+    exact MeasureTheory.integral_map hpair.aemeasurable
+      (innerSL ℝ y).continuous.aestronglyMeasurable
+  rw [hmap, MeasureTheory.integral_congr_ae
+    (Filter.Eventually.of_forall fun ω => inner_toLp_prodMk (X := X) (Y := Y) y ω)]
+  have hI1 : Integrable (fun ω => ⟪(WithLp.ofLp y).1, X ω⟫_ℝ) P :=
+    (innerSL ℝ (WithLp.ofLp y).1).integrable_comp hXi
+  have hI2 : Integrable (fun ω => ⟪(WithLp.ofLp y).2, Y ω⟫_ℝ) P :=
+    (innerSL ℝ (WithLp.ofLp y).2).integrable_comp hYi
+  have h1 : (∫ ω, ⟪(WithLp.ofLp y).1, X ω⟫_ℝ ∂P) = 0 := by
+    have := (innerSL ℝ (WithLp.ofLp y).1).integral_comp_comm (μ := P) hXi
+    simpa [hX0] using this
+  have h2 : (∫ ω, ⟪(WithLp.ofLp y).2, Y ω⟫_ℝ ∂P) = 0 := by
+    have := (innerSL ℝ (WithLp.ofLp y).2).integral_comp_comm (μ := P) hYi
+    simpa [hY0] using this
+  rw [MeasureTheory.integral_add hI1 hI2, h1, h2, add_zero]
+
+section Covariance
+
+variable [IsGaussian (P.map X)] [IsGaussian (P.map Y)]
+
 /-- **The covariance operator of the `L²`-joint law of an independent pair is block diagonal.**
 Its blocks are the covariance operators of the two marginals; the off-diagonal blocks are the
 cross-covariances, and they vanish precisely because `X` and `Y` are independent and centered.
@@ -130,7 +150,7 @@ theorem covarianceOperator_map_toLp_prodMk (hX : Measurable X) (hY : Measurable 
     (hindep : X ⟂ᵢ[P] Y)
     (hX0 : (∫ ω, X ω ∂P) = 0) (hY0 : (∫ ω, Y ω ∂P) = 0)
     [IsGaussian (P.map fun ω => WithLp.toLp 2 (X ω, Y ω))]
-    (x : WithLp 2 (E × E)) :
+    (x : WithLp 2 (E × F)) :
     covarianceOperator (P.map fun ω => WithLp.toLp 2 (X ω, Y ω)) x
       = WithLp.toLp 2 (covarianceOperator (P.map X) (WithLp.ofLp x).1,
           covarianceOperator (P.map Y) (WithLp.ofLp x).2) := by
@@ -139,7 +159,7 @@ theorem covarianceOperator_map_toLp_prodMk (hX : Measurable X) (hY : Measurable 
   have hXi : Integrable X P := (IsGaussian.hasGaussianLaw (X := X) (P := P)).integrable
   have hYi : Integrable Y P := (IsGaussian.hasGaussianLaw (X := Y) (P := P)).integrable
   -- The two cross terms vanish, by independence and centering.
-  have hcrossXY : ∀ (u v : E), (∫ ω, ⟪u, X ω⟫_ℝ * ⟪v, Y ω⟫_ℝ ∂P) = 0 := by
+  have hcrossXY : ∀ (u : E) (v : F), (∫ ω, ⟪u, X ω⟫_ℝ * ⟪v, Y ω⟫_ℝ ∂P) = 0 := by
     intro u v
     have hind : (fun ω => ⟪u, X ω⟫_ℝ) ⟂ᵢ[P] (fun ω => ⟪v, Y ω⟫_ℝ) :=
       hindep.comp (hφ := (innerSL ℝ u).measurable) (hψ := (innerSL ℝ v).measurable)
@@ -150,7 +170,7 @@ theorem covarianceOperator_map_toLp_prodMk (hX : Measurable X) (hY : Measurable 
       have := (innerSL ℝ u).integral_comp_comm (μ := P) hXi
       simpa [hX0] using this
     rw [hsplit, hu, zero_mul]
-  have hcrossYX : ∀ (u v : E), (∫ ω, ⟪u, Y ω⟫_ℝ * ⟪v, X ω⟫_ℝ ∂P) = 0 := by
+  have hcrossYX : ∀ (u : F) (v : E), (∫ ω, ⟪u, Y ω⟫_ℝ * ⟪v, X ω⟫_ℝ ∂P) = 0 := by
     intro u v
     have hind : (fun ω => ⟪v, X ω⟫_ℝ) ⟂ᵢ[P] (fun ω => ⟪u, Y ω⟫_ℝ) :=
       hindep.comp (hφ := (innerSL ℝ v).measurable) (hψ := (innerSL ℝ u).measurable)
@@ -168,8 +188,10 @@ theorem covarianceOperator_map_toLp_prodMk (hX : Measurable X) (hY : Measurable 
   -- Square-integrability of each coordinate functional.
   have hAx1 : MemLp (fun ω => ⟪(WithLp.ofLp x).1, X ω⟫_ℝ) 2 P := memLp_two_inner hX _
   have hAy1 : MemLp (fun ω => ⟪(WithLp.ofLp y).1, X ω⟫_ℝ) 2 P := memLp_two_inner hX _
-  have hAx2 : MemLp (fun ω => ⟪(WithLp.ofLp x).2, Y ω⟫_ℝ) 2 P := memLp_two_inner hY _
-  have hAy2 : MemLp (fun ω => ⟪(WithLp.ofLp y).2, Y ω⟫_ℝ) 2 P := memLp_two_inner hY _
+  have hAx2 : MemLp (fun ω => ⟪(WithLp.ofLp x).2, Y ω⟫_ℝ) 2 P :=
+    memLp_two_inner (X := Y) hY _
+  have hAy2 : MemLp (fun ω => ⟪(WithLp.ofLp y).2, Y ω⟫_ℝ) 2 P :=
+    memLp_two_inner (X := Y) hY _
   have hI11 : Integrable
       (fun ω => ⟪(WithLp.ofLp x).1, X ω⟫_ℝ * ⟪(WithLp.ofLp y).1, X ω⟫_ℝ) P :=
     hAx1.integrable_mul hAy1
@@ -194,14 +216,14 @@ theorem covarianceOperator_map_toLp_prodMk (hX : Measurable X) (hY : Measurable 
             + ⟪(WithLp.ofLp x).2, Y ω⟫_ℝ * ⟪(WithLp.ofLp y).2, Y ω⟫_ℝ)
           + (⟪(WithLp.ofLp x).1, X ω⟫_ℝ * ⟪(WithLp.ofLp y).2, Y ω⟫_ℝ
             + ⟪(WithLp.ofLp x).2, Y ω⟫_ℝ * ⟪(WithLp.ofLp y).1, X ω⟫_ℝ) ∂P := by
-    have hLp : MemLp (fun p : WithLp 2 (E × E) => p) 2
+    have hLp : MemLp (fun p : WithLp 2 (E × F) => p) 2
         (P.map fun ω => WithLp.toLp 2 (X ω, Y ω)) :=
       IsGaussian.memLp_two_id (μ := P.map fun ω => WithLp.toLp 2 (X ω, Y ω))
     have hcov := covarianceOperator_inner
       (μ := P.map fun ω => WithLp.toLp 2 (X ω, Y ω)) hLp x y
-    have hmeas : Measurable fun p : WithLp 2 (E × E) => ⟪x, p⟫_ℝ * ⟪y, p⟫_ℝ :=
+    have hmeas : Measurable fun p : WithLp 2 (E × F) => ⟪x, p⟫_ℝ * ⟪y, p⟫_ℝ :=
       ((innerSL ℝ x).measurable).mul ((innerSL ℝ y).measurable)
-    have hmap : (∫ p : WithLp 2 (E × E), ⟪x, p⟫_ℝ * ⟪y, p⟫_ℝ
+    have hmap : (∫ p : WithLp 2 (E × F), ⟪x, p⟫_ℝ * ⟪y, p⟫_ℝ
           ∂(P.map fun ω => WithLp.toLp 2 (X ω, Y ω)))
         = ∫ ω, ⟪x, WithLp.toLp 2 (X ω, Y ω)⟫_ℝ * ⟪y, WithLp.toLp 2 (X ω, Y ω)⟫_ℝ ∂P :=
       MeasureTheory.integral_map hpair.aemeasurable hmeas.aestronglyMeasurable
@@ -214,7 +236,7 @@ theorem covarianceOperator_map_toLp_prodMk (hX : Measurable X) (hY : Measurable 
     hcrossXY (WithLp.ofLp x).1 (WithLp.ofLp y).2,
     hcrossYX (WithLp.ofLp x).2 (WithLp.ofLp y).1,
     ← inner_covarianceOperator_map hX (WithLp.ofLp x).1 (WithLp.ofLp y).1,
-    ← inner_covarianceOperator_map hY (WithLp.ofLp x).2 (WithLp.ofLp y).2,
+    ← inner_covarianceOperator_map (X := Y) hY (WithLp.ofLp x).2 (WithLp.ofLp y).2,
     WithLp.prod_inner_apply]
   ring
 
@@ -234,7 +256,7 @@ theorem covarianceOperator_map_toLp_prodMk_right (hX : Measurable X) (hY : Measu
     (hindep : X ⟂ᵢ[P] Y)
     (hX0 : (∫ ω, X ω ∂P) = 0) (hY0 : (∫ ω, Y ω ∂P) = 0)
     [IsGaussian (P.map fun ω => WithLp.toLp 2 (X ω, Y ω))]
-    (y : E) :
+    (y : F) :
     covarianceOperator (P.map fun ω => WithLp.toLp 2 (X ω, Y ω)) (WithLp.toLp 2 (0, y))
       = WithLp.toLp 2 (0, covarianceOperator (P.map Y) y) := by
   rw [covarianceOperator_map_toLp_prodMk hX hY hindep hX0 hY0]

@@ -20,8 +20,10 @@ open scoped ENNReal NNReal Topology
 namespace SpinGlass
 
 variable {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
-variable (N : ℕ) (β h q : ℝ)
-variable (sk : SKDisorder (Ω := Ω) N β) (sim : SimpleDisorder (Ω := Ω) N β q)
+variable (N : ℕ) (h : ℝ)
+variable {K₁ K₂ : Config N → Config N → ℝ}
+variable (G₁ : GaussianDisorder (Ω := Ω) (N := N) (ℙ : Measure Ω) K₁)
+variable (G₂ : GaussianDisorder (Ω := Ω) (N := N) (ℙ : Measure Ω) K₂)
 
 section ReplicaCalculus
 
@@ -33,7 +35,7 @@ noncomputable def A_disorder (t : ℝ) (f : ReplicaFun N n) (τ : Config N) :
     DisorderSpace (N := N) → ℝ :=
   fun x =>
     fderiv ℝ (fun H' => gibbs_average_n_det (N := N) (n := n) H' f)
-      (H_t_disorder (N := N) (h := h) t x)
+      (H_t_disorder N (H_field N h) t x)
       (std_basis N τ)
 
 /-! ### Explicit form of `A_disorder` -/
@@ -84,7 +86,7 @@ lemma abs_prod_gibbs_pmf_disorder_le_one (t : ℝ) (σs : ReplicaSpace N n) (x :
     |prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) (t := t) σs x| ≤ 1 := by
   classical
   -- Reduce to the model-agnostic finite-volume bounds for Gibbs weights.
-  let H : EnergySpace N := H_t_disorder (N := N) (h := h) t x
+  let H : EnergySpace N := H_t_disorder N (H_field N h) t x
   have hnonneg :
       0 ≤ ∏ l : Fin n, FiniteGibbs.gibbs_pmf (α := Config N) H (σs l) :=
     FiniteGibbs.prod_gibbs_pmf_nonneg (α := Config N) (n := n) (H := H) σs
@@ -101,14 +103,14 @@ lemma abs_n_mul_gibbs_pmf_sub_card_le (t : ℝ) (τ : Config N) (σs : ReplicaSp
       ≤ (2 * (n : ℝ)) := by
   simpa [gibbs_pmf_disorder, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
     (FiniteGibbs.abs_n_mul_gibbs_pmf_sub_card_le (α := Config N) (n := n)
-      (H := H_t_disorder (N := N) (h := h) t x) (τ := τ) (σs := σs))
+      (H := H_t_disorder N (H_field N h) t x) (τ := τ) (σs := σs))
 
 lemma abs_A_disorder_explicit_le (t : ℝ) (f : ReplicaFun N n) (τ : Config N)
     (x : DisorderSpace (N := N)) :
     |A_disorder_explicit (N := N) (n := n) (h := h) t f τ x|
       ≤ (2 * (n : ℝ)) * (∑ σs : ReplicaSpace N n, |f σs|) := by
   classical
-  let H : EnergySpace N := H_t_disorder (N := N) (h := h) t x
+  let H : EnergySpace N := H_t_disorder N (H_field N h) t x
   simpa [A_disorder_explicit, prod_gibbs_pmf_disorder, gibbs_pmf_disorder,
     gibbs_pmf_eq_FiniteGibbs_gibbs_pmf, H] using
     (FiniteGibbs.abs_sum_mul_prod_gibbs_pmf_mul_n_mul_sub_card_le (α := Config N)
@@ -360,18 +362,18 @@ lemma norm_fderiv_A_disorder_explicit_le (t : ℝ) (f : ReplicaFun N n) (τ : Co
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 theorem
     integral_disorderPairLaw_left_apply_mul_A_disorder_explicit_eq
-    (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.U) (t : ℝ) (f : ReplicaFun N n) (σ τ : Config N) :
+    (hindep : G₁.U ⟂ᵢ[(ℙ : Measure Ω)] G₂.U) (t : ℝ) (f : ReplicaFun N n) (σ τ : Config N) :
     (∫ x : DisorderSpace (N := N),
         ((WithLp.ofLp x).1 σ) *
           (A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ x)
-        ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)))
+        ∂(disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)))
       =
       ∫ x : DisorderSpace (N := N),
         (fderiv ℝ (A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ) x)
           (ProbabilityTheory.covarianceOperator
-            (disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim))
+            (disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂))
             (std_basis_left (N := N) σ))
-        ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)) :=
+        ∂(disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) :=
           by
   classical
   -- Regularity and growth hypotheses for IBP.
@@ -426,25 +428,25 @@ theorem
   -- Apply the generic packaged IBP lemma.
   simpa using
     (integral_disorderPairLaw_left_apply_mul_eq
-      (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)
+      (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)
       (hindep := hindep) (σ := σ) (F := A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ)
       hF_meas hF_c1 hC hF_growth hF'_growth)
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 theorem
     integral_disorderPairLaw_right_apply_mul_A_disorder_explicit_eq
-    (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.U) (t : ℝ) (f : ReplicaFun N n) (σ τ : Config N) :
+    (hindep : G₁.U ⟂ᵢ[(ℙ : Measure Ω)] G₂.U) (t : ℝ) (f : ReplicaFun N n) (σ τ : Config N) :
     (∫ x : DisorderSpace (N := N),
         ((WithLp.ofLp x).2 σ) *
           (A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ x)
-        ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)))
+        ∂(disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)))
       =
       ∫ x : DisorderSpace (N := N),
         (fderiv ℝ (A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ) x)
           (ProbabilityTheory.covarianceOperator
-            (disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim))
+            (disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂))
             (std_basis_right (N := N) σ))
-        ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)) :=
+        ∂(disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) :=
           by
   classical
   -- Reuse the left lemma with the right-hand packaged IBP.
@@ -498,7 +500,7 @@ theorem
     simpa [pow_zero] using this
   simpa using
     (integral_disorderPairLaw_right_apply_mul_eq
-      (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)
+      (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)
       (hindep := hindep) (σ := σ) (F := A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ)
       hF_meas hF_c1 hC hF_growth hF'_growth)
 
@@ -564,7 +566,7 @@ lemma dgibbs_average_n_disorder_eq_sum_A (t : ℝ) (f : ReplicaFun N n) (x : Dis
   -- Let `G` be the replica functional. Then `dgibbs_average_n_disorder` is the linear map
   -- `T := fderiv G` applied to the direction `v := gaussianInterpDeriv`.
   let G : EnergySpace N → ℝ := fun H' => gibbs_average_n_det (N := N) (n := n) H' f
-  let H : EnergySpace N := H_t_disorder (N := N) (h := h) t x
+  let H : EnergySpace N := H_t_disorder N (H_field N h) t x
   let v : EnergySpace N := gaussianInterpDeriv (E := EnergySpace N) t x
   let T : EnergySpace N →L[ℝ] ℝ := fderiv ℝ G H
   have hv : v = ∑ τ : Config N, (v τ) • std_basis N τ := by
@@ -624,17 +626,17 @@ lemma dgibbs_average_n_disorder_eq_sum_left_right_explicit (t : ℝ) (f : Replic
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 @[simp] lemma gibbs_average_n_disorder_disorderPair (t : ℝ) (f : ReplicaFun N n) (w : Ω) :
     gibbs_average_n_disorder (N := N) (n := n) (h := h) t f
-        (disorderPair (N := N) (β := β) (q := q) (sk := sk) (sim := sim) w)
+        (disorderPair (N := N) (G₁ := G₁) (G₂ := G₂) w)
       =
-      gibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w := by
+      gibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n t f w := by
   simp [gibbs_average_n_disorder, gibbs_average_n, H_t_disorder_disorderPair]
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 @[simp] lemma dgibbs_average_n_disorder_disorderPair (t : ℝ) (f : ReplicaFun N n) (w : Ω) :
     dgibbs_average_n_disorder (N := N) (n := n) (h := h) t f
-        (disorderPair (N := N) (β := β) (q := q) (sk := sk) (sim := sim) w)
+        (disorderPair (N := N) (G₁ := G₁) (G₂ := G₂) w)
       =
-      dgibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w := by
+      dgibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n t f w := by
   simp [dgibbs_average_n_disorder, dgibbs_average_n, H_t_disorder_disorderPair,
     gaussianInterpDeriv_disorderPair]
 end ReplicaCalculus

@@ -3,6 +3,7 @@ import Common.Mathlib.Analysis.Calculus.FDerivCLMComp
 import Common.Mathlib.Analysis.Calculus.GradientAPI
 import Common.Mathlib.Analysis.InnerProductSpace.PositiveInner
 import Common.Mathlib.Analysis.MeanInequalities.WeightedAMGM
+import Common.Mathlib.Analysis.Superadditive
 import Common.Mathlib.Analysis.Matrix.HadamardPow
 import Common.Mathlib.Analysis.SpecialFunctions.Tanh
 import Common.Mathlib.Analysis.Distribution.TemperateGrowthFDeriv
