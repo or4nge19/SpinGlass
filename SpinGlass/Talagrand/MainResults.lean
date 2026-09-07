@@ -251,9 +251,30 @@ exactly. Nothing here is asymptotic — every statement holds at every finite vo
   the diagonal, differentiating the weight produces the fresh-replica covariance.
 - `FiniteGibbs.integral_gibbs_average_sub_mean_sq` — **the energy fluctuation, exactly**:
   `𝔼⟨(H - 𝔼⟨H⟩)²⟩ = d + 𝔼⟨H(σ¹) c(σ¹,σ²)⟩ - d 𝔼⟨H⟩ - (𝔼⟨H⟩)²`.
-- `FiniteGibbs.ghirlandaGuerra_error_le_energy_fluctuation` — the two combined: the
-  Ghirlanda–Guerra error is bounded by a covariance-kernel expression in which the observable no
-  longer appears at all.
+- `FiniteGibbs.integral_gibbs_average_sub_mean_sq_eq_covariance` — **the fluctuation as a pure
+  covariance bracket**: applying the cavity identity once more, at two replicas and to the
+  covariance kernel itself, removes the last Hamiltonian, leaving
+  `𝔼⟨(H - 𝔼⟨H⟩)²⟩ = d + 2 𝔼⟨c₁₂ c₁₃⟩ - 𝔼⟨c₁₂²⟩ - (𝔼⟨c₁₂⟩)²`. Centred, the right-hand side is
+  `d + 2 𝔼⟨(c₁₂ - A)(c₁₃ - A)⟩ - 𝔼⟨(c₁₂ - A)²⟩`.
+- `FiniteGibbs.ghirlandaGuerra_error_le_energy_fluctuation` and
+  `FiniteGibbs.ghirlandaGuerra_error_le_covariance` — the bound composed with each form of the
+  fluctuation. In the second, neither the Hamiltonian nor the observable appears on the right: the
+  Ghirlanda–Guerra error is bounded by an expression in the covariance kernel alone.
+- `FiniteGibbs.gibbs_average_two` — the two-replica bracket as an explicit double sum.
+
+## Proved: the replica measure is a Mathlib product measure
+
+- `FiniteGibbs.replicaGibbsMeasure` **is** `MeasureTheory.Measure.pi (fun _ : Fin n => gibbsMeasure
+  H)`, by definition rather than by a bespoke atomic construction. Normalisation
+  (`IsProbabilityMeasure`) is then the Mathlib instance, and the whole `Measure.pi` API applies to
+  the replica bracket.
+- `FiniteGibbs.measurePreserving_comp_perm_replicaGibbsMeasure` and
+  `FiniteGibbs.gibbs_average_n_det_comp_perm` — **the replicas are exchangeable**: relabelling them
+  by a permutation preserves the replica measure, hence the bracket. This is
+  `MeasureTheory.measurePreserving_piCongrLeft`, and it is the hypothesis of de Finetti's theorem
+  and of the Aldous–Hoover representation that Vol. II Ch. 12–15 needs.
+- `FiniteGibbs.replicaGibbsMeasure_apply_singleton` — the atoms are the products of the Gibbs
+  weights, from `Measure.pi_pi`.
 
 ## Dependencies
 
