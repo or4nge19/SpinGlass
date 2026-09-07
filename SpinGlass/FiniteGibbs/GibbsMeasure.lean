@@ -41,6 +41,13 @@ noncomputable def gibbsMeasure (H : EnergySpace α) : Measure α :=
   (Finset.univ : Finset α).sum fun σ =>
     ((gibbsWeightNNReal (α := α) H σ : ℝ≥0∞) • Measure.dirac σ)
 
+/-- The atoms of the Gibbs measure are the Gibbs weights. -/
+@[simp] lemma gibbsMeasure_apply_singleton (H : EnergySpace α) (σ : α)
+    [MeasurableSingletonClass α] :
+    gibbsMeasure (α := α) H {σ} = ENNReal.ofReal (gibbs_pmf (α := α) H σ) := by
+  classical
+  simp [gibbsMeasure, Measure.dirac_apply', Set.indicator_apply, eq_comm]
+
 lemma lintegral_gibbsMeasure (H : EnergySpace α) (f : α → ℝ≥0∞) [MeasurableSingletonClass α] :
     (∫⁻ σ, f σ ∂gibbsMeasure (α := α) H) =
       ∑ σ : α, (gibbsWeightNNReal (α := α) H σ : ℝ≥0∞) * f σ := by

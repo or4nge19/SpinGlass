@@ -1,4 +1,4 @@
-import SpinGlass.HopfieldConvolution
+import SpinGlass.Hopfield.Psi
 import SpinGlass.Cascades.GhirlandaGuerra
 import SpinGlass.Cascades.Posterior
 import Mathlib.Probability.Kernel.Composition.ParallelComp
@@ -290,6 +290,8 @@ instance : ProbabilityTheory.IsMarkovKernel (hopfieldPairGibbsKernel (N := N) (M
   dsimp [hopfieldPairGibbsKernel]
   infer_instance
 
+/-- The kernel sending a pattern matrix to the law of the overlap vector of a single Gibbs
+replica. -/
 noncomputable def hopfieldOverlapKernelOfPatterns :
     ProbabilityTheory.Kernel (Patterns N M) (Fin M → ℝ) :=
   (hopfieldPairGibbsKernel (N := N) (M := M) (β := β) (h := h) k0).map
@@ -336,6 +338,8 @@ instance (r : ℕ) :
   dsimp [hopfieldPairReplicaKernel]
   infer_instance
 
+/-- The kernel sending a pattern matrix to the joint law of the overlap vectors of `r` Gibbs
+replicas. -/
 noncomputable def hopfieldOverlapArrayKernelOfPatterns (r : ℕ) :
     ProbabilityTheory.Kernel (Patterns N M) (Fin r → (Fin M → ℝ)) :=
   (hopfieldPairReplicaKernel (N := N) (M := M) (β := β) (h := h) k0 r).map

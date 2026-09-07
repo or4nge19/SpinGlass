@@ -139,7 +139,7 @@ are dominated by those of `Y`,
 then `𝔼 maxᵢ (Xᵢ + cᵢ) ≤ 𝔼 maxᵢ (Yᵢ + cᵢ)`. No hypothesis on the variances is needed. -/
 theorem sudakov_fernique_of_indepFun (c : EuclideanSpace ℝ ι)
     (hincr : ∀ i j, (∫ ω, (X ω i - X ω j) ^ 2 ∂P) ≤ ∫ ω, (Y ω i - Y ω j) ^ 2 ∂P) :
-    (∫ ω, Real.maxCoord (X ω + c) ∂P) ≤ ∫ ω, Real.maxCoord (Y ω + c) ∂P := by
+    (∫ ω, (⨆ i, (X ω + c) i) ∂P) ≤ ∫ ω, (⨆ i, (Y ω + c) i) ∂P := by
   have hjoint : IsGaussian (P.map fun ω => WithLp.toLp 2 (X ω, Y ω)) :=
     jointLaw_facts hindep
   have hXi : Integrable X P := (IsGaussian.hasGaussianLaw (X := X) (P := P)).integrable
@@ -163,9 +163,10 @@ theorem sudakov_fernique_of_indepFun (c : EuclideanSpace ℝ ι)
       rw [covarianceOperator_map_toLp_prodMk_right hX hY hindep hX0 hY0,
         covarianceOperator_basisFun_eq_sum hY i])
     c hincr'
-  rwa [integral_map_fst hX hY Real.continuous_maxCoord c,
-    integral_map_snd hX hY Real.continuous_maxCoord c] at hmain
+  rwa [integral_map_fst hX hY Real.continuous_ciSup_coord c,
+    integral_map_snd hX hY Real.continuous_ciSup_coord c] at hmain
 
+omit [Nonempty ι] in
 /-- **Slepian's inequality for an independent Gaussian pair.** If `X` and `Y` are independent
 centered Gaussian vectors with equal variances and `X` at least as positively correlated,
 

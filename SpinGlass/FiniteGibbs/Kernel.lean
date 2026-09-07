@@ -86,7 +86,8 @@ instance : IsMarkovKernel (gibbsKernel (α := α)) := by
 
 /-! ## Replica sampler kernel -/
 
-/-- The `n`-replica Gibbs sampler as a kernel from energies to `n` replicas. -/
+/-- The `n`-replica Gibbs sampler as a kernel from energies to `n` replicas: the product of `n`
+copies of `gibbsKernel`, i.e. `H ↦ (gibbsMeasure H)^{⊗ n}`. -/
 noncomputable def replicaGibbsKernel (n : ℕ) :
     Kernel (EnergySpace α) (ReplicaSpace (α := α) n) where
   toFun := fun H => replicaGibbsMeasure (α := α) (n := n) H
@@ -94,57 +95,24 @@ noncomputable def replicaGibbsKernel (n : ℕ) :
     classical
     refine Measure.measurable_of_measurable_coe
       (fun H => replicaGibbsMeasure (α := α) (n := n) H) ?_
-    intro s hs
-    have hsum :
-        (fun H : EnergySpace α => replicaGibbsMeasure (α := α) (n := n) H s)
-          =
-        fun H =>
-          ∑ σs : ReplicaSpace (α := α) n,
-            (if σs ∈ s then (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) else 0) := by
+    intro s _hs
+    have hval : (fun H : EnergySpace α => replicaGibbsMeasure (α := α) (n := n) H s)
+        = fun H : EnergySpace α => ∑ σs ∈ s.toFinset,
+            ∏ l : Fin n, ENNReal.ofReal (gibbs_pmf (α := α) H (σs l)) := by
       funext H
-      classical
-      simp [replicaGibbsMeasure, replicaGibbsWeightNNReal, hs, Measure.dirac_apply', Set.indicator]
-    have hterm :
-        ∀ σs ∈ (Finset.univ : Finset (ReplicaSpace (α := α) n)),
-          Measurable fun H : EnergySpace α =>
-            (if σs ∈ s then (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) else 0) := by
-      intro σs _hσs
-      by_cases hσs' : σs ∈ s
-      · have hprod : Measurable fun H : EnergySpace α => ∏ l, gibbs_pmf H (σs l) := by
-          classical
-          have hfac :
-              ∀ l ∈ (Finset.univ : Finset (Fin n)),
-                Measurable fun H : EnergySpace α => gibbs_pmf H (σs l) := by
-            intro l _hl
-            simpa using measurable_gibbs_pmf (σ := σs l)
-          simpa using (Finset.measurable_prod (s := (Finset.univ : Finset (Fin n))) hfac)
-        have hnn :
-            Measurable fun H : EnergySpace α =>
-              replicaGibbsWeightNNReal (α := α) (n := n) H σs := by
-          simpa [replicaGibbsWeightNNReal] using
-            (hprod.nnreal_mk (h'f := fun H =>
-              Finset.prod_nonneg fun l _ =>
-                gibbs_pmf_nonneg (α := α) (H := H) (σ := σs l)))
-        have hcoe : Measurable fun H : EnergySpace α =>
-            (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) := by
-          have h_ofReal :
-              Measurable fun H : EnergySpace α =>
-                ENNReal.ofReal (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ) :=
-            ENNReal.measurable_ofReal.comp (measurable_coe_nnreal_real.comp hnn)
-          have hconv :
-              (fun H : EnergySpace α =>
-                  (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞)) =
-                fun H : EnergySpace α =>
-                  ENNReal.ofReal (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ) := by
-            funext H
-            simp
-          simpa [hconv] using h_ofReal
-        simp [hσs', hcoe]
-      · simp [hσs']
-    simpa [hsum] using
-      (Finset.measurable_sum (s := (Finset.univ : Finset (ReplicaSpace (α := α) n))) hterm)
+      calc replicaGibbsMeasure (α := α) (n := n) H s
+          = replicaGibbsMeasure (α := α) (n := n) H
+              (↑(s.toFinset) : Set (ReplicaSpace (α := α) n)) := by rw [Set.coe_toFinset]
+        _ = ∑ σs ∈ s.toFinset, replicaGibbsMeasure (α := α) (n := n) H {σs} :=
+            sum_measure_singleton.symm
+        _ = ∑ σs ∈ s.toFinset, ∏ l : Fin n, ENNReal.ofReal (gibbs_pmf (α := α) H (σs l)) :=
+            Finset.sum_congr rfl fun σs _ =>
+              replicaGibbsMeasure_apply_singleton (α := α) n H σs
+    rw [hval]
+    refine Finset.measurable_sum _ fun σs _ => ?_
+    exact Finset.measurable_prod _ fun l _ =>
+      ENNReal.measurable_ofReal.comp (measurable_gibbs_pmf (α := α) (σ := σs l))
 
-omit [MeasurableSingletonClass α] in
 @[simp] lemma replicaGibbsKernel_apply (n : ℕ) (H : EnergySpace α) :
     replicaGibbsKernel (α := α) n H =
       replicaGibbsMeasure (α := α) (n := n) H := rfl

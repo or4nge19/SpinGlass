@@ -137,7 +137,7 @@ supplies them with their full Fréchet calculus, and the finite-volume Gibbs obj
 turn out to *be* them (see below), so there is one theory rather than two.
 
 - `Real.expSum`, `Real.logSumExp`, `Real.softmax`, `Real.logSumExpHess`, `Real.maxCoord`,
-  `Real.smoothMax`.
+  `Real.smoothMax`; the supremum of the coordinates is Mathlib's `⨆ i, x i`, not a new definition.
 - `Real.contDiff_logSumExp`, `Real.fderiv_logSumExp_apply` (the gradient **is** softmax),
   `Real.fderiv_softmax_apply` (`∂_j pᵢ = pᵢ(δᵢⱼ - pⱼ)`),
   `Real.fderiv_fderiv_logSumExp_apply` (the Hessian **is** the softmax covariance form), and its
@@ -146,8 +146,10 @@ turn out to *be* them (see below), so there is one theory rather than two.
   uniformly in `x`; `Real.le_logSumExp`, `Real.logSumExp_le_of_le`, `Real.abs_logSumExp_le`.
 - `Real.contDiff_smoothMax`, `Real.fderiv_smoothMax_apply`,
   `Real.fderiv_fderiv_smoothMax_apply`, `Real.norm_fderiv_smoothMax_le`,
-  `Real.norm_fderiv_fderiv_smoothMax_le`, `Real.maxCoord_le_smoothMax`,
-  `Real.smoothMax_le_maxCoord_add`, `Real.abs_smoothMax_le`.
+  `Real.norm_fderiv_fderiv_smoothMax_le`, `Real.ciSup_coord_le_smoothMax`,
+  `Real.smoothMax_le_ciSup_coord_add`, `Real.abs_smoothMax_le`, together with the `⨆` API
+  `Real.le_ciSup_coord`, `Real.ciSup_coord_le`, `Real.abs_ciSup_coord_le`,
+  `Real.continuous_ciSup_coord`.
 - `fderiv_comp_clm`, `fderiv_fderiv_comp_clm_apply`, `fderiv_fderiv_const_mul_apply` — first- and
   second-order chain rules along a continuous linear map, which is how a change of scale
   `x ↦ l • x` transports the calculus.
@@ -194,11 +196,122 @@ ninety downstream declarations, and in `disorderPair`/`disorderPairLaw` as an un
   centered `multivariateGaussian` reads off its matrix in the Dirac basis.
 - `exists_skDisorder_simpleDisorder_indepFun` — the SK / replica-symmetric disorder pair exists.
 
+## Proved: the cavity identity (Vol. I, §1.7; Vol. II, §12.2)
+
+- `FiniteGibbs.contDiff_gibbs_average_n_det`, `FiniteGibbs.fderiv_gibbs_average_n_det_apply_eq` —
+  the `n`-replica Gibbs average is smooth in the Hamiltonian, with derivative
+  `n ⟨f⟩ ⟨v⟩ - ∑_l ⟨f v(σˡ)⟩`.
+- `FiniteGibbs.integral_gibbs_average_n_det_energy_mul` — **the cavity identity with the energy
+  inside the bracket**: `𝔼⟨H_{σⁱ} f⟩ = 𝔼[ m ⟨f · ⟨C e_{σⁱ}⟩⟩ - ∑_{l<m} ⟨f · (C e_{σⁱ})(σˡ)⟩ ]`,
+  where the inner average is over a *fresh* replica. This is the form the cavity method uses: the
+  Hamiltonian evaluated at a replica is traded for covariances between that replica and the
+  others, plus one fresh replica. Obtained from the identity below by expanding over the value of
+  the `i`-th replica and collapsing the indicators.
+- `FiniteGibbs.integral_apply_mul_gibbs_average_n_det` — **the cavity identity**:
+  `𝔼[H_ρ ⟨f⟩] = 𝔼[ n ⟨f⟩ ⟨C e_ρ⟩ - ∑_{l<n} ⟨f · (C e_ρ)(σˡ)⟩ ]`, obtained by Gaussian
+  integration by parts applied to the Gibbs average as a functional of the Hamiltonian. It is
+  **exact at every finite volume**, for an arbitrary finite configuration space and an arbitrary
+  centered Gaussian Hamiltonian law — unlike the Ghirlanda–Guerra identities, which are its
+  asymptotic shadow after the Hamiltonian is replaced by its mean.
+
+## Proved: the Ghirlanda–Guerra defect (Vol. II, §12.2)
+
+- `FiniteGibbs.integral_gibbs_average_n_det_energy_mul_erase` — the cavity identity with the
+  diagonal term `l = i` separated; the constant-diagonal hypothesis `c σ σ = d` enters here and
+  nowhere else. It holds for every mixed `p`-spin covariance `c σ τ = N ξ(R_{στ})`, where
+  `c σ σ = N ξ(1)`.
+- `FiniteGibbs.integral_gibbs_average_one_energy` — the mean energy is the mean two-replica
+  covariance minus the diagonal: `𝔼⟨H⟩ = 𝔼⟨c(σ¹,σ²)⟩ - d`.
+- `FiniteGibbs.ghirlandaGuerra_defect` — **the Ghirlanda–Guerra defect is the energy–observable
+  covariance**: the failure of the Ghirlanda–Guerra identity for a test function `f` of `m`
+  replicas equals exactly `𝔼⟨H_{σⁱ} f⟩ - 𝔼⟨f⟩ · 𝔼⟨H⟩`. So the identity holds *exactly* iff the
+  energy decorrelates from the observable, and any bound on that covariance — for instance from
+  the Gaussian covariance inequality below — is a bound on the Ghirlanda–Guerra error. This is the
+  exact finite-volume replacement for the (false) `SK_GG1_gibbsKernel`.
+- Supporting: `FiniteGibbs.freshCov` (the Gibbs average of the covariance against a fresh
+  replica), `norm_std_basis`, `gibbs_average_one`, `integrable_gibbs_average_n_det_of_bounded`.
+
+## Proved: Ghirlanda–Guerra with an explicit error term (Vol. II, §12.2)
+
+The defect identity says *what* the error is; these results *bound* it, and then compute the bound
+exactly. Nothing here is asymptotic — every statement holds at every finite volume.
+
+- `FiniteGibbs.gibbs_average_n_det_eval` — every coordinate of the `m`-replica product Gibbs
+  measure has the Gibbs measure as its marginal, `⟨u(σⁱ)⟩ = ⟨u⟩`.
+- `FiniteGibbs.sq_sum_gibbs_pmf_mul_abs_le` — Cauchy–Schwarz for the Gibbs bracket,
+  `⟨|u|⟩² ≤ ⟨u²⟩`.
+- `FiniteGibbs.abs_integral_gibbs_average_energy_mul_sub_le` — **the error bound**:
+  `|𝔼⟨H_{σⁱ} f⟩ - a 𝔼⟨f⟩| ≤ ‖f‖_∞ √(𝔼⟨(H - a)²⟩)`, for an arbitrary constant `a`. Neither
+  Gaussianity nor centring is used: it is the two Cauchy–Schwarz steps above plus `(𝔼X)² ≤ 𝔼X²`.
+- `FiniteGibbs.ghirlandaGuerra_error_le` — **Ghirlanda–Guerra with an explicit error term**,
+  the defect identity composed with the bound at `a = 𝔼⟨H⟩`.
+- `FiniteGibbs.integral_energy_sq_weight`, `FiniteGibbs.integral_gibbs_average_energy_sq` — one
+  Gaussian integration by parts on the *energy-weighted* Gibbs weight `H ↦ H_ρ p_ρ(H)` gives
+  `𝔼⟨H²⟩ = d + 𝔼⟨H(σ¹) c(σ¹,σ²)⟩ - d 𝔼⟨H⟩`: differentiating the explicit factor `H_ρ` produces
+  the diagonal, differentiating the weight produces the fresh-replica covariance.
+- `FiniteGibbs.integral_gibbs_average_sub_mean_sq` — **the energy fluctuation, exactly**:
+  `𝔼⟨(H - 𝔼⟨H⟩)²⟩ = d + 𝔼⟨H(σ¹) c(σ¹,σ²)⟩ - d 𝔼⟨H⟩ - (𝔼⟨H⟩)²`.
+- `FiniteGibbs.ghirlandaGuerra_error_le_energy_fluctuation` — the two combined: the
+  Ghirlanda–Guerra error is bounded by a covariance-kernel expression in which the observable no
+  longer appears at all.
+
+## Dependencies
+
+`GibbsMeasure` (branch `mc3`, rev `8a158f0`) is required for its exchangeability layer only:
+`IsExchangeable`, the Hewitt–Savage zero-one law, and `existsUnique_mixing_of_isExchangeable`
+(de Finetti in Dynkin's form, with uniqueness over a standard Borel space). Mathlib has none of
+these. They are the ancestors of Aldous–Hoover and Dovbysh–Sudakov, which Vol. II Ch. 12–15 needs.
+The DLR/specification half of that repository is not imported.
+
 ## Proved: Gaussian concentration (Vol. I, §1.3)
 
-- `GaussianDisorder.variance_free_energy_density_le` — Gaussian Poincaré bound for `log Z`. The
-  SK and reference disorders are instances of `GaussianDisorder` (see below), so this one statement
-  covers both.
+Write `C = covarianceOperator μ` and `Q h = ∫ ⟪C (∇ h x), ∇ h x⟫ ∂μ` for the Dirichlet energy of
+`h` against `C`. All of the following are absent from Mathlib.
+
+- `ProbabilityTheory.IsGaussian.integral_prod_mul_fderiv_gaussRot_eq` — **the slice identity**, the
+  engine. At each angle the quarter-turn rotation `map_gaussRotMap_prod` restores `μ ⊗ μ`, so the
+  first variable becomes an affine function of the rotated pair and one Gaussian integration by
+  parts (`integral_inner_mul_eq_integral_fderiv_covarianceOperator`) trades the surviving linear
+  factor for a derivative, producing the chain-rule weight `-sin θ`. Since `∫₀^{π/2} sin θ dθ = 1`,
+  every bound on the slice becomes a covariance bound with no constant
+  (`abs_covariance_le_of_slice_le`).
+- `ProbabilityTheory.IsGaussian.abs_covariance_le_sqrt_mul_sqrt_integral_inner_covarianceOperator`
+  — **the Gaussian covariance inequality**, `|cov[f, g]| ≤ √(Q f) √(Q g)`. The slice is bounded by
+  Cauchy–Schwarz for the positive operator `C` in its *weighted* arithmetic–geometric form
+  (`LinearMap.IsPositive.abs_inner_le_half_add_smul`, a Mathlib gap, together with
+  `LinearMap.IsPositive.sq_inner_le`); the weight rides through the whole argument and is
+  optimised only at the end (`Real.le_sqrt_mul_sqrt_of_forall_pos`, the statement that the
+  geometric mean is the infimum of the weighted arithmetic means — also a Mathlib gap). That is
+  what recovers the Cauchy–Schwarz constant without ever needing Cauchy–Schwarz for an integral.
+  The weighted and unweighted forms
+  (`abs_covariance_le_half_add_smul_integral_inner_covarianceOperator`,
+  `abs_covariance_le_half_add_integral_inner_covarianceOperator`) are also stated.
+- `ProbabilityTheory.IsGaussian.variance_le_integral_inner_covarianceOperator_gradient` — **the
+  Gaussian Poincaré inequality in its sharp form**, `Var[f] ≤ Q f`, the diagonal `g = f` of the
+  above. No constant, no norm: only the Dirichlet energy.
+- `ProbabilityTheory.IsGaussian.abs_covariance_le_opNorm_covarianceOperator_mul` and
+  `variance_le_opNorm_covarianceOperator_mul_sq` — the operator-norm forms `|cov| ≤ ‖C‖ Kf Kg`,
+  `Var[f] ≤ ‖C‖ K²`, obtained from the same slice identity by bounding with operator norms
+  instead. The constant is again `1`; the Cauchy–Schwarz-in-`θ` form of the rotation argument,
+  which discards the `sin θ` weight, only gives `π²/8`.
+- `ProbabilityTheory.IsGaussian.gaussianInterp_eq_gaussRot` identifies the rotation with the
+  interpolation path used everywhere above: one smart path in two parameterizations, `cos θ = √t`.
+- Supporting Mathlib gaps: `norm_le_add_mul_norm_of_norm_fderiv_le` and
+  `MeasureTheory.MemLp.of_norm_fderiv_le` (a map with bounded derivative grows linearly, hence lies
+  in every `Lᵖ` in which the identity does, which for a Gaussian measure is every `p ≠ ∞`);
+  `norm_gradient` and `ContDiff.continuous_gradient`.
+
+Applied to the free energy:
+
+- `FiniteGibbs.gradient_free_energy_density` — `∇F_n(H) = -(1/n) ∑_σ ⟨σ⟩ e_σ`: the gradient of the
+  free energy density **is** the Gibbs measure. Hence `Q F_n` is a two-replica bracket.
+- `GaussianDisorder.variance_free_energy_density_le_gibbs_kernel` — **self-averaging in
+  Talagrand's form**: `Var[F_N] ≤ (1/N²) 𝔼⟨K(σ¹, σ²)⟩`. For a mixed `p`-spin model
+  `K σ τ = N ξ(R_{στ})`, so this is `ξ(1)/N`. The operator-norm route
+  (`GaussianDisorder.variance_free_energy_density_le`) is also proved but is far weaker here,
+  since `‖C‖` on `EnergySpace N` grows with the number of configurations, not with `N`; the
+  Dirichlet-energy form is what makes the bound thermodynamically meaningful. The SK and reference
+  disorders are instances of `GaussianDisorder` (see below), so this one statement covers both.
 
 ## Proved: Hopfield (Vol. I Ch. 4 / Vol. II Ch. 10)
 
@@ -213,6 +326,11 @@ These are `Prop`-valued definitions recording Talagrand's statements; each still
 - `GG1`, `GG1_prefix`, `SK_GG1`, `Hopfield_SK_GG1`, `HopfieldOverlap_GG1Kernel` — Vol. II Ch. 12
   Ghirlanda–Guerra identities. `GG1_of_GG1_prefix` and
   `GG1_prefix_of_condExp_lastReplica_ae` reduce them to a conditional-expectation identity.
+
+  **`SK_GG1_gibbsKernel` is false at finite volume** and names an asymptotic target only: at
+  `N = n = 1` it asserts `m = m ^ 3` for the magnetization `m`. The Ghirlanda–Guerra identities
+  hold exactly only for asymptotic Gibbs measures, or after a perturbation. The exact
+  finite-volume statement is the cavity identity below.
 -/
 
 namespace SpinGlass

@@ -62,6 +62,8 @@ instance (K : Kernel α β) (n : ℕ) [IsMarkovKernel K] :
 
 /-! ## Finite marginals via `partialTraj` -/
 
+/-- The partial-trajectory kernel of the i.i.d. Ionescu-Tulcea family: the law of the coordinates
+up to time `b` given those up to time `a`, when each new coordinate is drawn from `K`. -/
 noncomputable def iidPartialTraj (K : Kernel α β) (a b : ℕ) :
     Kernel ((i : ↑(Finset.Iic a)) → IidX α β i) ((i : ↑(Finset.Iic b)) → IidX α β i) :=
   ProbabilityTheory.Kernel.partialTraj (κ := iidκ (α := α) (β := β) K) a b

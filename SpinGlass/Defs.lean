@@ -107,6 +107,8 @@ noncomputable instance : FiniteDimensional ℝ (EnergySpace N) := by
 
 /-! ### Basis vector `std_basis` -/
 
+/-- The Dirac basis vector `e_σ` of `EnergySpace N`; the `Config N` instance of
+`FiniteGibbs.std_basis`. -/
 noncomputable def std_basis (σ : Config N) : EnergySpace N :=
   FiniteGibbs.std_basis (α := Config N) σ
 
@@ -210,8 +212,10 @@ lemma simple_cov_kernel_comm (xi : ℝ → ℝ) (σ τ : Config N) :
 
 /-! ### Thermodynamic Quantities -/
 
+/-- Partition function `Z(H) = ∑_σ exp(-H σ)`. Talagrand Vol. I, §1.1. -/
 def Z (H : EnergySpace N) : ℝ := ∑ σ, Real.exp (- H σ)
 
+/-- Gibbs probability mass function `p_H(σ) = exp(-H σ) / Z(H)`. Talagrand Vol. I, §1.1. -/
 def gibbs_pmf (H : EnergySpace N) (σ : Config N) : ℝ :=
   Real.exp (- H σ) / Z N H
 
@@ -319,6 +323,7 @@ lemma gibbs_average₂_nonneg (H : EnergySpace N) {f : Config N → Config N →
 All of these are the model-agnostic `FiniteGibbs` calculus at `α := Config N`, which is in turn
 the general log-sum-exp calculus of `Common.Mathlib.Analysis.SpecialFunctions.LogSumExp`. -/
 
+/-- Evaluation at a configuration, as a continuous linear functional on `EnergySpace N`. -/
 noncomputable abbrev evalCLM (σ : Config N) : EnergySpace N →L[ℝ] ℝ :=
   FiniteGibbs.evalCLM (α := Config N) σ
 
@@ -346,6 +351,8 @@ lemma fderiv_free_energy_density_apply (H h : EnergySpace N) :
       -(1 / (N : ℝ)) * ∑ σ : Config N, (gibbs_pmf N H σ) * h σ :=
   FiniteGibbs.fderiv_free_energy_density_apply (α := Config N) N H h
 
+/-- The Gibbs covariance bilinear form at system size `N`: the Hessian of the free-energy
+density, written out. -/
 def hessian_free_energy (H : EnergySpace N) (h k : EnergySpace N) : ℝ :=
   (1 / (N : ℝ)) * (
     (∑ σ, gibbs_pmf N H σ * h σ * k σ) -

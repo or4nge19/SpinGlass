@@ -18,6 +18,7 @@ variable {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)
 variable {N : ℕ} (β h q : ℝ)
 variable (sk : SKDisorder (Ω := Ω) (N := N) β) (sim : SimpleDisorder (Ω := Ω) (N := N) β q)
 
+/-- Abbreviation for the joint law of the SK and reference disorders on `DisorderSpace`. -/
 private abbrev μ : Measure (DisorderSpace (N := N)) :=
   disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)
 

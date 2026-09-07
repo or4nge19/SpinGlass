@@ -135,6 +135,9 @@ lemma condDistrib_snd_fst_gibbsPrefixFreshLaw_ae :
 
 /-! ### Prior-driven joint law -/
 
+/-- The joint law of an `n`-replica prefix together with one fresh replica, both drawn from the
+Gibbs measure of a Hamiltonian distributed according to `μH`. This is the predictive form of the
+replica law: the prefix is the past, the fresh coordinate the next draw. -/
 noncomputable def gibbsPriorPrefixFreshLaw : Measure ((ReplicaSpace N n) × (Config N)) :=
   (Kernel.id ∥ₖ gibbsKernel (N := N)) ∘ₘ
     ((μH ⊗ₘ replicaGibbsKernel (N := N) (n := n)).map Prod.swap)

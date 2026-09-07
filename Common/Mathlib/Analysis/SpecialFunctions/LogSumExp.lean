@@ -381,47 +381,53 @@ lemma abs_logSumExp_le (x : EuclideanSpace ℝ ι) :
     linarith
   exact abs_le.mpr ⟨hlb, hub⟩
 
-/-! ### The maximum coordinate and its smooth approximation -/
+/-! ### The supremum of the coordinates, and its smooth approximation
 
-/-- The largest coordinate of `x`. -/
-def maxCoord (x : EuclideanSpace ℝ ι) : ℝ :=
-  (Finset.univ : Finset ι).sup' Finset.univ_nonempty (fun i => x i)
-
-lemma le_maxCoord (x : EuclideanSpace ℝ ι) (i : ι) : x i ≤ maxCoord x :=
-  Finset.le_sup' (f := fun j : ι => x j) (Finset.mem_univ i)
-
-lemma maxCoord_le {x : EuclideanSpace ℝ ι} {M : ℝ} (h : ∀ i, x i ≤ M) : maxCoord x ≤ M :=
-  Finset.sup'_le _ _ fun i _ => h i
-
-lemma continuous_maxCoord : Continuous (maxCoord (ι := ι)) := by
-  refine Continuous.finset_sup'_apply (f := fun (i : ι) (x : EuclideanSpace ℝ ι) => x i)
-    Finset.univ_nonempty fun i _ => ?_
-  exact (evalCLM (ι := ι) i).continuous
-
-lemma abs_maxCoord_le (x : EuclideanSpace ℝ ι) : |maxCoord x| ≤ ‖x‖ := by
-  obtain ⟨i⟩ := ‹Nonempty ι›
-  refine abs_le.mpr ⟨?_, maxCoord_le fun j => le_trans (le_abs_self _) (abs_apply_le_norm x j)⟩
-  have h1 : -‖x‖ ≤ x i := (abs_le.mp (abs_apply_le_norm x i)).1
-  exact le_trans h1 (le_maxCoord x i)
-
-/-- Scaling by `l`, as a continuous linear map. -/
-def scaleCLM (l : ℝ) : EuclideanSpace ℝ ι →L[ℝ] EuclideanSpace ℝ ι :=
-  l • ContinuousLinearMap.id ℝ (EuclideanSpace ℝ ι)
+The supremum of the coordinates is Mathlib's `⨆ i, x i`; the coordinate family of a `Fintype` is
+bounded, so the conditionally-complete-lattice API applies without side conditions. -/
 
 omit [Nonempty ι] in
-@[simp] lemma scaleCLM_apply (l : ℝ) (x : EuclideanSpace ℝ ι) : scaleCLM l x = l • x := rfl
+/-- The coordinates of a vector form a bounded family, so `⨆ i, x i` is well behaved. -/
+lemma bddAbove_range_coord (x : EuclideanSpace ℝ ι) :
+    BddAbove (Set.range fun i => x i) := Set.Finite.bddAbove (Set.finite_range _)
+
+omit [Nonempty ι] in
+lemma le_ciSup_coord (x : EuclideanSpace ℝ ι) (i : ι) : x i ≤ ⨆ j, x j :=
+  le_ciSup (bddAbove_range_coord x) i
+
+omit [Fintype ι] in
+lemma ciSup_coord_le {x : EuclideanSpace ℝ ι} {M : ℝ} (h : ∀ i, x i ≤ M) : (⨆ i, x i) ≤ M :=
+  ciSup_le h
+
+/-- `⨆ i, x i` is the finite supremum of the coordinates; this is the bridge that transports the
+`Finset.sup'` API (in particular continuity) to the `⨆` notation. -/
+lemma ciSup_coord_eq_sup' (x : EuclideanSpace ℝ ι) :
+    (⨆ i, x i) = (Finset.univ : Finset ι).sup' Finset.univ_nonempty (fun i => x i) :=
+  (Finset.sup'_univ_eq_ciSup _).symm
+
+lemma continuous_ciSup_coord : Continuous fun x : EuclideanSpace ℝ ι => ⨆ i, x i := by
+  simp only [ciSup_coord_eq_sup']
+  exact Continuous.finset_sup'_apply (f := fun (i : ι) (x : EuclideanSpace ℝ ι) => x i)
+    Finset.univ_nonempty fun i _ => (evalCLM (ι := ι) i).continuous
+
+lemma abs_ciSup_coord_le (x : EuclideanSpace ℝ ι) : |⨆ i, x i| ≤ ‖x‖ := by
+  obtain ⟨i⟩ := ‹Nonempty ι›
+  refine abs_le.mpr ⟨?_, ciSup_coord_le fun j => le_trans (le_abs_self _) (abs_apply_le_norm x j)⟩
+  exact le_trans (abs_le.mp (abs_apply_le_norm x i)).1 (le_ciSup_coord x i)
 
 /-- The **smooth maximum** at scale `l`: `l⁻¹ log ∑ exp (l xᵢ)`. As `l → ∞` it decreases to
-`maxCoord`, with the explicit error bound `l⁻¹ log (card ι)`. -/
+`⨆ i, x i`, with the explicit error bound `l⁻¹ log (card ι)`. -/
 def smoothMax (l : ℝ) (x : EuclideanSpace ℝ ι) : ℝ := l⁻¹ * logSumExp (l • x)
 
 omit [Nonempty ι] in
 lemma smoothMax_eq_comp (l : ℝ) :
-    smoothMax (ι := ι) l = fun y : EuclideanSpace ℝ ι => l⁻¹ * logSumExp (scaleCLM l y) := rfl
+    smoothMax (ι := ι) l
+      = fun y : EuclideanSpace ℝ ι => l⁻¹ * logSumExp ((ContinuousLinearMap.lsmul ℝ ℝ l) y) := rfl
 
 lemma contDiff_smoothMax (l : ℝ) : ContDiff ℝ (∞) (smoothMax (ι := ι) l) := by
-  have hcomp : ContDiff ℝ (∞) (fun y : EuclideanSpace ℝ ι => logSumExp (scaleCLM (ι := ι) l y)) :=
-    (contDiff_logSumExp (ι := ι)).comp (scaleCLM (ι := ι) l).contDiff
+  have hcomp : ContDiff ℝ (∞)
+      (fun y : EuclideanSpace ℝ ι => logSumExp ((ContinuousLinearMap.lsmul ℝ ℝ l) y)) :=
+    (contDiff_logSumExp (ι := ι)).comp ((ContinuousLinearMap.lsmul ℝ ℝ l)).contDiff
   simpa [smoothMax_eq_comp, smul_eq_mul] using
     (ContDiff.const_smul (𝕜 := ℝ) (n := (∞)) (R := ℝ) (c := l⁻¹) hcomp)
 
@@ -429,15 +435,17 @@ lemma fderiv_smoothMax_apply {l : ℝ} (hl : l ≠ 0) (x v : EuclideanSpace ℝ 
     fderiv ℝ (smoothMax (ι := ι) l) x v = ∑ i, softmax (l • x) i * v i := by
   have hgd : Differentiable ℝ (fun z : EuclideanSpace ℝ ι => logSumExp z) :=
     (contDiff_logSumExp (ι := ι)).differentiable (by simp)
-  have hcomp : Differentiable ℝ (fun y : EuclideanSpace ℝ ι => logSumExp (scaleCLM (ι := ι) l y)) :=
-    hgd.comp (scaleCLM (ι := ι) l).differentiable
+  have hcomp : Differentiable ℝ
+      (fun y : EuclideanSpace ℝ ι => logSumExp ((ContinuousLinearMap.lsmul ℝ ℝ l) y)) :=
+    hgd.comp ((ContinuousLinearMap.lsmul ℝ ℝ l)).differentiable
   have h1 : fderiv ℝ (smoothMax (ι := ι) l) x
-      = l⁻¹ • fderiv ℝ (fun y : EuclideanSpace ℝ ι => logSumExp (scaleCLM (ι := ι) l y)) x := by
+      = l⁻¹ • fderiv ℝ
+          (fun y : EuclideanSpace ℝ ι => logSumExp ((ContinuousLinearMap.lsmul ℝ ℝ l) y)) x := by
     rw [smoothMax_eq_comp]
     exact ((hcomp x).hasFDerivAt.const_smul l⁻¹).fderiv
-  rw [h1, fderiv_comp_clm hgd (scaleCLM (ι := ι) l) x]
-  simp only [smul_apply, ContinuousLinearMap.coe_comp, Function.comp_apply, scaleCLM_apply,
-    smul_eq_mul, fderiv_logSumExp_eq, gradLogSumExp_apply]
+  rw [h1, fderiv_comp_clm hgd ((ContinuousLinearMap.lsmul ℝ ℝ l)) x]
+  simp only [smul_apply, ContinuousLinearMap.coe_comp, Function.comp_apply,
+    ContinuousLinearMap.lsmul_apply, smul_eq_mul, fderiv_logSumExp_eq, gradLogSumExp_apply]
   rw [Finset.mul_sum]
   refine Finset.sum_congr rfl fun i _ => ?_
   have : (l • v) i = l * v i := rfl
@@ -464,13 +472,16 @@ lemma logSumExpHess_smul_smul (x u v : EuclideanSpace ℝ ι) (a b : ℝ) :
 lemma fderiv_fderiv_smoothMax_apply {l : ℝ} (hl : l ≠ 0) (x u v : EuclideanSpace ℝ ι) :
     ((fderiv ℝ (fderiv ℝ (smoothMax (ι := ι) l)) x) u) v
       = l * logSumExpHess (l • x) u v := by
-  have hc2 : ContDiff ℝ 2 (fun y : EuclideanSpace ℝ ι => logSumExp (scaleCLM (ι := ι) l y)) :=
-    ((contDiff_logSumExp (ι := ι)).comp (scaleCLM (ι := ι) l).contDiff).of_le (by simp)
+  have hc2 : ContDiff ℝ 2
+      (fun y : EuclideanSpace ℝ ι => logSumExp ((ContinuousLinearMap.lsmul ℝ ℝ l) y)) :=
+    ((contDiff_logSumExp (ι := ι)).comp
+      ((ContinuousLinearMap.lsmul ℝ ℝ l)).contDiff).of_le (by simp)
   rw [smoothMax_eq_comp, fderiv_fderiv_const_mul_apply hc2 l⁻¹ x u v,
     fderiv_fderiv_comp_clm_apply ((contDiff_logSumExp (ι := ι)).of_le (by simp))
-      (scaleCLM (ι := ι) l) x u v,
-    fderiv_fderiv_logSumExp_apply, scaleCLM_apply, scaleCLM_apply, scaleCLM_apply,
-    logSumExpHess_smul_smul]
+      ((ContinuousLinearMap.lsmul ℝ ℝ l)) x u v,
+    fderiv_fderiv_logSumExp_apply]
+  simp only [ContinuousLinearMap.lsmul_apply]
+  rw [logSumExpHess_smul_smul]
   field_simp
 
 lemma norm_fderiv_smoothMax_le {l : ℝ} (hl : l ≠ 0) (x : EuclideanSpace ℝ ι) :
@@ -488,45 +499,42 @@ lemma norm_fderiv_fderiv_smoothMax_le {l : ℝ} (hl : l ≠ 0) (x : EuclideanSpa
         mul_le_mul_of_nonneg_left (abs_logSumExpHess_le (l • x) u v) (abs_nonneg l)
     _ = 2 * |l| * ‖u‖ * ‖v‖ := by ring
 
-lemma maxCoord_le_smoothMax {l : ℝ} (hl : 0 < l) (x : EuclideanSpace ℝ ι) :
-    maxCoord x ≤ smoothMax (ι := ι) l x := by
-  refine maxCoord_le fun i => ?_
+lemma ciSup_coord_le_smoothMax {l : ℝ} (hl : 0 < l) (x : EuclideanSpace ℝ ι) :
+    (⨆ i, x i) ≤ smoothMax (ι := ι) l x := by
+  refine ciSup_coord_le fun i => ?_
   have h1 : (l • x) i = l * x i := rfl
   have h2 : (l • x) i ≤ logSumExp (l • x) := le_logSumExp (l • x) i
-  rw [smoothMax]
-  rw [h1] at h2
+  rw [smoothMax, h1] at *
   calc x i = l⁻¹ * (l * x i) := by field_simp
-    _ ≤ l⁻¹ * logSumExp (l • x) := by
-        exact mul_le_mul_of_nonneg_left h2 (le_of_lt (inv_pos.mpr hl))
+    _ ≤ l⁻¹ * logSumExp (l • x) := mul_le_mul_of_nonneg_left h2 (le_of_lt (inv_pos.mpr hl))
 
-lemma smoothMax_le_maxCoord_add {l : ℝ} (hl : 0 < l) (x : EuclideanSpace ℝ ι) :
-    smoothMax (ι := ι) l x ≤ maxCoord x + l⁻¹ * Real.log (Fintype.card ι : ℝ) := by
-  have hbound : ∀ i : ι, (l • x) i ≤ l * maxCoord x := by
+lemma smoothMax_le_ciSup_coord_add {l : ℝ} (hl : 0 < l) (x : EuclideanSpace ℝ ι) :
+    smoothMax (ι := ι) l x ≤ (⨆ i, x i) + l⁻¹ * Real.log (Fintype.card ι : ℝ) := by
+  have hbound : ∀ i : ι, (l • x) i ≤ l * ⨆ j, x j := by
     intro i
     have h1 : (l • x) i = l * x i := rfl
     rw [h1]
-    exact mul_le_mul_of_nonneg_left (le_maxCoord x i) (le_of_lt hl)
-  have h := logSumExp_le_of_le (x := l • x) (M := l * maxCoord x) hbound
+    exact mul_le_mul_of_nonneg_left (le_ciSup_coord x i) (le_of_lt hl)
+  have h := logSumExp_le_of_le (x := l • x) (M := l * ⨆ j, x j) hbound
   rw [smoothMax]
   calc l⁻¹ * logSumExp (l • x)
-      ≤ l⁻¹ * (l * maxCoord x + Real.log (Fintype.card ι : ℝ)) :=
+      ≤ l⁻¹ * (l * (⨆ j, x j) + Real.log (Fintype.card ι : ℝ)) :=
         mul_le_mul_of_nonneg_left h (le_of_lt (inv_pos.mpr hl))
-    _ = maxCoord x + l⁻¹ * Real.log (Fintype.card ι : ℝ) := by
-        field_simp
+    _ = (⨆ i, x i) + l⁻¹ * Real.log (Fintype.card ι : ℝ) := by field_simp
 
 lemma abs_smoothMax_le {l : ℝ} (hl : 0 < l) (x : EuclideanSpace ℝ ι) :
     |smoothMax (ι := ι) l x| ≤ l⁻¹ * Real.log (Fintype.card ι : ℝ) + ‖x‖ := by
   have hcard : (1 : ℝ) ≤ (Fintype.card ι : ℝ) := by exact_mod_cast Fintype.card_pos
   have hlog : 0 ≤ Real.log (Fintype.card ι : ℝ) := Real.log_nonneg hcard
   have hlogpos : 0 ≤ l⁻¹ * Real.log (Fintype.card ι : ℝ) := by positivity
-  have hmax := abs_maxCoord_le x
+  have hmax := abs_ciSup_coord_le x
   have hub : smoothMax (ι := ι) l x ≤ l⁻¹ * Real.log (Fintype.card ι : ℝ) + ‖x‖ := by
-    have h := smoothMax_le_maxCoord_add hl x
-    have h2 : maxCoord x ≤ ‖x‖ := (abs_le.mp hmax).2
+    have h := smoothMax_le_ciSup_coord_add hl x
+    have h2 : ⨆ i, x i ≤ ‖x‖ := (abs_le.mp hmax).2
     linarith
   have hlb : -(l⁻¹ * Real.log (Fintype.card ι : ℝ) + ‖x‖) ≤ smoothMax (ι := ι) l x := by
-    have h := maxCoord_le_smoothMax hl x
-    have h2 : -‖x‖ ≤ maxCoord x := (abs_le.mp hmax).1
+    have h := ciSup_coord_le_smoothMax hl x
+    have h2 : -‖x‖ ≤ ⨆ i, x i := (abs_le.mp hmax).1
     linarith
   exact abs_le.mpr ⟨hlb, hub⟩
 

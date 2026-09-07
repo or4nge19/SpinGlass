@@ -26,7 +26,8 @@ reorganizes (`sum_mul_hess_eq_half_sum_incr`) into
 `(l/2) ∑_{i,j} [𝔼(Xᵢ-Xⱼ)² - 𝔼(Yᵢ-Yⱼ)²] pᵢ pⱼ ≤ 0`,
 
 whence `𝔼 smoothMax l X ≤ 𝔼 smoothMax l Y` for every `l > 0`. Since
-`maxCoord ≤ smoothMax l ≤ maxCoord + l⁻¹ log (card ι)` *uniformly*, letting `l → ∞` needs no limit
+`(⨆ i, xᵢ) ≤ smoothMax l x ≤ (⨆ i, xᵢ) + l⁻¹ log (card ι)` *uniformly*, letting `l → ∞` needs
+no limit
 interchange: the error term is an explicit constant that tends to `0`.
 
 ## Main statements
@@ -308,29 +309,29 @@ theorem sudakov_fernique [IsGaussian P]
     (c : EuclideanSpace ℝ ι)
     (hincr : ∀ i j, A i i + A j j - 2 * A i j ≤ B i i + B j j - 2 * B i j) :
     (∫ p : WithLp 2 (EuclideanSpace ℝ ι × EuclideanSpace ℝ ι),
-        Real.maxCoord ((WithLp.ofLp p).1 + c) ∂P)
+        (⨆ i, ((WithLp.ofLp p).1 + c) i) ∂P)
       ≤ ∫ p : WithLp 2 (EuclideanSpace ℝ ι × EuclideanSpace ℝ ι),
-        Real.maxCoord ((WithLp.ofLp p).2 + c) ∂P := by
+        (⨆ i, ((WithLp.ofLp p).2 + c) i) ∂P := by
   classical
   set logc : ℝ := Real.log (Fintype.card ι : ℝ) with hlogc
   have hlogc0 : 0 ≤ logc := by
     rw [hlogc]
     exact Real.log_nonneg (by exact_mod_cast Fintype.card_pos)
-  have hmaxbound : ∀ z : EuclideanSpace ℝ ι, |Real.maxCoord z| ≤ 1 * (1 + ‖z‖) ^ 1 := by
+  have hmaxbound : ∀ z : EuclideanSpace ℝ ι, |⨆ i, z i| ≤ 1 * (1 + ‖z‖) ^ 1 := by
     intro z
-    have := Real.abs_maxCoord_le (ι := ι) z
+    have := Real.abs_ciSup_coord_le (ι := ι) z
     have hz : (0 : ℝ) ≤ ‖z‖ := norm_nonneg z
     simpa using by linarith
-  have hIm1 := integrable_comp_fstL (P := P) c (Real.maxCoord (ι := ι))
-    Real.continuous_maxCoord zero_le_one hmaxbound
-  have hIm2 := integrable_comp_sndL (P := P) c (Real.maxCoord (ι := ι))
-    Real.continuous_maxCoord zero_le_one hmaxbound
+  have hIm1 := integrable_comp_fstL (P := P) c (fun z : EuclideanSpace ℝ ι => ⨆ i, z i)
+    Real.continuous_ciSup_coord zero_le_one hmaxbound
+  have hIm2 := integrable_comp_sndL (P := P) c (fun z : EuclideanSpace ℝ ι => ⨆ i, z i)
+    Real.continuous_ciSup_coord zero_le_one hmaxbound
   -- For every `l > 0` the smooth comparison gives the maximum comparison up to `l⁻¹ log (card ι)`.
   have key : ∀ l : ℝ, 0 < l →
       (∫ p : WithLp 2 (EuclideanSpace ℝ ι × EuclideanSpace ℝ ι),
-          Real.maxCoord ((WithLp.ofLp p).1 + c) ∂P)
+          (⨆ i, ((WithLp.ofLp p).1 + c) i) ∂P)
         ≤ (∫ p : WithLp 2 (EuclideanSpace ℝ ι × EuclideanSpace ℝ ι),
-            Real.maxCoord ((WithLp.ofLp p).2 + c) ∂P) + l⁻¹ * logc := by
+            (⨆ i, ((WithLp.ofLp p).2 + c) i) ∂P) + l⁻¹ * logc := by
     intro l hl
     have hsmbound : ∀ z : EuclideanSpace ℝ ι,
         |Real.smoothMax (ι := ι) l z| ≤ (l⁻¹ * logc + 1) * (1 + ‖z‖) ^ 1 := by
@@ -344,17 +345,17 @@ theorem sudakov_fernique [IsGaussian P]
       (Real.contDiff_smoothMax (ι := ι) l).continuous hK hsmbound
     have hIs2 := integrable_comp_sndL (P := P) c (Real.smoothMax (ι := ι) l)
       (Real.contDiff_smoothMax (ι := ι) l).continuous hK hsmbound
-    have step1 : (∫ p, Real.maxCoord ((WithLp.ofLp p).1 + c) ∂P)
+    have step1 : (∫ p, (⨆ i, ((WithLp.ofLp p).1 + c) i) ∂P)
         ≤ ∫ p, Real.smoothMax (ι := ι) l ((WithLp.ofLp p).1 + c) ∂P :=
       MeasureTheory.integral_mono hIm1 hIs1
-        (fun q => Real.maxCoord_le_smoothMax hl _)
+        (fun q => Real.ciSup_coord_le_smoothMax hl _)
     have step2 := integral_smoothMax_le_of_incr_le (P := P) hmean0 A B hcovL hcovR c hincr hl
     have step3 : (∫ p, Real.smoothMax (ι := ι) l ((WithLp.ofLp p).2 + c) ∂P)
-        ≤ (∫ p, Real.maxCoord ((WithLp.ofLp p).2 + c) ∂P) + l⁻¹ * logc := by
+        ≤ (∫ p, (⨆ i, ((WithLp.ofLp p).2 + c) i) ∂P) + l⁻¹ * logc := by
       have hmono : (∫ p, Real.smoothMax (ι := ι) l ((WithLp.ofLp p).2 + c) ∂P)
-          ≤ ∫ p, (Real.maxCoord ((WithLp.ofLp p).2 + c) + l⁻¹ * logc) ∂P :=
+          ≤ ∫ p, ((⨆ i, ((WithLp.ofLp p).2 + c) i) + l⁻¹ * logc) ∂P :=
         MeasureTheory.integral_mono hIs2 (hIm2.add (integrable_const _))
-          (fun q => Real.smoothMax_le_maxCoord_add hl _)
+          (fun q => Real.smoothMax_le_ciSup_coord_add hl _)
       rw [MeasureTheory.integral_add hIm2 (integrable_const _),
         MeasureTheory.integral_const] at hmono
       simpa using hmono

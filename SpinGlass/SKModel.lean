@@ -82,7 +82,7 @@ theorem
     {N : ℕ} {K : Config N → Config N → ℝ}
     (G : GaussianDisorder (Ω := Ω) (N := N) (ℙ : Measure Ω) K) :
     Var[(fun ω : Ω => free_energy_density (N := N) (G.U ω)); (ℙ : Measure Ω)]
-      ≤ (Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
+      ≤ ‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
           (1 / (N : ℝ)) ^ 2 := by
   let μ : Measure (EnergySpace N) := (ℙ : Measure Ω).map G.U
   have : ProbabilityTheory.IsGaussian μ := by
@@ -103,16 +103,16 @@ theorem
         (Y := G.U) (hX := by simpa [μ] using hX) (hY := hY))
   have hVarBound :
       Var[(fun H : EnergySpace N => free_energy_density (N := N) H); μ]
-        ≤ (Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (N : ℝ)) ^ 2 :=
+        ≤ ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (N : ℝ)) ^ 2 :=
     SpinGlass.variance_free_energy_density_le
       (μ := μ) (N := N) hmean0
   calc
     Var[(fun ω : Ω => free_energy_density (N := N) (G.U ω)); (ℙ : Measure Ω)]
         = Var[(fun H : EnergySpace N => free_energy_density (N := N) H); μ] := by
               simpa using hVarMap.symm
-    _ ≤ (Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (N : ℝ)) ^ 2 :=
+    _ ≤ ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (N : ℝ)) ^ 2 :=
           hVarBound
-    _ = (Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
+    _ = ‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
           (1 / (N : ℝ)) ^ 2 := by
           simp [μ]
 
@@ -124,7 +124,7 @@ theorem GaussianDisorder.meas_ge_le_free_energy_density_sub_mean_div_sq
           |free_energy_density (N := N) (G.U ω)
             - (ℙ : Measure Ω)[fun ω : Ω => free_energy_density (N := N) (G.U ω)]|}
       ≤ ENNReal.ofReal
-          (((Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
+          ((‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
               (1 / (N : ℝ)) ^ 2) / c ^ 2) := by
   let μH : Measure (EnergySpace N) := (ℙ : Measure Ω).map G.U
   have : ProbabilityTheory.IsGaussian μH := by
@@ -146,14 +146,14 @@ theorem GaussianDisorder.meas_ge_le_free_energy_density_sub_mean_div_sq
       (X := fun ω : Ω => free_energy_density (N := N) (G.U ω)) hMem hc
   have hVar :
       Var[(fun ω : Ω => free_energy_density (N := N) (G.U ω)); (ℙ : Measure Ω)]
-        ≤ (Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
+        ≤ ‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
             (1 / (N : ℝ)) ^ 2 :=
     GaussianDisorder.variance_free_energy_density_le
       (Ω := Ω) (G := G)
   have hDiv :
       Var[(fun ω : Ω => free_energy_density (N := N) (G.U ω)); (ℙ : Measure Ω)] / c ^ 2
         ≤
-          ((Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
+          (‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
               (1 / (N : ℝ)) ^ 2) / c ^ 2 :=
     div_le_div_of_nonneg_right hVar (sq_nonneg c)
   have hOfReal :
@@ -161,7 +161,7 @@ theorem GaussianDisorder.meas_ge_le_free_energy_density_sub_mean_div_sq
           (Var[(fun ω : Ω => free_energy_density (N := N) (G.U ω)); (ℙ : Measure Ω)] / c ^ 2)
         ≤
         ENNReal.ofReal
-          (((Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
+          ((‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
               (1 / (N : ℝ)) ^ 2) / c ^ 2) :=
     ENNReal.ofReal_le_ofReal hDiv
   have htail :
@@ -170,12 +170,32 @@ theorem GaussianDisorder.meas_ge_le_free_energy_density_sub_mean_div_sq
             |(fun ω : Ω => free_energy_density (N := N) (G.U ω)) ω
               - (ℙ : Measure Ω)[fun ω : Ω => free_energy_density (N := N) (G.U ω)]|}
         ≤ ENNReal.ofReal
-            (((Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
+            ((‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
                 (1 / (N : ℝ)) ^ 2) / c ^ 2) :=
     le_trans hCheb hOfReal
   simpa using htail
 
 /-! ### Covariance operator as a kernel expansion -/
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+/-- The coordinates of the covariance operator in the Dirac basis are the kernel entries. -/
+lemma GaussianDisorder.covarianceOperator_std_basis_apply
+    {N : ℕ} {K : Config N → Config N → ℝ}
+    (G : GaussianDisorder (Ω := Ω) (N := N) (ℙ : Measure Ω) K) (σ ρ : Config N) :
+    (ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U) (std_basis N σ)) ρ
+      = K σ ρ := by
+  calc
+    (ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U) (std_basis N σ)) ρ
+        = inner ℝ (std_basis N ρ)
+            (ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U) (std_basis N σ)) := by
+            simpa using
+              (inner_std_basis_apply (N := N) (σ := ρ)
+                  (H := ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U) (std_basis
+                    N σ))).symm
+    _ = inner ℝ
+          (ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U) (std_basis N σ))
+          (std_basis N ρ) := by simp [real_inner_comm]
+    _ = K σ ρ := G.cov_eq σ ρ
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma GaussianDisorder.covarianceOperator_apply_std_basis_eq_sum
@@ -185,24 +205,49 @@ lemma GaussianDisorder.covarianceOperator_apply_std_basis_eq_sum
       =
       ∑ τ : Config N, (K σ τ) • std_basis N τ := by
   ext ρ
-  have hcoord :
-      (ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U) (std_basis N σ)) ρ
-        = K σ ρ := by
-    calc
-      (ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U) (std_basis N σ)) ρ
-          = inner ℝ (std_basis N ρ)
-              (ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U) (std_basis N σ)) := by
-              simpa using
-                (inner_std_basis_apply (N := N) (σ := ρ)
-                    (H := ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U) (std_basis
-                      N σ))).symm
-      _ = inner ℝ
-            (ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U) (std_basis N σ))
-            (std_basis N ρ) := by simp [real_inner_comm]
-      _ = K σ ρ := G.cov_eq σ ρ
   have hsum : (∑ τ : Config N, (K σ τ) • std_basis N τ) ρ = K σ ρ := by
     simp [std_basis, FiniteGibbs.std_basis]
-  simp [hcoord, hsum]
+  simp [G.covarianceOperator_std_basis_apply σ ρ, hsum]
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+/-- **Self-averaging of the free energy, in Talagrand's form.** For a centered Gaussian
+Hamiltonian with covariance kernel `K`,
+
+`Var[F_N] ≤ (1/N²) 𝔼 ⟨K(σ¹, σ²)⟩`,
+
+the disorder average of the two-replica Gibbs bracket of the kernel. For a mixed `p`-spin model
+`K σ τ = N ξ(R_{στ})` and the bound is `ξ(1)/N`; the operator-norm form
+`GaussianDisorder.variance_free_energy_density_le` is far weaker there, since the operator norm of
+the covariance on `EnergySpace N` grows with the number of configurations. -/
+theorem GaussianDisorder.variance_free_energy_density_le_gibbs_kernel
+    {N : ℕ} {K : Config N → Config N → ℝ}
+    (G : GaussianDisorder (Ω := Ω) (N := N) (ℙ : Measure Ω) K) :
+    Var[(fun ω : Ω => free_energy_density (N := N) (G.U ω)); (ℙ : Measure Ω)]
+      ≤ (1 / (N : ℝ)) ^ 2 * ∫ H : EnergySpace N,
+          gibbs_average₂ N H K ∂((ℙ : Measure Ω).map G.U) := by
+  classical
+  let μ : Measure (EnergySpace N) := (ℙ : Measure Ω).map G.U
+  have : ProbabilityTheory.IsGaussian μ := by simpa [μ] using G.isGaussian
+  have hmean0 : (∫ x : EnergySpace N, x ∂μ) = 0 := by simpa [μ] using G.mean0
+  have hX : AEMeasurable (fun H : EnergySpace N => free_energy_density (N := N) H) μ :=
+    (memLp_free_energy_density (N := N) (μ := μ)).1.aemeasurable
+  have hVarMap :
+      Var[(fun H : EnergySpace N => free_energy_density (N := N) H); μ]
+        = Var[(fun ω : Ω => free_energy_density (N := N) (G.U ω)); (ℙ : Measure Ω)] := by
+    simpa [μ, Function.comp_def] using
+      (ProbabilityTheory.variance_map (μ := (ℙ : Measure Ω))
+        (X := fun H : EnergySpace N => free_energy_density (N := N) H)
+        (Y := G.U) (hX := by simpa [μ] using hX) (hY := G.measU.aemeasurable))
+  have hbound := variance_free_energy_density_le_gibbs_covariance (N := N) (μ := μ) hmean0
+  have hker : (∫ H : EnergySpace N, gibbs_average₂ N H
+        (fun σ τ => (ProbabilityTheory.covarianceOperator μ (std_basis N σ)) τ) ∂μ)
+      = ∫ H : EnergySpace N, gibbs_average₂ N H K ∂μ := by
+    refine integral_congr_ae (Filter.Eventually.of_forall fun H => ?_)
+    simp only [gibbs_average₂]
+    exact Finset.sum_congr rfl fun σ _ => Finset.sum_congr rfl fun τ _ => by
+      rw [G.covarianceOperator_std_basis_apply σ τ]
+  rw [← hVarMap]
+  simpa [μ, hker] using hbound
 
 /-! ### Product disorder space -/
 
@@ -211,9 +256,11 @@ abbrev DisorderSpace (N : ℕ) := WithLp 2 (EnergySpace N × EnergySpace N)
 
 /-! ### Product-space basis vectors -/
 
+/-- The Dirac basis vector of the first (SK-disorder) block of `DisorderSpace`. -/
 noncomputable def std_basis_left (σ : Config N) : DisorderSpace (N := N) :=
   WithLp.toLp 2 (std_basis N σ, 0)
 
+/-- The Dirac basis vector of the second (reference-disorder) block of `DisorderSpace`. -/
 noncomputable def std_basis_right (σ : Config N) : DisorderSpace (N := N) :=
   WithLp.toLp 2 (0, std_basis N σ)
 

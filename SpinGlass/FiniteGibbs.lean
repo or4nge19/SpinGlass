@@ -130,6 +130,8 @@ lemma sum_gibbs_pmf (H : EnergySpace α) : (∑ σ, gibbs_pmf (α := α) H σ) =
 Everything here is the log-sum-exp calculus of `Common.Mathlib.Analysis.SpecialFunctions.LogSumExp`
 transported along the negation `H ↦ -H`, which is the continuous linear map `negCLM`. -/
 
+/-- Evaluation at a configuration, as a continuous linear functional on `EnergySpace α`: it is
+Mathlib's `PiLp.proj`, not a new object. -/
 noncomputable abbrev evalCLM (σ : α) : EnergySpace α →L[ℝ] ℝ :=
   PiLp.proj (p := (2 : ENNReal)) (fun _ : α => ℝ) σ
 
@@ -198,6 +200,7 @@ lemma fderiv_gibbs_pmf_apply_std_basis (H : EnergySpace α) (σ τ : α) :
           ((gibbs_pmf (α := α) H τ) - (std_basis (α := α) τ σ)) := by
   rw [fderiv_gibbs_pmf_apply, sum_gibbs_pmf_mul_std_basis]
 
+/-- The second Fréchet derivative of the free-energy density, as a bilinear map. -/
 noncomputable def hessian_free_energy_fderiv (n : ℕ) (H : EnergySpace α) :
     EnergySpace α →L[ℝ] EnergySpace α →L[ℝ] ℝ :=
   fderiv ℝ (fun H' => fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) H') H

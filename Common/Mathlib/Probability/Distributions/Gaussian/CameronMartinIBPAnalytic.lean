@@ -292,9 +292,6 @@ theorem hasDerivAt_shiftFun_at0_bounded
     hasDerivAt_shiftFun_at0_of_integrable_bound (μ := μ) x F hF_meas hF_c1 (δ := (1 : ℝ))
       (by norm_num) hF_int bound hbound_int hbound
 
-set_option maxHeartbeats 800000 in
--- Elaborating the polynomial-growth domination profile through `cameronMartin` coercions
--- exceeds the default budget.
 /-- Differentiate the Cameron–Martin shift functional at `t = 0` under polynomial growth. -/
 theorem hasDerivAt_shiftFun_at0_polyGrowth
     (x : cameronMartin μ) (F : E → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)
@@ -393,8 +390,6 @@ private lemma cameronMartinTiltFun_eq_integral_tiltKernel
     simp [hy, mul_comm]
   simpa [cameronMartinTiltFun] using integral_congr_ae hker
 
-set_option maxHeartbeats 800000 in
--- The tilt kernel rewrites and the dominated-convergence side goals exceed the default budget.
 /-- Differentiate the Cameron–Martin tilt functional at `t = 0`, assuming an integrable
 domination profile. -/
 theorem hasDerivAt_tiltFun_at0_of_integrable_profile

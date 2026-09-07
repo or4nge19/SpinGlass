@@ -28,7 +28,7 @@ theorem memLp_free_energy_density :
 theorem variance_free_energy_density_le
     (hmean0 : (∫ x : EnergySpace N, x ∂μ) = 0) :
     Var[(fun H : EnergySpace N => free_energy_density (N := N) H); μ]
-      ≤ (Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (N : ℝ)) ^ 2 := by
+      ≤ ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (N : ℝ)) ^ 2 := by
   simpa [free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z] using
     (SpinGlass.FiniteGibbs.variance_free_energy_density_le
       (α := Config N) (μ := μ) hmean0 N)
@@ -40,14 +40,13 @@ theorem
     (∫ H : EnergySpace N,
         (free_energy_density (N := N) H -
             μ[fun H : EnergySpace N => free_energy_density (N := N) H]) ^ 2 ∂μ)
-      ≤ (Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (N : ℝ)) ^ 2 := by
+      ≤ ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (N : ℝ)) ^ 2 := by
   let F : EnergySpace N → ℝ := fun H => free_energy_density (N := N) H
   have hF_mem : MemLp F 2 μ := (memLp_free_energy_density (N := N) (μ := μ))
   have hF_meas : AEMeasurable F μ := hF_mem.1.aemeasurable
   have hVarEq : Var[F; μ] = ∫ H, (F H - μ[F]) ^ 2 ∂μ :=
     ProbabilityTheory.variance_eq_integral (μ := μ) hF_meas
-  have hVar : Var[F; μ] ≤ (Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (N :
-    ℝ)) ^ 2 :=
+  have hVar : Var[F; μ] ≤ ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (N : ℝ)) ^ 2 :=
     variance_free_energy_density_le
       (N := N) (μ := μ) hmean0
   simpa [F, hVarEq] using hVar
@@ -59,11 +58,9 @@ theorem meas_ge_le_free_energy_density_sub_mean_div_sq
         c ≤ |free_energy_density (N := N) H - μ[fun H : EnergySpace N => free_energy_density (N :=
           N) H]|}
       ≤ ENNReal.ofReal
-          (((Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (N : ℝ)) ^ 2) / c ^
-            2) := by
+          ((‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (N : ℝ)) ^ 2) / c ^ 2) := by
   let F : EnergySpace N → ℝ := fun H => free_energy_density (N := N) H
-  let C : ℝ :=
-    (Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (N : ℝ)) ^ 2
+  let C : ℝ := ‖ProbabilityTheory.covarianceOperator μ‖ * (1 / (N : ℝ)) ^ 2
   have hF_mem : MemLp F 2 μ := (memLp_free_energy_density (N := N) (μ := μ))
   have hCheb :
       μ {H : EnergySpace N | c ≤ |F H - μ[F]|} ≤ ENNReal.ofReal (Var[F; μ] / c ^ 2) :=
@@ -78,6 +75,28 @@ theorem meas_ge_le_free_energy_density_sub_mean_div_sq
   have htail : μ {H : EnergySpace N | c ≤ |F H - μ[F]|} ≤ ENNReal.ofReal (C / c ^ 2) :=
     le_trans hCheb hOfReal
   simpa [F, C] using htail
+
+/-! ### The sharp form -/
+
+/-- **`Config N` instance of the sharp Poincaré bound.** The variance of the free energy density is
+at most the disorder average of the two-replica Gibbs bracket of the covariance kernel, divided by
+`N²`:
+
+`Var[F_N] ≤ (1/N²) 𝔼 ⟨c(σ¹, σ²)⟩`.
+
+For a mixed `p`-spin model `c(σ, τ) = N ξ(R_{στ})`, so the right-hand side is `O(1/N)`. Compare
+`variance_free_energy_density_le`, which replaces the bracket by `‖covarianceOperator μ‖` — an
+operator norm over the whole configuration space, and therefore far larger. -/
+theorem variance_free_energy_density_le_gibbs_covariance
+    (hmean0 : (∫ x : EnergySpace N, x ∂μ) = 0) :
+    Var[(fun H : EnergySpace N => free_energy_density (N := N) H); μ]
+      ≤ (1 / (N : ℝ)) ^ 2 * ∫ H : EnergySpace N,
+          gibbs_average₂ N H
+            (fun σ τ => (ProbabilityTheory.covarianceOperator μ (std_basis N σ)) τ) ∂μ := by
+  simpa [free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z,
+    gibbs_average₂, gibbs_pmf, FiniteGibbs.gibbs_pmf, std_basis] using
+    (SpinGlass.FiniteGibbs.variance_free_energy_density_le_gibbs_covariance
+      (α := Config N) (μ := μ) hmean0 N)
 
 end
 

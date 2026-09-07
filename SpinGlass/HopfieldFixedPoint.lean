@@ -15,6 +15,8 @@ namespace SpinGlass
 
 /-! ## The scalar map `m ↦ tanh(β m + h)` -/
 
+/-- The Hopfield/Curie-Weiss mean-field map `m ↦ tanh(β m + h)`, whose fixed points are the
+solutions of the self-consistency equation. Talagrand Vol. I, §1.4. -/
 noncomputable def hopfieldTanhMap (β h : ℝ) : ℝ → ℝ :=
   fun m => Real.tanh (β * m + h)
 

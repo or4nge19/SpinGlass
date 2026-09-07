@@ -110,11 +110,10 @@ lemma measurable_finVecNormSq (M : ℕ) : Measurable (finVecNormSq M) := by
       intro k _hk
       fun_prop)
 
-/-!
-## Hopfield `ψ` (Talagrand Eq. (4.34))
+/-! ## Hopfield `ψ` (Talagrand Eq. (4.34)) -/
 
-\(\psi(z) = -\frac{N\beta}{2}\,\|z\|^2 + \sum_{i\le N} \log \cosh(\beta\,\eta_i\cdot z + h)\).
--/
+/-- Talagrand's `ψ` (Vol. I, Eq. (4.34)):
+\(\psi(z) = -\frac{N\beta}{2}\,\|z\|^2 + \sum_{i\le N} \log \cosh(\beta\,\eta_i\cdot z + h)\). -/
 noncomputable def hopfieldPsi (N M : ℕ) (β h : ℝ) (Ξ : Patterns N M) (z : Fin M → ℝ) : ℝ :=
   -((N : ℝ) * β / 2) * finVecNormSq M z
     + ∑ i : Fin N, Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))
@@ -142,11 +141,11 @@ noncomputable def hopfieldEnergy (N M : ℕ) (β : ℝ) (Ξ : Patterns N M) : En
   WithLp.toLp 2 (fun σ : Config N =>
     -((β * (N : ℝ)) / 2) * ∑ k : Fin M, (hopfieldOverlapVec (N := N) (M := M) Ξ σ k) ^ 2)
 
-/-!
-## Hopfield energy with field (Talagrand Eq. (4.25))
+/-! ## Hopfield energy with field (Talagrand Eq. (4.25)) -/
 
-\(-H_{N,M}(\sigma) = \frac{N\beta}{2}\sum_{k\le M} m_k(\sigma)^2 + N h\, m_{k_0}(\sigma)\).
--/
+/-- The Hopfield Hamiltonian with an external field along the pattern `k₀` (Talagrand Vol. I,
+Eq. (4.25)):
+\(-H_{N,M}(\sigma) = \frac{N\beta}{2}\sum_{k\le M} m_k(\sigma)^2 + N h\, m_{k_0}(\sigma)\). -/
 noncomputable def hopfieldEnergyWithField (N M : ℕ) (β h : ℝ) (Ξ : Patterns N M) (k0 : Fin M) :
     EnergySpace N :=
   WithLp.toLp 2 (fun σ : Config N =>

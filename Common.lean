@@ -1,4 +1,10 @@
+import Common.Mathlib.Analysis.Calculus.BoundedFDerivGrowth
 import Common.Mathlib.Analysis.Calculus.FDerivCLMComp
+import Common.Mathlib.Analysis.Calculus.GradientAPI
+import Common.Mathlib.Analysis.InnerProductSpace.PositiveInner
+import Common.Mathlib.Analysis.MeanInequalities.WeightedAMGM
+import Common.Mathlib.Analysis.Matrix.HadamardPow
+import Common.Mathlib.Analysis.SpecialFunctions.Tanh
 import Common.Mathlib.Analysis.Distribution.TemperateGrowthFDeriv
 import Common.Mathlib.Analysis.SpecialFunctions.LogSumExp
 import Common.Mathlib.MeasureTheory.ParametricDominatedConvergence
@@ -11,6 +17,7 @@ import Common.Mathlib.Probability.Distributions.Gaussian_IBP2_Hilbert
 import Common.Mathlib.Probability.Distributions.Gaussian_IBP_Temperate
 import Common.Mathlib.Probability.Distributions.Gaussian_ComparisonIndep
 import Common.Mathlib.Probability.Distributions.Gaussian_Interpolation
+import Common.Mathlib.Probability.Distributions.Gaussian_Rotation
 import Common.Mathlib.Probability.Distributions.Gaussian_ProdCovariance
 import Common.Mathlib.Probability.Distributions.Gaussian_SudakovFernique
 import Common.Mathlib.Probability.Distributions.Gaussian_IBP_HilbertAPI

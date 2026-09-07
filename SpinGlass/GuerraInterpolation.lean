@@ -1,4 +1,4 @@
-import SpinGlass.Replicas
+import SpinGlass.Replicas.Pushforward
 
 /-!
 # Guerra interpolation: differentiation
@@ -333,6 +333,7 @@ lemma derivative_value_guerraPhi_eq (t : ℝ) :
 
 section DisorderLaw
 
+/-- Abbreviation for the joint law of the SK and reference disorders on `DisorderSpace`. -/
 private abbrev μ : Measure (DisorderSpace (N := N)) :=
   disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)
 
