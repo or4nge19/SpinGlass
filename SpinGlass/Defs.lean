@@ -416,6 +416,17 @@ theorem overlap_self (hN : 0 < N) (σ : Config N) : overlap N σ σ = 1 := by
   have hN0 : (N : ℝ) ≠ 0 := by exact_mod_cast hN.ne'
   simp [spinOf, hsum, hN0, div_eq_mul_inv]
 
+/-- `Config N` instance of `FiniteGibbs.trace_le_trace_of_kernel_le`: if two covariance kernels
+agree on the diagonal and the first is pointwise below the second, the trace of the free-energy
+Hessian is larger for the first. Slepian's sign condition for `log Z`. -/
+theorem trace_le_trace_of_kernel_le (H : EnergySpace N) {Cov₁ Cov₂ : Config N → Config N → ℝ}
+    (hdiag : ∀ σ, Cov₁ σ σ = Cov₂ σ σ) (hle : ∀ σ τ, Cov₁ σ τ ≤ Cov₂ σ τ) :
+    (∑ σ, ∑ τ, Cov₂ σ τ * hessian_free_energy N H (std_basis N σ) (std_basis N τ))
+      ≤ ∑ σ, ∑ τ, Cov₁ σ τ * hessian_free_energy N H (std_basis N σ) (std_basis N τ) := by
+  simpa [hessian_free_energy, FiniteGibbs.hessian_free_energy, std_basis,
+    FiniteGibbs.std_basis, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
+    (FiniteGibbs.trace_le_trace_of_kernel_le (α := Config N) (n := N) (H := H) hdiag hle)
+
 /-- **Overlap-driven trace identity.** For a covariance kernel `N · ξ(R_{σ,τ})` the trace against
 the free-energy Hessian collapses to `ξ 1 - ⟨ξ(R₁₂)⟩`. This is the single trace identity of the
 development; the SK and replica-symmetric traces are the two instances of `ξ`.

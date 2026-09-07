@@ -42,12 +42,14 @@ variable {N : ℕ}
 section Disorder
 
 variable {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
-variable (β h q : ℝ)
-variable (sk : SKDisorder (Ω := Ω) (N := N) β) (sim : SimpleDisorder (Ω := Ω) (N := N) β q)
+variable (h : ℝ)
+variable {K₁ K₂ : Config N → Config N → ℝ}
+variable (G₁ : GaussianDisorder (Ω := Ω) (N := N) (ℙ : Measure Ω) K₁)
+variable (G₂ : GaussianDisorder (Ω := Ω) (N := N) (ℙ : Measure Ω) K₂)
 
 /-- Abbreviation for the joint law of the SK and reference disorders on `DisorderSpace`. -/
 private abbrev μ : Measure (DisorderSpace (N := N)) :=
-  disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)
+  disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)
 
 /-! ### Integrability of the kernel-weighted Hessian trace -/
 
@@ -65,15 +67,15 @@ private lemma hessian_free_energy_std_basis_eq
 
 private lemma measurable_gibbs_pmf_disorder (t : ℝ) (σ : Config N) :
     Measurable (fun x : DisorderSpace (N := N) =>
-      gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ) := by
+      gibbs_pmf N (H_t_disorder N (H_field N h) t x) σ) := by
   exact (contDiff_gibbs_pmf_disorder (N := N) (h := h) (t := t) σ).continuous.measurable
 
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma aestronglyMeasurable_hessian_std_basis_disorder (t : ℝ) (σ τ : Config N) :
     AEStronglyMeasurable (fun x : DisorderSpace (N := N) =>
-      hessian_free_energy N (H_t_disorder (N := N) (h := h) t x) (std_basis N σ) (std_basis N τ))
-      (μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim) := by
+      hessian_free_energy N (H_t_disorder N (H_field N h) t x) (std_basis N σ) (std_basis N τ))
+      (μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) := by
   classical
   have hσ := measurable_gibbs_pmf_disorder (N := N) (h := h) (t := t) σ
   have hτ := measurable_gibbs_pmf_disorder (N := N) (h := h) (t := t) τ
@@ -81,17 +83,17 @@ private lemma aestronglyMeasurable_hessian_std_basis_disorder (t : ℝ) (σ τ :
     measurable_const
   have hmeas :
       Measurable (fun x : DisorderSpace (N := N) =>
-        hessian_free_energy N (H_t_disorder (N := N) (h := h) t x) (std_basis N σ) (std_basis N τ))
+        hessian_free_energy N (H_t_disorder N (H_field N h) t x) (std_basis N σ) (std_basis N τ))
           := by
     have hEq : (fun x : DisorderSpace (N := N) =>
-        hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+        hessian_free_energy N (H_t_disorder N (H_field N h) t x)
           (std_basis N σ) (std_basis N τ))
         = fun x : DisorderSpace (N := N) => (1 / (N : ℝ)) *
-            (gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ * (if σ = τ then 1 else 0)
-              - gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ
-                * gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) τ) :=
+            (gibbs_pmf N (H_t_disorder N (H_field N h) t x) σ * (if σ = τ then 1 else 0)
+              - gibbs_pmf N (H_t_disorder N (H_field N h) t x) σ
+                * gibbs_pmf N (H_t_disorder N (H_field N h) t x) τ) :=
       funext fun x => hessian_free_energy_std_basis_eq (N := N)
-        (H := H_t_disorder (N := N) (h := h) t x) (σ := σ) (τ := τ)
+        (H := H_t_disorder N (H_field N h) t x) (σ := σ) (τ := τ)
     rw [hEq]
     exact measurable_const.mul ((hσ.mul hδ).sub (hσ.mul hτ))
   exact hmeas.aestronglyMeasurable
@@ -138,21 +140,21 @@ theorem integrable_kernel_mul_hessian
     (t : ℝ) (K : Config N → Config N → ℝ) (σ τ : Config N) :
     Integrable (fun x : DisorderSpace (N := N) =>
         (K σ τ) *
-          hessian_free_energy N (H_t_disorder (N := N) (h := h) t x) (std_basis N σ) (std_basis N
+          hessian_free_energy N (H_t_disorder N (H_field N h) t x) (std_basis N σ) (std_basis N
             τ))
-      (μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim) := by
+      (μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) := by
   classical
-  let μ0 := μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim
+  let μ0 := μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)
   have : IsFiniteMeasure μ0 := by infer_instance
   refine Integrable.of_bound (μ := μ0)
-    ((aestronglyMeasurable_hessian_std_basis_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
-        (sk := sk) (sim := sim) (t := t) σ τ).const_mul (K σ τ))
+    ((aestronglyMeasurable_hessian_std_basis_disorder (Ω := Ω) (N := N) (h := h)
+        (G₁ := G₁) (G₂ := G₂) (t := t) σ τ).const_mul (K σ τ))
     (|(K σ τ)| * (|(1 / (N : ℝ))| * 2)) ?_
   refine Filter.Eventually.of_forall (fun x => ?_)
   have hhess :=
-    abs_hessian_std_basis_le (N := N) (H := H_t_disorder (N := N) (h := h) t x) (σ := σ) (τ := τ)
+    abs_hessian_std_basis_le (N := N) (H := H_t_disorder N (H_field N h) t x) (σ := σ) (τ := τ)
   have : |(K σ τ) *
-        hessian_free_energy N (H_t_disorder (N := N) (h := h) t x) (std_basis N σ) (std_basis N τ)|
+        hessian_free_energy N (H_t_disorder N (H_field N h) t x) (std_basis N σ) (std_basis N τ)|
       ≤ |K σ τ| * (|1 / (N : ℝ)| * 2) := by
     simpa [abs_mul, mul_assoc, mul_left_comm, mul_comm] using
       (mul_le_mul_of_nonneg_left hhess (abs_nonneg (K σ τ)))
@@ -162,20 +164,20 @@ theorem integrable_kernel_mul_hessian
 theorem integrable_trace_kernel_hessian (t : ℝ) (K : Config N → Config N → ℝ) :
     Integrable (fun x : DisorderSpace (N := N) =>
         ∑ σ : Config N, ∑ τ : Config N, K σ τ *
-          hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+          hessian_free_energy N (H_t_disorder N (H_field N h) t x)
             (std_basis N σ) (std_basis N τ))
-      (μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim) := by
+      (μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) := by
   classical
   refine MeasureTheory.integrable_finsetSum (s := (Finset.univ : Finset (Config N)))
     (f := fun σ x => ∑ τ : Config N, K σ τ *
-      hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+      hessian_free_energy N (H_t_disorder N (H_field N h) t x)
         (std_basis N σ) (std_basis N τ)) (fun σ _ => ?_)
   exact MeasureTheory.integrable_finsetSum (s := (Finset.univ : Finset (Config N)))
     (f := fun τ x => K σ τ *
-      hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+      hessian_free_energy N (H_t_disorder N (H_field N h) t x)
         (std_basis N σ) (std_basis N τ))
-    (fun τ _ => integrable_kernel_mul_hessian (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
-      (sk := sk) (sim := sim) t K σ τ)
+    (fun τ _ => integrable_kernel_mul_hessian (Ω := Ω) (N := N) (h := h)
+      (G₁ := G₁) (G₂ := G₂) t K σ τ)
 
 /-! ### The Guerra derivative as a covariance/Hessian trace -/
 
@@ -185,31 +187,31 @@ omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma integral_derivative_value_eq_integral_disorderPairLaw (t : ℝ) :
     (∫ ω,
         (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
-            (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω))
-          (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t ω)
+            (H_t (N := N) G₁.U G₂.U (H_field N h) t ω))
+          (dH_t (N := N) G₁.U G₂.U t ω)
         ∂(ℙ : Measure Ω))
       =
       ∫ x : DisorderSpace (N := N),
         (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
-            (H_t_disorder (N := N) (h := h) t x))
+            (H_t_disorder N (H_field N h) t x))
           (gaussianInterpDeriv (E := EnergySpace N) t x)
-        ∂(μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim) := by
+        ∂(μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) := by
   classical
   have hcont :
       Continuous fun x : DisorderSpace (N := N) =>
         (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
-            (H_t_disorder (N := N) (h := h) t x))
+            (H_t_disorder N (H_field N h) t x))
           (gaussianInterpDeriv (E := EnergySpace N) t x) := by
     have hfd : Continuous
         (fderiv ℝ fun H' : EnergySpace N => free_energy_density (N := N) H') :=
       (FiniteGibbs.contDiff_free_energy_density (α := Config N) (n := N)).continuous_fderiv
         (by simp)
-    have hH : Continuous (H_t_disorder (N := N) (h := h) t) :=
+    have hH : Continuous (H_t_disorder N (H_field N h) t) :=
       (gaussianInterp (E := EnergySpace N) t).continuous.add continuous_const
     exact (hfd.comp hH).clm_apply (gaussianInterpDeriv (E := EnergySpace N) t).continuous
   rw [MeasureTheory.integral_map
-    (measurable_disorderPair (Ω := Ω) (N := N) (β := β) (q := q)
-      (sk := sk) (sim := sim)).aemeasurable hcont.aestronglyMeasurable]
+    (measurable_disorderPair (Ω := Ω) (N := N)
+      (G₁ := G₁) (G₂ := G₂)).aemeasurable hcont.aestronglyMeasurable]
   exact integral_congr_ae (Filter.Eventually.of_forall fun ω => by simp)
 
 /-- The second derivative of the free-energy density, read on the Dirac basis, is Talagrand's
@@ -225,46 +227,46 @@ private lemma integrable_half_kernel_hessian
     (t : ℝ) (K : Config N → Config N → ℝ) (a : ℝ) (σ : Config N) :
     Integrable (fun x : DisorderSpace (N := N) =>
         ∑ τ : Config N, (a * K σ τ) *
-          hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+          hessian_free_energy N (H_t_disorder N (H_field N h) t x)
             (std_basis N τ) (std_basis N σ))
-      (μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim) :=
+      (μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) :=
   MeasureTheory.integrable_finsetSum (s := (Finset.univ : Finset (Config N)))
     (f := fun τ x => (a * K σ τ) *
-      hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+      hessian_free_energy N (H_t_disorder N (H_field N h) t x)
         (std_basis N τ) (std_basis N σ))
-    (fun τ _ => integrable_kernel_mul_hessian (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
-      (sk := sk) (sim := sim) t (fun c d => a * K d c) τ σ)
+    (fun τ _ => integrable_kernel_mul_hessian (Ω := Ω) (N := N) (h := h)
+      (G₁ := G₁) (G₂ := G₂) t (fun c d => a * K d c) τ σ)
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
-/-- The covariance of `disorderPairLaw` on the left (SK) block, in the shape the general
+/-- The covariance of `disorderPairLaw` on the first block, in the shape the general
 interpolation trace identity consumes. -/
 private lemma covarianceOperator_disorderPairLaw_toLp_left
-    (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.U) (σ : Config N) :
-    covarianceOperator (μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim)
+    (hindep : G₁.U ⟂ᵢ[(ℙ : Measure Ω)] G₂.U) (σ : Config N) :
+    covarianceOperator (μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂))
         (WithLp.toLp 2 (std_basis N σ, (0 : EnergySpace N)))
-      = WithLp.toLp 2 ((∑ τ : Config N, sk_cov_kernel N β σ τ • std_basis N τ),
+      = WithLp.toLp 2 ((∑ τ : Config N, K₁ σ τ • std_basis N τ),
           (0 : EnergySpace N)) := by
   classical
   rw [show WithLp.toLp 2 (std_basis N σ, (0 : EnergySpace N)) = std_basis_left (N := N) σ from rfl,
-    covarianceOperator_disorderPairLaw_std_basis_left_eq_sum_sk
-    (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim) hindep σ]
+    covarianceOperator_disorderPairLaw_std_basis_left_eq_sum
+    (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂) hindep σ]
   rw [← WithLp.toLp_sum]
   refine congrArg (WithLp.toLp 2) ?_
   rw [Prod.ext_iff]
   simp [std_basis_left, Prod.fst_sum, Prod.snd_sum]
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
-/-- The covariance of `disorderPairLaw` on the right (reference) block. -/
+/-- The covariance of `disorderPairLaw` on the second block. -/
 private lemma covarianceOperator_disorderPairLaw_toLp_right
-    (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.U) (σ : Config N) :
-    covarianceOperator (μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim)
+    (hindep : G₁.U ⟂ᵢ[(ℙ : Measure Ω)] G₂.U) (σ : Config N) :
+    covarianceOperator (μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂))
         (WithLp.toLp 2 ((0 : EnergySpace N), std_basis N σ))
       = WithLp.toLp 2 ((0 : EnergySpace N),
-          (∑ τ : Config N, simple_cov_kernel N β (fun r => q * r) σ τ • std_basis N τ)) := by
+          (∑ τ : Config N, K₂ σ τ • std_basis N τ)) := by
   classical
   rw [show WithLp.toLp 2 ((0 : EnergySpace N), std_basis N σ) = std_basis_right (N := N) σ from rfl,
-    covarianceOperator_disorderPairLaw_std_basis_right_eq_sum_simple
-    (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim) hindep σ]
+    covarianceOperator_disorderPairLaw_std_basis_right_eq_sum
+    (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂) hindep σ]
   rw [← WithLp.toLp_sum]
   refine congrArg (WithLp.toLp 2) ?_
   rw [Prod.ext_iff]
@@ -277,30 +279,30 @@ private lemma sum_integral_fderiv2_covariance_image_eq
     (t : ℝ) (K : Config N → Config N → ℝ) (hKsymm : ∀ σ τ, K σ τ = K τ σ) (a : ℝ)
     (hint : ∀ σ : Config N, Integrable (fun x : DisorderSpace (N := N) =>
         ∑ τ : Config N, (a * K σ τ) *
-          hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+          hessian_free_energy N (H_t_disorder N (H_field N h) t x)
             (std_basis N τ) (std_basis N σ))
-      (μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim)) :
+      (μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂))) :
     (∑ σ : Config N, a * ∫ x : DisorderSpace (N := N),
         ((fderiv ℝ (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H'))
-              (H_t_disorder (N := N) (h := h) t x))
+              (H_t_disorder N (H_field N h) t x))
             (∑ τ : Config N, K σ τ • std_basis N τ))
           (std_basis N σ)
-        ∂(μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim))
+        ∂(μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)))
       =
       ∫ x : DisorderSpace (N := N),
         a * (∑ σ : Config N, ∑ τ : Config N, K σ τ *
-              hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+              hessian_free_energy N (H_t_disorder N (H_field N h) t x)
                 (std_basis N σ) (std_basis N τ))
-        ∂(μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim) := by
+        ∂(μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) := by
   classical
   -- Expand the covariance image and pull the scalar `a` inside.
   have hterm : ∀ (σ : Config N) (x : DisorderSpace (N := N)),
       a * (((fderiv ℝ (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H'))
-              (H_t_disorder (N := N) (h := h) t x))
+              (H_t_disorder N (H_field N h) t x))
             (∑ τ : Config N, K σ τ • std_basis N τ))
           (std_basis N σ))
         = ∑ τ : Config N, (a * K σ τ) *
-            hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+            hessian_free_energy N (H_t_disorder N (H_field N h) t x)
               (std_basis N τ) (std_basis N σ) := by
     intro σ x
     rw [map_sum, sum_apply, Finset.mul_sum]
@@ -311,15 +313,15 @@ private lemma sum_integral_fderiv2_covariance_image_eq
   have hstep : ∀ σ : Config N,
       a * (∫ x : DisorderSpace (N := N),
           ((fderiv ℝ (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H'))
-                (H_t_disorder (N := N) (h := h) t x))
+                (H_t_disorder N (H_field N h) t x))
               (∑ τ : Config N, K σ τ • std_basis N τ))
             (std_basis N σ)
-          ∂(μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim))
+          ∂(μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)))
         = ∫ x : DisorderSpace (N := N),
             (∑ τ : Config N, (a * K σ τ) *
-              hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+              hessian_free_energy N (H_t_disorder N (H_field N h) t x)
                 (std_basis N τ) (std_basis N σ))
-            ∂(μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim) := by
+            ∂(μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) := by
     intro σ
     rw [← MeasureTheory.integral_const_mul]
     exact integral_congr_ae (Filter.Eventually.of_forall (hterm σ))
@@ -327,7 +329,7 @@ private lemma sum_integral_fderiv2_covariance_image_eq
     ← MeasureTheory.integral_finsetSum _ fun σ (_ : σ ∈ Finset.univ) => hint σ]
   refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
   set Hs : Config N → Config N → ℝ := fun σ τ =>
-    hessian_free_energy N (H_t_disorder (N := N) (h := h) t x) (std_basis N σ) (std_basis N τ)
+    hessian_free_energy N (H_t_disorder N (H_field N h) t x) (std_basis N σ) (std_basis N τ)
     with hHs
   calc
     (∑ σ : Config N, ∑ τ : Config N, (a * K σ τ) * Hs τ σ)
@@ -343,73 +345,76 @@ private lemma sum_integral_fderiv2_covariance_image_eq
             Finset.sum_congr rfl fun τ _ => by rw [hKsymm]
 
 /-- **Talagrand's covariance/Hessian formula for the Guerra derivative**, Vol. I, §1.3,
-Eq. (1.65). This is the general Gaussian interpolation trace identity
-`ProbabilityTheory.IsGaussian.integral_fderiv_gaussianInterp_apply_deriv_eq_sum` at the SK
-disorder: the covariance of `disorderPairLaw` is block diagonal with the SK and reference kernels
-as blocks, and expanding those blocks in the Dirac basis produces Talagrand's kernel-weighted
-Hessian double sums. -/
+Eq. (1.65), for an *arbitrary* independent pair of centered Gaussian Hamiltonians with symmetric
+covariance kernels `K₁`, `K₂`. This is the general Gaussian interpolation trace identity
+`ProbabilityTheory.IsGaussian.integral_fderiv_gaussianInterp_apply_deriv_eq_sum` read at a disorder
+pair: the covariance of `disorderPairLaw` is block diagonal with `K₁` and `K₂` as blocks, and
+expanding those blocks in the Dirac basis produces Talagrand's kernel-weighted Hessian double sums.
+
+Guerra's replica-symmetric interpolation is this at `K₁ = sk_cov_kernel`, `K₂ = simple_cov_kernel`;
+the Guerra–Toninelli splitting interpolation is the same statement at the split kernel. -/
 theorem derivative_value_guerraPhi_eq_trace_integral
-    (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.U)
+    (hindep : G₁.U ⟂ᵢ[(ℙ : Measure Ω)] G₂.U)
+    (hK₁ : ∀ σ τ, K₁ σ τ = K₁ τ σ) (hK₂ : ∀ σ τ, K₂ σ τ = K₂ τ σ)
     (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :
     (∫ ω,
         (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
-            (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω))
-          (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t ω)
+            (H_t (N := N) G₁.U G₂.U (H_field N h) t ω))
+          (dH_t (N := N) G₁.U G₂.U t ω)
         ∂(ℙ : Measure Ω))
       =
       ∫ x : DisorderSpace (N := N),
         (1 / 2 : ℝ) *
           ( (∑ σ : Config N, ∑ τ : Config N,
-                sk_cov_kernel N β σ τ *
-                  hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+                K₁ σ τ *
+                  hessian_free_energy N (H_t_disorder N (H_field N h) t x)
                     (std_basis N σ) (std_basis N τ))
             -
             (∑ σ : Config N, ∑ τ : Config N,
-                simple_cov_kernel N β (fun r => q * r) σ τ *
-                  hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+                K₂ σ τ *
+                  hessian_free_energy N (H_t_disorder N (H_field N h) t x)
                     (std_basis N σ) (std_basis N τ)) )
-        ∂(μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim) := by
+        ∂(μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) := by
   classical
   have hgauss : ProbabilityTheory.IsGaussian
-      (μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim) :=
-    SKDisorder.simple_joint_isGaussian_disorderPairLaw_of_indep (Ω := Ω) (N := N) sk sim hindep
+      (μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) :=
+    isGaussian_disorderPairLaw_of_indep (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂) hindep
   -- (1) The general Gaussian interpolation trace identity, at the block covariance of the
   -- disorder law.
   have hgen :
       (∫ x : DisorderSpace (N := N),
           (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H')
-              (H_t_disorder (N := N) (h := h) t x))
+              (H_t_disorder N (H_field N h) t x))
             (gaussianInterpDeriv (E := EnergySpace N) t x)
-          ∂(μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim))
+          ∂(μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)))
         = ∑ σ : Config N, (1 / 2 : ℝ) *
             ( (∫ x : DisorderSpace (N := N),
                   ((fderiv ℝ (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H'))
-                        (H_t_disorder (N := N) (h := h) t x))
-                      (∑ τ : Config N, sk_cov_kernel N β σ τ • std_basis N τ))
+                        (H_t_disorder N (H_field N h) t x))
+                      (∑ τ : Config N, K₁ σ τ • std_basis N τ))
                     (std_basis N σ)
-                  ∂(μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim))
+                  ∂(μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)))
               - ∫ x : DisorderSpace (N := N),
                   ((fderiv ℝ (fderiv ℝ (fun H' : EnergySpace N => free_energy_density (N := N) H'))
-                        (H_t_disorder (N := N) (h := h) t x))
-                      (∑ τ : Config N,
-                        simple_cov_kernel N β (fun r => q * r) σ τ • std_basis N τ))
+                        (H_t_disorder N (H_field N h) t x))
+                      (∑ τ : Config N, K₂ σ τ • std_basis N τ))
                     (std_basis N σ)
-                  ∂(μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim) ) := by
+                  ∂(μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) ) := by
     have hg := ProbabilityTheory.IsGaussian.integral_fderiv_gaussianInterp_apply_deriv_eq_sum
-      (P := μ (Ω := Ω) (N := N) (β := β) (q := q) sk sim)
-      (disorderPairLaw_mean0 (Ω := Ω) (N := N) (β := β) (q := q) sk sim)
+      (P := μ (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂))
+      (disorderPairLaw_mean0 (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂))
       (EuclideanSpace.basisFun (Config N) ℝ)
-      (fun σ => ∑ τ : Config N, sk_cov_kernel N β σ τ • std_basis N τ)
-      (fun σ => ∑ τ : Config N, simple_cov_kernel N β (fun r => q * r) σ τ • std_basis N τ)
+      (fun σ => ∑ τ : Config N, K₁ σ τ • std_basis N τ)
+      (fun σ => ∑ τ : Config N, K₂ σ τ • std_basis N τ)
       (fun σ => by
         rw [← FiniteGibbs.std_basis_eq_basisFun (α := Config N) σ]
-        exact covarianceOperator_disorderPairLaw_toLp_left (Ω := Ω) (β := β) (q := q)
-          (sk := sk) (sim := sim) hindep σ)
+        exact covarianceOperator_disorderPairLaw_toLp_left (Ω := Ω)
+          (G₁ := G₁) (G₂ := G₂) hindep σ)
       (fun σ => by
         rw [← FiniteGibbs.std_basis_eq_basisFun (α := Config N) σ]
-        exact covarianceOperator_disorderPairLaw_toLp_right (Ω := Ω) (β := β) (q := q)
-          (sk := sk) (sim := sim) hindep σ)
-      (H_field (N := N) (h := h))
+        exact covarianceOperator_disorderPairLaw_toLp_right (Ω := Ω)
+          (G₁ := G₁) (G₂ := G₂) hindep σ)
+      (H_field N h)
       (fun H' : EnergySpace N => free_energy_density (N := N) H')
       (FiniteGibbs.contDiff_two_free_energy_density (α := Config N) N)
       (FiniteGibbs.norm_fderiv_free_energy_density_growth_nonneg N)
@@ -419,8 +424,8 @@ theorem derivative_value_guerraPhi_eq_trace_integral
       fun _ => rfl
     simpa only [← FiniteGibbs.std_basis_eq_basisFun, hbridge, H_t_disorder] using hg
   -- (2) Push the derivative value to the disorder law, then split the two blocks.
-  rw [integral_derivative_value_eq_integral_disorderPairLaw (Ω := Ω) (β := β) (h := h) (q := q)
-    (sk := sk) (sim := sim) t, hgen]
+  rw [integral_derivative_value_eq_integral_disorderPairLaw (Ω := Ω) (h := h)
+    (G₁ := G₁) (G₂ := G₂) t, hgen]
   have hsplit : ∀ (I J : Config N → ℝ),
       (∑ σ : Config N, (1 / 2 : ℝ) * (I σ - J σ))
         = (∑ σ : Config N, (1 / 2 : ℝ) * I σ) + ∑ σ : Config N, (-(1 / 2 : ℝ)) * J σ := by
@@ -428,20 +433,19 @@ theorem derivative_value_guerraPhi_eq_trace_integral
     rw [← Finset.sum_add_distrib]
     exact Finset.sum_congr rfl fun σ _ => by ring
   rw [hsplit,
-    sum_integral_fderiv2_covariance_image_eq (Ω := Ω) (β := β) (h := h) (q := q) (sk := sk)
-      (sim := sim) t (sk_cov_kernel N β) (sk_cov_kernel_comm (N := N) (β := β)) (1 / 2)
-      (fun σ => integrable_half_kernel_hessian (Ω := Ω) (β := β) (h := h) (q := q)
-        (sk := sk) (sim := sim) t (sk_cov_kernel N β) (1 / 2) σ),
-    sum_integral_fderiv2_covariance_image_eq (Ω := Ω) (β := β) (h := h) (q := q) (sk := sk)
-      (sim := sim) t (simple_cov_kernel N β (fun r => q * r))
-      (simple_cov_kernel_comm (N := N) (β := β) (xi := fun r => q * r)) (-(1 / 2))
-      (fun σ => integrable_half_kernel_hessian (Ω := Ω) (β := β) (h := h) (q := q)
-        (sk := sk) (sim := sim) t (simple_cov_kernel N β (fun r => q * r)) (-(1 / 2)) σ),
+    sum_integral_fderiv2_covariance_image_eq (Ω := Ω) (h := h) (G₁ := G₁)
+      (G₂ := G₂) t K₁ hK₁ (1 / 2)
+      (fun σ => integrable_half_kernel_hessian (Ω := Ω) (h := h)
+        (G₁ := G₁) (G₂ := G₂) t K₁ (1 / 2) σ),
+    sum_integral_fderiv2_covariance_image_eq (Ω := Ω) (h := h) (G₁ := G₁)
+      (G₂ := G₂) t K₂ hK₂ (-(1 / 2))
+      (fun σ => integrable_half_kernel_hessian (Ω := Ω) (h := h)
+        (G₁ := G₁) (G₂ := G₂) t K₂ (-(1 / 2)) σ),
     ← MeasureTheory.integral_add
-      ((integrable_trace_kernel_hessian (Ω := Ω) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-        t (sk_cov_kernel N β)).const_mul _)
-      ((integrable_trace_kernel_hessian (Ω := Ω) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-        t (simple_cov_kernel N β (fun r => q * r))).const_mul _)]
+      ((integrable_trace_kernel_hessian (Ω := Ω) (h := h) (G₁ := G₁) (G₂ := G₂)
+        t K₁).const_mul _)
+      ((integrable_trace_kernel_hessian (Ω := Ω) (h := h) (G₁ := G₁) (G₂ := G₂)
+        t K₂).const_mul _)]
   refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
   ring
 

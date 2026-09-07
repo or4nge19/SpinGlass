@@ -26,8 +26,10 @@ Talagrand Vol. I, §§1.3–1.4 (not the cavity method, §1.6).
 -/
 
 variable {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
-variable (N : ℕ) (β h q : ℝ)
-variable (sk : SKDisorder (Ω := Ω) N β) (sim : SimpleDisorder (Ω := Ω) N β q)
+variable (N : ℕ) (h : ℝ)
+variable {K₁ K₂ : Config N → Config N → ℝ}
+variable (G₁ : GaussianDisorder (Ω := Ω) (N := N) (ℙ : Measure Ω) K₁)
+variable (G₂ : GaussianDisorder (Ω := Ω) (N := N) (ℙ : Measure Ω) K₂)
 
 section ReplicaCalculus
 
@@ -37,10 +39,10 @@ variable (n : ℕ)
 abbrev InteractionKernel := Config N → Config N → ℝ
 
 /-- Guerra path `H_t = √t U + √(1-t) V + H_field` with magnetization-dependent field. -/
-noncomputable def H_gauss (t : ℝ) : Ω → EnergySpace N :=
+noncomputable def H_gauss (U V : Ω → EnergySpace N) (t : ℝ) : Ω → EnergySpace N :=
   fun w =>
-    (Real.sqrt t) • sk.U w
-      + (Real.sqrt (1 - t)) • sim.U w
+    (Real.sqrt t) • U w
+      + (Real.sqrt (1 - t)) • V w
 
 /-- The deterministic external-field part of the Hamiltonian, `h` times the all-ones vector. -/
 noncomputable def H_field : EnergySpace N :=
@@ -48,10 +50,9 @@ noncomputable def H_field : EnergySpace N :=
 
 /-- Guerra's interpolating Hamiltonian at time `t`: the interpolated Gaussian part plus the
 external field. -/
-noncomputable def H_t (t : ℝ) : Ω → EnergySpace N :=
-  fun w =>
-    H_gauss (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w
-      + H_field (N := N) (h := h)
+noncomputable def H_t (U V : Ω → EnergySpace N) (c : EnergySpace N) (t : ℝ) :
+    Ω → EnergySpace N :=
+  fun w => H_gauss (N := N) U V t w + c
 
 /-! ### Gaussian integrability helpers -/
 
@@ -78,7 +79,7 @@ lemma integrable_norm_of_isGaussian_map
 /-- The `n`-replica Gibbs average along the interpolation, as a function of the disorder. -/
 noncomputable def gibbs_average_n (t : ℝ) (f : ReplicaFun N n) : Ω → ℝ :=
   fun w =>
-    let H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w
+    let H := H_t (N := N) G₁.U G₂.U (H_field N h) t w
     gibbs_average_n_det (N := N) (n := n) H f
 
 /-! ### Bounds for `gibbs_average_n_det` -/
@@ -90,7 +91,7 @@ lemma abs_gibbs_average_n_det_le (H : EnergySpace N) (f : ReplicaFun N n) :
 
 /-- Expected Gibbs average: ν_t(f) = E[ ⟨f⟩_t ]. -/
 noncomputable def nu (t : ℝ) (f : ReplicaFun N n) : ℝ :=
-  ∫ w, gibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w ∂ℙ
+  ∫ w, gibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n t f w ∂ℙ
 
 /-- Lift a function of `n` replicas to `n + k` replicas by ignoring the last `k`. -/
 def liftReplicaFun (k : ℕ) (f : ReplicaFun N n) : ReplicaFun N (n + k) :=
@@ -106,87 +107,87 @@ Uniform bound on the n-replica Gibbs average:
 -/
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma abs_gibbs_average_n_le (t : ℝ) (f : ReplicaFun N n) (w : Ω) :
-    |gibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w|
+    |gibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n t f w|
       ≤ ∑ σs : ReplicaSpace N n, |f σs| := by
   simpa [gibbs_average_n, gibbs_average_n_det] using
     (FiniteGibbs.abs_gibbs_average_n_det_le_sum_abs (α := Config N) (n := n)
-      (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (f := f))
+      (H := H_t (N := N) G₁.U G₂.U (H_field N h) t w) (f := f))
 
 -- From the above crude bound, integrability under the probability measure is immediate.
 lemma integrable_gibbs_average_n (t : ℝ) (f : ReplicaFun N n) :
-    Integrable (fun w => gibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+    Integrable (fun w => gibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂)
       n t f w) := by
   classical
   have hbound :
-      ∀ w, ‖gibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w‖
+      ∀ w, ‖gibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n t f w‖
         ≤ ∑ σs : ReplicaSpace N n, ‖f σs‖ := by
     intro w
     simpa [Real.norm_eq_abs] using
-      (abs_gibbs_average_n_le (N := N) (β := β) (h := h) (q := q)
-        (sk := sk) (sim := sim) (n := n) (t := t) (f := f) w)
-  have hU_meas : Measurable (sk.U) := sk.measU
-  have hV_meas : Measurable (sim.U) := sim.measU
+      (abs_gibbs_average_n_le (N := N) (h := h)
+        (G₁ := G₁) (G₂ := G₂) (n := n) (t := t) (f := f) w)
+  have hU_meas : Measurable (G₁.U) := G₁.measU
+  have hV_meas : Measurable (G₂.U) := G₂.measU
   have hHt_meas :
-      Measurable (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t) := by
-    have h1 : Measurable (fun w => (Real.sqrt t) • sk.U w) := hU_meas.const_smul (Real.sqrt t)
-    have h2 : Measurable (fun w => (Real.sqrt (1 - t)) • sim.U w) := hV_meas.const_smul (Real.sqrt
+      Measurable (H_t (N := N) G₁.U G₂.U (H_field N h) t) := by
+    have h1 : Measurable (fun w => (Real.sqrt t) • G₁.U w) := hU_meas.const_smul (Real.sqrt t)
+    have h2 : Measurable (fun w => (Real.sqrt (1 - t)) • G₂.U w) := hV_meas.const_smul (Real.sqrt
       (1 - t))
-    have h3 : Measurable (fun _w : Ω => H_field (N := N) (h := h)) := measurable_const
+    have h3 : Measurable (fun _w : Ω => H_field N h) := measurable_const
     exact (h1.add h2).add h3
   have h_gibbs_pmf_meas :
       ∀ (σ : Config N),
         Measurable fun w =>
           gibbs_pmf N
-            (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) σ := by
+            (H_t (N := N) G₁.U G₂.U (H_field N h) t w) σ := by
     intro σ
     have hEval : Measurable fun w =>
-        (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) σ :=
+        (H_t (N := N) G₁.U G₂.U (H_field N h) t w) σ :=
       (evalCLM (N := N) σ).measurable.comp hHt_meas
     have hNum : Measurable fun w =>
         Real.exp (-
-          (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) σ) :=
+          (H_t (N := N) G₁.U G₂.U (H_field N h) t w) σ) :=
       (Real.continuous_exp.measurable.comp (measurable_neg.comp hEval))
     have hZ : Measurable fun w =>
-        Z N (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) := by
+        Z N (H_t (N := N) G₁.U G₂.U (H_field N h) t w) := by
       classical
       have hterm : ∀ τ : Config N,
           Measurable fun w =>
             Real.exp (-
-              (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ) := by
+              (H_t (N := N) G₁.U G₂.U (H_field N h) t w) τ) := by
         intro τ
         have hEvalτ : Measurable fun w =>
-            (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ :=
+            (H_t (N := N) G₁.U G₂.U (H_field N h) t w) τ :=
           (evalCLM (N := N) τ).measurable.comp hHt_meas
         exact (Real.continuous_exp.measurable.comp (measurable_neg.comp hEvalτ))
       simpa [Z] using
         (Finset.measurable_sum (s := (Finset.univ : Finset (Config N)))
           (f := fun τ w =>
             Real.exp (-
-              (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ))
+              (H_t (N := N) G₁.U G₂.U (H_field N h) t w) τ))
           (hf := by intro τ _hτ; simpa using hterm τ))
     exact hNum.div hZ
   have hMeas :
       Measurable (fun w =>
-        gibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w) := by
+        gibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n t f w) := by
     classical
     have hterm :
         ∀ σs : ReplicaSpace N n,
           Measurable fun w =>
             f σs * ∏ l : Fin n,
               gibbs_pmf N
-                (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l) := by
+                (H_t (N := N) G₁.U G₂.U (H_field N h) t w) (σs l) := by
       intro σs
       have hprod :
           Measurable fun w =>
             ∏ l : Fin n,
               gibbs_pmf N
-                (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l) := by
+                (H_t (N := N) G₁.U G₂.U (H_field N h) t w) (σs l) := by
         classical
         simpa using
           (Finset.measurable_prod (s := (Finset.univ : Finset (Fin n)))
             (f := fun l w =>
               gibbs_pmf N
-                (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l))
+                (H_t (N := N) G₁.U G₂.U (H_field N h) t w) (σs l))
             (hf := by
               intro l _hl
               simpa using h_gibbs_pmf_meas (σs l)))
@@ -196,15 +197,15 @@ lemma integrable_gibbs_average_n (t : ℝ) (f : ReplicaFun N n) :
         (f := fun σs w =>
           f σs * ∏ l : Fin n,
             gibbs_pmf N
-              (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l))
+              (H_t (N := N) G₁.U G₂.U (H_field N h) t w) (σs l))
         (hf := by intro σs _hσs; simpa using hterm σs))
   have hAESM :
       AEStronglyMeasurable
         (fun w =>
-          gibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w) ℙ :=
+          gibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n t f w) ℙ :=
     hMeas.aestronglyMeasurable
   have hBoundAE :
-      ∀ᵐ w ∂ℙ, ‖gibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w‖
+      ∀ᵐ w ∂ℙ, ‖gibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n t f w‖
         ≤ ∑ σs : ReplicaSpace N n, ‖f σs‖ :=
     Filter.Eventually.of_forall hbound
   exact Integrable.of_bound (μ := (ℙ : Measure Ω)) hAESM _ hBoundAE
@@ -216,14 +217,10 @@ def U_interaction (U : InteractionKernel (N := N)) (l l' : Fin n) (σs : Replica
 
 /-- The SK interaction kernel `(β²/2)(R_{στ}² - q)`, the covariance of the SK Hamiltonian
 recentred at the reference overlap `q`. Talagrand Vol. I, §1.3. -/
-noncomputable def U_kernel_SK : InteractionKernel (N := N) :=
+noncomputable def U_kernel_SK (β q : ℝ) : InteractionKernel (N := N) :=
   fun σ τ =>
     let R := overlap N σ τ
     (β^2 / 2) * (R^2 - q)
-
-/-- The SK interaction between replicas `l` and `l'` of a replica configuration. -/
-noncomputable def U_interaction_SK (l l' : Fin n) (σs : ReplicaSpace N n) : ℝ :=
-  U_interaction (N := N) (n := n) (U := U_kernel_SK (N := N) (β := β) (q := q)) l l' σs
 
 /-! ### Gaussian IBP on the product disorder space -/
 
@@ -269,32 +266,31 @@ theorem
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 theorem integral_disorderPairLaw_left_apply_mul_eq
-    (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.U) (σ : Config N)
+    (hindep : G₁.U ⟂ᵢ[(ℙ : Measure Ω)] G₂.U) (σ : Config N)
     (F : DisorderSpace (N := N) → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)
     {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
     (hF_growth : ∀ x, |F x| ≤ C * (1 + ‖x‖) ^ m)
     (hF'_growth : ∀ x, ‖fderiv ℝ F x‖ ≤ C * (1 + ‖x‖) ^ m) :
     (∫ x : DisorderSpace (N := N),
-        ((WithLp.ofLp x).1 σ) * F x ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q)
-          (sk := sk) (sim := sim)))
+        ((WithLp.ofLp x).1 σ) * F x ∂(disorderPairLaw (Ω := Ω) (N := N)
+          (G₁ := G₁) (G₂ := G₂)))
       =
       ∫ x : DisorderSpace (N := N),
         (fderiv ℝ F x)
           (ProbabilityTheory.covarianceOperator
-            (disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim))
+            (disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂))
             (std_basis_left (N := N) σ))
-        ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)) :=
+        ∂(disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) :=
           by
   classical
   let μ : Measure (DisorderSpace (N := N)) :=
-    disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)
+    disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)
   have hgauss :
       ProbabilityTheory.IsGaussian μ :=
-    SKDisorder.simple_joint_isGaussian_disorderPairLaw_of_indep (Ω := Ω) (N := N) (β := β)
-      (q := q) (sk := sk) (sim := sim) hindep
+    isGaussian_disorderPairLaw_of_indep (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂) hindep
   have hmean0 :
       (∫ x : DisorderSpace (N := N), x ∂μ) = 0 :=
-    disorderPairLaw_mean0 (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)
+    disorderPairLaw_mean0 (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)
   have : ProbabilityTheory.IsGaussian μ := hgauss
   simpa [μ] using
     (ProbabilityTheory.IsGaussian.integral_apply_mul_eq_integral_fderiv_covarianceOperator_left
@@ -303,32 +299,31 @@ theorem integral_disorderPairLaw_left_apply_mul_eq
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 theorem integral_disorderPairLaw_right_apply_mul_eq
-    (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.U) (σ : Config N)
+    (hindep : G₁.U ⟂ᵢ[(ℙ : Measure Ω)] G₂.U) (σ : Config N)
     (F : DisorderSpace (N := N) → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)
     {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
     (hF_growth : ∀ x, |F x| ≤ C * (1 + ‖x‖) ^ m)
     (hF'_growth : ∀ x, ‖fderiv ℝ F x‖ ≤ C * (1 + ‖x‖) ^ m) :
     (∫ x : DisorderSpace (N := N),
-        ((WithLp.ofLp x).2 σ) * F x ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q)
-          (sk := sk) (sim := sim)))
+        ((WithLp.ofLp x).2 σ) * F x ∂(disorderPairLaw (Ω := Ω) (N := N)
+          (G₁ := G₁) (G₂ := G₂)))
       =
       ∫ x : DisorderSpace (N := N),
         (fderiv ℝ F x)
           (ProbabilityTheory.covarianceOperator
-            (disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim))
+            (disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂))
             (std_basis_right (N := N) σ))
-        ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)) :=
+        ∂(disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) :=
           by
   classical
   let μ : Measure (DisorderSpace (N := N)) :=
-    disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)
+    disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)
   have hgauss :
       ProbabilityTheory.IsGaussian μ :=
-    SKDisorder.simple_joint_isGaussian_disorderPairLaw_of_indep (Ω := Ω) (N := N) (β := β)
-      (q := q) (sk := sk) (sim := sim) hindep
+    isGaussian_disorderPairLaw_of_indep (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂) hindep
   have hmean0 :
       (∫ x : DisorderSpace (N := N), x ∂μ) = 0 :=
-    disorderPairLaw_mean0 (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)
+    disorderPairLaw_mean0 (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)
   have : ProbabilityTheory.IsGaussian μ := hgauss
   simpa [μ] using
     (ProbabilityTheory.IsGaussian.integral_apply_mul_eq_integral_fderiv_covarianceOperator_right
@@ -344,15 +339,15 @@ open scoped Topology
 open Set
 
 /-- Derivative of the interpolated Hamiltonian `H_t` with respect to `t` (pointwise in `ω`). -/
-noncomputable def dH_t (t : ℝ) (w : Ω) : EnergySpace N :=
-  (1 / (2 * Real.sqrt t)) • sk.U w - (1 / (2 * Real.sqrt (1 - t))) • sim.U w
+noncomputable def dH_t (U V : Ω → EnergySpace N) (t : ℝ) (w : Ω) : EnergySpace N :=
+  (1 / (2 * Real.sqrt t)) • U w - (1 / (2 * Real.sqrt (1 - t))) • V w
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma hasDerivAt_H_gauss (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (w : Ω) :
     HasDerivAt
         (fun s =>
-          H_gauss (N := N) (β := β) (q := q) (sk := sk) (sim := sim) s w)
-        (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) t := by
+          H_gauss (N := N) G₁.U G₂.U s w)
+        (dH_t (N := N) G₁.U G₂.U t w) t := by
   have ht_ne0 : t ≠ 0 := ne_of_gt ht.1
   have h1t_ne0 : (1 - t) ≠ 0 := by
     have : t < 1 := ht.2
@@ -366,13 +361,13 @@ lemma hasDerivAt_H_gauss (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (w : Ω) :
         ((1 / (2 * Real.sqrt (1 - t))) * (-1 : ℝ)) t := by
     exact (Real.hasDerivAt_sqrt h1t_ne0).comp t hsub
   have hU :
-      HasDerivAt (fun s : ℝ => (Real.sqrt s) • sk.U w)
-        ((1 / (2 * Real.sqrt t)) • sk.U w) t :=
-    hsqrt.smul_const (sk.U w)
+      HasDerivAt (fun s : ℝ => (Real.sqrt s) • G₁.U w)
+        ((1 / (2 * Real.sqrt t)) • G₁.U w) t :=
+    hsqrt.smul_const (G₁.U w)
   have hV :
-      HasDerivAt (fun s : ℝ => (Real.sqrt ((1 : ℝ) - s)) • sim.U w)
-        (((1 / (2 * Real.sqrt (1 - t))) * (-1 : ℝ)) • sim.U w) t :=
-    hsqrt_sub.smul_const (sim.U w)
+      HasDerivAt (fun s : ℝ => (Real.sqrt ((1 : ℝ) - s)) • G₂.U w)
+        (((1 / (2 * Real.sqrt (1 - t))) * (-1 : ℝ)) • G₂.U w) t :=
+    hsqrt_sub.smul_const (G₂.U w)
   refine (hU.add hV).congr_deriv ?_
   simp [dH_t, sub_eq_add_neg]
 
@@ -380,10 +375,10 @@ omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma hasDerivAt_H_t (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (w : Ω) :
     HasDerivAt
         (fun s =>
-          H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s w)
-        (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) t := by
+          H_t (N := N) G₁.U G₂.U (H_field N h) s w)
+        (dH_t (N := N) G₁.U G₂.U t w) t := by
   simpa [H_t, dH_t, H_field]
-    using (hasDerivAt_H_gauss (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t ht
+    using (hasDerivAt_H_gauss (N := N) (G₁ := G₁) (G₂ := G₂) t ht
       w).add_const
 
 /-! ### Local bound on `dH_t` -/
@@ -394,8 +389,8 @@ lemma norm_dH_t_le_on_ball
     (hx : x ∈ Metric.ball t ((min t (1 - t)) / 2)) (w : Ω) :
     let cU : ℝ := 1 / (2 * Real.sqrt (t / 2))
     let cV : ℝ := 1 / (2 * Real.sqrt ((1 - t) / 2))
-    ‖dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) x w‖
-      ≤ cU * ‖sk.U w‖ + cV * ‖sim.U w‖ := by
+    ‖dH_t (N := N) G₁.U G₂.U x w‖
+      ≤ cU * ‖G₁.U w‖ + cV * ‖G₂.U w‖ := by
   classical
   have ht0 : 0 < t := ht.1
   have ht1 : t < 1 := ht.2
@@ -473,11 +468,11 @@ lemma norm_dH_t_le_on_ball
       _ = |1 / (2 * Real.sqrt ((1 - t) / 2))| := (abs_of_nonneg hnonneg').symm
   -- triangle inequality + coefficient comparison
   have htri :
-      ‖dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) x w‖
-        ≤ |1 / (2 * Real.sqrt x)| * ‖sk.U w‖ +
-          |1 / (2 * Real.sqrt (1 - x))| * ‖sim.U w‖ := by
+      ‖dH_t (N := N) G₁.U G₂.U x w‖
+        ≤ |1 / (2 * Real.sqrt x)| * ‖G₁.U w‖ +
+          |1 / (2 * Real.sqrt (1 - x))| * ‖G₂.U w‖ := by
     simpa [dH_t, sub_eq_add_neg, norm_add_le, norm_smul, abs_mul] using
-      (norm_add_le ((1 / (2 * Real.sqrt x)) • sk.U w) (-(1 / (2 * Real.sqrt (1 - x))) • sim.U w))
+      (norm_add_le ((1 / (2 * Real.sqrt x)) • G₁.U w) (-(1 / (2 * Real.sqrt (1 - x))) • G₂.U w))
   -- conclude with `gcongr` (monotonicity in coefficients)
   dsimp
   have hcu_nonneg : 0 ≤ 1 / (2 * Real.sqrt (t / 2)) := by positivity
@@ -491,16 +486,16 @@ lemma norm_dH_t_le_on_ball
   have hcoefV' : |1 / (2 * Real.sqrt (1 - x))| ≤ (1 / (2 * Real.sqrt ((1 - t) / 2))) :=
     le_trans hcoefV habsV_le
   have hcmp :
-      |1 / (2 * Real.sqrt x)| * ‖sk.U w‖ +
-        |1 / (2 * Real.sqrt (1 - x))| * ‖sim.U w‖
-        ≤ (1 / (2 * Real.sqrt (t / 2))) * ‖sk.U w‖ +
-            (1 / (2 * Real.sqrt ((1 - t) / 2))) * ‖sim.U w‖ := by
+      |1 / (2 * Real.sqrt x)| * ‖G₁.U w‖ +
+        |1 / (2 * Real.sqrt (1 - x))| * ‖G₂.U w‖
+        ≤ (1 / (2 * Real.sqrt (t / 2))) * ‖G₁.U w‖ +
+            (1 / (2 * Real.sqrt ((1 - t) / 2))) * ‖G₂.U w‖ := by
     have hUterm :
-        |1 / (2 * Real.sqrt x)| * ‖sk.U w‖ ≤ (1 / (2 * Real.sqrt (t / 2))) * ‖sk.U w‖ :=
+        |1 / (2 * Real.sqrt x)| * ‖G₁.U w‖ ≤ (1 / (2 * Real.sqrt (t / 2))) * ‖G₁.U w‖ :=
       mul_le_mul_of_nonneg_right hcoefU' (norm_nonneg _)
     have hVterm :
-        |1 / (2 * Real.sqrt (1 - x))| * ‖sim.U w‖
-          ≤ (1 / (2 * Real.sqrt ((1 - t) / 2))) * ‖sim.U w‖ :=
+        |1 / (2 * Real.sqrt (1 - x))| * ‖G₂.U w‖
+          ≤ (1 / (2 * Real.sqrt ((1 - t) / 2))) * ‖G₂.U w‖ :=
       mul_le_mul_of_nonneg_right hcoefV' (norm_nonneg _)
     exact add_le_add hUterm hVterm
   exact le_trans htri hcmp
@@ -508,8 +503,8 @@ lemma norm_dH_t_le_on_ball
 /-- Pointwise derivative of the `n`-replica Gibbs average along the path `H_t`. -/
 noncomputable def dgibbs_average_n (t : ℝ) (f : ReplicaFun N n) (w : Ω) : ℝ :=
   fderiv ℝ (fun H' => gibbs_average_n_det (N := N) (n := n) H' f)
-    (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w)
-    (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w)
+    (H_t (N := N) G₁.U G₂.U (H_field N h) t w)
+    (dH_t (N := N) G₁.U G₂.U t w)
 
 /-! ### Interpolated Hamiltonian on `DisorderSpace` -/
 
@@ -518,69 +513,70 @@ noncomputable def dgibbs_average_n (t : ℝ) (f : ReplicaFun N n) (w : Ω) : ℝ
 
 /-- Guerra's interpolating Hamiltonian at time `t`, as a function of the disorder pair:
 the Gaussian interpolation `√t U + √(1-t) V` of the two disorders, plus the external field. -/
-noncomputable def H_t_disorder (t : ℝ) (x : DisorderSpace (N := N)) : EnergySpace N :=
-  gaussianInterp (E := EnergySpace N) t x + H_field (N := N) (h := h)
+noncomputable def H_t_disorder (c : EnergySpace N) (t : ℝ) (x : DisorderSpace (N := N)) :
+    EnergySpace N :=
+  gaussianInterp (E := EnergySpace N) t x + c
 
 lemma hasFDerivAt_H_t_disorder (t : ℝ) (x : DisorderSpace (N := N)) :
-    HasFDerivAt (H_t_disorder (N := N) (h := h) t) (gaussianInterp (E := EnergySpace N) t) x := by
+    HasFDerivAt (H_t_disorder N (H_field N h) t) (gaussianInterp (E := EnergySpace N) t) x := by
   -- `H_t_disorder = (linear part) + const`, so the derivative is the linear part.
   have hderiv := (gaussianInterp (E := EnergySpace N) t).hasFDerivAt.add
-    (hasFDerivAt_const (H_field (N := N) (h := h)) x)
+    (hasFDerivAt_const (H_field N h) x)
   rwa [add_zero] at hderiv
 
 lemma norm_fderiv_gibbs_pmf_disorder_le (t : ℝ) (σ : Config N) (x : DisorderSpace (N := N)) :
     ‖fderiv ℝ (fun x : DisorderSpace (N := N) =>
-        gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ) x‖
+        gibbs_pmf N (H_t_disorder N (H_field N h) t x) σ) x‖
       ≤ 2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|) := by
   classical
   have hdiff :
       DifferentiableAt ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ)
-        (H_t_disorder (N := N) (h := h) t x) :=
-    SpinGlass.differentiableAt_gibbs_pmf (N := N) (H := H_t_disorder (N := N) (h := h) t x) σ
+        (H_t_disorder N (H_field N h) t x) :=
+    SpinGlass.differentiableAt_gibbs_pmf (N := N) (H := H_t_disorder N (H_field N h) t x) σ
   have h1 :
       HasFDerivAt (fun H' : EnergySpace N => gibbs_pmf N H' σ)
         (fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ)
-          (H_t_disorder (N := N) (h := h) t x))
-        (H_t_disorder (N := N) (h := h) t x) :=
+          (H_t_disorder N (H_field N h) t x))
+        (H_t_disorder N (H_field N h) t x) :=
     hdiff.hasFDerivAt
   have hHx :
       HasFDerivAt (fun x : DisorderSpace (N := N) =>
-          gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ)
+          gibbs_pmf N (H_t_disorder N (H_field N h) t x) σ)
         ((fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ)
-            (H_t_disorder (N := N) (h := h) t x)).comp
+            (H_t_disorder N (H_field N h) t x)).comp
               (gaussianInterp (E := EnergySpace N) t)) x := by
     simpa [Function.comp_def] using h1.comp x (hasFDerivAt_H_t_disorder (N := N) (h := h) t x)
   have hfderiv :
       fderiv ℝ (fun x : DisorderSpace (N := N) =>
-          gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ) x
+          gibbs_pmf N (H_t_disorder N (H_field N h) t x) σ) x
         =
         ((fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ)
-            (H_t_disorder (N := N) (h := h) t x)).comp
+            (H_t_disorder N (H_field N h) t x)).comp
               (gaussianInterp (E := EnergySpace N) t)) := by
     simpa using hHx.fderiv
   have hσ :
       ‖fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ)
-            (H_t_disorder (N := N) (h := h) t x)‖ ≤ 2 :=
+            (H_t_disorder N (H_field N h) t x)‖ ≤ 2 :=
     by
       simpa [gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
         (FiniteGibbs.norm_fderiv_gibbs_pmf_le_two (α := Config N)
-          (H := H_t_disorder (N := N) (h := h) t x) (σ := σ))
+          (H := H_t_disorder N (H_field N h) t x) (σ := σ))
   have ht : ‖gaussianInterp (E := EnergySpace N) t‖ ≤ |Real.sqrt t| + |Real.sqrt (1 - t)| :=
     opNorm_gaussianInterp_le (E := EnergySpace N) t
   calc
     ‖fderiv ℝ (fun x : DisorderSpace (N := N) =>
-          gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ) x‖
+          gibbs_pmf N (H_t_disorder N (H_field N h) t x) σ) x‖
         = ‖((fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ)
-              (H_t_disorder (N := N) (h := h) t x)).comp
+              (H_t_disorder N (H_field N h) t x)).comp
                 (gaussianInterp (E := EnergySpace N) t))‖ := by
             simp [hfderiv]
     _ ≤ ‖fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ)
-            (H_t_disorder (N := N) (h := h) t x)‖ * ‖gaussianInterp (E := EnergySpace N) t‖ :=
+            (H_t_disorder N (H_field N h) t x)‖ * ‖gaussianInterp (E := EnergySpace N) t‖ :=
           ContinuousLinearMap.opNorm_comp_le _ _
     _ ≤ 2 * (|Real.sqrt t| + |Real.sqrt (1 - t)|) := by
           have hA :
               ‖fderiv ℝ (fun H' : EnergySpace N => gibbs_pmf N H' σ)
-                (H_t_disorder (N := N) (h := h) t x)‖ * ‖gaussianInterp (E := EnergySpace N) t‖
+                (H_t_disorder N (H_field N h) t x)‖ * ‖gaussianInterp (E := EnergySpace N) t‖
                 ≤ 2 * ‖gaussianInterp (E := EnergySpace N) t‖ := by
             gcongr
           have hB : 2 * ‖gaussianInterp (E := EnergySpace N) t‖
@@ -591,18 +587,18 @@ lemma norm_fderiv_gibbs_pmf_disorder_le (t : ℝ) (σ : Config N) (x : DisorderS
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 @[simp] lemma H_t_disorder_disorderPair (t : ℝ) (w : Ω) :
-    H_t_disorder (N := N) (h := h) t
-        (disorderPair (N := N) (β := β) (q := q) (sk := sk) (sim := sim) w)
+    H_t_disorder N (H_field N h) t
+        (disorderPair (N := N) (G₁ := G₁) (G₂ := G₂) w)
       =
-      H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w := by
+      H_t (N := N) G₁.U G₂.U (H_field N h) t w := by
   simp [H_t_disorder, gaussianInterp, H_t, H_gauss, H_field, disorderPair]
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 @[simp] lemma gaussianInterpDeriv_disorderPair (t : ℝ) (w : Ω) :
     gaussianInterpDeriv (E := EnergySpace N) t
-        (disorderPair (N := N) (β := β) (q := q) (sk := sk) (sim := sim) w)
+        (disorderPair (N := N) (G₁ := G₁) (G₂ := G₂) w)
       =
-      dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w := by
+      dH_t (N := N) G₁.U G₂.U t w := by
   simp [gaussianInterpDeriv, dH_t, disorderPair]
 
 /-- The `n`-replica Gibbs average along the interpolation, as a function on the disorder
@@ -611,21 +607,21 @@ noncomputable def gibbs_average_n_disorder (t : ℝ) (f : ReplicaFun N n) :
     DisorderSpace (N := N) → ℝ :=
   fun x =>
     gibbs_average_n_det (N := N) (n := n)
-      (H_t_disorder (N := N) (h := h) t x) f
+      (H_t_disorder N (H_field N h) t x) f
 
 /-- The time derivative of `gibbs_average_n_disorder`, as a function on the disorder space. -/
 noncomputable def dgibbs_average_n_disorder (t : ℝ) (f : ReplicaFun N n) :
     DisorderSpace (N := N) → ℝ :=
   fun x =>
     fderiv ℝ (fun H' => gibbs_average_n_det (N := N) (n := n) H' f)
-      (H_t_disorder (N := N) (h := h) t x)
+      (H_t_disorder N (H_field N h) t x)
       (gaussianInterpDeriv (E := EnergySpace N) t x)
 
 /-! ### Reshaping `dgibbs_average_n_disorder` -/
 
 /-- The Gibbs weight of `σ` under the interpolating Hamiltonian, as a function of the disorder. -/
 noncomputable def gibbs_pmf_disorder (t : ℝ) (σ : Config N) : DisorderSpace (N := N) → ℝ :=
-  fun x => gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ
+  fun x => gibbs_pmf N (H_t_disorder N (H_field N h) t x) σ
 
 lemma contDiff_gibbs_pmf_disorder (t : ℝ) (σ : Config N) :
     ContDiff ℝ 1 (gibbs_pmf_disorder (N := N) (h := h) t σ) := by
@@ -634,9 +630,9 @@ lemma contDiff_gibbs_pmf_disorder (t : ℝ) (σ : Config N) :
     simpa [nTop] using (gaussianInterp (E := EnergySpace N) t).contDiff (n := nTop)
   have hlin : ContDiff ℝ 1 (gaussianInterp (E := EnergySpace N) t) :=
     hlin_inf.of_le (by simp [nTop])
-  have hconst : ContDiff ℝ 1 (fun _ : DisorderSpace (N := N) => H_field (N := N) (h := h)) :=
+  have hconst : ContDiff ℝ 1 (fun _ : DisorderSpace (N := N) => H_field N h) :=
     contDiff_const
-  have hH : ContDiff ℝ 1 (H_t_disorder (N := N) (h := h) t) := by
+  have hH : ContDiff ℝ 1 (H_t_disorder N (H_field N h) t) := by
     exact hlin.add hconst
   have hg_inf : ContDiff ℝ nTop (fun H : EnergySpace N => gibbs_pmf N H σ) := by
     simpa [nTop] using (SpinGlass.contDiff_gibbs_pmf (N := N) σ)
@@ -667,53 +663,53 @@ lemma norm_fderiv_prod_gibbs_pmf_disorder_le (t : ℝ) (σs : ReplicaSpace N n) 
   classical
   let F : EnergySpace N → ℝ := fun H => ∏ l : Fin n, gibbs_pmf N H (σs l)
   have hF_diff :
-      DifferentiableAt ℝ F (H_t_disorder (N := N) (h := h) t x) := by
+      DifferentiableAt ℝ F (H_t_disorder N (H_field N h) t x) := by
     simpa [F, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
       (FiniteGibbs.differentiableAt_prod_gibbs_pmf (α := Config N) (n := n)
-        (H := H_t_disorder (N := N) (h := h) t x) (σs := σs))
+        (H := H_t_disorder N (H_field N h) t x) (σs := σs))
   have hF :
-      HasFDerivAt F (fderiv ℝ F (H_t_disorder (N := N) (h := h) t x))
-        (H_t_disorder (N := N) (h := h) t x) :=
+      HasFDerivAt F (fderiv ℝ F (H_t_disorder N (H_field N h) t x))
+        (H_t_disorder N (H_field N h) t x) :=
     hF_diff.hasFDerivAt
   have hcomp :
-      HasFDerivAt (fun x : DisorderSpace (N := N) => F (H_t_disorder (N := N) (h := h) t x))
-        ((fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)).comp
+      HasFDerivAt (fun x : DisorderSpace (N := N) => F (H_t_disorder N (H_field N h) t x))
+        ((fderiv ℝ F (H_t_disorder N (H_field N h) t x)).comp
           (gaussianInterp (E := EnergySpace N) t)) x :=
           by
     simpa [Function.comp_def] using hF.comp x (hasFDerivAt_H_t_disorder (N := N) (h := h) t x)
   have hfderiv :
-      fderiv ℝ (fun x : DisorderSpace (N := N) => F (H_t_disorder (N := N) (h := h) t x)) x
+      fderiv ℝ (fun x : DisorderSpace (N := N) => F (H_t_disorder N (H_field N h) t x)) x
         =
-        (fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)).comp
+        (fderiv ℝ F (H_t_disorder N (H_field N h) t x)).comp
           (gaussianInterp (E := EnergySpace N) t) := by
     simpa using hcomp.fderiv
   have hF_norm :
-      ‖fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)‖ ≤ 2 * (n : ℝ) := by
+      ‖fderiv ℝ F (H_t_disorder N (H_field N h) t x)‖ ≤ 2 * (n : ℝ) := by
     simpa [F, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
       (FiniteGibbs.norm_fderiv_prod_gibbs_pmf_le (α := Config N) (n := n)
-        (H := H_t_disorder (N := N) (h := h) t x) (σs := σs))
+        (H := H_t_disorder N (H_field N h) t x) (σs := σs))
   have hH_norm : ‖gaussianInterp (E := EnergySpace N) t‖ ≤ |Real.sqrt t| + |Real.sqrt (1 - t)| :=
     opNorm_gaussianInterp_le (E := EnergySpace N) t
   have hrew :
       prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) t σs
-        = fun x : DisorderSpace (N := N) => F (H_t_disorder (N := N) (h := h) t x) := by
+        = fun x : DisorderSpace (N := N) => F (H_t_disorder N (H_field N h) t x) := by
     funext x
     simp [prod_gibbs_pmf_disorder, gibbs_pmf_disorder, F]
   have hcomp_norm :
-      ‖(fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)).comp
+      ‖(fderiv ℝ F (H_t_disorder N (H_field N h) t x)).comp
           (gaussianInterp (E := EnergySpace N) t)‖
-        ≤ ‖fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)‖
+        ≤ ‖fderiv ℝ F (H_t_disorder N (H_field N h) t x)‖
             * ‖gaussianInterp (E := EnergySpace N) t‖ :=
     ContinuousLinearMap.opNorm_comp_le _ (gaussianInterp (E := EnergySpace N) t)
   calc
     ‖fderiv ℝ (prod_gibbs_pmf_disorder (N := N) (n := n) (h := h) t σs) x‖
-        = ‖fderiv ℝ (fun x : DisorderSpace (N := N) => F (H_t_disorder (N := N) (h := h) t x)) x‖ :=
+        = ‖fderiv ℝ (fun x : DisorderSpace (N := N) => F (H_t_disorder N (H_field N h) t x)) x‖ :=
           by
             simp [hrew]
-    _ = ‖(fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)).comp
+    _ = ‖(fderiv ℝ F (H_t_disorder N (H_field N h) t x)).comp
             (gaussianInterp (E := EnergySpace N) t)‖ := by
             simp [hfderiv]
-    _ ≤ ‖fderiv ℝ F (H_t_disorder (N := N) (h := h) t x)‖
+    _ ≤ ‖fderiv ℝ F (H_t_disorder N (H_field N h) t x)‖
           * ‖gaussianInterp (E := EnergySpace N) t‖ :=
       hcomp_norm
     _ ≤ (2 * (n : ℝ)) * (|Real.sqrt t| + |Real.sqrt (1 - t)|) := by

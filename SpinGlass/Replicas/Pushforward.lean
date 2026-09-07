@@ -19,24 +19,15 @@ open scoped ENNReal NNReal Topology
 namespace SpinGlass
 
 variable {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
-variable (N : ℕ) (β h q : ℝ)
-variable (sk : SKDisorder (Ω := Ω) N β) (sim : SimpleDisorder (Ω := Ω) N β q)
+variable (N : ℕ) (h : ℝ)
+variable {K₁ K₂ : Config N → Config N → ℝ}
+variable (G₁ : GaussianDisorder (Ω := Ω) (N := N) (ℙ : Measure Ω) K₁)
+variable (G₂ : GaussianDisorder (Ω := Ω) (N := N) (ℙ : Measure Ω) K₂)
 
 section ReplicaCalculus
 
 variable (n : ℕ)
 /-! ### Pushforward to `disorderPairLaw` -/
-
-omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
-lemma measurable_disorderPair :
-    Measurable (disorderPair (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim))
-      := by
-  -- `ω ↦ (U ω, V ω)` is measurable, and `toLp` is measurable.
-  have hpair : Measurable (fun ω : Ω => (sk.U ω, sim.U ω)) :=
-    sk.measU.prodMk sim.measU
-  -- `WithLp.toLp` is measurable (in the canonical measurable structure on `WithLp`).
-  exact (WithLp.measurable_toLp (p := (2 : ℝ≥0∞))
-    (X := (EnergySpace N × EnergySpace N))).comp hpair
 
 lemma measurable_coord_left (τ : Config N) :
     Measurable (fun x : DisorderSpace (N := N) => ((WithLp.ofLp x).1 τ)) := by
@@ -119,20 +110,19 @@ lemma measurable_dgibbs_average_n_disorder (t : ℝ) (f : ReplicaFun N n) :
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma integral_dgibbs_average_n_eq_integral_disorderPairLaw (t : ℝ) (f : ReplicaFun N n) :
-    (∫ w, dgibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w ∂ℙ)
+    (∫ w, dgibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n t f w ∂ℙ)
       =
       ∫ x : DisorderSpace (N := N),
         dgibbs_average_n_disorder (N := N) (n := n) (h := h) t f x
-          ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)) :=
+          ∂(disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) :=
             by
   classical
   -- `disorderPairLaw = ℙ.map disorderPair`.
   let μ : Measure (DisorderSpace (N := N)) :=
-    disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)
-  have hmeas : AEMeasurable (disorderPair (Ω := Ω) (N := N) (β := β) (q := q)
-      (sk := sk) (sim := sim)) (ℙ : Measure Ω) :=
-    (measurable_disorderPair (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim :=
-      sim)).aemeasurable
+    disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)
+  have hmeas : AEMeasurable (disorderPair (Ω := Ω) (N := N)
+      (G₁ := G₁) (G₂ := G₂)) (ℙ : Measure Ω) :=
+    (measurable_disorderPair (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)).aemeasurable
   have hF :
       AEStronglyMeasurable (dgibbs_average_n_disorder (N := N) (n := n) (h := h) t f) μ := by
     -- measurability on `DisorderSpace` implies `AEStronglyMeasurable`.
@@ -145,46 +135,42 @@ lemma integral_dgibbs_average_n_eq_integral_disorderPairLaw (t : ℝ) (f : Repli
       (∫ x : DisorderSpace (N := N), dgibbs_average_n_disorder (N := N) (n := n) (h := h) t f x ∂μ)
         =
         ∫ w, dgibbs_average_n_disorder (N := N) (n := n) (h := h) t f
-            (disorderPair (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim) w) ∂ℙ
+            (disorderPair (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂) w) ∂ℙ
               := by
     -- `μ = map disorderPair ℙ` by definition.
     simpa [μ, disorderPairLaw] using
       (MeasureTheory.integral_map (μ := (ℙ : Measure Ω)) (φ :=
-        disorderPair (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim))
+        disorderPair (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂))
         hmeas hF)
   simp [hmap, μ]
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 theorem integral_dgibbs_average_n_disorder_eq_ibp
-    (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.U) (t : ℝ) (f : ReplicaFun N n) :
+    (hindep : G₁.U ⟂ᵢ[(ℙ : Measure Ω)] G₂.U) (t : ℝ) (f : ReplicaFun N n) :
     (∫ x : DisorderSpace (N := N),
         dgibbs_average_n_disorder (N := N) (n := n) (h := h) t f x
-        ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)))
+        ∂(disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)))
       =
       (1 / (2 * Real.sqrt t)) *
           ∑ τ : Config N,
             ∫ x : DisorderSpace (N := N),
               (fderiv ℝ (A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ) x)
                 (ProbabilityTheory.covarianceOperator
-                  (disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim :=
-                    sim))
+                  (disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂))
                   (std_basis_left (N := N) τ))
-              ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim :=
-                sim))
+              ∂(disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂))
         -
         (1 / (2 * Real.sqrt (1 - t))) *
           ∑ τ : Config N,
             ∫ x : DisorderSpace (N := N),
               (fderiv ℝ (A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ) x)
                 (ProbabilityTheory.covarianceOperator
-                  (disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim :=
-                    sim))
+                  (disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂))
                   (std_basis_right (N := N) τ))
-              ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim :=
-                sim)) := by
+              ∂(disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)) := by
   classical
   let μ : Measure (DisorderSpace (N := N)) :=
-    disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim)
+    disorderPairLaw (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂)
   -- Start from the explicit decomposition.
   have hdecomp :
       (fun x : DisorderSpace (N := N) =>
@@ -210,8 +196,7 @@ theorem integral_dgibbs_average_n_disorder_eq_ibp
     intro τ
     -- coordinate is integrable under Gaussian law
     have hgauss : ProbabilityTheory.IsGaussian μ :=
-      SKDisorder.simple_joint_isGaussian_disorderPairLaw_of_indep (Ω := Ω) (N := N) (β := β)
-        (q := q) (sk := sk) (sim := sim) hindep
+      isGaussian_disorderPairLaw_of_indep (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂) hindep
     have : ProbabilityTheory.IsGaussian μ := hgauss
     have hcoord :
         Integrable (fun x : DisorderSpace (N := N) => ((WithLp.ofLp x).1 τ)) μ := by
@@ -252,8 +237,7 @@ theorem integral_dgibbs_average_n_disorder_eq_ibp
           A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ x) μ := by
     intro τ
     have hgauss : ProbabilityTheory.IsGaussian μ :=
-      SKDisorder.simple_joint_isGaussian_disorderPairLaw_of_indep (Ω := Ω) (N := N) (β := β)
-        (q := q) (sk := sk) (sim := sim) hindep
+      isGaussian_disorderPairLaw_of_indep (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂) hindep
     have : ProbabilityTheory.IsGaussian μ := hgauss
     have hcoord :
         Integrable (fun x : DisorderSpace (N := N) => ((WithLp.ofLp x).2 τ)) μ := by
@@ -338,7 +322,7 @@ theorem integral_dgibbs_average_n_disorder_eq_ibp
     -- use the packaged lemma (with `σ = τ`).
     simpa [μ] using
       (integral_disorderPairLaw_left_apply_mul_A_disorder_explicit_eq
-        (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+        (Ω := Ω) (N := N) (h := h) (G₁ := G₁) (G₂ := G₂)
         (hindep := hindep) (t := t) (f := f) (σ := τ) (τ := τ))
   have hIBP_right :
       (∑ τ : Config N,
@@ -354,7 +338,7 @@ theorem integral_dgibbs_average_n_disorder_eq_ibp
     refine Finset.sum_congr rfl (fun τ _ => ?_)
     simpa [μ] using
       (integral_disorderPairLaw_right_apply_mul_A_disorder_explicit_eq
-        (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
+        (Ω := Ω) (N := N) (h := h) (G₁ := G₁) (G₂ := G₂)
         (hindep := hindep) (t := t) (f := f) (σ := τ) (τ := τ))
   -- Assemble: push integrals through constants/sums then apply IBP.
   let Sleft : DisorderSpace (N := N) → ℝ :=
@@ -482,39 +466,37 @@ omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 lemma hasDerivAt_gibbs_average_n (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n) (w : Ω) :
     HasDerivAt
         (fun s =>
-          gibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n s f w)
-        (dgibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w) t :=
+          gibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n s f w)
+        (dgibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n t f w) t :=
           by
   classical
   let G : EnergySpace N → ℝ := fun H' => gibbs_average_n_det (N := N) (n := n) H' f
   have hG_diff :
       DifferentiableAt ℝ G
-        (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) := by
+        (H_t (N := N) G₁.U G₂.U (H_field N h) t w) := by
     simpa [G, gibbs_average_n_det] using
       (FiniteGibbs.differentiableAt_gibbs_average_n_det (α := Config N) (n := n)
-        (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (f := f))
-  have hG : HasFDerivAt G (fderiv ℝ G (H_t (N := N) (β := β) (h := h) (q := q)
-        (sk := sk) (sim := sim) t w))
-        (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) :=
+        (H := H_t (N := N) G₁.U G₂.U (H_field N h) t w) (f := f))
+  have hG : HasFDerivAt G (fderiv ℝ G (H_t (N := N) G₁.U G₂.U (H_field N h) t w))
+        (H_t (N := N) G₁.U G₂.U (H_field N h) t w) :=
     hG_diff.hasFDerivAt
   have hHt :
       HasDerivAt
-          (fun s => H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s w)
-          (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) t :=
-    hasDerivAt_H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ht w
+          (fun s => H_t (N := N) G₁.U G₂.U (H_field N h) s w)
+          (dH_t (N := N) G₁.U G₂.U t w) t :=
+    hasDerivAt_H_t (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) t ht w
   have hcomp :=
     (HasFDerivAt.comp_hasDerivAt (x := t) (f := fun s =>
-        H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) s w)
-      (l := G) (l' := fderiv ℝ G (H_t (N := N) (β := β) (h := h) (q := q)
-        (sk := sk) (sim := sim) t w)) hG hHt)
+        H_t (N := N) G₁.U G₂.U (H_field N h) s w)
+      (l := G) (l' := fderiv ℝ G (H_t (N := N) G₁.U G₂.U (H_field N h) t w)) hG hHt)
   exact hcomp
 
 /-! ### Dominated differentiation of `ν_t(f)` -/
 
 theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n) :
     HasDerivAt
-        (fun s => nu (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n s f)
-        (∫ w, dgibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w
+        (fun s => nu (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n s f)
+        (∫ w, dgibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n t f w
           ∂ℙ) t := by
   classical
   have ht0 : 0 < t := ht.1
@@ -558,17 +540,17 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
     exact ⟨hx_gt0, hx_lt1⟩
   let F : ℝ → Ω → ℝ :=
     fun s w =>
-      gibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n s f w
+      gibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n s f w
   let F' : ℝ → Ω → ℝ :=
     fun s w =>
-      dgibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n s f w
+      dgibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n s f w
   have hF_meas : ∀ᶠ s in 𝓝 t, AEStronglyMeasurable (F s) (ℙ : Measure Ω) := by
     refine Filter.Eventually.of_forall (fun s => ?_)
-    exact (integrable_gibbs_average_n (N := N) (β := β) (h := h) (q := q)
-      (sk := sk) (sim := sim) (n := n) (t := s) (f := f)).aestronglyMeasurable
+    exact (integrable_gibbs_average_n (N := N) (h := h)
+      (G₁ := G₁) (G₂ := G₂) (n := n) (t := s) (f := f)).aestronglyMeasurable
   have hF_int : Integrable (F t) (ℙ : Measure Ω) :=
-    integrable_gibbs_average_n (N := N) (β := β) (h := h) (q := q)
-      (sk := sk) (sim := sim) (n := n) (t := t) (f := f)
+    integrable_gibbs_average_n (N := N) (h := h)
+      (G₁ := G₁) (G₂ := G₂) (n := n) (t := t) (f := f)
   let Cf : ℝ := (2 * (n : ℝ)) * (∑ σs : ReplicaSpace N n, ‖f σs‖)
   have hCf_nonneg : 0 ≤ Cf := by
     have : 0 ≤ (2 : ℝ) * (n : ℝ) := by positivity
@@ -581,39 +563,39 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
   have hcV_nonneg : 0 ≤ cV := by
     have : 0 ≤ 2 * Real.sqrt ((1 - t) / 2) := by positivity
     exact one_div_nonneg.2 this
-  let bound : Ω → ℝ := fun w => Cf * (cU * ‖sk.U w‖ + cV * ‖sim.U w‖)
+  let bound : Ω → ℝ := fun w => Cf * (cU * ‖G₁.U w‖ + cV * ‖G₂.U w‖)
   have hbound_int : Integrable bound (ℙ : Measure Ω) := by
-    have hU_int : Integrable (fun w => ‖sk.U w‖) (ℙ : Measure Ω) :=
-      integrable_norm_of_isGaussian_map (P := (ℙ : Measure Ω)) (g := sk.U) sk.measU sk.isGaussian
-    have hV_int : Integrable (fun w => ‖sim.U w‖) (ℙ : Measure Ω) :=
-      integrable_norm_of_isGaussian_map (P := (ℙ : Measure Ω)) (g := sim.U) sim.measU sim.isGaussian
-    have h1 : Integrable (fun w => cU * ‖sk.U w‖) (ℙ : Measure Ω) := (hU_int.const_mul cU)
-    have h2 : Integrable (fun w => cV * ‖sim.U w‖) (ℙ : Measure Ω) := (hV_int.const_mul cV)
-    have hsum : Integrable (fun w => cU * ‖sk.U w‖ + cV * ‖sim.U w‖) (ℙ : Measure Ω) := h1.add h2
+    have hU_int : Integrable (fun w => ‖G₁.U w‖) (ℙ : Measure Ω) :=
+      integrable_norm_of_isGaussian_map (P := (ℙ : Measure Ω)) (g := G₁.U) G₁.measU G₁.isGaussian
+    have hV_int : Integrable (fun w => ‖G₂.U w‖) (ℙ : Measure Ω) :=
+      integrable_norm_of_isGaussian_map (P := (ℙ : Measure Ω)) (g := G₂.U) G₂.measU G₂.isGaussian
+    have h1 : Integrable (fun w => cU * ‖G₁.U w‖) (ℙ : Measure Ω) := (hU_int.const_mul cU)
+    have h2 : Integrable (fun w => cV * ‖G₂.U w‖) (ℙ : Measure Ω) := (hV_int.const_mul cV)
+    have hsum : Integrable (fun w => cU * ‖G₁.U w‖ + cV * ‖G₂.U w‖) (ℙ : Measure Ω) := h1.add h2
     simpa [bound, Cf, mul_add, mul_assoc] using hsum.const_mul Cf
   have hF'_meas : AEStronglyMeasurable (F' t) (ℙ : Measure Ω) := by
-    have hU_meas : Measurable (sk.U) := sk.measU
-    have hV_meas : Measurable (sim.U) := sim.measU
+    have hU_meas : Measurable (G₁.U) := G₁.measU
+    have hV_meas : Measurable (G₂.U) := G₂.measU
     have hHt_meas :
-        Measurable (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t) := by
-      have h1 : Measurable (fun w => (Real.sqrt t) • sk.U w) := hU_meas.const_smul (Real.sqrt t)
-      have h2 : Measurable (fun w => (Real.sqrt (1 - t)) • sim.U w) := hV_meas.const_smul (Real.sqrt
+        Measurable (H_t (N := N) G₁.U G₂.U (H_field N h) t) := by
+      have h1 : Measurable (fun w => (Real.sqrt t) • G₁.U w) := hU_meas.const_smul (Real.sqrt t)
+      have h2 : Measurable (fun w => (Real.sqrt (1 - t)) • G₂.U w) := hV_meas.const_smul (Real.sqrt
         (1 - t))
-      have h3 : Measurable (fun _w : Ω => H_field (N := N) (h := h)) := measurable_const
+      have h3 : Measurable (fun _w : Ω => H_field N h) := measurable_const
       exact (h1.add h2).add h3
     have hdHt_meas :
         Measurable (fun w =>
-          dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) := by
-      have h1 : Measurable (fun w => (1 / (2 * Real.sqrt t)) • sk.U w) :=
+          dH_t (N := N) G₁.U G₂.U t w) := by
+      have h1 : Measurable (fun w => (1 / (2 * Real.sqrt t)) • G₁.U w) :=
         hU_meas.const_smul (1 / (2 * Real.sqrt t))
-      have h2 : Measurable (fun w => (1 / (2 * Real.sqrt (1 - t))) • sim.U w) :=
+      have h2 : Measurable (fun w => (1 / (2 * Real.sqrt (1 - t))) • G₂.U w) :=
         hV_meas.const_smul (1 / (2 * Real.sqrt (1 - t)))
       exact h1.fun_sub h2
     have h_gibbs_pmf_meas :
         ∀ (σ : Config N),
           Measurable fun w =>
             gibbs_pmf N
-              (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) σ := by
+              (H_t (N := N) G₁.U G₂.U (H_field N h) t w) σ := by
       intro σ
       have hcont : Continuous fun H : EnergySpace N => gibbs_pmf N H σ :=
         (SpinGlass.contDiff_gibbs_pmf (N := N) (σ := σ)).continuous
@@ -624,13 +606,13 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
             f σs *
               (∏ l : Fin n,
                 gibbs_pmf N
-                  (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l)) *
+                  (H_t (N := N) G₁.U G₂.U (H_field N h) t w) (σs l)) *
                 ∑ l : Fin n,
                   ((∑ τ : Config N,
                       gibbs_pmf N
-                        (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ *
-                        (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) τ) -
-                    (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) (σs l))
+                        (H_t (N := N) G₁.U G₂.U (H_field N h) t w) τ *
+                        (dH_t (N := N) G₁.U G₂.U t w) τ) -
+                    (dH_t (N := N) G₁.U G₂.U t w) (σs l))
                       := by
       intro σs
       classical
@@ -638,32 +620,32 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
           Measurable fun w =>
             ∏ l : Fin n,
               gibbs_pmf N
-                (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l) := by
+                (H_t (N := N) G₁.U G₂.U (H_field N h) t w) (σs l) := by
         simpa using
           (Finset.measurable_prod (s := (Finset.univ : Finset (Fin n)))
             (f := fun l w =>
               gibbs_pmf N
-                (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l))
+                (H_t (N := N) G₁.U G₂.U (H_field N h) t w) (σs l))
             (hf := by
               intro l _hl
               simpa using h_gibbs_pmf_meas (σs l)))
       have h_dHt_eval : ∀ τ : Config N, Measurable fun w =>
-          (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) τ := by
+          (dH_t (N := N) G₁.U G₂.U t w) τ := by
         intro τ
         exact (evalCLM (N := N) τ).measurable.comp hdHt_meas
       have hEv :
           Measurable fun w =>
             ∑ τ : Config N,
               gibbs_pmf N
-                (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ *
-                (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) τ := by
+                (H_t (N := N) G₁.U G₂.U (H_field N h) t w) τ *
+                (dH_t (N := N) G₁.U G₂.U t w) τ := by
         classical
         simpa using
           (Finset.measurable_sum (s := (Finset.univ : Finset (Config N)))
             (f := fun τ w =>
               gibbs_pmf N
-                (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ *
-                (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) τ)
+                (H_t (N := N) G₁.U G₂.U (H_field N h) t w) τ *
+                (dH_t (N := N) G₁.U G₂.U t w) τ)
             (hf := by
               intro τ _hτ
               exact (h_gibbs_pmf_meas τ).mul (h_dHt_eval τ)))
@@ -672,17 +654,17 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
             ∑ l : Fin n,
               ((∑ τ : Config N,
                   gibbs_pmf N
-                    (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ *
-                    (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) τ) -
-                (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) (σs l)) := by
+                    (H_t (N := N) G₁.U G₂.U (H_field N h) t w) τ *
+                    (dH_t (N := N) G₁.U G₂.U t w) τ) -
+                (dH_t (N := N) G₁.U G₂.U t w) (σs l)) := by
         classical
         simpa using
           (Finset.measurable_sum (s := (Finset.univ : Finset (Fin n)))
             (f := fun l w => (∑ τ : Config N,
                   gibbs_pmf N
-                    (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ *
-                    (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) τ) -
-                (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) (σs l))
+                    (H_t (N := N) G₁.U G₂.U (H_field N h) t w) τ *
+                    (dH_t (N := N) G₁.U G₂.U t w) τ) -
+                (dH_t (N := N) G₁.U G₂.U t w) (σs l))
             (hf := by
               intro l _hl
               exact hEv.sub (h_dHt_eval (σs l))))
@@ -693,13 +675,13 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
             f σs *
               (∏ l : Fin n,
                 gibbs_pmf N
-                  (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l)) *
+                  (H_t (N := N) G₁.U G₂.U (H_field N h) t w) (σs l)) *
                 ∑ l : Fin n,
                   ((∑ τ : Config N,
                       gibbs_pmf N
-                        (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ *
-                        (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) τ) -
-                    (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) (σs l)))
+                        (H_t (N := N) G₁.U G₂.U (H_field N h) t w) τ *
+                        (dH_t (N := N) G₁.U G₂.U t w) τ) -
+                    (dH_t (N := N) G₁.U G₂.U t w) (σs l)))
                       := by
       classical
       simpa using
@@ -708,36 +690,36 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
             f σs *
               (∏ l : Fin n,
                 gibbs_pmf N
-                  (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l)) *
+                  (H_t (N := N) G₁.U G₂.U (H_field N h) t w) (σs l)) *
                 ∑ l : Fin n,
                   ((∑ τ : Config N,
                       gibbs_pmf N
-                        (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ *
-                        (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) τ) -
-                    (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) (σs l)))
+                        (H_t (N := N) G₁.U G₂.U (H_field N h) t w) τ *
+                        (dH_t (N := N) G₁.U G₂.U t w) τ) -
+                    (dH_t (N := N) G₁.U G₂.U t w) (σs l)))
           (hf := by intro σs _; simpa using hterm σs))
     have :
-        (fun w => dgibbs_average_n (N := N) (β := β) (h := h) (q := q)
-          (sk := sk) (sim := sim) n t f w)
+        (fun w => dgibbs_average_n (N := N) (h := h)
+          (G₁ := G₁) (G₂ := G₂) n t f w)
           =
         (fun w =>
           ∑ σs : ReplicaSpace N n,
             f σs *
               (∏ l : Fin n,
                 gibbs_pmf N
-                  (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) (σs l)) *
+                  (H_t (N := N) G₁.U G₂.U (H_field N h) t w) (σs l)) *
                 ∑ l : Fin n,
                   ((∑ τ : Config N,
                       gibbs_pmf N
-                        (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w) τ *
-                        (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) τ) -
-                    (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) (σs l)))
+                        (H_t (N := N) G₁.U G₂.U (H_field N h) t w) τ *
+                        (dH_t (N := N) G₁.U G₂.U t w) τ) -
+                    (dH_t (N := N) G₁.U G₂.U t w) (σs l)))
                       := by
       funext w
       simpa [dgibbs_average_n, gibbs_average_n_det, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
         (FiniteGibbs.fderiv_gibbs_average_n_det_apply (α := Config N) (n := n)
-          (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t w)
-          (v := dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) t w) (f := f))
+          (H := H_t (N := N) G₁.U G₂.U (H_field N h) t w)
+          (v := dH_t (N := N) G₁.U G₂.U t w) (f := f))
     simpa [F', this] using hderiv_meas.aestronglyMeasurable
   have h_bound :
       ∀ᵐ w ∂(ℙ : Measure Ω), ∀ x ∈ Metric.ball t ε, ‖F' x w‖ ≤ bound w := by
@@ -746,10 +728,10 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
     have hxIoo : x ∈ Ioo (0 : ℝ) 1 := hball_Ioo x hx
     have hL :
         ‖fderiv ℝ (fun H' => gibbs_average_n_det (N := N) (n := n) H' f)
-            (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x w)‖ ≤ Cf := by
+            (H_t (N := N) G₁.U G₂.U (H_field N h) x w)‖ ≤ Cf := by
       simpa [Cf, gibbs_average_n_det] using
         (FiniteGibbs.norm_fderiv_gibbs_average_n_det_le (α := Config N) (n := n)
-          (H := H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x w) (f := f))
+          (H := H_t (N := N) G₁.U G₂.U (H_field N h) x w) (f := f))
     have hCoeffU :
         |1 / (2 * Real.sqrt x)| ≤ cU := by
       have hx_gt0 : 0 < x := hxIoo.1
@@ -810,44 +792,43 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
       simpa [cV, abs_of_nonneg hnonneg, abs_of_nonneg hnonneg',
         abs_of_nonneg (Real.sqrt_nonneg (1 - x)), one_div] using this
     have hdH_norm :
-        ‖dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) x w‖
-          ≤ cU * ‖sk.U w‖ + cV * ‖sim.U w‖ := by
+        ‖dH_t (N := N) G₁.U G₂.U x w‖
+          ≤ cU * ‖G₁.U w‖ + cV * ‖G₂.U w‖ := by
       have htri :
-          ‖dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) x w‖
-            ≤ |1 / (2 * Real.sqrt x)| * ‖sk.U w‖ +
-              |1 / (2 * Real.sqrt (1 - x))| * ‖sim.U w‖ := by
+          ‖dH_t (N := N) G₁.U G₂.U x w‖
+            ≤ |1 / (2 * Real.sqrt x)| * ‖G₁.U w‖ +
+              |1 / (2 * Real.sqrt (1 - x))| * ‖G₂.U w‖ := by
         simpa [dH_t, sub_eq_add_neg, norm_add_le, norm_smul, abs_mul] using
-          (norm_add_le ((1 / (2 * Real.sqrt x)) • sk.U w) (-(1 / (2 * Real.sqrt (1 - x))) • sim.U
+          (norm_add_le ((1 / (2 * Real.sqrt x)) • G₁.U w) (-(1 / (2 * Real.sqrt (1 - x))) • G₂.U
             w))
-      have : |1 / (2 * Real.sqrt x)| * ‖sk.U w‖ +
-            |1 / (2 * Real.sqrt (1 - x))| * ‖sim.U w‖
-          ≤ cU * ‖sk.U w‖ + cV * ‖sim.U w‖ := by
+      have : |1 / (2 * Real.sqrt x)| * ‖G₁.U w‖ +
+            |1 / (2 * Real.sqrt (1 - x))| * ‖G₂.U w‖
+          ≤ cU * ‖G₁.U w‖ + cV * ‖G₂.U w‖ := by
         gcongr
       exact le_trans htri this
     have hF'_bound :
-        ‖F' x w‖ ≤ Cf * ‖dH_t (N := N) (β := β) (q := q)
-              (sk := sk) (sim := sim) x w‖ := by
+        ‖F' x w‖ ≤ Cf * ‖dH_t (N := N) G₁.U G₂.U x w‖ := by
       have hop :
           ‖(fderiv ℝ (fun H' => gibbs_average_n_det (N := N) (n := n) H' f)
-              (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x w))
-              (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) x w)‖
+              (H_t (N := N) G₁.U G₂.U (H_field N h) x w))
+              (dH_t (N := N) G₁.U G₂.U x w)‖
             ≤ ‖fderiv ℝ (fun H' => gibbs_average_n_det (N := N) (n := n) H' f)
-                (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x w)‖ *
-              ‖dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) x w‖ := by
+                (H_t (N := N) G₁.U G₂.U (H_field N h) x w)‖ *
+              ‖dH_t (N := N) G₁.U G₂.U x w‖ := by
         simpa using
           (ContinuousLinearMap.le_opNorm
             (fderiv ℝ (fun H' => gibbs_average_n_det (N := N) (n := n) H' f)
-              (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x w))
-            (dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) x w))
+              (H_t (N := N) G₁.U G₂.U (H_field N h) x w))
+            (dH_t (N := N) G₁.U G₂.U x w))
       have hmul :
           ‖fderiv ℝ (fun H' => gibbs_average_n_det (N := N) (n := n) H' f)
-              (H_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) x w)‖ *
-              ‖dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) x w‖
-            ≤ Cf * ‖dH_t (N := N) (β := β) (q := q) (sk := sk) (sim := sim) x w‖ := by
+              (H_t (N := N) G₁.U G₂.U (H_field N h) x w)‖ *
+              ‖dH_t (N := N) G₁.U G₂.U x w‖
+            ≤ Cf * ‖dH_t (N := N) G₁.U G₂.U x w‖ := by
         exact mul_le_mul_of_nonneg_right hL (norm_nonneg _)
       simpa [F', dgibbs_average_n, mul_assoc] using le_trans hop hmul
     have : ‖F' x w‖ ≤ bound w := by
-      have : ‖F' x w‖ ≤ Cf * (cU * ‖sk.U w‖ + cV * ‖sim.U w‖) := by
+      have : ‖F' x w‖ ≤ Cf * (cU * ‖G₁.U w‖ + cV * ‖G₂.U w‖) := by
         exact le_trans hF'_bound (mul_le_mul_of_nonneg_left hdH_norm (hCf_nonneg))
       simpa [bound, mul_add, mul_assoc, mul_left_comm, mul_comm] using this
     exact this
@@ -858,8 +839,8 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
     intro x hx
     have hxIoo : x ∈ Ioo (0 : ℝ) 1 := hball_Ioo x hx
     simpa [F, F'] using
-      hasDerivAt_gibbs_average_n (N := N) (β := β) (h := h) (q := q)
-        (sk := sk) (sim := sim) (n := n) (t := x) (ht := hxIoo) (f := f) w
+      hasDerivAt_gibbs_average_n (N := N) (h := h)
+        (G₁ := G₁) (G₂ := G₂) (n := n) (t := x) (ht := hxIoo) (f := f) w
   have hMain :=
     (hasDerivAt_integral_of_dominated_loc_of_deriv_le
       (μ := (ℙ : Measure Ω)) (F := F) (F' := F') (x₀ := t) (bound := bound)
@@ -873,45 +854,45 @@ theorem hasDerivAt_nu (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n
 \(\nu_t'(f) = \mathbb{E}[\mathrm{d}\langle f\rangle_t]\).
 -/
 
-theorem hasDerivAt_nu_ibp (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.U)
+theorem hasDerivAt_nu_ibp (hindep : G₁.U ⟂ᵢ[(ℙ : Measure Ω)] G₂.U)
     (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n) :
     HasDerivAt
-        (fun s => nu (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n s f)
+        (fun s => nu (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n s f)
         ( (1 / (2 * Real.sqrt t)) *
             ∑ τ : Config N,
               ∫ x : DisorderSpace (N := N),
                 (fderiv ℝ (A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ) x)
                   (ProbabilityTheory.covarianceOperator
-                    (disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q)
-                      (sk := sk) (sim := sim))
+                    (disorderPairLaw (Ω := Ω) (N := N)
+                      (G₁ := G₁) (G₂ := G₂))
                     (std_basis_left (N := N) τ))
-                ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q)
-                    (sk := sk) (sim := sim))
+                ∂(disorderPairLaw (Ω := Ω) (N := N)
+                    (G₁ := G₁) (G₂ := G₂))
           -
           (1 / (2 * Real.sqrt (1 - t))) *
             ∑ τ : Config N,
               ∫ x : DisorderSpace (N := N),
                 (fderiv ℝ (A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ) x)
                   (ProbabilityTheory.covarianceOperator
-                    (disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q)
-                      (sk := sk) (sim := sim))
+                    (disorderPairLaw (Ω := Ω) (N := N)
+                      (G₁ := G₁) (G₂ := G₂))
                     (std_basis_right (N := N) τ))
-                ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q)
-                    (sk := sk) (sim := sim)) ) t := by
+                ∂(disorderPairLaw (Ω := Ω) (N := N)
+                    (G₁ := G₁) (G₂ := G₂)) ) t := by
   have hder :=
-    hasDerivAt_nu (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) (n := n) t ht f
+    hasDerivAt_nu (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) (n := n) t ht f
   refine hder.congr_deriv ?_
   calc
     (∫ w,
-        dgibbs_average_n (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n t f w ∂ℙ)
+        dgibbs_average_n (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n t f w ∂ℙ)
         =
         ∫ x : DisorderSpace (N := N),
           dgibbs_average_n_disorder (N := N) (n := n) (h := h) t f x
-            ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q)
-              (sk := sk) (sim := sim)) := by
+            ∂(disorderPairLaw (Ω := Ω) (N := N)
+              (G₁ := G₁) (G₂ := G₂)) := by
           simpa using
             (integral_dgibbs_average_n_eq_integral_disorderPairLaw
-              (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) (n := n)
+              (Ω := Ω) (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) (n := n)
               (t := t) (f := f))
     _ =
         ( (1 / (2 * Real.sqrt t)) *
@@ -919,61 +900,61 @@ theorem hasDerivAt_nu_ibp (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.U)
               ∫ x : DisorderSpace (N := N),
                 (fderiv ℝ (A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ) x)
                   (ProbabilityTheory.covarianceOperator
-                    (disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q)
-                      (sk := sk) (sim := sim))
+                    (disorderPairLaw (Ω := Ω) (N := N)
+                      (G₁ := G₁) (G₂ := G₂))
                     (std_basis_left (N := N) τ))
-                ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q)
-                    (sk := sk) (sim := sim))
+                ∂(disorderPairLaw (Ω := Ω) (N := N)
+                    (G₁ := G₁) (G₂ := G₂))
           -
           (1 / (2 * Real.sqrt (1 - t))) *
             ∑ τ : Config N,
               ∫ x : DisorderSpace (N := N),
                 (fderiv ℝ (A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ) x)
                   (ProbabilityTheory.covarianceOperator
-                    (disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q)
-                      (sk := sk) (sim := sim))
+                    (disorderPairLaw (Ω := Ω) (N := N)
+                      (G₁ := G₁) (G₂ := G₂))
                     (std_basis_right (N := N) τ))
-                ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q)
-                    (sk := sk) (sim := sim)) ) := by
+                ∂(disorderPairLaw (Ω := Ω) (N := N)
+                    (G₁ := G₁) (G₂ := G₂)) ) := by
           simpa using
             (integral_dgibbs_average_n_disorder_eq_ibp
-              (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) (n := n)
+              (Ω := Ω) (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) (n := n)
               (hindep := hindep) (t := t) (f := f))
 
 /-! ### Kernel form of the IBP derivative -/
 
 -- Kernel expansion lemmas moved to `SpinGlass/SKModel.lean`.
 
-theorem hasDerivAt_nu_kernel (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.U)
+theorem hasDerivAt_nu_kernel (hindep : G₁.U ⟂ᵢ[(ℙ : Measure Ω)] G₂.U)
     (t : ℝ) (ht : t ∈ Ioo (0 : ℝ) 1) (f : ReplicaFun N n) :
     HasDerivAt
-        (fun s => nu (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) n s f)
+        (fun s => nu (N := N) (h := h) (G₁ := G₁) (G₂ := G₂) n s f)
         ( (1 / (2 * Real.sqrt t)) *
             ∑ τ : Config N,
               ∫ x : DisorderSpace (N := N),
                 ∑ σ : Config N,
-                  sk_cov_kernel N β τ σ *
+                  K₁ τ σ *
                     (fderiv ℝ (A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ) x)
                       (std_basis_left (N := N) σ)
-                ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q)
-                    (sk := sk) (sim := sim))
+                ∂(disorderPairLaw (Ω := Ω) (N := N)
+                    (G₁ := G₁) (G₂ := G₂))
           -
           (1 / (2 * Real.sqrt (1 - t))) *
             ∑ τ : Config N,
               ∫ x : DisorderSpace (N := N),
                 ∑ σ : Config N,
-                  simple_cov_kernel N β (fun x => q * x) τ σ *
+                  K₂ τ σ *
                     (fderiv ℝ (A_disorder_explicit (N := N) (n := n) (h := h) (t := t) f τ) x)
                       (std_basis_right (N := N) σ)
-                ∂(disorderPairLaw (Ω := Ω) (N := N) (β := β) (q := q)
-                    (sk := sk) (sim := sim)) ) t := by
-  have hder := hasDerivAt_nu_ibp (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
-    (sk := sk) (sim := sim) (n := n) (hindep := hindep) t ht f
+                ∂(disorderPairLaw (Ω := Ω) (N := N)
+                    (G₁ := G₁) (G₂ := G₂)) ) t := by
+  have hder := hasDerivAt_nu_ibp (Ω := Ω) (N := N) (h := h)
+    (G₁ := G₁) (G₂ := G₂) (n := n) (hindep := hindep) t ht f
   refine hder.congr_deriv ?_
-  simp_rw [covarianceOperator_disorderPairLaw_std_basis_left_eq_sum_sk
-    (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim) (hindep := hindep)]
-  simp_rw [covarianceOperator_disorderPairLaw_std_basis_right_eq_sum_simple
-    (Ω := Ω) (N := N) (β := β) (q := q) (sk := sk) (sim := sim) (hindep := hindep)]
+  simp_rw [covarianceOperator_disorderPairLaw_std_basis_left_eq_sum
+    (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂) (hindep := hindep)]
+  simp_rw [covarianceOperator_disorderPairLaw_std_basis_right_eq_sum
+    (Ω := Ω) (N := N) (G₁ := G₁) (G₂ := G₂) (hindep := hindep)]
   simp [mul_assoc, mul_comm, Finset.mul_sum]
 end ReplicaCalculus
 

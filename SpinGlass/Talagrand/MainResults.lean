@@ -338,6 +338,48 @@ Applied to the free energy:
   Dirichlet-energy form is what makes the bound thermodynamically meaningful. The SK and reference
   disorders are instances of `GaussianDisorder` (see below), so this one statement covers both.
 
+## Towards the thermodynamic limit (Vol. I, Thm 1.3.9)
+
+Two general prerequisites of Guerra–Toninelli superadditivity, both Mathlib gaps, are in place.
+The remaining links are named at the end.
+
+- `Superadditive` and `Superadditive.tendsto_lim` — **Fekete's lemma in superadditive form**:
+  if `u m + u n ≤ u (m + n)` and the averages are bounded above then `u n / n → sSup`. Mathlib has
+  only the subadditive form (`Subadditive.tendsto_lim`); the superadditive one is the shape the
+  thermodynamic limit takes, with `u N = N p_N`.
+- `SpinGlass.trace_le_trace_of_kernel_le` — **Slepian's sign condition for `log Z`**: if two
+  covariance kernels agree on the diagonal and the first is pointwise below the second, the trace
+  of the free-energy Hessian is larger for the first. Along the smart path the derivative of the
+  interpolated free energy is half this trace difference, so the kernel that is smaller off the
+  diagonal has the larger expected free energy. It is the algebraic core shared by Guerra's
+  replica-symmetric bound and by Guerra–Toninelli; `trace_formula` is what makes it a two-line
+  computation.
+
+Generalising the interpolation pipeline away from the fixed SK/reference pair is under way. The
+first step is done: `H_gauss`, `H_t`, `dH_t` and `H_t_disorder` no longer carry `β`, `q` and the two
+SK-specific disorders as parameters they never used. They now read
+
+`H_t N U V c t w = √t • U w + √(1-t) • V w + c`,  `H_t_disorder N c t x = gaussianInterp t x + c`,
+
+for arbitrary Hamiltonians `U V : Ω → EnergySpace N` and an arbitrary deterministic field `c`,
+which is the generality Guerra–Toninelli needs (its two kernels are the SK kernel on `N` sites and
+the split kernel, neither of them the replica-symmetric one).
+
+Still missing for `p = lim p_N`:
+
+* the remaining generality in the pipeline — `disorderPair`, `disorderPairLaw` and the joint-law
+  lemmas of `SKModel`, and the variable blocks of the four `Guerra*` files, still fix the pair to
+  `SKDisorder`/`SimpleDisorder`; every one of them uses only the `GaussianDisorder` fields `U`,
+  `measU`, `isGaussian`, `mean0`, `cov_eq`, so this is a parameter change rather than new
+  mathematics;
+* the derivative bound `hasDerivAt_guerraPhi_le`, whose constant `(β²/4)(1-q)²` should become a
+  hypothesis bounding the trace expression, with the replica-symmetric value as the instance
+  supplied by `guerra_trace_sub_rs_le`;
+* the splitting `Config N ≃ Config N₁ × Config N₂` with its overlap decomposition — the kernel
+  comparison is then `trace_le_trace_of_kernel_le` fed by Mathlib's `sq_sum_div_le_sum_sq_div`;
+* the factorisation of `Z` over the split configuration space, giving `φ(0) = N₁p_{N₁} + N₂p_{N₂}`;
+* positive semidefiniteness of the split kernel, so that the split disorder exists.
+
 ## Proved: Hopfield (Vol. I Ch. 4 / Vol. II Ch. 10)
 
 - §4.2 / Lemma 4.2.1: `hopfieldConvolution_overlapImage_talagrandGaussian_eq_withDensity_psi`.
