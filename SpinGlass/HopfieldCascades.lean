@@ -114,13 +114,17 @@ noncomputable def hopfieldTalagrandPosteriorPredictive (Ξ : Patterns N M) (β :
   (hopfieldConvolutionTalagrandKernel (N := N) (M := M) Ξ β) ∘ₖ
     (gibbsPosteriorKernel (N := N) (n := n) μH)
 
-instance (Ξ : Patterns N M) (β : ℝ) (μH : Measure (EnergySpace N)) [IsProbabilityMeasure μH]
+/-- The Hopfield-Talagrand posterior predictive is Markov for `0 ≤ β` and `β * N ≠ 0`; the
+hypotheses are not typeclass-inferable, so this is a lemma rather than an instance. -/
+lemma isMarkovKernel_hopfieldTalagrandPosteriorPredictive
+    (Ξ : Patterns N M) (β : ℝ) (μH : Measure (EnergySpace N)) [IsProbabilityMeasure μH]
     (hβ : 0 ≤ β) (hβN : β * (N : ℝ) ≠ 0) :
-    ProbabilityTheory.IsMarkovKernel (hopfieldTalagrandPosteriorPredictive (N := N) (M := M) (n := n) Ξ β μH) := by
+    ProbabilityTheory.IsMarkovKernel
+      (hopfieldTalagrandPosteriorPredictive (N := N) (M := M) (n := n) Ξ β μH) := by
   classical
   -- need the Markov property of the Talagrand convolution kernel
-  haveI : ProbabilityTheory.IsMarkovKernel (hopfieldConvolutionTalagrandKernel (N := N) (M := M) Ξ β) :=
-    instIsMarkovKernel_hopfieldConvolutionTalagrandKernel (N := N) (M := M) (Ξ := Ξ) (β := β) hβ hβN
+  have : ProbabilityTheory.IsMarkovKernel (hopfieldConvolutionTalagrandKernel (N := N) (M := M) Ξ β) :=
+    isMarkovKernel_hopfieldConvolutionTalagrandKernel (N := N) (M := M) (Ξ := Ξ) (β := β) hβ hβN
   dsimp [hopfieldTalagrandPosteriorPredictive]
   infer_instance
 

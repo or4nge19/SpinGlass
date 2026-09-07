@@ -31,18 +31,18 @@ variable {N M : ℕ}
     intro i
     have hη : Measurable (hopfieldEtaDot (N := N) (M := M) Ξ i) :=
       measurable_hopfieldEtaDot (N := N) (M := M) Ξ i
-    fun_prop [hη]
+    fun_prop
   have hsum :
       Measurable fun z : Fin M → ℝ =>
         ∑ i : Fin N, Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)) := by
-    simpa using (Finset.measurable_sum (s := (Finset.univ : Finset (Fin N))) (by
-      intro i _hi
-      simpa using hlogcosh i))
-  fun_prop [hnorm, hsum]
+    exact Finset.measurable_sum (s := (Finset.univ : Finset (Fin N)))
+      (fun i _hi => hlogcosh i)
+  fun_prop
 
 @[fun_prop] lemma measurable_exp_hopfieldPsi (β h : ℝ) (Ξ : Patterns N M) :
     Measurable fun z : Fin M → ℝ => Real.exp (hopfieldPsi (N := N) (M := M) β h Ξ z) := by
-  have hψ : Measurable (hopfieldPsi (N := N) (M := M) β h Ξ) := measurable_hopfieldPsi (N := N) (M := M) (β := β) (h := h) Ξ
-  fun_prop [hψ]
+  have hψ : Measurable (hopfieldPsi (N := N) (M := M) β h Ξ) :=
+    measurable_hopfieldPsi (N := N) (M := M) (β := β) (h := h) Ξ
+  fun_prop
 
 end SpinGlass

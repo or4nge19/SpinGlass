@@ -38,16 +38,17 @@ private lemma hasDerivAt_tiltExponent (v : ℝ≥0) (x t : ℝ) :
   have h2 : HasDerivAt (fun s : ℝ => (v : ℝ) * s ^ 2 / 2) ((v : ℝ) * t) t := by
     have : HasDerivAt (fun s : ℝ => s ^ 2) (2 * t) t := by
       simpa [pow_two, two_mul, add_comm, add_left_comm, add_assoc] using
-        (hasDerivAt_id t).mul (hasDerivAt_id t)
+        (hasDerivAt_id t).fun_mul (hasDerivAt_id t)
     have := this.const_mul ((v : ℝ) / 2)
     simpa [div_eq_mul_inv, mul_assoc, mul_left_comm, mul_comm] using this
   simpa [sub_eq_add_neg, mul_add, add_mul, mul_assoc, mul_left_comm, mul_comm, pow_two] using
-    h1.sub h2
+    h1.fun_sub h2
 
 lemma hasDerivAt_tiltKernel (v : ℝ≥0) (x t : ℝ) :
     HasDerivAt (fun s => tiltKernel v s x) ((x - (v : ℝ) * t) * tiltKernel v t x) t := by
   have hExp := hasDerivAt_tiltExponent (v := v) (x := x) t
-  simpa [tiltKernel, mul_assoc, mul_left_comm, mul_comm] using (Real.hasDerivAt_exp _).comp t hExp
+  simpa [tiltKernel, mul_assoc, mul_left_comm, mul_comm, Function.comp_def] using
+    (Real.hasDerivAt_exp _).comp t hExp
 
 lemma hasDerivAt_F_mul_tiltKernel (v : ℝ≥0) (F : ℝ → ℝ) (x t : ℝ) :
     HasDerivAt (fun s => F x * tiltKernel v s x)

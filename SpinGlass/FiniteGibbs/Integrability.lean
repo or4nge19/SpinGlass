@@ -47,7 +47,7 @@ lemma integrable_free_energy_density_of_isGaussian_map
     Integrable (fun ω : Ω => free_energy_density (α := α) n (g ω)) P := by
   classical
   let μ : Measure (EnergySpace α) := P.map g
-  haveI : ProbabilityTheory.IsGaussian μ := hg_gauss
+  have : ProbabilityTheory.IsGaussian μ := hg_gauss
   have hIntμ : Integrable (fun x : EnergySpace α => free_energy_density (α := α) n x) μ := by
     refine ProbabilityTheory.IsGaussian.integrable_of_abs_le_mul_one_add_norm_pow
       (μ := μ)
@@ -64,7 +64,7 @@ lemma integrable_free_energy_density_of_isGaussian_map
           (contDiff_free_energy_density (α := α) (n := n)).continuous.measurable
         exact hF.aestronglyMeasurable)
       hg_meas.aemeasurable).1 hIntμ
-  simpa [Function.comp] using hpull
+  simpa [Function.comp_def] using hpull
 
 end
 

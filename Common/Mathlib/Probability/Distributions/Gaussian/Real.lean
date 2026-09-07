@@ -1,10 +1,15 @@
+/-
+Copyright (c) 2026 Matteo Cipollina. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Matteo Cipollina
+-/
+import Mathlib.Probability.Distributions.Gaussian.Real
+
 /-!
 # Gaussian real: auxiliary lemmas
 
 Vendored API additions for `gaussianReal` from mathlib4 PR #26291 (Cameron–Martin theorem).
 -/
-
-import Mathlib.Probability.Distributions.Gaussian.Real
 
 open MeasureTheory ProbabilityTheory
 open scoped NNReal

@@ -1,5 +1,5 @@
 import SpinGlass.Cascades.GhirlandaGuerra
-import Mathlib.MeasureTheory.Measure.MeasureSpace
+import Mathlib.MeasureTheory.Measure.MeasureSpaceDef
 
 /-!
 # Mean-field replica-law limits

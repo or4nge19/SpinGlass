@@ -103,12 +103,12 @@ noncomputable def finVecNormSq (M : ℕ) (z : Fin M → ℝ) : ℝ :=
 
 @[fun_prop]
 lemma measurable_finVecNormSq (M : ℕ) : Measurable (finVecNormSq M) := by
-  simpa [finVecNormSq] using
-    (Finset.measurable_sum (s := (Finset.univ : Finset (Fin M)))
-      (f := fun k : Fin M => fun z : Fin M → ℝ => (z k) ^ 2)
-      (by
-        intro k _hk
-        fun_prop))
+  unfold finVecNormSq
+  exact Finset.measurable_sum (s := (Finset.univ : Finset (Fin M)))
+    (f := fun k : Fin M => fun z : Fin M → ℝ => (z k) ^ 2)
+    (by
+      intro k _hk
+      fun_prop)
 
 /-!
 ## Hopfield `ψ` (Talagrand Eq. (4.34))
@@ -417,7 +417,7 @@ theorem hubbardStratonovich_stdGaussian (M : ℕ) (c : ℝ) (hc : 0 ≤ c) (m : 
 
 /-- The variance parameter `v = (β * N)⁻¹` used by Talagrand’s Hopfield analysis. -/
 noncomputable def talagrandGaussianVar (N : ℕ) (β : ℝ) (hβ : 0 ≤ β) : ℝ≥0 :=
-  ⟨(β * (N : ℝ))⁻¹, inv_nonneg.mpr (mul_nonneg hβ (by exact_mod_cast (Nat.zero_le N)))⟩
+  .mk (β * (N : ℝ))⁻¹ (inv_nonneg.mpr (mul_nonneg hβ (by exact_mod_cast (Nat.zero_le N))))
 
 /-- Talagrand’s auxiliary Gaussian measure `γ` on `ℝ^M`, realized as a product of `N(0,(βN)⁻¹)`. -/
 noncomputable def talagrandGaussianMeasure (N M : ℕ) (β : ℝ) (hβ : 0 ≤ β) : Measure (Fin M → ℝ) :=
@@ -463,7 +463,16 @@ theorem hubbardStratonovich_talagrandGaussian
   let t : ℝ := β * (N : ℝ)
   let X : Fin M → (Fin M → ℝ) → ℝ := fun k z => m k * z k
   by_cases ht : t = 0
-  · simp [t, ht, talagrandGaussianMeasure, talagrandGaussianVar]
+  · have hL :
+        (∫ z : Fin M → ℝ, Real.exp (t * (∑ k : Fin M, m k * z k)) ∂μ) = μ.real Set.univ := by
+      simp [t, ht]
+    have hR : Real.exp (((t / 2) * ∑ k : Fin M, (m k) ^ 2)) = 1 := by
+      simp [t, ht]
+    have : IsProbabilityMeasure μ := by
+      simpa [μ] using
+        (inferInstance : IsProbabilityMeasure (talagrandGaussianMeasure N M β hβ))
+    rw [hL, hR, measureReal_def, measure_univ]
+    simp
   have h_indep : ProbabilityTheory.iIndepFun (fun k z => z k) μ := by
     simpa [μ, talagrandGaussianMeasure] using
       (ProbabilityTheory.iIndepFun_infinitePi
@@ -500,7 +509,7 @@ theorem hubbardStratonovich_talagrandGaussian
       simpa using congrArg (fun F => F ((m k) * t))
         (ProbabilityTheory.mgf_id_gaussianReal (μ := (0 : ℝ)) (v := v))
     have hvco : (v : ℝ) = t⁻¹ := by
-      simp [v, t, talagrandGaussianVar]
+      simp [v, t, talagrandGaussianVar, NNReal.coe_mk]
     have hv : (v : ℝ) * (t ^ 2) = t := by
       have : (t⁻¹ : ℝ) * t ^ 2 = t := by
         calc

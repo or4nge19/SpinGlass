@@ -81,7 +81,7 @@ theorem T_add (m : ℝ) (hm : m ≠ 0) (v₁ v₂ : ℝ≥0) {A : ℝ → ℝ}
     have hint : Integrable (fun z : ℝ => Real.exp (m * A (t + z))) μ₂ := by
       simpa [μ₂] using
         (integrable_exp_mul_of_measurable_of_hasUniformBound (m := m) (v := v₂) hA_meas hA t)
-    haveI : NeZero μ₂ := by
+    have : NeZero μ₂ := by
       have hu : μ₂ Set.univ = 1 := by
         simp [μ₂]
       refine ⟨?_⟩

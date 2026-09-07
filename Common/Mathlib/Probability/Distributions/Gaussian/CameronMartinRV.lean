@@ -28,7 +28,7 @@ private lemma integral_cm_mul_eq (hX : ProbabilityTheory.HasLaw X μ P)
     simpa using (MeasureTheory.Lp.aestronglyMeasurable (x : Lp ℝ 2 μ))
   have hFx : AEStronglyMeasurable (fun y : E => (x y) * F y) μ :=
     (hx.mul hF_meas.aestronglyMeasurable)
-  simpa [Function.comp] using
+  simpa [Function.comp_def] using
     (hX.integral_comp (μ := μ) (P := P) (f := fun y : E => (x y) * F y) hFx)
 
 private lemma integral_fderiv_apply_cmCoe_eq (hX : ProbabilityTheory.HasLaw X μ P)
@@ -36,7 +36,7 @@ private lemma integral_fderiv_apply_cmCoe_eq (hX : ProbabilityTheory.HasLaw X μ
     (∫ ω, (fderiv ℝ F (X ω)) (cmCoe x) ∂P) = ∫ y, (fderiv ℝ F y) (cmCoe x) ∂μ := by
   have hmeas : Measurable (fun y : E => (fderiv ℝ F y) (cmCoe x)) :=
     measurable_fderiv_apply_const ℝ F (cmCoe x)
-  simpa [Function.comp] using
+  simpa [Function.comp_def] using
     (hX.integral_comp (μ := μ) (P := P)
       (f := fun y : E => (fderiv ℝ F y) (cmCoe x)) hmeas.aestronglyMeasurable)
 
@@ -47,7 +47,7 @@ theorem HasLaw.lintegral_add_cmCoe_smul_eq (hX : HasLaw X μ P) (x : cameronMart
     (F : E → ℝ≥0∞) (hF : Measurable F) : (∫⁻ ω, F (X ω + cmCoe (t • x)) ∂P)  =
       ∫⁻ ω, F (X ω) * ENNReal.ofReal (Real.exp ((t • x) (X ω) - ‖t • x‖ ^ 2 / 2)) ∂P := by
   have h_left : (∫⁻ ω, F (X ω + cmCoe (t • x)) ∂P) = ∫⁻ y, F (y + cmCoe (t • x)) ∂μ := by
-    simpa [Function.comp] using
+    simpa [Function.comp_def] using
       (ProbabilityTheory.HasLaw.lintegral_comp (X := X) (μ := μ) (P := P) (hX := hX)
         (f := fun y : E => F (y + cmCoe (t • x))) (by fun_prop))
   have h_right :
@@ -84,7 +84,7 @@ theorem HasLaw.hasLaw_add_cmCoe_smul_withDensity_raw (hX : HasLaw X μ P) (x : c
     simpa [g] using (ProbabilityTheory.map_add_cameronMartin_eq_withDensity_smul_raw (μ := μ) x t)
   have h_comp' :
       HasLaw (fun ω : Ω ↦ X ω + cmCoe (t • x)) (μ.map g) P :=
-    h_comp.congr (ae_of_all _ (fun ω => by simp [g, Function.comp]))
+    h_comp.congr (ae_of_all _ (fun ω => by simp [g]))
   refine ⟨h_comp'.aemeasurable, ?_⟩
   simpa [hμ'] using h_comp'.map_eq
 

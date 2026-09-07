@@ -31,7 +31,8 @@ lemma contDiff_Z : ContDiff ℝ (∞) (fun H : EnergySpace α => Z (α := α) H)
   have hterm :
       ∀ σ : α, ContDiff ℝ (∞) (fun H : EnergySpace α => Real.exp (-H σ)) := by
     intro σ
-    simpa using (contDiff_exp.comp (contDiff_neg.comp (evalCLM (α := α) σ).contDiff))
+    simpa [Function.comp_def] using
+      (contDiff_exp.comp (contDiff_neg.comp (evalCLM (α := α) σ).contDiff))
   simpa [Z] using
     (ContDiff.sum (𝕜 := ℝ) (n := (∞)) (s := (Finset.univ : Finset α))
       (f := fun σ : α => fun H : EnergySpace α => Real.exp (-H σ))
@@ -42,12 +43,13 @@ lemma contDiff_gibbs_pmf (σ : α) :
     ContDiff ℝ (∞) (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) := by
   have hnum :
       ContDiff ℝ (∞) (fun H : EnergySpace α => Real.exp (-H σ)) := by
-    simpa using (contDiff_exp.comp (contDiff_neg.comp (evalCLM (α := α) σ).contDiff))
+    simpa [Function.comp_def] using
+      (contDiff_exp.comp (contDiff_neg.comp (evalCLM (α := α) σ).contDiff))
   have hZ : ContDiff ℝ (∞) (fun H : EnergySpace α => Z (α := α) H) :=
     contDiff_Z (α := α)
   have hZne : ∀ H : EnergySpace α, Z (α := α) H ≠ 0 := fun H =>
     (Z_pos (α := α) (H := H)).ne'
-  simpa [gibbs_pmf] using hnum.div hZ hZne
+  simpa [gibbs_pmf] using hnum.fun_div hZ hZne
 
 /-- The free energy density `H ↦ (1/n) * log (Z H)` is smooth. -/
 lemma contDiff_free_energy_density (n : ℕ) :
@@ -75,7 +77,7 @@ lemma hasDerivAt_free_energy_density_comp
       HasFDerivAt (fun H : EnergySpace α => free_energy_density (α := α) n H)
         (fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) (H t)) (H t) :=
     hdiff.hasFDerivAt
-  simpa using
+  simpa [Function.comp_def] using
     (HasFDerivAt.comp_hasDerivAt (x := t) (f := H)
       (l := fun H : EnergySpace α => free_energy_density (α := α) n H)
       (l' := fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) (H t)) hF hH)
@@ -90,7 +92,6 @@ lemma abs_fderiv_free_energy_density_apply_le (n : ℕ) (H v : EnergySpace α) :
     (abs_apply_le_norm (α := α) v σ)
   have hmain :
       |∑ σ : α, gibbs_pmf (α := α) H σ * v σ| ≤ ‖v‖ := by
-
     calc
       |∑ σ : α, gibbs_pmf (α := α) H σ * v σ|
           ≤ ∑ σ : α, |gibbs_pmf (α := α) H σ * v σ| := by

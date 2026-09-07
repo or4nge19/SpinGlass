@@ -1,5 +1,5 @@
 name = "SpinGlass"
-defaultTargets = ["SpinGlass"]
+defaultTargets = ["SpinGlass", "Common"]
 
 [leanOptions]
 pp.unicode.fun = true

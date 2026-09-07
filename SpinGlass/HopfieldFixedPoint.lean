@@ -19,19 +19,14 @@ noncomputable def hopfieldTanhMap (β h : ℝ) : ℝ → ℝ :=
   fun m => Real.tanh (β * m + h)
 
 lemma continuous_tanh : Continuous (Real.tanh) := by
-  change Continuous (fun x : ℝ => Real.tanh x)
-  -- `tanh = sinh / cosh` and `cosh` is never zero.
-  have htanh : (fun x : ℝ => Real.tanh x) = fun x : ℝ => Real.sinh x / Real.cosh x := by
-    funext x
-    simp [Real.tanh_eq_sinh_div_cosh]
-  have hcosh : ∀ x : ℝ, Real.cosh x ≠ 0 := fun x => ne_of_gt (Real.cosh_pos x)
-  simpa [htanh] using
-    (Real.continuous_sinh.div Real.continuous_cosh hcosh)
+  have hcosh : ∀ x : ℝ, Real.cosh x ≠ 0 := fun x => (Real.cosh_pos x).ne'
+  convert Real.continuous_sinh.div₀ Real.continuous_cosh hcosh with x
+  exact Real.tanh_eq_sinh_div_cosh x
 
 @[continuity] lemma continuous_hopfieldTanhMap (β h : ℝ) : Continuous (hopfieldTanhMap β h) := by
-  have hlin : Continuous fun m : ℝ => β * m + h := by
-    simpa [hopfieldTanhMap] using (continuous_const.mul continuous_id).add continuous_const
-  simpa [hopfieldTanhMap] using (continuous_tanh.comp hlin)
+  unfold hopfieldTanhMap
+  simpa [Function.comp_def] using
+    continuous_tanh.comp ((continuous_add_const h).comp (continuous_const_mul β))
 
 /-! ## Existence of a fixed point in `[-1,1]` -/
 

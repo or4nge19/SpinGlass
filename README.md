@@ -14,7 +14,7 @@ Gaussian-process / covariance language.
 
 **Out.** Lattice DLR/Georgii, 4D triviality / random currents, arithmetic models, extra Lake pins.
 DLR: [`or4nge19/GibbsMeasure@mc3`](https://github.com/or4nge19/GibbsMeasure/tree/mc3) (not a
-dependency). 4D: `Annals` branch if needed.
+dependency).
 
 Plans: `Notes/Vol1##.md`, `Notes/Vol2##.md`. Index: `SpinGlass.Talagrand.MainResults`.
 Book extracts are local and gitignored (`.axiomatic/`).

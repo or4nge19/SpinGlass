@@ -71,13 +71,11 @@ lemma sum_gibbs_pmf_prod_eq_gibbs_pmf_marginalEnergy (H : EnergySpace (α × β)
           simp [div_eq_mul_inv]
     _ = (∑ b : β, Real.exp (-H (a, b))) * (Z (α := α × β) H)⁻¹ := by
           classical
-          simpa [Finset.sum_mul] using
-            (Finset.sum_mul (s := (Finset.univ : Finset β))
-              (f := fun b : β => Real.exp (-H (a, b))) (a := (Z (α := α × β) H)⁻¹)).symm
+          simp [Finset.sum_mul]
     _ = (∑ b : β, Real.exp (-H (a, b))) / Z (α := α × β) H := by
-          simp [div_eq_mul_inv, hZ]
+          simp [div_eq_mul_inv]
     _ = gibbs_pmf (α := α) (marginalEnergy (α := α) (β := β) H) a := by
-          simpa [gibbs_pmf_marginalEnergy]
+          simp [gibbs_pmf_marginalEnergy]
 
 /-! ## Measure-level marginalization lemma -/
 
@@ -96,14 +94,14 @@ theorem map_fst_gibbsMeasure_eq_gibbsMeasure_marginalEnergy (H : EnergySpace (α
               ∑ b : β, ENNReal.ofReal (gibbs_pmf (α := α × β) H (a, b))
             else 0) := by
     rw [Measure.map_apply measurable_fst hs]
-    simp [FiniteGibbs.gibbsMeasure, hs, gibbsWeightNNReal_coe_ennreal, Fintype.sum_prod_type,
-      Set.indicator, Pi.one_apply]
+    simp [FiniteGibbs.gibbsMeasure, gibbsWeightNNReal_coe_ennreal, Fintype.sum_prod_type,
+      Set.indicator]
   have hRHS :
       gibbsMeasure (α := α) (marginalEnergy (α := α) (β := β) H) s
         =
         ∑ a : α, (if a ∈ s then ENNReal.ofReal
           (gibbs_pmf (α := α) (marginalEnergy (α := α) (β := β) H) a) else 0) := by
-    simp [FiniteGibbs.gibbsMeasure, hs, gibbsWeightNNReal_coe_ennreal, Set.indicator, Pi.one_apply]
+    simp [FiniteGibbs.gibbsMeasure, hs, gibbsWeightNNReal_coe_ennreal, Set.indicator]
   have hsum_ofReal (a : α) :
       (∑ b : β, ENNReal.ofReal (gibbs_pmf (α := α × β) H (a, b)))
         =
@@ -112,7 +110,7 @@ theorem map_fst_gibbsMeasure_eq_gibbsMeasure_marginalEnergy (H : EnergySpace (α
       gibbs_pmf_nonneg (α := α × β) (H := H) (a, b)
     rw [← ENNReal.ofReal_sum_of_nonneg (s := (Finset.univ : Finset β))
       (f := fun b : β => gibbs_pmf (α := α × β) H (a, b)) (by intro b _; exact hnonneg b)]
-    simpa [sum_gibbs_pmf_prod_eq_gibbs_pmf_marginalEnergy (α := α) (β := β) (H := H) a]
+    simp [sum_gibbs_pmf_prod_eq_gibbs_pmf_marginalEnergy (α := α) (β := β) (H := H) a]
   simp [hLHS, hRHS, hsum_ofReal]
 
 end

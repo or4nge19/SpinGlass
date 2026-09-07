@@ -26,7 +26,8 @@ variable [MeasurableSpace H] [BorelSpace H] [SecondCountableTopology H]
 variable {μ : Measure H} [IsGaussian μ]
 
 private lemma memLp_id_two : MeasureTheory.MemLp (fun x : H => x) 2 μ := by
-  simpa using (IsGaussian.memLp_id (μ := μ) 2 (by norm_num))
+  change MeasureTheory.MemLp (id : H → H) 2 μ
+  exact IsGaussian.memLp_id (μ := μ) 2 (by simp)
 
 private lemma integral_innerSL_eq_zero_of_integral_eq_zero
     (hmean0 : (∫ x : H, x ∂μ) = 0) (v : H) :

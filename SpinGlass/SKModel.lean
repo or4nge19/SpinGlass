@@ -109,7 +109,7 @@ theorem GaussianDisorder.variance_free_energy_density_le_pi_sq_div_eight_mul_opN
       ≤ (Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
           (1 / (N : ℝ)) ^ 2 := by
   let μ : Measure (EnergySpace N) := (ℙ : Measure Ω).map G.U
-  haveI : ProbabilityTheory.IsGaussian μ := by
+  have : ProbabilityTheory.IsGaussian μ := by
     simpa [μ] using G.hU
   have hmean0 : (∫ x : EnergySpace N, x ∂μ) = 0 := by
     simpa [μ] using G.mean0
@@ -121,7 +121,7 @@ theorem GaussianDisorder.variance_free_energy_density_le_pi_sq_div_eight_mul_opN
   have hVarMap :
       Var[(fun H : EnergySpace N => free_energy_density (N := N) H); μ]
         = Var[(fun ω : Ω => free_energy_density (N := N) (G.U ω)); (ℙ : Measure Ω)] := by
-    simpa [μ, Function.comp] using
+    simpa [μ, Function.comp_def] using
       (ProbabilityTheory.variance_map (μ := (ℙ : Measure Ω))
         (X := fun H : EnergySpace N => free_energy_density (N := N) H)
         (Y := G.U) (hX := by simpa [μ] using hX) (hY := hY))
@@ -168,13 +168,13 @@ theorem GaussianDisorder.meas_ge_le_free_energy_density_sub_mean_div_sq
           (((Real.pi ^ 2 / 8) * ‖ProbabilityTheory.covarianceOperator ((ℙ : Measure Ω).map G.U)‖ *
               (1 / (N : ℝ)) ^ 2) / c ^ 2) := by
   let μH : Measure (EnergySpace N) := (ℙ : Measure Ω).map G.U
-  haveI : ProbabilityTheory.IsGaussian μH := by
+  have : ProbabilityTheory.IsGaussian μH := by
     simpa [μH] using G.hU
   have hMemH : MemLp (fun H : EnergySpace N => free_energy_density (N := N) H) 2 μH :=
     (SpinGlass.memLp_free_energy_density (N := N) (μ := μH))
   have hMem :
       MemLp (fun ω : Ω => free_energy_density (N := N) (G.U ω)) 2 (ℙ : Measure Ω) := by
-    simpa [μH, Function.comp] using (hMemH.comp_of_map (f := G.U) (μ := (ℙ : Measure Ω))
+    simpa [μH, Function.comp_def] using (hMemH.comp_of_map (f := G.U) (μ := (ℙ : Measure Ω))
       G.measU.aemeasurable)
   have hCheb :
       (ℙ : Measure Ω) {ω : Ω |
@@ -386,7 +386,9 @@ lemma disorderPair_integral_eq_zero
     -- `toLp` is continuous linear.
     have : Integrable (fun ω => e.symm (sk.U ω, sim.V ω)) (ℙ : Measure Ω) :=
       (e.symm.toContinuousLinearMap.integrable_comp hpair)
-    simpa [disorderPair, e] using this
+    convert this using 1
+    ext ω
+    simp [disorderPair, e]
   have : e (∫ ω, disorderPair (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) ω
         ∂(ℙ : Measure Ω))
       = 0 := by
@@ -443,8 +445,10 @@ lemma disorderPairLaw_mean0
       = 0 := by
   have hmeas : Measurable (disorderPair (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)) := by
     have hpair : Measurable fun ω : Ω => (sk.U ω, sim.V ω) := sk.measU.prodMk sim.measV
-    simpa [disorderPair] using
-      (WithLp.prod_continuous_toLp (p := (2 : ℝ≥0∞)) (α := EnergySpace N) (β := EnergySpace N)).measurable.comp hpair
+    convert (WithLp.prod_continuous_toLp (p := (2 : ℝ≥0∞))
+      (α := EnergySpace N) (β := EnergySpace N)).measurable.comp hpair using 1
+    ext ω
+    simp [disorderPair]
   simpa [disorderPairLaw] using
     (MeasureTheory.integral_map (μ := (ℙ : Measure Ω))
       (φ := disorderPair (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim))
@@ -480,7 +484,7 @@ lemma SKDisorder.simple_joint_isGaussian_withLp_of_indep
     ProbabilityTheory.IndepFun.hasGaussianLaw (P := (ℙ : Measure Ω)) hX hY hindep
   have htoLp : ProbabilityTheory.HasGaussianLaw
       (fun ω => WithLp.toLp (p := (2 : ℝ≥0∞)) (sk.U ω, sim.V ω)) (ℙ : Measure Ω) := by
-    haveI : Fact ((1 : ℝ≥0∞) ≤ (2 : ℝ≥0∞)) := ⟨by norm_num⟩
+    have : Fact ((1 : ℝ≥0∞) ≤ (2 : ℝ≥0∞)) := ⟨by norm_num⟩
     exact ProbabilityTheory.HasGaussianLaw.toLp_prodMk (X := sk.U) (Y := sim.V)
       (P := (ℙ : Measure Ω)) (p := (2 : ℝ≥0∞)) hXY
   exact htoLp.isGaussian_map
@@ -490,9 +494,8 @@ lemma SKDisorder.simple_joint_isGaussian_disorderPairLaw_of_indep
     {N : ℕ} {β h q : ℝ} (sk : SKDisorder (Ω := Ω) N β h) (sim : SimpleDisorder (Ω := Ω) N β q)
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) :
     ProbabilityTheory.IsGaussian
-      (disorderPairLaw (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)) := by
-  simpa [disorderPairLaw, disorderPair] using
-    (SKDisorder.simple_joint_isGaussian_withLp_of_indep (Ω := Ω) (N := N) sk sim hindep)
+      (disorderPairLaw (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)) :=
+  SKDisorder.simple_joint_isGaussian_withLp_of_indep (Ω := Ω) (N := N) sk sim hindep
 
 /-! ### Covariance of `disorderPairLaw` -/
 
@@ -511,23 +514,22 @@ lemma covarianceOperator_disorderPairLaw_std_basis_left
   have hgaussμ : ProbabilityTheory.IsGaussian μ :=
     SKDisorder.simple_joint_isGaussian_disorderPairLaw_of_indep
       (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) hindep
-  haveI : ProbabilityTheory.IsGaussian μ := hgaussμ
+  have : ProbabilityTheory.IsGaussian μ := hgaussμ
   have hμ : MemLp id 2 μ := ProbabilityTheory.IsGaussian.memLp_two_id (μ := μ)
-  haveI : ProbabilityTheory.IsGaussian μU := sk.hU
-  haveI : ProbabilityTheory.IsGaussian μV := sim.hV
+  have : ProbabilityTheory.IsGaussian μU := sk.hU
+  have : ProbabilityTheory.IsGaussian μV := sim.hV
   have hμU : MemLp id 2 μU := ProbabilityTheory.IsGaussian.memLp_two_id (μ := μU)
   have hμV : MemLp id 2 μV := ProbabilityTheory.IsGaussian.memLp_two_id (μ := μV)
-
   refine ext_inner_right ℝ (fun y => ?_)
   set y1 : EnergySpace N := (WithLp.ofLp y).1
   set y2 : EnergySpace N := (WithLp.ofLp y).2
-
   have hpair_meas :
       Measurable (disorderPair (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)) := by
     have hpair : Measurable fun ω : Ω => (sk.U ω, sim.V ω) := sk.measU.prodMk sim.measV
-    simpa [disorderPair] using
-      (WithLp.prod_continuous_toLp (p := (2 : ℝ≥0∞)) (α := EnergySpace N) (β := EnergySpace N)).measurable.comp hpair
-
+    convert (WithLp.prod_continuous_toLp (p := (2 : ℝ≥0∞))
+      (α := EnergySpace N) (β := EnergySpace N)).measurable.comp hpair using 1
+    ext ω
+    simp [disorderPair]
   have hL :
       inner ℝ (ProbabilityTheory.covarianceOperator μ (std_basis_left (N := N) σ)) y
         =
@@ -548,7 +550,9 @@ lemma covarianceOperator_disorderPairLaw_std_basis_left
         (innerSL ℝ (std_basis_left (N := N) σ)).measurable
       have h2 : Measurable fun z : DisorderSpace (N := N) => inner ℝ y z :=
         (innerSL ℝ y).measurable
-      simpa [g] using h1.mul h2
+      convert h1.mul h2 using 1
+      ext
+      simp [g, Pi.mul_apply]
     have hmap :
         (∫ z : DisorderSpace (N := N), g z ∂μ)
           =
@@ -594,7 +598,6 @@ lemma covarianceOperator_disorderPairLaw_std_basis_left
             refine MeasureTheory.integral_congr_ae ?_
             filter_upwards with ω
             simp [hstd ω, hy ω]
-
   have hU0 : (∫ ω, sk.U ω ∂(ℙ : Measure Ω)) = 0 :=
     SKDisorder.integral_eq_zero_of_mean0 (Ω := Ω) (N := N) sk
   have hV0 : (∫ ω, sim.V ω ∂(ℙ : Measure Ω)) = 0 :=
@@ -631,7 +634,6 @@ lemma covarianceOperator_disorderPairLaw_std_basis_left
         ((innerSL ℝ (std_basis N σ)).measurable.aestronglyMeasurable.comp_measurable sk.measU)
         ((innerSL ℝ y2).measurable.aestronglyMeasurable.comp_measurable sim.measV)
     simpa [hUmean, hVmean] using hsplit
-
   have hL' :
       inner ℝ (ProbabilityTheory.covarianceOperator μ (std_basis_left (N := N) σ)) y
         =
@@ -643,22 +645,26 @@ lemma covarianceOperator_disorderPairLaw_std_basis_left
     have hC2V : MemLp (innerSL ℝ y2) 2 μV :=
       ProbabilityTheory.IsGaussian.memLp_dual (μ := μV) (L := innerSL ℝ y2) 2 (by norm_num)
     have hA2 : MemLp (fun ω => inner ℝ (std_basis N σ) (sk.U ω)) 2 (ℙ : Measure Ω) := by
-      simpa [μU, Function.comp] using
+      simpa [μU, Function.comp_def] using
         hA2U.comp_of_map (f := sk.U) (μ := (ℙ : Measure Ω)) sk.measU.aemeasurable
     have hB2 : MemLp (fun ω => inner ℝ y1 (sk.U ω)) 2 (ℙ : Measure Ω) := by
-      simpa [μU, Function.comp] using
+      simpa [μU, Function.comp_def] using
         hB2U.comp_of_map (f := sk.U) (μ := (ℙ : Measure Ω)) sk.measU.aemeasurable
     have hC2 : MemLp (fun ω => inner ℝ y2 (sim.V ω)) 2 (ℙ : Measure Ω) := by
-      simpa [μV, Function.comp] using
+      simpa [μV, Function.comp_def] using
         hC2V.comp_of_map (f := sim.V) (μ := (ℙ : Measure Ω)) sim.measV.aemeasurable
     have hAB_int :
         Integrable (fun ω => (inner ℝ (std_basis N σ) (sk.U ω)) * (inner ℝ y1 (sk.U ω)))
           (ℙ : Measure Ω) := by
-      simpa using (hA2.integrable_mul hB2)
+      convert hA2.integrable_mul hB2 using 1
+      ext
+      simp [Pi.mul_apply]
     have hAC_int :
         Integrable (fun ω => (inner ℝ (std_basis N σ) (sk.U ω)) * (inner ℝ y2 (sim.V ω)))
           (ℙ : Measure Ω) := by
-      simpa using (hA2.integrable_mul hC2)
+      convert hA2.integrable_mul hC2 using 1
+      ext
+      simp [Pi.mul_apply]
     have hsplit_int :
         (∫ ω,
             (inner ℝ (std_basis N σ) (sk.U ω)) *
@@ -680,7 +686,6 @@ lemma covarianceOperator_disorderPairLaw_std_basis_left
       _ = (∫ ω, (inner ℝ (std_basis N σ) (sk.U ω)) * (inner ℝ y1 (sk.U ω)) ∂ℙ)
           + (∫ ω, (inner ℝ (std_basis N σ) (sk.U ω)) * (inner ℝ y2 (sim.V ω)) ∂ℙ) := hsplit_int
       _ = (∫ ω, (inner ℝ (std_basis N σ) (sk.U ω)) * (inner ℝ y1 (sk.U ω)) ∂ℙ) := by simp [hcross]
-
   have hU :
       inner ℝ (ProbabilityTheory.covarianceOperator μU (std_basis N σ)) y1
         =
@@ -697,14 +702,15 @@ lemma covarianceOperator_disorderPairLaw_std_basis_left
         (innerSL ℝ (std_basis N σ)).measurable
       have h2 : Measurable fun u : EnergySpace N => inner ℝ y1 u :=
         (innerSL ℝ y1).measurable
-      simpa [gU] using h1.mul h2
+      convert h1.mul h2 using 1
+      ext
+      simp [gU, Pi.mul_apply]
     have hmapU :
         (∫ u : EnergySpace N, gU u ∂μU) = ∫ ω, gU (sk.U ω) ∂ℙ := by
       simpa [μU] using
         (MeasureTheory.integral_map (μ := (ℙ : Measure Ω)) (φ := sk.U)
           (sk.measU.aemeasurable) (hgU_meas.aestronglyMeasurable))
     simpa [gU, hmapU] using hcov
-
   simpa [μ, μU, y1, SpinGlass.DisorderSpace, std_basis_left, WithLp.prod_inner_apply,
     real_inner_comm, hU] using hL'.trans hU.symm
 
@@ -725,10 +731,10 @@ lemma covarianceOperator_disorderPairLaw_std_basis_right
   have hgaussμ : ProbabilityTheory.IsGaussian μ :=
     SKDisorder.simple_joint_isGaussian_disorderPairLaw_of_indep
       (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) hindep
-  haveI : ProbabilityTheory.IsGaussian μ := hgaussμ
+  have : ProbabilityTheory.IsGaussian μ := hgaussμ
   have hμ : MemLp id 2 μ := ProbabilityTheory.IsGaussian.memLp_two_id (μ := μ)
-  haveI : ProbabilityTheory.IsGaussian μU := sk.hU
-  haveI : ProbabilityTheory.IsGaussian μV := sim.hV
+  have : ProbabilityTheory.IsGaussian μU := sk.hU
+  have : ProbabilityTheory.IsGaussian μV := sim.hV
   have hμU : MemLp id 2 μU := ProbabilityTheory.IsGaussian.memLp_two_id (μ := μU)
   have hμV : MemLp id 2 μV := ProbabilityTheory.IsGaussian.memLp_two_id (μ := μV)
   refine ext_inner_right ℝ (fun y => ?_)
@@ -737,8 +743,10 @@ lemma covarianceOperator_disorderPairLaw_std_basis_right
   have hpair_meas :
       Measurable (disorderPair (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)) := by
     have hpair : Measurable fun ω : Ω => (sk.U ω, sim.V ω) := sk.measU.prodMk sim.measV
-    simpa [disorderPair] using
-      (WithLp.prod_continuous_toLp (p := (2 : ℝ≥0∞)) (α := EnergySpace N) (β := EnergySpace N)).measurable.comp hpair
+    convert (WithLp.prod_continuous_toLp (p := (2 : ℝ≥0∞))
+      (α := EnergySpace N) (β := EnergySpace N)).measurable.comp hpair using 1
+    ext ω
+    simp [disorderPair]
   have hR : inner ℝ (ProbabilityTheory.covarianceOperator μ (std_basis_right (N := N) σ)) y =
         ∫ ω, (inner ℝ (std_basis N σ) (sim.V ω)) *
           (inner ℝ y1 (sk.U ω) + inner ℝ y2 (sim.V ω)) ∂ℙ := by
@@ -755,7 +763,9 @@ lemma covarianceOperator_disorderPairLaw_std_basis_right
         (innerSL ℝ (std_basis_right (N := N) σ)).measurable
       have h2 : Measurable fun z : DisorderSpace (N := N) => inner ℝ y z :=
         (innerSL ℝ y).measurable
-      simpa [g] using h1.mul h2
+      convert h1.mul h2 using 1
+      ext
+      simp [g, Pi.mul_apply]
     have hmap : (∫ z : DisorderSpace (N := N), g z ∂μ) =
           ∫ ω, g (disorderPair (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
             (sk := sk) (sim := sim) ω) ∂ℙ := by
@@ -797,7 +807,6 @@ lemma covarianceOperator_disorderPairLaw_std_basis_right
             refine MeasureTheory.integral_congr_ae ?_
             filter_upwards with ω
             simp [hstd ω, hy ω]
-
   have hU0 : (∫ ω, sk.U ω ∂(ℙ : Measure Ω)) = 0 :=
     SKDisorder.integral_eq_zero_of_mean0 (Ω := Ω) (N := N) sk
   have hV0 : (∫ ω, sim.V ω ∂(ℙ : Measure Ω)) = 0 :=
@@ -834,7 +843,6 @@ lemma covarianceOperator_disorderPairLaw_std_basis_right
         ((innerSL ℝ (std_basis N σ)).measurable.aestronglyMeasurable.comp_measurable sim.measV)
         ((innerSL ℝ y1).measurable.aestronglyMeasurable.comp_measurable sk.measU)
     simpa [hVmean, hUmean] using hsplit
-
   have hR' :
       inner ℝ
           (ProbabilityTheory.covarianceOperator μ (std_basis_right (N := N) σ)) y
@@ -847,17 +855,21 @@ lemma covarianceOperator_disorderPairLaw_std_basis_right
     have hC2U : MemLp (innerSL ℝ y1) 2 μU :=
       ProbabilityTheory.IsGaussian.memLp_dual (μ := μU) (L := innerSL ℝ y1) 2 (by norm_num)
     have hA2 : MemLp (fun ω => inner ℝ (std_basis N σ) (sim.V ω)) 2 (ℙ : Measure Ω) := by
-      simpa [μV, Function.comp] using hA2V.comp_of_map (f := sim.V) (μ := (ℙ : Measure Ω)) sim.measV.aemeasurable
+      simpa [μV, Function.comp_def] using hA2V.comp_of_map (f := sim.V) (μ := (ℙ : Measure Ω)) sim.measV.aemeasurable
     have hB2 : MemLp (fun ω => inner ℝ y2 (sim.V ω)) 2 (ℙ : Measure Ω) := by
-      simpa [μV, Function.comp] using hB2V.comp_of_map (f := sim.V) (μ := (ℙ : Measure Ω)) sim.measV.aemeasurable
+      simpa [μV, Function.comp_def] using hB2V.comp_of_map (f := sim.V) (μ := (ℙ : Measure Ω)) sim.measV.aemeasurable
     have hC2 : MemLp (fun ω => inner ℝ y1 (sk.U ω)) 2 (ℙ : Measure Ω) := by
-      simpa [μU, Function.comp] using hC2U.comp_of_map (f := sk.U) (μ := (ℙ : Measure Ω)) sk.measU.aemeasurable
+      simpa [μU, Function.comp_def] using hC2U.comp_of_map (f := sk.U) (μ := (ℙ : Measure Ω)) sk.measU.aemeasurable
     have hAB_int : Integrable (fun ω => (inner ℝ (std_basis N σ) (sim.V ω)) * (inner ℝ y2 (sim.V ω)))
         (ℙ : Measure Ω) := by
-      simpa [mul_comm, mul_left_comm, mul_assoc] using (hA2.integrable_mul hB2)
+      convert hA2.integrable_mul hB2 using 1
+      ext
+      simp [Pi.mul_apply]
     have hAC_int : Integrable (fun ω => (inner ℝ (std_basis N σ) (sim.V ω)) * (inner ℝ y1 (sk.U ω)))
         (ℙ : Measure Ω) := by
-      simpa [mul_comm, mul_left_comm, mul_assoc] using (hA2.integrable_mul hC2)
+      convert hA2.integrable_mul hC2 using 1
+      ext
+      simp [Pi.mul_apply]
     have hsplit_int :
         (∫ ω,
             (inner ℝ (std_basis N σ) (sim.V ω)) *
@@ -878,7 +890,6 @@ lemma covarianceOperator_disorderPairLaw_std_basis_right
       _ = (∫ ω, (inner ℝ (std_basis N σ) (sim.V ω)) * (inner ℝ y1 (sk.U ω)) ∂ℙ)
           + (∫ ω, (inner ℝ (std_basis N σ) (sim.V ω)) * (inner ℝ y2 (sim.V ω)) ∂ℙ) := hsplit_int
       _ = (∫ ω, (inner ℝ (std_basis N σ) (sim.V ω)) * (inner ℝ y2 (sim.V ω)) ∂ℙ) := by simp [hcross]
-
   have hV :
       inner ℝ (ProbabilityTheory.covarianceOperator μV (std_basis N σ)) y2
         =
@@ -894,14 +905,15 @@ lemma covarianceOperator_disorderPairLaw_std_basis_right
         (innerSL ℝ (std_basis N σ)).measurable
       have h2 : Measurable fun v : EnergySpace N => inner ℝ y2 v :=
         (innerSL ℝ y2).measurable
-      simpa [gV] using h1.mul h2
+      convert h1.mul h2 using 1
+      ext
+      simp [gV, Pi.mul_apply]
     have hmapV :
         (∫ v : EnergySpace N, gV v ∂μV) = ∫ ω, gV (sim.V ω) ∂ℙ := by
       simpa [μV] using
         (MeasureTheory.integral_map (μ := (ℙ : Measure Ω)) (φ := sim.V)
           (sim.measV.aemeasurable) (hgV_meas.aestronglyMeasurable))
     simpa [gV, hmapV] using hcov
-
   simpa [μ, μV, y2, SpinGlass.DisorderSpace, std_basis_right, WithLp.prod_inner_apply, real_inner_comm, hV]
     using hR'.trans hV.symm
 

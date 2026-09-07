@@ -319,15 +319,15 @@ lemma hasFDerivAt_exp_neg_eval (H : EnergySpace N) (σ : Config N) :
         (E := fun _ : Config N => ℝ) (f := H) σ)
   have hneg :
       HasFDerivAt (fun H : EnergySpace N => -(H σ)) (-(evalCLM (N := N) σ)) H := by
-    simpa using heval.neg
+    simpa using heval.fun_neg
   have hexp : HasDerivAt Real.exp (Real.exp (-H σ)) (-H σ) :=
     Real.hasDerivAt_exp (-H σ)
   have hcomp :
       HasFDerivAt (fun H : EnergySpace N => Real.exp (-(H σ)))
         ((Real.exp (-H σ)) • (-(evalCLM (N := N) σ))) H := by
-    simpa [Function.comp] using
+    simpa [Function.comp_def] using
       (HasDerivAt.comp_hasFDerivAt (x := H) hexp hneg)
-  simpa [smul_neg, neg_smul] using hcomp
+  exact hcomp.congr_fderiv (by simp [smul_neg, ← neg_smul])
 
 lemma hasFDerivAt_Z (H : EnergySpace N) :
     HasFDerivAt (fun H : EnergySpace N => Z N H)
@@ -354,7 +354,7 @@ lemma hasFDerivAt_inv_Z (H : EnergySpace N) :
         (ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z N H ^ 2)⁻¹) : ℝ →L[ℝ] ℝ)
         (Z N H) :=
     hasFDerivAt_inv (𝕜 := ℝ) (x := Z N H) (Z_ne_zero (N := N) (H := H))
-  simpa [Function.comp] using hInv.comp (x := H) (hasFDerivAt_Z (N := N) (H := H))
+  simpa [Function.comp_def] using hInv.comp (x := H) (hasFDerivAt_Z (N := N) (H := H))
 
 lemma hasFDerivAt_gibbs_pmf (H : EnergySpace N) (σ : Config N) :
     HasFDerivAt (fun H : EnergySpace N => gibbs_pmf N H σ)
@@ -398,10 +398,10 @@ lemma fderiv_gibbs_pmf_apply (H h : EnergySpace N) (σ : Config N) :
 
 lemma hasFDerivAt_grad_free_energy_density (H : EnergySpace N) :
     HasFDerivAt (fun H : EnergySpace N => grad_free_energy_density (N := N) H)
-      (-((1 / (N : ℝ)) •
+      ((-(1 / (N : ℝ))) •
           ∑ σ : Config N,
             (fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H).smulRight
-              (evalCLM (N := N) σ))) H := by
+              (evalCLM (N := N) σ)) H := by
   have hterm :
       ∀ σ : Config N,
         HasFDerivAt (fun H : EnergySpace N => (gibbs_pmf N H σ) • evalCLM (N := N) σ)
@@ -420,14 +420,14 @@ lemma hasFDerivAt_grad_free_energy_density (H : EnergySpace N) :
           (fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ) H).smulRight (evalCLM (N := N) σ))
         (x := H)
         (fun σ _hσ => hterm σ))
-  simpa [grad_free_energy_density] using
-    (hsum.fun_const_smul (c := (-(1 / (N : ℝ)))))
+  unfold grad_free_energy_density
+  exact hsum.fun_const_smul (c := (-(1 / (N : ℝ))))
 
 lemma fderiv_Z_apply (H h : EnergySpace N) :
     fderiv ℝ (fun H : EnergySpace N => Z N H) H h =
       - ∑ σ : Config N, Real.exp (-H σ) * h σ := by
   have hZ' := (hasFDerivAt_Z (N := N) (H := H)).fderiv
-  simp [hZ', evalCLM, ContinuousLinearMap.sum_apply, ContinuousLinearMap.smul_apply]
+  simp [hZ', evalCLM, sum_apply, smul_apply]
 
 lemma fderiv_free_energy_density_apply (H h : EnergySpace N) :
     fderiv ℝ (fun H : EnergySpace N => free_energy_density (N := N) H) H h =
@@ -440,8 +440,8 @@ lemma fderiv_free_energy_density_eq (H : EnergySpace N) :
     fderiv ℝ (fun H : EnergySpace N => free_energy_density (N := N) H) H =
       grad_free_energy_density (N := N) H := by
   ext h
-  simp [grad_free_energy_density, fderiv_free_energy_density_apply, ContinuousLinearMap.sum_apply,
-    ContinuousLinearMap.smul_apply, smul_eq_mul]
+  simp [grad_free_energy_density, fderiv_free_energy_density_apply, sum_apply,
+    smul_apply, smul_eq_mul]
 
 def hessian_free_energy (H : EnergySpace N) (h k : EnergySpace N) : ℝ :=
   (1 / (N : ℝ)) * (
@@ -618,7 +618,6 @@ theorem guerra_derivative_bound_algebra
           (∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * (overlap N σ τ) ^ 2)
         =
           ∑ σ, ∑ τ, gibbs_pmf N H σ * gibbs_pmf N H τ * ((overlap N σ τ) ^ 2 / 2) := by
-
     simp [div_eq_mul_inv]
     calc
       (2⁻¹ : ℝ) *

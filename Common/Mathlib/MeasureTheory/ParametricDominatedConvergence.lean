@@ -1,5 +1,3 @@
-import Mathlib.Algebra.Order.Ring.Star
-import Mathlib.Data.Real.StarOrdered
 import Mathlib.MeasureTheory.Integral.DominatedConvergence
 import Mathlib.Topology.Metrizable.Basic
 import Mathlib.Topology.Compactness.Lindelof

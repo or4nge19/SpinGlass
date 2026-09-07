@@ -89,12 +89,13 @@ lemma abs_n_mul_gibbs_pmf_sub_card_le [DecidableEq α] (n : ℕ) (H : EnergySpac
     simpa [g] using (gibbs_pmf_nonneg (α := α) (H := H) (σ := τ))
   have hg1 : g ≤ 1 := by
     simpa [g] using (gibbs_pmf_le_one (α := α) (H := H) (σ := τ))
-  have hcard_le : ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ) ≤ n := by
-    have h' :
-        (Finset.univ.filter fun l : Fin n => σs l = τ).card
-          ≤ (Finset.univ : Finset (Fin n)).card :=
-      Finset.card_le_card (Finset.filter_subset _ _)
-    simpa [Finset.card_univ] using (Nat.cast_le.2 h')
+  have hcard_nat :
+      (Finset.univ.filter fun l : Fin n => σs l = τ).card ≤ n := by
+    simpa [Finset.card_univ] using
+      Finset.card_le_card
+        (Finset.filter_subset (fun l : Fin n => σs l = τ) (Finset.univ : Finset (Fin n)))
+  have hcard_le : ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ) ≤ (n : ℝ) :=
+    Nat.cast_le.mpr hcard_nat
   have ha : |(n : ℝ) * g| ≤ n := by
     have hn0 : (0 : ℝ) ≤ (n : ℝ) := Nat.cast_nonneg _
     have hng0 : 0 ≤ (n : ℝ) * g := mul_nonneg hn0 hg0
@@ -199,7 +200,7 @@ lemma abs_sum_mul_prod_gibbs_pmf_mul_n_mul_sub_card_le [DecidableEq α] (n : ℕ
             intro σs _hσs
             exact hterm σs
     _ = (2 * (n : ℝ)) * (∑ σs : ReplicaSpace (α := α) n, |f σs|) := by
-            simpa [Finset.mul_sum, mul_comm, mul_left_comm, mul_assoc]
+            simp [Finset.mul_sum, mul_comm]
 
 /-! ## Bounds for the derivative of `gibbs_pmf` -/
 
@@ -292,12 +293,12 @@ lemma fderiv_prod_gibbs_pmf_apply (n : ℕ) (H v : EnergySpace α) (σs : Replic
     intro l
     exact (hasFDerivAt_gibbs_pmf (α := α) (H := H) (σ := σs l)).differentiableAt
   have h_fderiv_prod :=
-    fderiv_finset_prod
+    fderiv_finsetProd
       (𝕜 := ℝ) (E := EnergySpace α) (𝔸' := ℝ) (u := (Finset.univ : Finset (Fin n)))
       (g := fun l H' => gibbs_pmf (α := α) H' (σs l))
       (fun l _hl => hdiff l)
   rw [h_fderiv_prod]
-  simp only [ContinuousLinearMap.sum_apply, ContinuousLinearMap.smul_apply]
+  simp only [sum_apply, smul_apply]
   have hterm :
       ∀ l : Fin n,
         (∏ j ∈ (Finset.univ : Finset (Fin n)).erase l, gibbs_pmf (α := α) H (σs j)) *
@@ -421,7 +422,7 @@ lemma differentiableAt_prod_gibbs_pmf (n : ℕ) (H : EnergySpace α) (σs : Repl
     intro l _hl
     exact (hasFDerivAt_gibbs_pmf (α := α) (H := H) (σ := σs l)).differentiableAt.hasFDerivAt
   have hHas :=
-    (HasFDerivAt.finset_prod (u := (Finset.univ : Finset (Fin n)))
+    (HasFDerivAt.finsetProd (u := (Finset.univ : Finset (Fin n)))
       (g := fun l H' => gibbs_pmf (α := α) H' (σs l))
       (g' := fun l => fderiv ℝ (fun H' => gibbs_pmf (α := α) H' (σs l)) H)
       (x := H) hg).differentiableAt

@@ -50,4 +50,4 @@ jobs:
           restore-keys: LakeBuild-
 
       - name: Build
-        run: ~/.elan/bin/lake build SpinGlass
+        run: ~/.elan/bin/lake build

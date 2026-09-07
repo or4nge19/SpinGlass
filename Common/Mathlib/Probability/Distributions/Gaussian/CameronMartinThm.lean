@@ -90,7 +90,7 @@ lemma hasLaw_cameronMartin (x : cameronMartin μ) : HasLaw x (gaussianReal 0 (�
       congr
       rw [← StrongDual.sq_norm_centeredToLp_two (μ := μ) (h := memLp_two_id) (L := y n), hy n]
       unfold L'
-      simp only [AddSubgroupClass.coe_norm, norm_smul, norm_div, norm_norm]
+      simp only [norm_smul, norm_div, norm_norm]
       rw [div_mul_cancel₀]
       · norm_cast
         rw [Real.toNNReal_pow (norm_nonneg _), norm_toNNReal]
@@ -107,12 +107,12 @@ lemma hasLaw_cameronMartin (x : cameronMartin μ) : HasLaw x (gaussianReal 0 (�
       have hy_meas : Measurable (fun ω : E ↦ y n ω) := by
         simpa using (y n : StrongDual ℝ E).continuous.measurable
       have hsub_meas : Measurable (fun z : ℝ ↦ z - μ[y n]) := by
-        simpa using (measurable_id.sub measurable_const)
+        fun_prop
       have h_comp :
           μ.map (fun ω : E ↦ y n ω - μ[y n])
             = Measure.map (fun z : ℝ ↦ z - μ[y n]) (μ.map (fun ω : E ↦ y n ω)) := by
         -- `Measure.map_map` is stated as `(μ.map f).map g = μ.map (g ∘ f)`.
-        simpa [Function.comp] using (Measure.map_map (μ := μ) hsub_meas hy_meas).symm
+        simpa [Function.comp_def] using (Measure.map_map (μ := μ) hsub_meas hy_meas).symm
       -- then use that `μ.map (y n)` is Gaussian and shift to mean 0
       rw [h_comp]
       calc
@@ -129,8 +129,7 @@ lemma hasLaw_cameronMartin (x : cameronMartin μ) : HasLaw x (gaussianReal 0 (�
     have h_eventuallyEq :
         ∀ᶠ n in atTop, ν n = ⟨gaussianReal 0 (‖x‖₊ ^ 2), inferInstance⟩ := by
       filter_upwards [hL_ne_zero] with n hn
-      unfold ν
-      simp_rw [hL'_map n hn]
+      exact Subtype.ext (hL'_map n hn)
     have hν_tendsto_1 :
         Tendsto ν atTop (𝓝 ⟨gaussianReal 0 (‖x‖₊ ^ 2), inferInstance⟩) := by
       rw [tendsto_congr' h_eventuallyEq]
@@ -141,7 +140,7 @@ lemma hasLaw_cameronMartin (x : cameronMartin μ) : HasLaw x (gaussianReal 0 (�
       ((tendstoInMeasure_of_tendsto_Lp hL'_tendsto).tendstoInDistribution
         (fun _ ↦ by fun_prop)).tendsto
     have h_eq := tendsto_nhds_unique hν_tendsto_2 hν_tendsto_1
-    rwa [Subtype.ext_iff] at h_eq
+    simpa using congrArg ProbabilityMeasure.toMeasure h_eq
 
 /-- The variance of an element of the Cameron-Martin space is the square of its norm. -/
 lemma variance_cameronMartin (x : cameronMartin μ) :
@@ -409,8 +408,7 @@ private lemma integral_exp_sub_mul_I_sub_norm_sq_eq_closed_form_complex
     · rw [← Complex.ofReal_zero, tendsto_ofReal_iff]
       exact hx_tendsto.1
     · simpa using hx_tendsto.2
-  · simp only [AddSubgroupClass.coe_norm] at hx_eq
-    simp [hx_eq]
+  · exact hx_eq n
 
 private lemma charFunDual_withDensity_exp_cameronMartin (x : cameronMartin μ) (L : StrongDual ℝ E) :
     charFunDual (μ.withDensity fun y ↦ .ofReal (.exp (x y - ‖x‖ ^ 2 / 2))) L

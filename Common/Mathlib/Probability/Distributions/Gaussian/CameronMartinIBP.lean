@@ -47,7 +47,7 @@ theorem integral_add_cmCoe_smul_eq
   have hF_aeμ : AEStronglyMeasurable F μ := hF.aestronglyMeasurable
   have h_map :
       (∫ y, F (y + cmCoe (t • x)) ∂μ) = ∫ y, F y ∂(Measure.map g μ) := by
-    simpa [g, Function.comp] using
+    simpa [g, Function.comp_def] using
       (MeasureTheory.integral_map (μ := μ) (φ := g) hg.aemeasurable hF_ae).symm
   -- Step 2: use the Cameron–Martin theorem to identify the pushforward with `withDensity`.
   have hμ :

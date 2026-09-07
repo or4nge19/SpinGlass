@@ -61,7 +61,6 @@ noncomputable def free_energy_density (n : ℕ) (H : EnergySpace α) : ℝ :=
   (1 / (n : ℝ)) * Real.log (Z (α := α) H)
 
 lemma Z_pos (H : EnergySpace α) : 0 < Z (α := α) H := by
-
   refine Finset.sum_pos ?_ Finset.univ_nonempty
   intro σ _hσ
   exact Real.exp_pos _
@@ -120,21 +119,20 @@ lemma hasFDerivAt_exp_neg_eval (H : EnergySpace α) (σ : α) :
         (E := fun _ : α => ℝ) (f := H) σ)
   have hneg :
       HasFDerivAt (fun H : EnergySpace α => -(H σ)) (-(evalCLM (α := α) σ)) H := by
-    simpa using heval.neg
+    simpa using heval.fun_neg
   have hexp : HasDerivAt Real.exp (Real.exp (-H σ)) (-H σ) :=
     Real.hasDerivAt_exp (-H σ)
   have hcomp :
       HasFDerivAt (fun H : EnergySpace α => Real.exp (-(H σ)))
         ((Real.exp (-H σ)) • (-(evalCLM (α := α) σ))) H := by
-    simpa [Function.comp] using
+    simpa [Function.comp_def] using
       (HasDerivAt.comp_hasFDerivAt (x := H) hexp hneg)
-  simpa [smul_neg, neg_smul] using hcomp
+  exact hcomp.congr_fderiv (by simp [smul_neg, ← neg_smul])
 
 omit [Nonempty α] in
 lemma hasFDerivAt_Z (H : EnergySpace α) :
     HasFDerivAt (fun H : EnergySpace α => Z (α := α) H)
       (∑ σ : α, (-(Real.exp (-H σ))) • evalCLM (α := α) σ) H := by
-
   have hterm :
       ∀ σ : α,
         HasFDerivAt (fun H : EnergySpace α => Real.exp (-H σ))
@@ -157,7 +155,7 @@ lemma hasFDerivAt_inv_Z (H : EnergySpace α) :
         (ContinuousLinearMap.smulRight (1 : ℝ →L[ℝ] ℝ) (-(Z (α := α) H ^ 2)⁻¹) : ℝ →L[ℝ] ℝ)
         (Z (α := α) H) :=
     hasFDerivAt_inv (𝕜 := ℝ) (x := Z (α := α) H) (Z_ne_zero (α := α) (H := H))
-  simpa [Function.comp] using hInv.comp (x := H) (hasFDerivAt_Z (α := α) (H := H))
+  simpa [Function.comp_def] using hInv.comp (x := H) (hasFDerivAt_Z (α := α) (H := H))
 
 lemma hasFDerivAt_gibbs_pmf (H : EnergySpace α) (σ : α) :
     HasFDerivAt (fun H : EnergySpace α => gibbs_pmf (α := α) H σ)
@@ -195,11 +193,7 @@ lemma fderiv_gibbs_pmf_apply (H h : EnergySpace α) (σ : α) :
             (-(Z (α := α) H ^ 2)⁻¹ *
               (∑ τ : α, (-(Real.exp (-H τ))) * h τ)) := by
     -- Evaluate the Fréchet derivative on `h`.
-    simp [h', evalCLM, ContinuousLinearMap.smul_apply, smul_eq_mul, mul_comm]
-    -- Remaining goal: pull the scalar factor `(Z H ^ 2)⁻¹` out of the finite sum.
-    simpa [mul_assoc] using
-      (Finset.mul_sum (Finset.univ : Finset α)
-        (fun i : α => Real.exp (-H i) * h i) (Z (α := α) H ^ 2)⁻¹).symm
+    simp [h', evalCLM, smul_apply, smul_eq_mul, mul_comm, Finset.mul_sum]
   have hZ : Z (α := α) H ≠ 0 := Z_ne_zero (α := α) (H := H)
   have hsum' : (∑ τ : α, (-(Real.exp (-H τ))) * h τ) = -∑ τ : α, (Real.exp (-H τ) * h τ) := by
     simp [Finset.sum_neg_distrib]
@@ -322,12 +316,13 @@ lemma fderiv_free_energy_density_apply (n : ℕ) (H h : EnergySpace α) :
   have hF :
       HasFDerivAt (fun H : EnergySpace α => free_energy_density (α := α) n H)
         ((1 / (n : ℝ)) • ((Z (α := α) H)⁻¹ • (∑ σ : α, (-(Real.exp (-H σ))) • evalCLM (α := α) σ))) H := by
-    simpa [free_energy_density, smul_eq_mul, mul_assoc] using (hlog.const_smul (c := (1 / (n : ℝ))))
+    simpa [free_energy_density, smul_eq_mul, mul_assoc, Pi.smul_def] using
+      (hlog.fun_const_smul (c := (1 / (n : ℝ))))
   have hF' := hF.fderiv
   have :
       fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) H h =
         (1 / (n : ℝ)) * ((Z (α := α) H)⁻¹ * (-∑ σ : α, Real.exp (-H σ) * h σ)) := by
-    simp [hF', evalCLM, ContinuousLinearMap.sum_apply, ContinuousLinearMap.smul_apply, smul_eq_mul]
+    simp [hF', evalCLM, sum_apply, smul_apply, smul_eq_mul]
   calc
     fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) H h
         = (1 / (n : ℝ)) * ((Z (α := α) H)⁻¹ * (-∑ σ : α, Real.exp (-H σ) * h σ)) := this
@@ -338,10 +333,10 @@ lemma fderiv_free_energy_density_apply (n : ℕ) (H h : EnergySpace α) :
 
 lemma hasFDerivAt_grad_free_energy_density (n : ℕ) (H : EnergySpace α) :
     HasFDerivAt (fun H : EnergySpace α => grad_free_energy_density (α := α) n H)
-      (-((1 / (n : ℝ)) •
+      ((-(1 / (n : ℝ))) •
           ∑ σ : α,
             (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H).smulRight
-              (evalCLM (α := α) σ))) H := by
+              (evalCLM (α := α) σ)) H := by
   have hterm :
       ∀ σ : α,
         HasFDerivAt (fun H : EnergySpace α => (gibbs_pmf (α := α) H σ) • evalCLM (α := α) σ)
@@ -362,15 +357,15 @@ lemma hasFDerivAt_grad_free_energy_density (n : ℕ) (H : EnergySpace α) :
           (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H).smulRight (evalCLM (α := α) σ))
         (x := H)
         (fun σ _hσ => hterm σ))
-  simpa [grad_free_energy_density] using (hsum.fun_const_smul (c := (-(1 / (n : ℝ)))))
+  unfold grad_free_energy_density
+  exact hsum.fun_const_smul (c := (-(1 / (n : ℝ))))
 
 lemma fderiv_free_energy_density_eq (n : ℕ) (H : EnergySpace α) :
     fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) H =
       grad_free_energy_density (α := α) n H := by
-
   ext h
-  simp [grad_free_energy_density, fderiv_free_energy_density_apply, ContinuousLinearMap.sum_apply,
-    ContinuousLinearMap.smul_apply, smul_eq_mul]
+  simp [grad_free_energy_density, fderiv_free_energy_density_apply, sum_apply, smul_apply,
+    smul_eq_mul]
 
 lemma hessian_free_energy_fderiv_eq_hessian_free_energy (n : ℕ) (H h k : EnergySpace α) :
     (hessian_free_energy_fderiv (α := α) n H) h k = hessian_free_energy (α := α) n H h k := by
@@ -382,7 +377,7 @@ lemma hessian_free_energy_fderiv_eq_hessian_free_energy (n : ℕ) (H h k : Energ
     exact fderiv_free_energy_density_eq (α := α) (n := n) (H := H')
   have hfderiv_grad :
       fderiv ℝ (fun H' : EnergySpace α => grad_free_energy_density (α := α) n H') H =
-        -((1 / (n : ℝ)) •
+        ((-(1 / (n : ℝ))) •
             ∑ σ : α,
               (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H).smulRight
                 (evalCLM (α := α) σ)) := by
@@ -399,8 +394,7 @@ lemma hessian_free_energy_fderiv_eq_hessian_free_energy (n : ℕ) (H h k : Energ
               ((fderiv ℝ (fun H' : EnergySpace α => grad_free_energy_density (α := α) n H') H) h) k
                 = -(1 / (n : ℝ)) * ∑ σ : α,
                     (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H h) * k σ := by
-            simp [hfderiv_grad, evalCLM, ContinuousLinearMap.sum_apply, ContinuousLinearMap.smul_apply,
-              ContinuousLinearMap.neg_apply, smul_eq_mul, mul_comm]
+            simp [hfderiv_grad, evalCLM, sum_apply, smul_apply, smul_eq_mul, mul_comm]
           have h2 :
               -(1 / (n : ℝ)) * ∑ σ : α,
                   (fderiv ℝ (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) H h) * k σ
@@ -499,7 +493,6 @@ theorem trace_formula (n : ℕ) (H : EnergySpace α) (Cov : α → α → ℝ) :
   have h_diag :
       (∑ σ, ∑ τ, Cov σ τ * (if σ = τ then g σ else 0))
         = ∑ σ, (gibbs_pmf (α := α) H σ) * Cov σ σ := by
-
     refine Finset.sum_congr rfl ?_
     intro σ _hσ
     rw [Finset.sum_eq_single σ]

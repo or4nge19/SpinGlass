@@ -41,11 +41,11 @@ lemma measurable_gibbs_pmf (σ : α) :
     fun_prop
   have hmeas_den : Measurable fun H : EnergySpace α => Z H :=
     measurable_Z
-  simpa [gibbs_pmf] using hmeas_num.div hmeas_den
+  simpa [gibbs_pmf] using hmeas_num.fun_div hmeas_den
 
 lemma measurable_gibbsWeightENNReal (σ : α) :
     Measurable fun H : EnergySpace α => ENNReal.ofReal (gibbs_pmf H σ) := by
-  simpa using (ENNReal.measurable_ofReal.comp (measurable_gibbs_pmf (σ := σ)))
+  exact (measurable_gibbs_pmf (σ := σ)).ennreal_ofReal
 
 /-! ## The Gibbs sampler kernel -/
 
@@ -116,7 +116,10 @@ noncomputable def replicaGibbsKernel (n : ℕ) :
         have hnn :
             Measurable fun H : EnergySpace α =>
               replicaGibbsWeightNNReal (α := α) (n := n) H σs := by
-          simpa [replicaGibbsWeightNNReal] using (Measurable.subtype_mk hprod)
+          simpa [replicaGibbsWeightNNReal] using
+            (hprod.nnreal_mk (h'f := fun H =>
+              Finset.prod_nonneg fun l _ =>
+                gibbs_pmf_nonneg (α := α) (H := H) (σ := σs l)))
         have hcoe : Measurable fun H : EnergySpace α =>
             (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) := by
           have h_ofReal :

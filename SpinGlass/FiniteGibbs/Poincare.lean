@@ -5,7 +5,8 @@ import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
 import Mathlib.Analysis.SpecialFunctions.Sqrt
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
 import Mathlib.Analysis.InnerProductSpace.Dual
-import Mathlib.Topology.Algebra.Module.StrongTopology
+import Mathlib.Topology.Algebra.Module.Spaces.ContinuousLinearMap
+import Mathlib.Topology.Algebra.Module.Spaces.CompactConvergenceCLM
 import Mathlib.Probability.Distributions.Gaussian.HasGaussianLaw.Independence
 
 /-!
@@ -102,7 +103,7 @@ lemma gaussMix_gaussMixOrtho_involutive {t : ℝ} (ht : t ∈ Set.Icc (0 : ℝ) 
   have hsq1t : (Real.sqrt (1 - t)) ^ 2 = 1 - t := sq_sqrt_one_sub_of_mem_Icc (t := t) ht
   ext <;>
     simp [gaussMix, gaussMixOrtho, sub_eq_add_neg, add_assoc, add_left_comm, add_comm, smul_add,
-      add_smul, sub_smul, smul_sub, smul_smul, mul_assoc, mul_left_comm, mul_comm] <;>
+      smul_smul, mul_comm] <;>
     · have h1 : Real.sqrt t * Real.sqrt t = t := by
         simpa [pow_two] using hsqt
       have h2 : Real.sqrt (-t + 1) * Real.sqrt (-t + 1) = 1 - t := by
@@ -153,13 +154,13 @@ private lemma gaussRot_gaussRotMap_neg (θ : ℝ) (p : H × H) :
     gaussRot (H := H) θ (gaussRotMap (H := H) (-θ) p) = p.1 := by
   rcases p with ⟨x, y⟩
   simp [gaussRotMap_apply, gaussRot, gaussRotOrtho, add_assoc, add_left_comm,
-    add_comm, smul_add, smul_smul, mul_left_comm, mul_comm, Real.cos_neg,
+    add_comm, smul_add, smul_smul, mul_comm, Real.cos_neg,
     Real.sin_neg]
   have hcos : Real.cos θ * Real.cos θ + Real.sin θ * Real.sin θ = (1 : ℝ) := by
     have : (Real.cos θ) ^ 2 + (Real.sin θ) ^ 2 = (1 : ℝ) := by simp
     simpa [pow_two] using this
   have hcross : -(Real.cos θ * Real.sin θ) + Real.sin θ * Real.cos θ = (0 : ℝ) := by ring
-  simp [← add_smul, hcos, hcross]
+  simp [← add_smul, hcos]
 
 private lemma gaussRotOrtho_gaussRotMap_neg (θ : ℝ) (p : H × H) :
     gaussRotOrtho (H := H) θ (gaussRotMap (H := H) (-θ) p) = p.2 := by
@@ -200,9 +201,10 @@ private lemma variance_gaussRot_components (θ : ℝ) (L₁ L₂ : StrongDual �
             + (Real.sin θ) ^ 2 * Var[L₁; μ]
             + (Real.sin θ) ^ 2 * Var[L₂; μ]
             + (Real.cos θ) ^ 2 * Var[L₂; μ] := by
-          simp [hVar₁, hVar₂, variance_smul, variance_neg,
+          rw [hVar₁, hVar₂]
+          simp [variance_smul, variance_neg,
             covariance_smul_left, covariance_smul_right]
-          ring_nf
+          ring
     _ = ((Real.cos θ) ^ 2 + (Real.sin θ) ^ 2) * Var[L₁; μ]
           + ((Real.cos θ) ^ 2 + (Real.sin θ) ^ 2) * Var[L₂; μ] := by
           ring
@@ -214,8 +216,8 @@ lemma map_gaussRotMap_prod (hmean0 : (∫ x : H, x ∂μ) = 0) (θ : ℝ) :
     (μ.prod μ).map (gaussRotMap (H := H) θ) = μ.prod μ := by
   let P : Measure (H × H) := μ.prod μ
   let Q : Measure (H × H) := P.map (gaussRotMap (H := H) θ)
-  haveI : IsGaussian P := by infer_instance
-  haveI : IsGaussian Q := by infer_instance
+  have : IsGaussian P := by infer_instance
+  have : IsGaussian Q := by infer_instance
   have hPmean : P[id] = (0 : H × H) := by
     have hInt : Integrable (id : (H × H) → (H × H)) P := IsGaussian.integrable_id (μ := P)
     have hfst :
@@ -257,11 +259,14 @@ lemma map_gaussRotMap_prod (hmean0 : (∫ x : H, x ∂μ) = 0) (θ : ℝ) :
       simpa [Q] using (integral_map (μ := P) (φ := gaussRotMap (H := H) θ) (f := (id : (H × H) → (H × H)))
         hMap hId)
     have hZero : (∫ x : H × H, gaussRotMap (H := H) θ x ∂P) = 0 := by
-      have hPmean_int : (∫ x : H × H, x ∂P) = (0 : H × H) := by
-        simpa using (hPmean : P[id] = (0 : H × H))
       have h :=
-        (ContinuousLinearMap.integral_comp_comm (gaussRotMap (H := H) θ) hInt)
-      simpa [hPmean_int, gaussRotMap_apply, gaussRot, gaussRotOrtho] using h
+        ContinuousLinearMap.integral_comp_comm (gaussRotMap (H := H) θ) hInt
+      calc
+        (∫ x : H × H, gaussRotMap (H := H) θ x ∂P)
+            = ∫ x : H × H, gaussRotMap (H := H) θ (id x) ∂P := by simp [id_eq]
+        _ = gaussRotMap (H := H) θ (∫ x : H × H, id x ∂P) := h
+        _ = gaussRotMap (H := H) θ 0 := by rw [hPmean]
+        _ = 0 := map_zero _
     simpa [this, hZero]
   have hm : P[id] = Q[id] := by
     calc
@@ -291,7 +296,7 @@ lemma map_gaussRotMap_prod (hmean0 : (∫ x : H, x ∂μ) = 0) (θ : ℝ) :
             Var[(L : (H × H) → ℝ) ∘ gaussRotMap (H := H) θ; P]
               = Var[(L.comp (gaussRotMap (H := H) θ)).comp (.inl ℝ H H); μ]
                 + Var[(L.comp (gaussRotMap (H := H) θ)).comp (.inr ℝ H H); μ] := by
-          simpa [P, Function.comp_def] using
+          simpa [P, ContinuousLinearMap.coe_comp] using
             (variance_dual_prod (E := H) (F := H) (μ := μ) (ν := μ)
               (L := (L.comp (gaussRotMap (H := H) θ))) hId hId)
         set L₁ : StrongDual ℝ H := L.comp (.inl ℝ H H)
@@ -391,7 +396,7 @@ variable (hmean0 : (∫ x : H, x ∂μ) = 0)
 private lemma hasDerivAt_gaussRot (θ : ℝ) (p : H × H) :
     HasDerivAt (fun t : ℝ => gaussRot (H := H) t p) (gaussRotOrtho (H := H) θ p) θ := by
   simpa [gaussRot, gaussRotOrtho, add_comm, add_left_comm, add_assoc, sub_eq_add_neg, smul_add] using
-    ((Real.hasDerivAt_cos θ).smul_const p.1).add ((Real.hasDerivAt_sin θ).smul_const p.2)
+    ((Real.hasDerivAt_cos θ).smul_const p.1).fun_add ((Real.hasDerivAt_sin θ).smul_const p.2)
 
 private lemma hasDerivAt_comp_gaussRot {f : H → ℝ} (hf : ContDiff ℝ 1 f) (θ : ℝ) (p : H × H) :
     HasDerivAt (fun t : ℝ => f (gaussRot (H := H) t p))
@@ -400,7 +405,7 @@ private lemma hasDerivAt_comp_gaussRot {f : H → ℝ} (hf : ContDiff ℝ 1 f) (
     (hf.differentiable (by simp)).differentiableAt
   have hF : HasFDerivAt f (fderiv ℝ f (gaussRot (H := H) θ p)) (gaussRot (H := H) θ p) :=
     hf'.hasFDerivAt
-  simpa using (hF.comp_hasDerivAt θ (hasDerivAt_gaussRot (H := H) θ p))
+  simpa [Function.comp_def] using (hF.comp_hasDerivAt θ (hasDerivAt_gaussRot (H := H) θ p))
 
 /-!
 ### Cauchy–Schwarz for interval integrals
@@ -416,8 +421,8 @@ private lemma sq_intervalIntegral_le_sub_mul_integral_sq {a b : ℝ} (hab : a �
     simp [intervalIntegral.integral_of_le hab]
   have hvol : (volume (Set.Ioc a b)) < ∞ := by
     simp [volume_Ioc]
-  haveI : Fact ((volume : Measure ℝ) (Set.Ioc a b) < ∞) := ⟨hvol⟩
-  haveI : IsFiniteMeasure (volume.restrict (Set.Ioc a b)) := by infer_instance
+  have : Fact ((volume : Measure ℝ) (Set.Ioc a b) < ∞) := ⟨hvol⟩
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc a b)) := by infer_instance
   have h1 :
       |∫ t in Set.Ioc a b, g t ∂volume| ≤ ∫ t in Set.Ioc a b, |g t| ∂volume := by
     simpa using
@@ -430,7 +435,8 @@ private lemma sq_intervalIntegral_le_sub_mul_integral_sq {a b : ℝ} (hab : a �
       (memLp_const (μ := volume.restrict (Set.Ioc a b)) (p := ENNReal.ofReal (2 : ℝ)) (c := (1 : ℝ)))
   have habs :
       MemLp (fun t : ℝ => |g t|) (ENNReal.ofReal (2 : ℝ)) (volume.restrict (Set.Ioc a b)) := by
-    simpa using hg'.abs
+    change MemLp (|g|) (ENNReal.ofReal (2 : ℝ)) (volume.restrict (Set.Ioc a b))
+    exact hg'.abs
   have h2 :
       (∫ t in Set.Ioc a b, |g t| ∂volume)
         ≤ (∫ t in Set.Ioc a b, (1 : ℝ) ^ (2 : ℝ) ∂volume) ^ (1 / (2 : ℝ))
@@ -579,7 +585,7 @@ theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
             Real.cos θ • p.1 + Real.sin θ • p.2)
         have hcont :
             ContinuousOn (fun θ : ℝ => f (gaussRot (H := H) θ p)) (Set.Icc 0 b) := by
-          simpa using (hf.continuous.comp hgauss).continuousOn
+          simpa [Function.comp_def] using (hf.continuous.comp hgauss).continuousOn
         have hder :
             ∀ θ ∈ Set.Ioo 0 b,
               HasDerivAt (fun t : ℝ => f (gaussRot (H := H) t p)) (d θ p) θ := by
@@ -593,7 +599,7 @@ theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
           simpa [gaussRot, gaussRotOrtho] using (by fun_prop : Continuous fun θ : ℝ =>
             (Real.cos θ • p.1 + Real.sin θ • p.2, -Real.sin θ • p.1 + Real.cos θ • p.2))
         have hcontd : Continuous (fun θ : ℝ => d θ p) := by
-          simpa [d] using hDf.comp hpair
+          simpa [d, Function.comp_def] using hDf.comp hpair
         have hint : IntervalIntegrable (fun θ : ℝ => d θ p) (volume : Measure ℝ) 0 b :=
           hcontd.intervalIntegrable (μ := (volume : Measure ℝ)) 0 b
         have h :=
@@ -601,9 +607,9 @@ theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
             hb0 hcont hder hint
         simpa [b, gaussRot, Real.cos_zero, Real.sin_zero, Real.cos_pi_div_two, Real.sin_pi_div_two] using h
       have hvol : (volume (Set.Ioc (0 : ℝ) b)) < ∞ := by
-        simpa [volume_Ioc] using (ENNReal.ofReal_lt_top (b - (0 : ℝ)))
-      haveI : Fact ((volume : Measure ℝ) (Set.Ioc (0 : ℝ) b) < ∞) := ⟨hvol⟩
-      haveI : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) b)) := by infer_instance
+        simp [volume_Ioc]
+      have : Fact ((volume : Measure ℝ) (Set.Ioc (0 : ℝ) b) < ∞) := ⟨hvol⟩
+      have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) b)) := by infer_instance
       have hmeas : AEStronglyMeasurable (fun θ : ℝ => d θ p) (volume.restrict (Set.Ioc (0 : ℝ) b)) := by
         have hDf :
             Continuous fun q : H × H => (fderiv ℝ f q.1 : H → ℝ) q.2 :=
@@ -613,7 +619,7 @@ theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
           simpa [gaussRot, gaussRotOrtho] using (by fun_prop : Continuous fun θ : ℝ =>
             (Real.cos θ • p.1 + Real.sin θ • p.2, -Real.sin θ • p.1 + Real.cos θ • p.2))
         have hcontd : Continuous (fun θ : ℝ => d θ p) := by
-          simpa [d] using hDf.comp hpair
+          simpa [d, Function.comp_def] using hDf.comp hpair
         exact hcontd.aestronglyMeasurable
       have hbound :
           ∀ᵐ θ ∂(volume.restrict (Set.Ioc (0 : ℝ) b)), ‖d θ p‖ ≤ K * (‖p.1‖ + ‖p.2‖) := by
@@ -646,8 +652,8 @@ theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
         (f p.1 - f p.2) ^ 2 = (f p.2 - f p.1) ^ 2 := by ring
         _ ≤ b * ∫ θ in 0..b, (d θ p) ^ 2 := this
     have hvol_u : (volume (Set.uIoc (0 : ℝ) b)) < ∞ := by simp [volume_uIoc]
-    haveI : Fact ((volume : Measure ℝ) (Set.uIoc (0 : ℝ) b) < ∞) := ⟨hvol_u⟩
-    haveI : IsFiniteMeasure (volume.restrict (Set.uIoc (0 : ℝ) b)) := by infer_instance
+    have : Fact ((volume : Measure ℝ) (Set.uIoc (0 : ℝ) b) < ∞) := ⟨hvol_u⟩
+    have : IsFiniteMeasure (volume.restrict (Set.uIoc (0 : ℝ) b)) := by infer_instance
     have hIdLp2 : MemLp (id : H → H) 2 μ := IsGaussian.memLp_two_id (μ := μ)
     have hNormLp2 : MemLp (fun x : H => ‖x‖) 2 μ := hIdLp2.norm
     have hNorm_fst : MemLp (fun p : H × H => ‖p.1‖) 2 P := hNormLp2.comp_fst μ
@@ -680,14 +686,14 @@ theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
           (Real.cos z.1 • z.2.1 + Real.sin z.1 • z.2.2,
             -Real.sin z.1 • z.2.1 + Real.cos z.1 • z.2.2))
       have hcont_d : Continuous (fun z : ℝ × (H × H) => d z.1 z.2) := by
-        simpa [d, Function.uncurry] using hDf.comp hpair
+        simpa [d, Function.uncurry_def, Function.comp_def] using hDf.comp hpair
       have hmeas :
           AEStronglyMeasurable
             (Function.uncurry (fun θ : ℝ => fun p : H × H => (d θ p) ^ 2))
             ((volume.restrict (Set.uIoc (0 : ℝ) b)).prod P) := by
         have : Continuous
             (Function.uncurry (fun θ : ℝ => fun p : H × H => (d θ p) ^ 2)) := by
-          simpa [Function.uncurry] using (hcont_d.pow 2)
+          simpa [Function.uncurry_def] using (hcont_d.fun_pow 2)
         exact this.aestronglyMeasurable
       have hdom :
           ∀ᵐ z ∂((volume.restrict (Set.uIoc (0 : ℝ) b)).prod P),
@@ -718,12 +724,12 @@ theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
             pow_le_pow_left₀ (abs_nonneg _) hθ' 2
           simpa [sq_abs] using this
         have hnonneg : 0 ≤ (d θ p) ^ 2 := sq_nonneg _
-        simpa [Function.uncurry, Real.norm_eq_abs, abs_of_nonneg hnonneg] using hsq
+        simpa [Function.uncurry_def, Real.norm_eq_abs, abs_of_nonneg hnonneg] using hsq
       exact Integrable.mono' hG hmeas hdom
     have hSwap :
         (∫ p : H × H, (∫ θ in (0 : ℝ)..b, (d θ p) ^ 2) ∂P)
           = ∫ θ in (0 : ℝ)..b, ∫ p : H × H, (d θ p) ^ 2 ∂P := by
-      simpa [Function.uncurry] using
+      simpa [Function.uncurry_def] using
         (intervalIntegral_integral_swap (a := (0 : ℝ)) (b := b)
             (μ := P) (f := fun θ (p : H × H) => (d θ p) ^ 2) hInt_uncurry).symm
     have hInv (θ : ℝ) :
@@ -737,7 +743,7 @@ theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
         have hcont : Continuous fun q : H × H => (fderiv ℝ f q.1 : H → ℝ) q.2 :=
           hf.continuous_fderiv_apply (by simp)
         have : Continuous g := by
-          simpa [g] using (hcont.pow 2)
+          simpa [g] using (hcont.fun_pow 2)
         exact this.aestronglyMeasurable
       have hIntMap :
           ∫ p : H × H, g p ∂P.map (gaussRotMap (H := H) θ)
@@ -752,7 +758,7 @@ theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
       have h_int' :
           Integrable (fun z : ℝ × (H × H) => (d z.1 z.2) ^ 2)
             ((volume.restrict (Set.Ioc (0 : ℝ) b)).prod P) := by
-        simpa [Set.uIoc_of_le hab] using hInt_uncurry
+        simpa [Set.uIoc_of_le hab, Function.uncurry_def] using hInt_uncurry
       have h_inner :
           Integrable (fun p : H × H => ∫ θ : ℝ, (d θ p) ^ 2 ∂(volume.restrict (Set.Ioc (0 : ℝ) b))) P :=
         h_int'.integral_prod_right
@@ -781,8 +787,8 @@ theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
               intro θ _hθ
               simpa using (hInv θ)
         _ = b * ∫ p : H × H, ((fderiv ℝ f p.1) p.2) ^ 2 ∂P := by
-              simp [intervalIntegral.integral_const, hb0, sub_eq_add_neg, add_comm, add_left_comm,
-                add_assoc, mul_assoc]
+              simp [intervalIntegral.integral_const, sub_eq_add_neg, add_comm, 
+                ]
     have hInt_diff' :
         ∫ p : H × H, (f p.1 - f p.2) ^ 2 ∂P
           ≤ (Real.pi ^ 2 / 4) * ∫ p : H × H, ((fderiv ℝ f p.1) p.2) ^ 2 ∂P := by
@@ -833,7 +839,7 @@ theorem variance_le_pi_sq_div_eight_mul_opNorm_covarianceOperator_mul_bound_sq
           have hcont : Continuous fun q : H × H => (fderiv ℝ f q.1 : H → ℝ) q.2 :=
             hf.continuous_fderiv_apply (by simp)
           have : Continuous φ := by
-            simpa [φ] using (hcont.pow 2)
+            simpa [φ] using (hcont.fun_pow 2)
           exact this.aestronglyMeasurable
         have hboundInt : Integrable (fun p : H × H => (K ^ 2) * (‖p.2‖) ^ 2) P :=
           hInt_snd_sq.const_mul (K ^ 2)

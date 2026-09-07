@@ -48,7 +48,7 @@
    "rev": "a8acbfd87375ff4abe14ce09db5b7664d383bc7f",
    "name": "proofwidgets",
    "manifestFile": "lake-manifest.json",
-   "inputRev": "v0.0.86",
+   "inputRev": "main",
    "inherited": true,
    "configFile": "lakefile.lean"},
   {"url": "https://github.com/leanprover-community/aesop",
@@ -92,4 +92,5 @@
    "inherited": true,
    "configFile": "lakefile.toml"}],
  "name": "SpinGlass",
- "lakeDir": ".lake"}
+ "lakeDir": ".lake",
+ "fixedToolchain": false}

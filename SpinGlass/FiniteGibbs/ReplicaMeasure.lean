@@ -36,10 +36,10 @@ noncomputable def gibbs_average_n_det (n : ℕ) (H : EnergySpace α) (f : Replic
 
 /-- The `n`-replica Gibbs weight (as `ℝ≥0`). -/
 noncomputable def replicaGibbsWeightNNReal (n : ℕ) (H : EnergySpace α) (σs : ReplicaSpace (α := α) n) : ℝ≥0 :=
-  ⟨∏ l, gibbs_pmf (α := α) H (σs l), by
+  .mk (∏ l, gibbs_pmf (α := α) H (σs l)) (by
     refine Finset.prod_nonneg ?_
     intro l _hl
-    exact gibbs_pmf_nonneg (α := α) (H := H) (σ := σs l)⟩
+    exact gibbs_pmf_nonneg (α := α) (H := H) (σ := σs l))
 
 /-- The `n`-replica Gibbs measure as an explicit finite atomic measure on `ReplicaSpace α n`. -/
 noncomputable def replicaGibbsMeasure (n : ℕ) (H : EnergySpace α) : Measure (ReplicaSpace (α := α) n) :=
@@ -94,7 +94,7 @@ lemma replicaGibbsMeasure_univ (n : ℕ) (H : EnergySpace α) :
   have hsumNNReal :
       (∑ σs : ReplicaSpace (α := α) n, replicaGibbsWeightNNReal (α := α) (n := n) H σs) = (1 : ℝ≥0) := by
     apply NNReal.coe_injective
-    simpa [replicaGibbsWeightNNReal] using (sum_prod_gibbs_pmf_eq_one (α := α) (n := n) (H := H))
+    simp [replicaGibbsWeightNNReal, NNReal.coe_sum, sum_prod_gibbs_pmf_eq_one]
   have hsumENNReal :
       (∑ σs : ReplicaSpace (α := α) n,
           (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞)) = (1 : ℝ≥0∞) := by
@@ -121,12 +121,13 @@ lemma integral_replicaGibbsMeasure_eq_gibbs_average_n_det (n : ℕ)
     exact hdirac.smul_measure (by simp)
   have hsum :
       (∫ x, f x ∂((Finset.univ : Finset (ReplicaSpace (α := α) n)).sum μatom)) =
-        (Finset.univ : Finset (ReplicaSpace (α := α) n)).sum fun σs => ∫ x, f x ∂(μatom σs) := by
-    simpa using
-      (MeasureTheory.integral_finset_sum_measure
-        (f := f) (μ := μatom) (s := (Finset.univ : Finset (ReplicaSpace (α := α) n))) h_integrable)
-  simpa [replicaGibbsMeasure, μatom, gibbs_average_n_det, replicaGibbsWeightNNReal, mul_comm, mul_left_comm,
-    mul_assoc] using hsum
+        ∑ σs : ReplicaSpace (α := α) n, ∫ x, f x ∂μatom σs :=
+    MeasureTheory.integral_finsetSum_measure (f := f) (μ := μatom)
+      (s := (Finset.univ : Finset (ReplicaSpace (α := α) n))) h_integrable
+  simp only [replicaGibbsMeasure, μatom] at hsum ⊢
+  rw [hsum]
+  refine Finset.sum_congr rfl fun σs _ => ?_
+  simp [NNReal.smul_def, mul_comm, replicaGibbsWeightNNReal]
 
 end
 

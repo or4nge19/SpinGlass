@@ -50,7 +50,7 @@ theorem hasSubgaussianMGF_centered_dual (L : StrongDual ℝ E) :
       ProbabilityTheory.integrable_exp_mul_gaussianReal (μ := (0 : ℝ)) (v := v) t
     have hint' : Integrable (fun y : ℝ => rexp (t * y)) (μ.map (fun x : E => L x - m)) := by
       simpa [hmap] using hint
-    simpa [m, Function.comp] using
+    simpa [m, Function.comp_def] using
       (hint'.comp_measurable (by fun_prop : Measurable (fun x : E => L x - m)))
   · intro t
     have hmgf :
@@ -111,7 +111,7 @@ theorem hasSubgaussianMGF_centered_dual (hX : ProbabilityTheory.HasGaussianLaw X
         (fun ω : Ω => L (X ω) - P[fun ω : Ω => L (X ω)])
         (Var[fun ω : Ω => L (X ω); P]).toNNReal P := by
   let μ : Measure E := P.map X
-  haveI : ProbabilityTheory.IsGaussian μ := ProbabilityTheory.HasGaussianLaw.isGaussian_map hX
+  have : ProbabilityTheory.IsGaussian μ := ProbabilityTheory.HasGaussianLaw.isGaussian_map hX
   have hμ :
       ProbabilityTheory.HasSubgaussianMGF (fun x : E => L x - μ[L]) (Var[L; μ]).toNNReal μ :=
     ProbabilityTheory.IsGaussian.hasSubgaussianMGF_centered_dual (μ := μ) L
@@ -124,7 +124,7 @@ theorem hasSubgaussianMGF_centered_dual (hX : ProbabilityTheory.HasGaussianLaw X
       (MeasureTheory.integral_map (μ := P) (φ := X) (f := L)
         (ProbabilityTheory.HasGaussianLaw.aemeasurable hX) (by fun_prop))
   have hVar : Var[L; μ] = Var[fun ω : Ω => L (X ω); P] := by
-    simpa [μ, Function.comp] using
+    simpa [μ, Function.comp_def] using
       (ProbabilityTheory.variance_map (μ := P) (Y := X) (X := L) (hX := by fun_prop)
         (ProbabilityTheory.HasGaussianLaw.aemeasurable hX))
   have hPull' :

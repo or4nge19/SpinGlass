@@ -27,7 +27,7 @@ namespace CameronMartinIBPAnalytic
 
 private lemma cameronMartin_smul_ae (x : cameronMartin μ) (t : ℝ) :
     (fun y : E => (t • (x : Lp ℝ 2 μ)) y) =ᵐ[μ] fun y : E => t * x y := by
-  simpa [Pi.smul_apply] using (Lp.coeFn_smul (c := t) (f := (x : Lp ℝ 2 μ)))
+  simpa [Pi.smul_def, smul_eq_mul] using (Lp.coeFn_smul (c := t) (f := (x : Lp ℝ 2 μ)))
 
 private lemma abs_mul_mul_eq_mul_mul (t a : ℝ) : |t| * (|t| * a) = t * (t * a) := by
   have ht : |t| * |t| = t * t := abs_mul_abs_self t
@@ -51,9 +51,14 @@ lemma cameronMartinTiltKernel_aeEq_tiltKernel (x : cameronMartin μ) (t : ℝ) :
 
 private lemma memLp_abs_add_one_gaussianReal (v : ℝ≥0) :
     MemLp (fun u : ℝ => |u| + 1) (2 : ℝ≥0∞) (gaussianReal 0 v) := by
-  have h2 : MemLp (fun u : ℝ => u) (2 : ℝ≥0∞) (gaussianReal 0 v) := by
-    simpa using memLp_id_gaussianReal' (μ := (0 : ℝ)) (v := v) (p := (2 : ℝ≥0∞)) (by simp)
-  simpa [Real.norm_eq_abs, add_comm, add_left_comm, add_assoc] using h2.norm.add (memLp_const (c := (1 : ℝ)))
+  have h2 : MemLp (fun u : ℝ => u) (2 : ℝ≥0∞) (gaussianReal 0 v) :=
+    memLp_id_gaussianReal' (μ := (0 : ℝ)) (v := v) (p := (2 : ℝ≥0∞)) (by simp)
+  have habs : MemLp (fun u : ℝ => |u|) (2 : ℝ≥0∞) (gaussianReal 0 v) := by
+    simpa [Real.norm_eq_abs] using h2.norm
+  have hone : MemLp (fun _ : ℝ => (1 : ℝ)) (2 : ℝ≥0∞) (gaussianReal 0 v) := memLp_const (c := (1 : ℝ))
+  convert habs.add hone using 1
+  ext u
+  simp [Pi.add_apply]
 
 private lemma exp_mul_abs_le_add_exp (a u : ℝ) :
     Real.exp (a * |u|) ≤ Real.exp (a * u) + Real.exp (-a * u) := by
@@ -94,10 +99,11 @@ private lemma memLp_exp_abs_gaussianReal (v : ℝ≥0) (δ : ℝ) :
   simpa [hsq] using h
 
 private lemma integrable_profile_gaussianReal (v : ℝ≥0) {δ : ℝ} (_hδ : 0 < δ) :
-    Integrable (fun u : ℝ => (|u| + 1) * Real.exp (δ * |u|)) (gaussianReal 0 v) :=
-  by
-    simpa [mul_assoc, mul_left_comm, mul_comm] using
-      (MemLp.integrable_mul (memLp_abs_add_one_gaussianReal v) (memLp_exp_abs_gaussianReal v δ))
+    Integrable (fun u : ℝ => (|u| + 1) * Real.exp (δ * |u|)) (gaussianReal 0 v) := by
+  convert MemLp.integrable_mul (memLp_abs_add_one_gaussianReal v)
+    (memLp_exp_abs_gaussianReal v δ) using 1
+  ext u
+  simp [Pi.mul_apply]
 
 /-- The domination profile `(|x y| + 1) * exp(δ |x y|)` is integrable under `μ`. -/
 lemma integrable_profile_cameronMartin (x : cameronMartin μ) {δ : ℝ} (hδ : 0 < δ) :
@@ -109,7 +115,7 @@ lemma integrable_profile_cameronMartin (x : cameronMartin μ) {δ : ℝ} (hδ : 
 
 private lemma memLp_abs_add_one_sq_gaussianReal (v : ℝ≥0) :
     MemLp (fun u : ℝ => (|u| + 1) ^ 2) (2 : ℝ≥0∞) (gaussianReal 0 v) := by
-  haveI : ProbabilityTheory.IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
+  have : ProbabilityTheory.IsGaussian (gaussianReal (0 : ℝ) v) := inferInstance
   have hmeas : AEStronglyMeasurable (fun u : ℝ => (|u| + 1) ^ 2) (gaussianReal 0 v) := by fun_prop
   refine (memLp_two_iff_integrable_sq hmeas).2 ?_
   have h : Integrable (fun u : ℝ => (1 + ‖u‖) ^ (4 : ℕ)) (gaussianReal (0 : ℝ) v) :=
@@ -200,9 +206,8 @@ lemma hasDerivAt_shiftFun_integrand
     (t : ℝ) (y : E) :
     HasDerivAt (fun s => F (y + s • v)) ((F' (y + t • v)) v) t := by
   have hline : HasDerivAt (fun s : ℝ => y + s • v) v t := by
-    simpa [add_comm, add_left_comm, add_assoc] using
-      (HasDerivAt.smul_const (hasDerivAt_id t) v).const_add y
-  simpa using ((hF' (y + t • v)).comp_hasDerivAt t hline)
+    simpa [id_eq, one_smul] using ((hasDerivAt_id t).smul_const v).const_add y
+  simpa [Function.comp_def] using ((hF' (y + t • v)).comp_hasDerivAt t hline)
 
 omit [BorelSpace E] [CompleteSpace E] [SecondCountableTopology E] [IsGaussian μ] in
 lemma norm_shiftFun_integrandDeriv_le_of_norm_fderiv_le
@@ -284,6 +289,7 @@ theorem hasDerivAt_shiftFun_at0_bounded
     hasDerivAt_shiftFun_at0_of_integrable_bound (μ := μ) x F hF_meas hF_c1 (δ := (1 : ℝ))
       (by norm_num) hF_int bound hbound_int hbound
 
+set_option maxHeartbeats 800000 in
 /-- Differentiate the Cameron–Martin shift functional at `t = 0` under polynomial growth. -/
 theorem hasDerivAt_shiftFun_at0_polyGrowth
     (x : cameronMartin μ) (F : E → ℝ) (hF_meas : Measurable F) (hF_c1 : ContDiff ℝ 1 F)
@@ -299,9 +305,8 @@ theorem hasDerivAt_shiftFun_at0_polyGrowth
       ae_of_all _ (fun y => by simpa [Real.norm_eq_abs] using hF_growth y)
   let v : E := cmCoe x
   let bound : E → ℝ := fun y => (C * ‖v‖ * (1 + ‖v‖) ^ m) * (1 + ‖y‖) ^ m
-  have hbound_int : Integrable bound μ := by
-    simpa [bound, mul_assoc, mul_comm, mul_left_comm] using
-      (hbase.const_mul (C * ‖v‖ * (1 + ‖v‖) ^ m))
+  have hbound_int : Integrable bound μ :=
+    hbase.const_mul (C * ‖v‖ * (1 + ‖v‖) ^ m)
   have hbound : ∀ᵐ y ∂μ, ∀ t ∈ Metric.ball (0 : ℝ) (1 : ℝ),
       ‖(fderiv ℝ F (y + t • v)) v‖ ≤ bound y := by
     refine ae_of_all _ (fun y t ht => ?_)
@@ -321,15 +326,13 @@ theorem hasDerivAt_shiftFun_at0_polyGrowth
       pow_le_pow_left₀ (by positivity) hle m
     have hOp := (fderiv ℝ F (y + t • v)).le_opNorm v
     have hB : ‖fderiv ℝ F (y + t • v)‖ ≤ C * (1 + ‖y + t • v‖) ^ m := hF'_growth (y + t • v)
-    have : ‖(fderiv ℝ F (y + t • v)) v‖ ≤ (C * ‖v‖) * ((1 + ‖v‖) ^ m * (1 + ‖y‖) ^ m) := by
-      calc
-        ‖(fderiv ℝ F (y + t • v)) v‖ ≤ ‖fderiv ℝ F (y + t • v)‖ * ‖v‖ := hOp
-        _ ≤ (C * (1 + ‖y + t • v‖) ^ m) * ‖v‖ := by gcongr
-        _ ≤ (C * ((1 + ‖v‖) * (1 + ‖y‖)) ^ m) * ‖v‖ := by gcongr
-        _ = (C * ‖v‖) * ((1 + ‖v‖) ^ m * (1 + ‖y‖) ^ m) := by
-            simp [mul_assoc, mul_comm, mul_left_comm, mul_pow]
-    -- final rearrangement to match `bound`
-    simpa [bound, mul_assoc, mul_comm, mul_left_comm] using this
+    calc
+      ‖(fderiv ℝ F (y + t • v)) v‖ ≤ ‖fderiv ℝ F (y + t • v)‖ * ‖v‖ := hOp
+      _ ≤ (C * (1 + ‖y + t • v‖) ^ m) * ‖v‖ := by gcongr
+      _ ≤ (C * ((1 + ‖v‖) * (1 + ‖y‖)) ^ m) * ‖v‖ := by gcongr
+      _ = bound y := by
+          simp [bound, mul_pow]
+          ring
   simpa using
     hasDerivAt_shiftFun_at0_of_integrable_bound (μ := μ) x F hF_meas hF_c1 (δ := (1 : ℝ))
       (by norm_num) hF_int bound hbound_int hbound
@@ -384,6 +387,7 @@ private lemma cameronMartinTiltFun_eq_integral_tiltKernel
     simp [hy, mul_comm]
   simpa [cameronMartinTiltFun] using integral_congr_ae hker
 
+set_option maxHeartbeats 800000 in
 /-- Differentiate the Cameron–Martin tilt functional at `t = 0`, assuming an integrable domination profile. -/
 theorem hasDerivAt_tiltFun_at0_of_integrable_profile
     (x : cameronMartin μ) (F : E → ℝ) (hF_meas : Measurable F)
@@ -394,14 +398,16 @@ theorem hasDerivAt_tiltFun_at0_of_integrable_profile
       (∫ y, (x y) * F y ∂μ) 0 := by
   let v : ℝ≥0 := ‖x‖₊ ^ 2
   let H : ℝ → E → ℝ := fun t y => F y * tiltKernel v t (x y)
-  let H' : ℝ → E → ℝ := fun t y => F y * ((x y - (v : ℝ) * t) * tiltKernel v t (x y))
+  let H' : ℝ → E → ℝ := fun t y => F y * (x y - (v : ℝ) * t) * tiltKernel v t (x y)
   have hx : AEMeasurable (fun y : E => x y) μ := (hasLaw_cameronMartin (μ := μ) x).aemeasurable
   have hH_meas : ∀ᶠ t in 𝓝 (0 : ℝ), AEStronglyMeasurable (H t) μ :=
     Filter.Eventually.of_forall (fun t => by
       have hcont : Continuous (fun u : ℝ => tiltKernel v t u) := by simp [tiltKernel]; continuity
       have htilt : AEStronglyMeasurable (fun y : E => tiltKernel v t (x y)) μ :=
         (hcont.measurable.comp_aemeasurable hx).aestronglyMeasurable
-      simpa [H, mul_assoc] using (hF_meas.aestronglyMeasurable.mul htilt))
+      convert hF_meas.aestronglyMeasurable.mul htilt
+      ext y
+      simp [H, Pi.mul_apply])
   have hH0 : Integrable (H 0) μ := by
     have hF_int : Integrable F μ :=
       integrable_tilt_integrand_at0_of_integrable_profile (μ := μ) x F hF_meas hδ hInt
@@ -411,16 +417,25 @@ theorem hasDerivAt_tiltFun_at0_of_integrable_profile
     have hEq : (fun y : E => H' 0 y) = fun y : E => F y * x y := by
       funext y
       simp [H', tiltKernel, mul_comm]
-    simpa [hEq] using (hF_meas.aestronglyMeasurable.mul hx')
+    convert hF_meas.aestronglyMeasurable.mul hx'
+    ext y
+    simp [hEq, Pi.mul_apply]
   have hBnd : ∀ᵐ y ∂μ, ∀ t ∈ Metric.ball (0 : ℝ) δ, ‖H' t y‖ ≤
       |F y| * (δ * (v : ℝ) + 1) * ((|x y| + 1) * Real.exp (δ * |x y|)) := by
     refine ae_of_all _ (fun y t ht => ?_)
     have ht1 : |t| ≤ δ := le_of_lt (by simpa [Metric.mem_ball, Real.norm_eq_abs] using ht)
-    have h := gaussianTilt_deriv_dom_bound (v := v) (δ := δ) (hδ_pos := hδ) (F := fun _ : ℝ => F y) t ht1 (x := x y)
-    simpa [H', Real.norm_eq_abs, mul_assoc, mul_left_comm, mul_comm] using h
+    have h := gaussianTilt_deriv_dom_bound (v := v) (δ := δ) (hδ_pos := hδ)
+      (F := fun _ : ℝ => F y) t ht1 (x := x y)
+    have hvabs : |(v : ℝ)| = (v : ℝ) := abs_of_nonneg (NNReal.coe_nonneg v)
+    rw [hvabs] at h
+    have h' :
+        |F y * (x y - (v : ℝ) * t) * tiltKernel v t (x y)|
+          ≤ |F y| * (δ * (v : ℝ) + 1) * ((|x y| + 1) * Real.exp (δ * |x y|)) :=
+      h.trans (le_of_eq (by ring))
+    simpa [H', Real.norm_eq_abs] using h'
   have hdiff : ∀ᵐ y ∂μ, ∀ t ∈ Metric.ball (0 : ℝ) δ, HasDerivAt (fun s => H s y) (H' t y) t := by
     refine ae_of_all _ (fun y t ht => ?_)
-    simpa [H, H', mul_assoc, mul_left_comm, mul_comm] using
+    simpa [H, H'] using
       hasDerivAt_F_mul_tiltKernel (v := v) (F := fun _ : ℝ => F y) (x := (x y)) (t := t)
   have hs : Metric.ball (0 : ℝ) δ ∈ 𝓝 (0 : ℝ) := Metric.ball_mem_nhds _ hδ
   have hInt' :=
@@ -484,7 +499,7 @@ theorem hasDerivAt_tiltFun_at0_polyGrowth
       (∫ y, (x y) * F y ∂μ) 0 := by
   -- `|F| ∈ L^2` by Fernique, and the exponential profile is in `L^2` by 1D reduction.
   have hAbs_meas : AEStronglyMeasurable (fun y : E => |F y|) μ :=
-    (hF_meas.abs).aestronglyMeasurable
+    (continuous_abs.measurable.comp hF_meas).aestronglyMeasurable
   have hAbs_sq_int : Integrable (fun y : E => (|F y|) ^ 2) μ := by
     have hbase :
         Integrable (fun y : E => (1 + ‖y‖) ^ (2 * m)) μ :=
@@ -510,20 +525,23 @@ theorem hasDerivAt_tiltFun_at0_polyGrowth
     memLp_profile_cameronMartin (μ := μ) x hδ
   have hprod :
       Integrable (fun y : E => |F y| * ((|x y| + 1) * Real.exp (δ * |x y|))) μ := by
-    simpa [mul_assoc] using (MeasureTheory.MemLp.integrable_mul hAbs_L2 hProf_L2)
+    convert MeasureTheory.MemLp.integrable_mul hAbs_L2 hProf_L2 using 1
+    ext y
+    simp [Pi.mul_apply]
   have hInt :
       Integrable
         (fun y : E =>
           |F y| * (δ * (‖x‖₊ ^ 2 : ℝ) + 1) * ((|x y| + 1) * Real.exp (δ * |x y|))) μ := by
     -- constant factor `(δ * ‖x‖^2 + 1)` does not depend on `y`
-    simpa [mul_assoc, mul_left_comm, mul_comm] using
-      (hprod.const_mul (δ * (‖x‖₊ ^ 2 : ℝ) + 1))
+    convert hprod.const_mul (δ * (‖x‖₊ ^ 2 : ℝ) + 1) using 1
+    ext y
+    simp
+    ring
   exact hasDerivAt_tiltFun_at0_of_integrable_profile (μ := μ) x F hF_meas hδ hInt
 
 end CameronMartinIBPAnalytic
 
 open CameronMartinIBPAnalytic
---set_option maxHeartbeats 1000000 in
 /-- Gaussian IBP for bounded `F`: `∫ (x y) * F y dμ = ∫ (fderiv F y) (cmCoe x) dμ`. -/
 theorem cameronMartin_integral_by_parts_bounded
     (x : cameronMartin μ) (F : E → ℝ)

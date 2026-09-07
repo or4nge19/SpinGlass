@@ -92,14 +92,13 @@ lemma condDistrib_gibbsTrajMeasure (μH : Measure (EnergySpace N)) [IsProbabilit
         (gibbsκ N a) := by
   classical
   -- `Config N` is finite, hence standard Borel and nonempty.
-  haveI : StandardBorelSpace (Config N) := by infer_instance
-  haveI : Nonempty (Config N) := by
+  have : StandardBorelSpace (Config N) := by infer_instance
+  have : Nonempty (Config N) := by
     classical
     -- `Fin N → Bool` is inhabited, hence nonempty.
     infer_instance
-  simpa [gibbsTrajMeasure] using
-    (condDistrib_iidTrajMeasure (α := EnergySpace N) (β := Config N) (μ₀ := μH)
-      (K := gibbsKernel (N := N)) (a := a))
+  exact condDistrib_iidTrajMeasure (α := EnergySpace N) (β := Config N) (μ₀ := μH)
+    (K := gibbsKernel (N := N)) (a := a)
 
 end SpinGlass
 

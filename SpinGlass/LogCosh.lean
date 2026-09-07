@@ -30,7 +30,7 @@ theorem hasDerivAt_tanh (x : ℝ) :
   have hdiv :
       HasDerivAt (fun t : ℝ => Real.sinh t / Real.cosh t)
         ((Real.cosh x * Real.cosh x - Real.sinh x * Real.sinh x) / Real.cosh x ^ 2) x :=
-    (hs.div hc hcosh_ne)
+    (hs.fun_div hc hcosh_ne)
   have htanh₀ :
       HasDerivAt Real.tanh
         ((Real.cosh x * Real.cosh x - Real.sinh x * Real.sinh x) / Real.cosh x ^ 2) x := by
@@ -69,7 +69,7 @@ theorem hasDerivAt_log_cosh (x : ℝ) :
     Real.hasDerivAt_log (ne_of_gt (Real.cosh_pos x))
   have hcomp :
       HasDerivAt (fun t : ℝ => Real.log (Real.cosh t)) ((Real.cosh x)⁻¹ * Real.sinh x) x := by
-    simpa [Function.comp] using hlog.comp x hcosh
+    simpa [Function.comp_def] using hlog.comp x hcosh
   simpa [Real.tanh_eq_sinh_div_cosh, div_eq_mul_inv, mul_assoc, mul_left_comm, mul_comm] using hcomp
 
 end Real
@@ -101,23 +101,25 @@ noncomputable def termFDeriv2 (β h : ℝ) (L : V →L[ℝ] ℝ) (z : V) :
   let u : V → ℝ := fun z => β * L z + h
   have hu : HasFDerivAt u (β • L) z := by
     -- linear part + constant
-    simpa [u, smul_eq_mul, mul_assoc, mul_left_comm, mul_comm] using
-      (L.hasFDerivAt.const_smul β).add_const h
+    simpa [u, smul_eq_mul, mul_assoc, mul_left_comm, mul_comm, Pi.smul_def] using
+      (L.hasFDerivAt.fun_const_smul β).add_const h
   -- compose `log ∘ cosh` with `u`
-  simpa [term, termFDeriv, u, smul_smul, mul_assoc, mul_left_comm, mul_comm] using
-    (HasDerivAt.comp_hasFDerivAt z (Real.hasDerivAt_log_cosh (u z)) hu)
+  -- compose `log ∘ cosh` with `u`
+  convert! HasDerivAt.comp_hasFDerivAt z (Real.hasDerivAt_log_cosh (u z)) hu
+  ext x
+  simp [termFDeriv, u, smul_eq_mul, mul_assoc, mul_left_comm, mul_comm]
 
 @[fun_prop] theorem hasFDerivAt_termFDeriv (β h : ℝ) (L : V →L[ℝ] ℝ) (z : V) :
     HasFDerivAt (termFDeriv (V := V) β h L) (termFDeriv2 (V := V) β h L z) z := by
   -- `u(z) = β * L z + h`
   let u : V → ℝ := fun z => β * L z + h
   have hu : HasFDerivAt u (β • L) z := by
-    simpa [u, smul_eq_mul, mul_assoc, mul_left_comm, mul_comm] using
-      (L.hasFDerivAt.const_smul β).add_const h
+    simpa [u, smul_eq_mul, mul_assoc, mul_left_comm, mul_comm, Pi.smul_def] using
+      (L.hasFDerivAt.fun_const_smul β).add_const h
   have htanh :
       HasFDerivAt (fun z => Real.tanh (u z))
         ((1 - Real.tanh (u z) ^ 2) • (β • L)) z := by
-    simpa [u] using
+    simpa [u, Function.comp_def] using
       (HasDerivAt.comp_hasFDerivAt z (Real.hasDerivAt_tanh (u z)) hu)
   have hcoeff :
       HasFDerivAt (fun z => Real.tanh (u z) * β)
@@ -151,27 +153,22 @@ noncomputable def sumFDeriv2 (β h : ℝ) (L : ι → V →L[ℝ] ℝ) (z : V) :
 @[fun_prop] theorem hasFDerivAt_sum (β h : ℝ) (L : ι → V →L[ℝ] ℝ) (z : V) :
     HasFDerivAt (sum (V := V) β h L) (sumFDeriv (V := V) β h L z) z := by
   classical
-  -- termwise derivatives + finite sum
-  simpa [sum, sumFDeriv] using
-    (HasFDerivAt.fun_sum (u := (Finset.univ : Finset ι))
+  unfold sum sumFDeriv
+  exact HasFDerivAt.fun_sum (u := (Finset.univ : Finset ι))
       (A := fun i : ι => term (V := V) β h (L i))
       (A' := fun i : ι => termFDeriv (V := V) β h (L i) z)
       (x := z)
-      (by
-        intro i _hi
-        simpa using hasFDerivAt_term (V := V) (β := β) (h := h) (L := L i) (z := z)))
+      (fun i _hi => hasFDerivAt_term (V := V) (β := β) (h := h) (L := L i) (z := z))
 
 @[fun_prop] theorem hasFDerivAt_sumFDeriv (β h : ℝ) (L : ι → V →L[ℝ] ℝ) (z : V) :
     HasFDerivAt (sumFDeriv (V := V) β h L) (sumFDeriv2 (V := V) β h L z) z := by
   classical
-  simpa [sumFDeriv, sumFDeriv2] using
-    (HasFDerivAt.fun_sum (u := (Finset.univ : Finset ι))
+  unfold sumFDeriv sumFDeriv2
+  exact HasFDerivAt.fun_sum (u := (Finset.univ : Finset ι))
       (A := fun i : ι => termFDeriv (V := V) β h (L i))
       (A' := fun i : ι => termFDeriv2 (V := V) β h (L i) z)
       (x := z)
-      (by
-        intro i _hi
-        simpa using hasFDerivAt_termFDeriv (V := V) (β := β) (h := h) (L := L i) (z := z)))
+      (fun i _hi => hasFDerivAt_termFDeriv (V := V) (β := β) (h := h) (L := L i) (z := z))
 
 end LogCosh
 
