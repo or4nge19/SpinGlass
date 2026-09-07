@@ -9,6 +9,9 @@
 .axiomatic/
 *.pdf
 
+## Local probes
+Scratch/
+
 ## Blueprint build artifacts
 /blueprint/print/print.log
 /blueprint/web/
