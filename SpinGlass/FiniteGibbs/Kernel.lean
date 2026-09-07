@@ -4,15 +4,10 @@ import Mathlib.Analysis.Normed.Lp.MeasurableSpace
 import Mathlib.Probability.Kernel.Basic
 
 /-!
-# Finite Gibbs kernels (model-agnostic)
+# Finite Gibbs kernels
 
-This file models the finite-volume Gibbs sampler (and its replica version) as Markov kernels
-in the **Vol II** style:
-
-- `H ↦ G_H` as a kernel `EnergySpace α ⟶ α`,
-- `H ↦ G_H^{⊗ n}` as a kernel `EnergySpace α ⟶ (Fin n → α)`.
-
-Everything is generic in the finite configuration space `α`.
+Markov kernels `H ↦ G_H` (`gibbsKernel`) and `H ↦ G_H^{⊗ n}` (`replicaGibbsKernel`) on a finite
+configuration space `α`. Talagrand Vol. II.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators
@@ -27,9 +22,11 @@ variable {α : Type*} [Fintype α] [Nonempty α] [MeasurableSpace α] [Measurabl
 
 /-! ## Measurability helpers -/
 
+omit [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α] in
 lemma measurable_eval (σ : α) : Measurable fun H : EnergySpace α => H σ := by
   simpa [evalCLM] using (evalCLM σ).continuous.measurable
 
+omit [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α] in
 lemma measurable_Z : Measurable fun H : EnergySpace α => Z H := by
   have hmeas_term :
       ∀ σ ∈ (Finset.univ : Finset α),
@@ -39,6 +36,7 @@ lemma measurable_Z : Measurable fun H : EnergySpace α => Z H := by
     fun_prop
   simpa [Z] using (Finset.measurable_sum (s := (Finset.univ : Finset α)) hmeas_term)
 
+omit [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α] in
 lemma measurable_gibbs_pmf (σ : α) :
     Measurable fun H : EnergySpace α => gibbs_pmf H σ := by
   have hmeas_num : Measurable fun H : EnergySpace α => Real.exp (-H σ) := by
@@ -46,11 +44,12 @@ lemma measurable_gibbs_pmf (σ : α) :
     fun_prop
   have hmeas_den : Measurable fun H : EnergySpace α => Z H :=
     measurable_Z
-  simpa [gibbs_pmf] using hmeas_num.div hmeas_den
+  simpa [gibbs_pmf] using hmeas_num.fun_div hmeas_den
 
+omit [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α] in
 lemma measurable_gibbsWeightENNReal (σ : α) :
     Measurable fun H : EnergySpace α => ENNReal.ofReal (gibbs_pmf H σ) := by
-  simpa using (ENNReal.measurable_ofReal.comp (measurable_gibbs_pmf (σ := σ)))
+  exact (measurable_gibbs_pmf (σ := σ)).ennreal_ofReal
 
 /-! ## The Gibbs sampler kernel -/
 
@@ -76,6 +75,7 @@ noncomputable def gibbsKernel : Kernel (EnergySpace α) α where
       · simp [hσ']
     simpa [hsum] using (Finset.measurable_sum (s := (Finset.univ : Finset α)) hterm)
 
+omit [MeasurableSingletonClass α] in
 @[simp] lemma gibbsKernel_apply (H : EnergySpace α) :
     gibbsKernel (α := α) H = gibbsMeasure (α := α) H := rfl
 
@@ -121,7 +121,10 @@ noncomputable def replicaGibbsKernel (n : ℕ) :
         have hnn :
             Measurable fun H : EnergySpace α =>
               replicaGibbsWeightNNReal (α := α) (n := n) H σs := by
-          simpa [replicaGibbsWeightNNReal] using (Measurable.subtype_mk hprod)
+          simpa [replicaGibbsWeightNNReal] using
+            (hprod.nnreal_mk (h'f := fun H =>
+              Finset.prod_nonneg fun l _ =>
+                gibbs_pmf_nonneg (α := α) (H := H) (σ := σs l)))
         have hcoe : Measurable fun H : EnergySpace α =>
             (replicaGibbsWeightNNReal (α := α) (n := n) H σs : ℝ≥0∞) := by
           have h_ofReal :
@@ -141,6 +144,7 @@ noncomputable def replicaGibbsKernel (n : ℕ) :
     simpa [hsum] using
       (Finset.measurable_sum (s := (Finset.univ : Finset (ReplicaSpace (α := α) n))) hterm)
 
+omit [MeasurableSingletonClass α] in
 @[simp] lemma replicaGibbsKernel_apply (n : ℕ) (H : EnergySpace α) :
     replicaGibbsKernel (α := α) n H =
       replicaGibbsMeasure (α := α) (n := n) H := rfl

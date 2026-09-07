@@ -3,23 +3,10 @@ import Mathlib.Probability.Kernel.IonescuTulcea.Traj
 import Mathlib.Probability.Kernel.Composition.CompMap
 
 /-!
-# Vol II infrastructure: trajectory kernels (Ionescu–Tulcea) as a public API
+# Trajectory kernels (Ionescu–Tulcea)
 
-This file upgrades the finite-marginal (`partialTraj`) viewpoint to the **infinite trajectory**
-kernel `traj` from Mathlib’s Ionescu–Tulcea theorem, and connects it to the “replicas as kernels”
-bridge.
-
-Core principle (Talagrand Vol II / Georgii): **do not** encode replicas via ad-hoc products when a
-canonical stochastic process kernel exists.
-
-We provide:
-
-- `iidTrajKernel`: from a Markov kernel `K : Kernel α β`, build a kernel producing an infinite
-  trajectory `(X₀, X₁, X₂, …)` with `X₀ = α` and `X_{n+1} = β`, sampling i.i.d. from `K` given `X₀`;
-- a sharp sanity lemma: pushing `iidTrajKernel` forward to time `1` recovers exactly `K`;
-- specialization to the finite-volume Gibbs kernel.
-
-All statements reduce to Mathlib’s `map_traj_succ_self` and kernel composition laws.
+Infinite trajectory kernel `traj` from Mathlib, specialized to i.i.d. sampling from `K` and to
+the finite-volume Gibbs kernel. Main: `iidTrajKernel`.
 -/
 
 open MeasureTheory ProbabilityTheory
@@ -51,7 +38,7 @@ lemma measurable_prefix0 : Measurable (prefix0 (α := α) (β := β)) := by
   rcases i with ⟨k, hk⟩
   have hk0 : k = 0 := Nat.eq_zero_of_le_zero (Finset.mem_Iic.mp hk)
   subst hk0
-  simpa [prefix0, Cascades.IidX] using measurable_id
+  exact measurable_id
 
 /-- The infinite-trajectory kernel associated to `K` via Ionescu–Tulcea (i.i.d. given the head). -/
 noncomputable def iidTrajKernel (K : Kernel α β) [IsMarkovKernel K] :
@@ -63,32 +50,22 @@ instance (K : Kernel α β) [IsMarkovKernel K] : IsMarkovKernel (iidTrajKernel (
   dsimp [iidTrajKernel]
   infer_instance
 
-/--
-**Sanity check:** the time-`1` marginal of `iidTrajKernel K` is exactly `K`.
-
-This is the precise kernel-level version of “sampling the first replica is governed by `K`”.
--/
+/-- Time-`1` marginal of `iidTrajKernel K` is `K`. -/
 lemma iidTrajKernel_map_one (K : Kernel α β) [IsMarkovKernel K] :
     (iidTrajKernel (α := α) (β := β) K).map (fun x : (Π n, IidX (α := α) (β := β) n) => x 1) = K := by
-  simp [iidTrajKernel, Kernel.map_comp]
-  -- Apply Ionescu–Tulcea: time-`1` marginal of `traj` is the step kernel `iidκ K 0`.
+  -- Ionescu–Tulcea: the time-`1` marginal of `traj` is the step kernel `iidκ K 0`.
   have hstep :
       (ProbabilityTheory.Kernel.traj (κ := iidκ (α := α) (β := β) K) 0).map
-          (fun x : (Π n, IidX (α := α) (β := β) n) => x 1) = iidκ (α := α) (β := β) K 0 := by
-    simpa using (ProbabilityTheory.Kernel.map_traj_succ_self (κ := iidκ (α := α) (β := β) K) (a := 0))
-  have hstep' :
-      (ProbabilityTheory.Kernel.traj (κ := iidκ (α := α) (β := β) K) 0).map
-          (fun x : (Π n, IidX (α := α) (β := β) n) => x 1)
-        ∘ₖ ProbabilityTheory.Kernel.deterministic (prefix0 (α := α) (β := β))
-            (measurable_prefix0 (α := α) (β := β)) = (iidκ (α := α) (β := β) K 0)
-          ∘ₖ ProbabilityTheory.Kernel.deterministic (prefix0 (α := α) (β := β))
-              (measurable_prefix0 (α := α) (β := β)) := by
-    simp [hstep]
-  have hhead0 : (head (α := α) (β := β) (n := 0)) ∘ (prefix0 (α := α) (β := β)) = id := by
-    funext a
-    simp [Cascades.head, prefix0, Cascades.IidX]
-  simpa [iidκ, Kernel.comp_assoc, Kernel.deterministic_comp_deterministic, hhead0,
-    Kernel.comp_deterministic_eq_comap, Kernel.comap_id] using hstep'
+          (fun x : (Π n, IidX (α := α) (β := β) n) => x 1) = iidκ (α := α) (β := β) K 0 :=
+    ProbabilityTheory.Kernel.map_traj_succ_self (κ := iidκ (α := α) (β := β) K) (a := 0)
+  -- Reading off the head of a length-`0` prefix is the identity.
+  have hhead0 : (head (α := α) (β := β) (n := 0)) ∘ (prefix0 (α := α) (β := β)) = id := rfl
+  simp only [iidTrajKernel, Kernel.map_comp]
+  rw [hstep]
+  refine Kernel.ext fun a => ?_
+  rw [Kernel.comp_deterministic_eq_comap, Kernel.comap_apply]
+  simp only [iidκ, Kernel.comp_apply, Kernel.deterministic_apply]
+  exact Measure.dirac_bind K.measurable a
 
 end General
 

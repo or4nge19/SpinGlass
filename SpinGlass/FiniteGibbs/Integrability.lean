@@ -4,14 +4,10 @@ import Mathlib.Probability.Notation
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
 
 /-!
-# Integrability lemmas for `SpinGlass.FiniteGibbs`
+# Finite Gibbs integrability
 
-This file turns the deterministic growth bounds from `SpinGlass.FiniteGibbs.Calculus` into
-reusable measure-theoretic integrability facts, in a model-agnostic way.
-
-The primary use case is Guerra-type interpolation: we need integrability of the free energy
-functional under (typically Gaussian) disorder laws to justify differentiation under the
-integral sign.
+Growth bounds from `SpinGlass.FiniteGibbs.Calculus` as measure-theoretic integrability, for
+differentiation under the integral along Gaussian disorder.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology
@@ -51,7 +47,7 @@ lemma integrable_free_energy_density_of_isGaussian_map
     Integrable (fun ω : Ω => free_energy_density (α := α) n (g ω)) P := by
   classical
   let μ : Measure (EnergySpace α) := P.map g
-  haveI : ProbabilityTheory.IsGaussian μ := hg_gauss
+  have : ProbabilityTheory.IsGaussian μ := hg_gauss
   have hIntμ : Integrable (fun x : EnergySpace α => free_energy_density (α := α) n x) μ := by
     refine ProbabilityTheory.IsGaussian.integrable_of_abs_le_mul_one_add_norm_pow
       (μ := μ)
@@ -68,7 +64,7 @@ lemma integrable_free_energy_density_of_isGaussian_map
           (contDiff_free_energy_density (α := α) (n := n)).continuous.measurable
         exact hF.aestronglyMeasurable)
       hg_meas.aemeasurable).1 hIntμ
-  simpa [Function.comp] using hpull
+  simpa [Function.comp_def] using hpull
 
 end
 

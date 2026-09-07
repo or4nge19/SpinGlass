@@ -9,25 +9,11 @@ import Mathlib.Probability.Distributions.Gaussian.Real
 import Mathlib.Analysis.Calculus.Deriv.Basic
 
 /-!
-# Gaussian integration by parts for `gaussianReal` (intrinsic corollaries)
+# Gaussian IBP for `gaussianReal`
 
-This file provides **one-dimensional** Gaussian integration-by-parts identities for the real
-Gaussian measure `gaussianReal μ v`, derived from the intrinsic Cameron–Martin IBP theorem
-`ProbabilityTheory.cameronMartin_integral_by_parts_polyGrowth`.
-
-## Main results
-
-- `ProbabilityTheory.gaussian_integration_by_parts_general`: IBP for `gaussianReal μ v`.
-- `ProbabilityTheory.stein_lemma_gaussianReal`: the centered specialization (`μ = 0`).
-- `ProbabilityTheory.gaussianRV_integration_by_parts`: random-variable version via `HasLaw`.
-
-## Implementation notes
-
-We phrase all analytic assumptions on `F : ℝ → ℝ` using:
-
-- measurability,
-- `C¹` regularity (`ContDiff ℝ 1`),
-- polynomial growth bounds for `F` and `deriv F`.
+One-dimensional IBP for `gaussianReal μ v`, from `cameronMartin_integral_by_parts_polyGrowth`.
+Main: `gaussian_integration_by_parts_general`, `stein_lemma_gaussianReal`,
+`gaussianRV_integration_by_parts`.
 -/
 
 open MeasureTheory Filter
@@ -35,12 +21,9 @@ open scoped Topology Real NNReal ENNReal ProbabilityTheory
 
 namespace ProbabilityTheory
 
-/-! ### A small bridge: `cmCoe` for the identity dual in `ℝ` -/
+/-! ### `cmCoe` for the identity dual on `ℝ` -/
 
-/-! ### Convenience integrability lemmas for `gaussianReal` -/
-
-/-! These are small wrappers around existing Mathlib facts, used to keep the random-variable
-statement concise. -/
+/-! ### Integrability for `gaussianReal` -/
 
 /-- The degenerate Gaussian `gaussianReal μ 0` is the Dirac measure at `μ`. -/
 @[simp] lemma gaussianReal_dirac (μ : ℝ) : gaussianReal μ 0 = Measure.dirac μ := by
@@ -49,14 +32,14 @@ statement concise. -/
 /-- For a centered real Gaussian, the square is integrable. -/
 lemma integrable_sq_gaussianReal_centered (v : ℝ≥0) :
     Integrable (fun x : ℝ => x ^ 2) (gaussianReal 0 v) := by
-  haveI : IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
+  have : IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
   simpa [Real.norm_eq_abs, pow_two, sq_abs] using
     (IsGaussian.integrable_norm_pow (μ := gaussianReal (0 : ℝ) v) 2)
 
 /-- For a centered real Gaussian, all polynomial weights `(1 + |x|)^k` are integrable. -/
 lemma gaussianReal_integrable_one_add_abs_pow_centered (v : ℝ≥0) (k : ℕ) :
     Integrable (fun x : ℝ => (1 + |x|) ^ k) (gaussianReal 0 v) := by
-  haveI : IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
+  have : IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
   simpa [Real.norm_eq_abs] using
     (IsGaussian.integrable_one_add_norm_pow (μ := gaussianReal (0 : ℝ) v) k)
 
@@ -78,7 +61,7 @@ private lemma var_idDual_gaussianReal (μ : ℝ) (v : ℝ≥0) : Var[idDual; gau
 private lemma cmCoe_cmOfDual_idDual_gaussianReal (μ : ℝ) (v : ℝ≥0) :
     cmCoe (μ := gaussianReal μ v) (cmOfDual (μ := gaussianReal μ v) idDual) = (v : ℝ) := by
   let μR : Measure ℝ := gaussianReal μ v
-  haveI : IsGaussian μR := by infer_instance
+  have : IsGaussian μR := by infer_instance
   have hVar' : (Var[idDual; μR] : ℝ) = (v : ℝ) := by
     exact_mod_cast (var_idDual_gaussianReal μ v)
   have : idDual (cmCoe (μ := μR) (cmOfDual (μ := μR) idDual)) = (v : ℝ) := by
@@ -110,7 +93,7 @@ private lemma gaussianReal_cmOfDual_idDual_ae (μ : ℝ) (v : ℝ≥0) :
   have hcent' :=
     (StrongDual.centeredToLp_apply (μ := μR) (E := ℝ) (h := memLp_two_id) idDual)
   filter_upwards [hcent'] with x hx
-  simpa [idDual, hmean] using hx
+  simpa [idDual, hmean, cmOfDual_apply] using hx
 
 private lemma gaussianReal_integral_cmOfDual_idDual_mul
     (μ : ℝ) (v : ℝ≥0) (F : ℝ → ℝ) :
@@ -141,7 +124,7 @@ private lemma hasLaw_integral_comp
     {Ω : Type*} [MeasureSpace Ω] {P : Measure Ω} {g : Ω → ℝ} {v : ℝ≥0}
     (hg : HasLaw g (gaussianReal 0 v) P) {f : ℝ → ℝ} (hf : Integrable f (gaussianReal 0 v)) :
     (∫ ω, f (g ω) ∂P) = ∫ x, f x ∂(gaussianReal 0 v) := by
-  simpa [Function.comp] using (hg.integral_comp (f := f) (hf := hf.aestronglyMeasurable))
+  simpa [Function.comp_def] using (hg.integral_comp (f := f) (hf := hf.aestronglyMeasurable))
 
 private lemma abs_id_mul_polyGrowth_bound
     {F : ℝ → ℝ} {C : ℝ} {m : ℕ} (hF_growth : ∀ x, |F x| ≤ C * (1 + |x|) ^ m) :
@@ -161,7 +144,7 @@ private lemma integrable_id_mul_polyGrowth
     {v : ℝ≥0} {F : ℝ → ℝ} (hF_meas : Measurable F) {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
     (hF_growth : ∀ x, |F x| ≤ C * (1 + |x|) ^ m) :
     Integrable (fun x : ℝ => x * F x) (gaussianReal 0 v) := by
-  haveI : IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
+  have : IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
   have hmeas : Measurable (fun x : ℝ => x * F x) := measurable_id.mul hF_meas
   refine IsGaussian.integrable_of_abs_le_mul_one_add_norm_pow (μ := gaussianReal (0 : ℝ) v) hmeas
     (C := C) (m := m + 1) hC ?_
@@ -172,7 +155,7 @@ private lemma integrable_deriv_polyGrowth
     {v : ℝ≥0} {F : ℝ → ℝ} (hF_c1 : ContDiff ℝ 1 F) {C : ℝ} {m : ℕ} (hC : 0 ≤ C)
     (hF'_growth : ∀ x, |deriv F x| ≤ C * (1 + |x|) ^ m) :
     Integrable (fun x : ℝ => deriv F x) (gaussianReal 0 v) := by
-  haveI : IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
+  have : IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
   have hmeas : Measurable (fun x : ℝ => deriv F x) := (hF_c1.continuous_deriv_one).measurable
   refine IsGaussian.integrable_of_abs_le_mul_one_add_norm_pow (μ := gaussianReal (0 : ℝ) v) hmeas
     (C := C) (m := m) hC (by intro x; simpa using hF'_growth x)
@@ -190,7 +173,7 @@ theorem gaussian_integration_by_parts_general
     ∫ x, (x - μ) * F x ∂(gaussianReal μ v)
       = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal μ v) := by
   let μR : Measure ℝ := gaussianReal μ v
-  haveI : IsGaussian μR := by infer_instance
+  have : IsGaussian μR := by infer_instance
   calc
     ∫ x, (x - μ) * F x ∂μR
         = ∫ x, ((cmOfDual (μ := μR) idDual) x) * F x ∂μR := by
@@ -218,7 +201,7 @@ theorem stein_lemma_gaussianReal
     (gaussian_integration_by_parts_general (μ := (0 : ℝ)) (v := v) (F := F)
       hF_meas hF_c1 hC hF_growth hF'_growth)
 
-/-- A convenient alias for `stein_lemma_gaussianReal`. -/
+/-- Alias of `stein_lemma_gaussianReal`. -/
 lemma gaussianReal_integration_by_parts
     {F : ℝ → ℝ} {v : ℝ≥0}
     (hF_meas : Measurable F)

@@ -1,10 +1,9 @@
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinThm
 
 /-!
-# Cameron–Martin theorem: scalar-parameter corollaries
+# Cameron–Martin: scalar-parameter form
 
-This file provides  lemmas specializing the Cameron–Martin theorem to the common
-“scalar parameter” form `t • x`.
+Cameron–Martin theorem specialized to translations `t • x`.
 -/
 
 open MeasureTheory Filter Complex
@@ -48,7 +47,7 @@ theorem lintegral_add_cmCoe_smul_eq (x : cameronMartin μ) (t : ℝ) (F : E → 
   calc
     (∫⁻ y, F (y + cmCoe (t • x)) ∂μ)
         = ∫⁻ y, F y ∂(μ.map g) := by
-            simpa [g, Function.comp] using (lintegral_comp (μ := μ) (f := F) (g := g) hF hg)
+            simpa [g, Function.comp_def] using (lintegral_comp (μ := μ) (f := F) (g := g) hF hg)
     _ = ∫⁻ y, F y ∂(μ.withDensity fun y ↦ ENNReal.ofReal (.exp ((t • x) y - ‖t • x‖ ^ 2 / 2))) := by
             simp [hμ]
     _ =

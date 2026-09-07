@@ -3,22 +3,10 @@ import Mathlib.MeasureTheory.MeasurableSpace.PreorderRestrict
 import Mathlib.Order.Restriction
 
 /-!
-# Vol II infrastructure: prefix-dependent processes as kernel families
+# Prefix-dependent processes
 
-This is the **abstract Georgii/Talagrand Vol II interface** for cascades:
-
-- a (time-inhomogeneous) process is a family of Markov kernels
-  \[
-    κ_n : \text{Law}(X_{n+1}\mid X_0,\dots,X_n)
-  \]
-  i.e. `Kernel (Π i : Iic n, X i) (X (n+1))`;
-- `traj κ a` is the Ionescu–Tulcea kernel producing an *infinite* continuation of a prefix up to `a`;
-- `trajMeasure μ₀ κ` is the induced measure on full trajectories when `X₀ ~ μ₀`;
-- the “DLR/consistency” theorem is `condDistrib_trajMeasure`.
-
-Everything here is obtained by specialising and re-exporting Mathlib’s trajectory-kernel API;
-keeping it in `SpinGlass.Cascades` provides stable names and a controlled import surface for
-downstream cascade/RPC developments.
+Time-inhomogeneous process as kernels `κ n : Kernel (Π i : Iic n, X i) (X (n+1))`. Main: `traj`,
+`trajMeasure`, `condDistrib_trajMeasure`. Specializes Mathlib's trajectory-kernel API.
 -/
 
 open MeasureTheory ProbabilityTheory
@@ -72,11 +60,7 @@ instance (μ₀ : Measure (X 0)) [IsProbabilityMeasure μ₀] :
   dsimp [processTrajMeasure]
   infer_instance
 
-/--
-**DLR/consistency law (process form):**
-for the trajectory measure induced by `μ₀` and `κ`, the conditional distribution of `X_{a+1}`
-given the prefix up to time `a` is `κ a`.
--/
+/-- Under `trajMeasure μ₀ κ`, the conditional law of `X_{a+1}` given the prefix is `κ a`. -/
 lemma condDistrib_processTrajMeasure (μ₀ : Measure (X 0)) [IsProbabilityMeasure μ₀]
     {a : ℕ} [StandardBorelSpace (X (a + 1))] [Nonempty (X (a + 1))] :
     condDistrib (fun x : (Π n, X n) => x (a + 1))

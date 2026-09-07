@@ -2,17 +2,10 @@ import SpinGlass.ReplicaMeasure
 import SpinGlass.Defs
 
 /-!
-# Vol II infrastructure: overlap arrays from replicas
+# Overlap arrays from replicas
 
-Talagrand Vol II (and Panchenko/Georgii) treat the Gibbs object primarily through the joint law of
-finitely many replicas and their **overlap array**.
-
-This file is deliberately lightweight: it only defines overlap arrays as functions on a replica
-tuple, with minimal algebraic lemmas. This is the right abstraction layer before proving:
-
-- ultrametricity statements (laws on arrays),
-- Ghirlanda–Guerra identities (expectations of functions of overlap arrays),
-- representation theorems (Aldous–Hoover / Dovbysh–Sudakov style).
+Overlap arrays as functions of a replica tuple. Input to ultrametricity, GG identities, and
+Aldous–Hoover / Dovbysh–Sudakov representation. Talagrand Vol. II.
 -/
 
 namespace SpinGlass

@@ -3,18 +3,10 @@ import Mathlib.Analysis.Calculus.ParametricIntegral
 import Mathlib.MeasureTheory.Integral.Bochner.ContinuousLinearMap
 
 /-!
-# Cameron–Martin IBP scaffold (infinite-dimensional, measure-level)
+# Cameron–Martin IBP scaffold
 
-This file provides the **core measure-level identity** underlying Gaussian integration by parts
-in the Cameron–Martin framework:
-
-`∫ F(y + cmCoe (t • x)) dμ = ∫ exp((t•x) y - ‖t•x‖^2/2) * F(y) dμ`,
-
-for `x : cameronMartin μ`.
-
-This is the principled starting point for an infinite-dimensional GIBP: one then differentiates
-at `t = 0` using a dominated differentiation theorem (`Analysis/Calculus/ParametricIntegral`),
-with integrability justified by Fernique-type estimates in concrete applications.
+Measure-level identity: `∫ F(y + cmCoe (t • x)) dμ = ∫ exp((t•x) y - ‖t•x‖²/2) * F(y) dμ`
+for `x : cameronMartin μ`. Differentiate at `t = 0` for Gaussian IBP.
 -/
 
 open MeasureTheory Filter
@@ -55,7 +47,7 @@ theorem integral_add_cmCoe_smul_eq
   have hF_aeμ : AEStronglyMeasurable F μ := hF.aestronglyMeasurable
   have h_map :
       (∫ y, F (y + cmCoe (t • x)) ∂μ) = ∫ y, F y ∂(Measure.map g μ) := by
-    simpa [g, Function.comp] using
+    simpa [g, Function.comp_def] using
       (MeasureTheory.integral_map (μ := μ) (φ := g) hg.aemeasurable hF_ae).symm
   -- Step 2: use the Cameron–Martin theorem to identify the pushforward with `withDensity`.
   have hμ :

@@ -6,19 +6,11 @@ import Mathlib.Analysis.Complex.Trigonometric
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
 /-!
-# Hopfield model (Talagrand, Hopfield chapter): prerequisites
+# Hopfield model
 
-This file introduces a finite-volume Hopfield Hamiltonian and proves the
-**Hubbard–Stratonovich transform** in a form aligned with Talagrand’s §4.2:
-
-\[
-\exp\Big(\frac{\beta N}{2}\,\|m(\sigma)\|^2\Big)
-= \int \exp\big(\sqrt{\beta N}\,\langle z, m(\sigma)\rangle\big)\,d\gamma(z),
-\]
-
-where `γ` is the standard Gaussian measure on `ℝ^M` (here `Fin M → ℝ`).
-
-We keep everything finite-dimensional and purely measurable; no topological assumptions.
+Finite-volume Hopfield Hamiltonian and Hubbard–Stratonovich linearization
+`exp((βN/2) ‖m(σ)‖²) = ∫ exp(√(βN) ⟨z, m(σ)⟩) dγ(z)`. Main: `hopfieldEnergy`,
+`hubbardStratonovich_hopfield`. Talagrand Vol. I, §4.2.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators
@@ -111,20 +103,17 @@ noncomputable def finVecNormSq (M : ℕ) (z : Fin M → ℝ) : ℝ :=
 
 @[fun_prop]
 lemma measurable_finVecNormSq (M : ℕ) : Measurable (finVecNormSq M) := by
-  simpa [finVecNormSq] using
-    (Finset.measurable_sum (s := (Finset.univ : Finset (Fin M)))
-      (f := fun k : Fin M => fun z : Fin M → ℝ => (z k) ^ 2)
-      (by
-        intro k _hk
-        fun_prop))
+  unfold finVecNormSq
+  exact Finset.measurable_sum (s := (Finset.univ : Finset (Fin M)))
+    (f := fun k : Fin M => fun z : Fin M → ℝ => (z k) ^ 2)
+    (by
+      intro k _hk
+      fun_prop)
 
 /-!
-Talagrand’s \( \psi(z) \) (Eq. 4.34, as in `Notes/BovierGayrard.md`):
-\[
-\psi(z) = -\frac{N\beta}{2}\,\|z\|^2 + \sum_{i\le N} \log \cosh(\beta\,\eta_i\cdot z + h).
-\]
+## Hopfield `ψ` (Talagrand Eq. (4.34))
 
-We model `‖z‖^2` as `finVecNormSq M z`.
+\(\psi(z) = -\frac{N\beta}{2}\,\|z\|^2 + \sum_{i\le N} \log \cosh(\beta\,\eta_i\cdot z + h)\).
 -/
 noncomputable def hopfieldPsi (N M : ℕ) (β h : ℝ) (Ξ : Patterns N M) (z : Fin M → ℝ) : ℝ :=
   -((N : ℝ) * β / 2) * finVecNormSq M z
@@ -148,27 +137,15 @@ lemma hopfieldEta_eq_one_of_isConstantPattern (N : ℕ) {M : ℕ} {Ξ : Patterns
 
 /-! ## Hopfield Hamiltonian (as an `EnergySpace N` element) -/
 
-/--
-Hopfield energy functional (finite volume).
-
-We define it with the sign convention compatible with `gibbs_pmf` in this repo:
-`gibbs_pmf` uses weights `exp (-H σ)`. With this choice, the Gibbs weight becomes
-
-`exp ((β*N/2) * ∑k (m_k(σ))^2)`,
-
-matching Talagrand’s HS linearization formula.
--/
+/-- Hopfield energy: Gibbs weights `exp(-H σ)` equal `exp((βN/2) ∑_k m_k(σ)²)`. -/
 noncomputable def hopfieldEnergy (N M : ℕ) (β : ℝ) (Ξ : Patterns N M) : EnergySpace N :=
   WithLp.toLp 2 (fun σ : Config N =>
     -((β * (N : ℝ)) / 2) * ∑ k : Fin M, (hopfieldOverlapVec (N := N) (M := M) Ξ σ k) ^ 2)
 
 /-!
-Talagrand (Eq. 4.25) adds an external field term aligned with the first pattern:
-\[
--H_{N,M}(\sigma) = \frac{N\beta}{2}\sum_{k\le M} m_k(\sigma)^2 + N h\, m_1(\sigma).
-\]
+## Hopfield energy with field (Talagrand Eq. (4.25))
 
-We keep the index `k0 : Fin M` explicit (so we don't force `M > 0` globally).
+\(-H_{N,M}(\sigma) = \frac{N\beta}{2}\sum_{k\le M} m_k(\sigma)^2 + N h\, m_{k_0}(\sigma)\).
 -/
 noncomputable def hopfieldEnergyWithField (N M : ℕ) (β h : ℝ) (Ξ : Patterns N M) (k0 : Fin M) :
     EnergySpace N :=
@@ -188,13 +165,9 @@ lemma exp_neg_hopfieldEnergyWithField_eq
 /-! ## The basic cosh-factorization identity -/
 
 /-!
-For any `a : Fin N → ℝ`,
-\[
-\sum_{\sigma \in \{-1,1\}^N} \exp\Big(\sum_i a_i \sigma_i\Big)
-= \prod_i 2 \cosh(a_i).
-\]
+## Cosh factorization (Talagrand Eq. (4.34))
 
-This is the finite algebraic step behind Talagrand’s `ψ(z)` (Eq. 4.34).
+\(\sum_{\sigma} \exp(\sum_i a_i \sigma_i) = \prod_i 2 \cosh(a_i)\).
 -/
 lemma sum_exp_sum_spin (N : ℕ) (a : Fin N → ℝ) :
     (∑ σ : Config N, Real.exp (∑ i : Fin N, (a i) * (spin N σ i)))
@@ -357,12 +330,7 @@ private lemma mgf_eval_stdGaussian (M : ℕ) (k : Fin M) :
       (X := fun z : Fin M → ℝ => z k) hmeas)
   simpa [hmap] using hm.symm
 
-/--
-Hubbard–Stratonovich / Gaussian linearization identity on `ℝ^M` with product standard Gaussian.
-
-This is the core identity used in Talagrand’s Hopfield analysis (his §4.2).
-We state it in the form “mgf of a linear form”.
--/
+/-- Hubbard–Stratonovich on `ℝ^M` with product standard Gaussian. Talagrand Vol. I, §4.2. -/
 theorem hubbardStratonovich_stdGaussian (M : ℕ) (c : ℝ) (hc : 0 ≤ c) (m : Fin M → ℝ) :
     (∫ z : Fin M → ℝ, Real.exp ((Real.sqrt c) * (∑ k : Fin M, m k * z k))
         ∂(stdGaussianMeasure M))
@@ -449,7 +417,7 @@ theorem hubbardStratonovich_stdGaussian (M : ℕ) (c : ℝ) (hc : 0 ≤ c) (m : 
 
 /-- The variance parameter `v = (β * N)⁻¹` used by Talagrand’s Hopfield analysis. -/
 noncomputable def talagrandGaussianVar (N : ℕ) (β : ℝ) (hβ : 0 ≤ β) : ℝ≥0 :=
-  ⟨(β * (N : ℝ))⁻¹, inv_nonneg.mpr (mul_nonneg hβ (by exact_mod_cast (Nat.zero_le N)))⟩
+  .mk (β * (N : ℝ))⁻¹ (inv_nonneg.mpr (mul_nonneg hβ (by exact_mod_cast (Nat.zero_le N))))
 
 /-- Talagrand’s auxiliary Gaussian measure `γ` on `ℝ^M`, realized as a product of `N(0,(βN)⁻¹)`. -/
 noncomputable def talagrandGaussianMeasure (N M : ℕ) (β : ℝ) (hβ : 0 ≤ β) : Measure (Fin M → ℝ) :=
@@ -483,10 +451,7 @@ private lemma mgf_eval_talagrandGaussian (N M : ℕ) (β : ℝ) (hβ : 0 ≤ β)
         (X := fun z : Fin M → ℝ => z k) hmeas)
   simpa [hmap] using hm.symm
 
-/--
-Hubbard–Stratonovich identity in Talagrand’s scaling:
-`γ` has variance `1/(βN)`, and the linear term is `βN * ⟨m,z⟩`.
--/
+/-- Hubbard–Stratonovich at Talagrand scaling: variance `1/(βN)`, linear term `βN ⟨m,z⟩`. -/
 theorem hubbardStratonovich_talagrandGaussian
     (N M : ℕ) (β : ℝ) (hβ : 0 ≤ β) (m : Fin M → ℝ) :
     (∫ z : Fin M → ℝ, Real.exp ((β * (N : ℝ)) * (∑ k : Fin M, m k * z k))
@@ -498,7 +463,16 @@ theorem hubbardStratonovich_talagrandGaussian
   let t : ℝ := β * (N : ℝ)
   let X : Fin M → (Fin M → ℝ) → ℝ := fun k z => m k * z k
   by_cases ht : t = 0
-  · simp [t, ht, talagrandGaussianMeasure, talagrandGaussianVar]
+  · have hL :
+        (∫ z : Fin M → ℝ, Real.exp (t * (∑ k : Fin M, m k * z k)) ∂μ) = μ.real Set.univ := by
+      simp [t, ht]
+    have hR : Real.exp (((t / 2) * ∑ k : Fin M, (m k) ^ 2)) = 1 := by
+      simp [t, ht]
+    have : IsProbabilityMeasure μ := by
+      simpa [μ] using
+        (inferInstance : IsProbabilityMeasure (talagrandGaussianMeasure N M β hβ))
+    rw [hL, hR, measureReal_def, measure_univ]
+    simp
   have h_indep : ProbabilityTheory.iIndepFun (fun k z => z k) μ := by
     simpa [μ, talagrandGaussianMeasure] using
       (ProbabilityTheory.iIndepFun_infinitePi
@@ -535,7 +509,7 @@ theorem hubbardStratonovich_talagrandGaussian
       simpa using congrArg (fun F => F ((m k) * t))
         (ProbabilityTheory.mgf_id_gaussianReal (μ := (0 : ℝ)) (v := v))
     have hvco : (v : ℝ) = t⁻¹ := by
-      simp [v, t, talagrandGaussianVar]
+      simp [v, t, talagrandGaussianVar, NNReal.coe_mk]
     have hv : (v : ℝ) * (t ^ 2) = t := by
       have : (t⁻¹ : ℝ) * t ^ 2 = t := by
         calc
@@ -582,12 +556,7 @@ theorem hubbardStratonovich_talagrandGaussian
 
 /-! ### Specialization to Hopfield weights -/
 
-/--
-Hubbard–Stratonovich identity specialized to the Hopfield overlap vector `m(σ)`.
-
-“linearization of the quadratic weight” as used in Talagrand §4.2, written with our the
-sign conventions (`gibbs_pmf` uses `exp (-H)`).
--/
+/-- Hubbard–Stratonovich for the Hopfield overlap `m(σ)`. Talagrand Vol. I, §4.2. -/
 theorem hubbardStratonovich_hopfield
     (N M : ℕ) (β : ℝ) (hβ : 0 ≤ β) (Ξ : Patterns N M) (σ : Config N) :
     Real.exp (-(hopfieldEnergy (N := N) (M := M) β Ξ) σ)
@@ -602,9 +571,6 @@ theorem hubbardStratonovich_hopfield
   simpa [hopfieldEnergy, hHS, hopfieldOverlapVec, hopfieldOverlap, mul_assoc, mul_left_comm, mul_comm,
     sub_eq_add_neg, add_assoc, add_left_comm, add_comm] using hHS.symm
 
-/-!
-From here, the Hopfield HS transform for the actual overlap vector `m(σ)` is obtained by
-instantiating `m := hopfieldOverlapVec Ξ σ` and `c := β * N`.
--/
+/-! ### Hubbard–Stratonovich at `m(σ)` -/
 
 end SpinGlass

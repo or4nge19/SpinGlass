@@ -3,19 +3,10 @@ import Mathlib.Probability.Kernel.Posterior
 import Mathlib.Probability.Kernel.Composition.CompNotation
 
 /-!
-# Vol II infrastructure: posterior + posterior-predictive kernels for replica sampling
+# Posterior and posterior-predictive kernels
 
-This file isolates the **de Finetti / Bayesian** viewpoint:
-
-- the disorder/environment `H` has a prior law `μH`;
-- given `H`, `n` replicas are sampled by the Markov kernel `replicaGibbsKernel`;
-- the conditional law of `H` given replicas is the **posterior kernel**;
-- the conditional law of one more replica given the observed replicas is the **posterior predictive**,
-  obtained by integrating `gibbsKernel` against that posterior.
-
-This is a principled API boundary for later infinite-dimensional Gaussian arguments
-(Cameron–Martin/Fernique/GIBP): analytic estimates live on `μH`, while the sampling algebra is
-kernel-compositional.
+Given prior `μH` on energies and `replicaGibbsKernel`, the posterior on `H` given replicas and the
+posterior predictive for a fresh replica. Main: `gibbsPosteriorPredictive`.
 -/
 
 open MeasureTheory ProbabilityTheory
@@ -42,10 +33,7 @@ instance : IsMarkovKernel (gibbsPosteriorKernel (N := N) (n := n) μH) := by
   dsimp [gibbsPosteriorKernel]
   infer_instance
 
-/--
-Posterior predictive kernel: conditional law of a fresh configuration given `n` observed replicas,
-obtained by integrating the Gibbs sampler against the posterior on `H`.
--/
+/-- Posterior predictive: Gibbs sampler integrated against the posterior on `H` given `n` replicas. -/
 noncomputable def gibbsPosteriorPredictive :
     ProbabilityTheory.Kernel (ReplicaSpace N n) (Config N) :=
   (gibbsKernel (N := N)) ∘ₖ (gibbsPosteriorKernel (N := N) (n := n) μH)

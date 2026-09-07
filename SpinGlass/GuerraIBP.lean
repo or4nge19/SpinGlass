@@ -1,14 +1,10 @@
 import SpinGlass.GuerraInterpolation
 
 /-!
-# Guerra interpolation: Gaussian integration by parts
+# Guerra interpolation: Gaussian IBP
 
-Starting from the derivative identity in `SpinGlass.GuerraInterpolation`, this file rewrites the
-derivative value as an integral against the intrinsic disorder law `disorderPairLaw` and applies
-Hilbert-space Gaussian integration by parts term-by-term.
-
-The main statement is `derivative_value_guerraPhi_eq_ibp`. It is not yet converted into
-Talagrand’s trace/Hessian form; that reduction is carried out in `SpinGlass.GuerraTrace`.
+Rewrites the derivative of `guerraPhi` as an integral against `disorderPairLaw` and applies
+Hilbert-space Gaussian IBP. Main: `derivative_value_guerraPhi_eq_ibp`.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology
@@ -27,6 +23,7 @@ section
 private abbrev μ : Measure (DisorderSpace (N := N)) :=
   disorderPairLaw (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma integrable_coord_left (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) (τ : Config N) :
     Integrable (fun x : DisorderSpace (N := N) => ((WithLp.ofLp x).1 τ))
       (μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim) := by
@@ -35,7 +32,7 @@ private lemma integrable_coord_left (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] si
   have hgauss : ProbabilityTheory.IsGaussian μ' :=
     SKDisorder.simple_joint_isGaussian_disorderPairLaw_of_indep
       (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) hindep
-  haveI : ProbabilityTheory.IsGaussian μ' := hgauss
+  have : ProbabilityTheory.IsGaussian μ' := hgauss
   have : Integrable (fun x : DisorderSpace (N := N) =>
       inner ℝ (std_basis_left (N := N) τ) x) μ' := by
     simpa using
@@ -46,6 +43,7 @@ private lemma integrable_coord_left (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] si
     simpa [real_inner_comm] using this
   simpa [μ', inner_apply_std_basis_left (N := N) (σ := τ)] using this
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma integrable_coord_right (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) (τ : Config N) :
     Integrable (fun x : DisorderSpace (N := N) => ((WithLp.ofLp x).2 τ))
       (μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim) := by
@@ -54,7 +52,7 @@ private lemma integrable_coord_right (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] s
   have hgauss : ProbabilityTheory.IsGaussian μ' :=
     SKDisorder.simple_joint_isGaussian_disorderPairLaw_of_indep
       (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) hindep
-  haveI : ProbabilityTheory.IsGaussian μ' := hgauss
+  have : ProbabilityTheory.IsGaussian μ' := hgauss
   have : Integrable (fun x : DisorderSpace (N := N) =>
       inner ℝ (std_basis_right (N := N) τ) x) μ' := by
     simpa using
@@ -65,8 +63,8 @@ private lemma integrable_coord_right (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] s
     simpa [real_inner_comm] using this
   simpa [μ', inner_apply_std_basis_right (N := N) (σ := τ)] using this
 
-private lemma aestronglyMeasurable_gibbs_pmf_disorder
-    (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) (t : ℝ) (σ : Config N) :
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+private lemma aestronglyMeasurable_gibbs_pmf_disorder (t : ℝ) (σ : Config N) :
     AEStronglyMeasurable
         (fun x : DisorderSpace (N := N) => gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ)
         (μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim) := by
@@ -74,15 +72,14 @@ private lemma aestronglyMeasurable_gibbs_pmf_disorder
   have hcont_g : Continuous (fun H : EnergySpace N => gibbs_pmf N H σ) :=
     (SpinGlass.contDiff_gibbs_pmf (N := N) σ).continuous
   have hcont_H : Continuous (H_t_disorder (N := N) (h := h) t) := by
-    simpa [H_t_disorder] using
-      (H_t_disorder_lin (N := N) t).continuous.add continuous_const
+    exact (H_t_disorder_lin (N := N) t).continuous.add continuous_const
   have hmeas : Measurable (fun x : DisorderSpace (N := N) =>
       gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ) :=
     (hcont_g.comp hcont_H).measurable
   exact hmeas.aestronglyMeasurable
 
-private lemma ae_bound_norm_gibbs_pmf_disorder
-    (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) (t : ℝ) (σ : Config N) :
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+private lemma ae_bound_norm_gibbs_pmf_disorder (t : ℝ) (σ : Config N) :
     (∀ᵐ x ∂(μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim),
       ‖gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ‖ ≤ (1 : ℝ)) := by
   refine Filter.Eventually.of_forall (fun x => ?_)
@@ -92,6 +89,7 @@ private lemma ae_bound_norm_gibbs_pmf_disorder
     gibbs_pmf_nonneg (N := N) (H := H_t_disorder (N := N) (h := h) t x) (σ := σ)
   simpa [Real.norm_eq_abs, abs_of_nonneg hn] using hle
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma integrable_left_diag
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) (t : ℝ) (τ : Config N) :
     Integrable (fun x : DisorderSpace (N := N) =>
@@ -106,12 +104,13 @@ private lemma integrable_left_diag
         (μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim) := by
     refine (integrable_coord_left (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
         hindep τ).bdd_mul
-        (aestronglyMeasurable_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-          hindep t τ)
-        (ae_bound_norm_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-          hindep t τ)
+        (aestronglyMeasurable_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) t τ)
+        (ae_bound_norm_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) t τ)
   simpa [mul_comm, mul_left_comm, mul_assoc] using hint
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma integrable_right_diag
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V) (t : ℝ) (τ : Config N) :
     Integrable (fun x : DisorderSpace (N := N) =>
@@ -124,18 +123,14 @@ private lemma integrable_right_diag
         (μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim) := by
     refine (integrable_coord_right (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
         hindep τ).bdd_mul
-        (aestronglyMeasurable_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-          hindep t τ)
-        (ae_bound_norm_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
-          hindep t τ)
+        (aestronglyMeasurable_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) t τ)
+        (ae_bound_norm_gibbs_pmf_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
+          (sk := sk) (sim := sim) t τ)
   simpa [mul_comm, mul_left_comm, mul_assoc] using hint
 
-/--
-The scalar derivative integrand value `∫ ω ⟪∇F_N(H_t ω), dH_t ω⟫ dℙ` is equal to a linear combination
-of IBP expressions over `disorderPairLaw`.
-
-This is the clean “after IBP, before trace/Hessian” form.
--/
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+/-- `∫ ⟪∇F_N(H_t), dH_t⟫ dℙ` equals a linear combination of IBP terms on `disorderPairLaw`. -/
 theorem derivative_value_guerraPhi_eq_ibp
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)
     (t : ℝ) :
@@ -182,7 +177,7 @@ theorem derivative_value_guerraPhi_eq_ibp
                   (dH_t (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t ω) σ)
             ∂ℙ := by
     -- this is exactly `derivative_value_guerraPhi_eq`
-    simpa [derivative_value_guerraPhi_eq (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t]
+    simp [derivative_value_guerraPhi_eq (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) t]
   -- Push the remaining integral to `disorderPairLaw`.
   let μ' : Measure (DisorderSpace (N := N)) := μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim
   have hmeas_pair :
@@ -202,8 +197,7 @@ theorem derivative_value_guerraPhi_eq_ibp
     have hcont0 : ∀ σ : Config N, Continuous (fun H : EnergySpace N => gibbs_pmf N H σ) :=
       fun σ => (SpinGlass.contDiff_gibbs_pmf (N := N) σ).continuous
     have hcontH : Continuous (H_t_disorder (N := N) (h := h) t) := by
-      simpa [H_t_disorder] using
-        (H_t_disorder_lin (N := N) t).continuous.add continuous_const
+      exact (H_t_disorder_lin (N := N) t).continuous.add continuous_const
     have hg_meas : ∀ σ : Config N, Measurable (fun x : DisorderSpace (N := N) =>
         gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ) :=
       fun σ => (hcont0 σ).comp hcontH |>.measurable
@@ -220,7 +214,7 @@ theorem derivative_value_guerraPhi_eq_ibp
       have hb : Measurable (fun x : DisorderSpace (N := N) =>
           (1 / (2 * Real.sqrt (1 - t))) * ((WithLp.ofLp x).2 σ)) :=
         measurable_const.mul h2
-      simpa [dH_t_disorder, sub_eq_add_neg, mul_assoc, mul_left_comm, mul_comm] using ha.sub hb
+      exact ha.sub hb
     -- combine: measurable of each summand, then measurable_sum
     refine Finset.measurable_sum (s := (Finset.univ : Finset (Config N)))
       (f := fun σ : Config N => fun x : DisorderSpace (N := N) =>
@@ -274,7 +268,7 @@ theorem derivative_value_guerraPhi_eq_ibp
     funext x
     -- expand `dH_t_disorder` and distribute products, then collect the two diagonal sums
     simp [F, dH_t_disorder, sub_eq_add_neg, Finset.mul_sum, Finset.sum_add_distrib,
-      Finset.sum_mul, mul_add, mul_assoc, mul_left_comm, mul_comm]
+      mul_add, mul_assoc, mul_left_comm, mul_comm]
   -- Integrate the decomposition; use `integral_finset_sum` and apply the packaged IBP lemmas.
   have hIntLeft : ∀ τ : Config N, Integrable (fun x : DisorderSpace (N := N) =>
       ((WithLp.ofLp x).1 τ) * gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) τ) μ' := by
@@ -305,7 +299,7 @@ theorem derivative_value_guerraPhi_eq_ibp
   have hIntSumL : Integrable sumL μ' := by
     -- integrable finite sum from `hIntLeft`
     have h :=
-      MeasureTheory.integrable_finset_sum (μ := μ') (s := (Finset.univ : Finset (Config N)))
+      MeasureTheory.integrable_finsetSum (μ := μ') (s := (Finset.univ : Finset (Config N)))
         (f := fun τ : Config N => fun x : DisorderSpace (N := N) =>
           ((WithLp.ofLp x).1 τ) * gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) τ)
         (by
@@ -314,7 +308,7 @@ theorem derivative_value_guerraPhi_eq_ibp
     simpa [sumL] using h
   have hIntSumR : Integrable sumR μ' := by
     have h :=
-      MeasureTheory.integrable_finset_sum (μ := μ') (s := (Finset.univ : Finset (Config N)))
+      MeasureTheory.integrable_finsetSum (μ := μ') (s := (Finset.univ : Finset (Config N)))
         (f := fun τ : Config N => fun x : DisorderSpace (N := N) =>
           ((WithLp.ofLp x).2 τ) * gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) τ)
         (by
@@ -333,7 +327,7 @@ theorem derivative_value_guerraPhi_eq_ibp
             ((WithLp.ofLp x).1 τ) * gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) τ ∂μ' := by
     -- swap integral and finite sum
     have :=
-      (MeasureTheory.integral_finset_sum (μ := μ') (s := (Finset.univ : Finset (Config N)))
+      (MeasureTheory.integral_finsetSum (μ := μ') (s := (Finset.univ : Finset (Config N)))
         (f := fun τ : Config N => fun x : DisorderSpace (N := N) =>
           ((WithLp.ofLp x).1 τ) * gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) τ)
         (by
@@ -347,7 +341,7 @@ theorem derivative_value_guerraPhi_eq_ibp
           ∫ x : DisorderSpace (N := N),
             ((WithLp.ofLp x).2 τ) * gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) τ ∂μ' := by
     have :=
-      (MeasureTheory.integral_finset_sum (μ := μ') (s := (Finset.univ : Finset (Config N)))
+      (MeasureTheory.integral_finsetSum (μ := μ') (s := (Finset.univ : Finset (Config N)))
         (f := fun τ : Config N => fun x : DisorderSpace (N := N) =>
           ((WithLp.ofLp x).2 τ) * gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) τ)
         (by
@@ -389,7 +383,6 @@ theorem derivative_value_guerraPhi_eq_ibp
       (integral_disorderPairLaw_right_apply_mul_gibbs_pmf_eq_integral_fderiv_covarianceOperator
         (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
         (hindep := hindep) (t := t) (σ := τ) (τ := τ))
-
   -- main chain (no `calc`: avoid parser/elaboration instability)
   have h0 :
       (∫ ω,
@@ -400,12 +393,10 @@ theorem derivative_value_guerraPhi_eq_ibp
         = (-(1 / (N : ℝ))) * ∫ x : DisorderSpace (N := N), F x ∂μ' := by
     have := congrArg (fun I => (-(1 / (N : ℝ))) * I) hpush
     simpa [hder0, mul_assoc] using this
-
   have hμ' :
       μ' =
         disorderPairLaw (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim) := by
     rfl
-
   have hIntF :
       (∫ x : DisorderSpace (N := N), F x ∂μ')
         =
@@ -505,7 +496,6 @@ theorem derivative_value_guerraPhi_eq_ibp
       simpa [hμ'] using (hIBP_right (τ := τ))
     -- combine
     rw [hdiag, hsumL_ibp, hsumR_ibp]
-
   -- finish
   -- rewrite the LHS using `h0`, then replace `∫ F` using `hIntF`
   rw [h0, hIntF]

@@ -10,19 +10,10 @@ import Mathlib.MeasureTheory.Constructions.Pi
 import Mathlib.MeasureTheory.Group.Defs
 
 /-!
-# Hopfield: overlap pushforward and Gaussian convolution (Talagrand §4.2)
+# Hopfield overlap convolution
 
-This file sets up the **measure-level objects** behind Talagrand’s Lemma 4.2.1:
-
-- `G'`: the image of the Gibbs measure under `σ ↦ m(σ)` (Hopfield overlap vector).
-- `Ḡ = G' * γ`: the convolution of `G'` with a (centered) Gaussian `γ` on `ℝ^M`.
-
-We implement this in a Mathlib-idiomatic way using a pushforward of a product measure, so that
-later computations reduce to `lintegral_map` and `lintegral_prod`.
-
-At this stage we keep the Gaussian `γ` abstract: any measure on `Fin M → ℝ` can be used. The
-specialization to Talagrand’s Gaussian (variance \(1/(N\beta)\) per coordinate) is done in the
-next step when deriving the explicit density.
+Pushforward `G'` of Gibbs under `σ ↦ m(σ)`, convolution `Ḡ = G' * γ`. Main objects behind
+Talagrand Vol. I, Lemma 4.2.1.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators
@@ -56,12 +47,7 @@ lemma hopfieldOverlapImageMeasure_Icc_compl (Ξ : Patterns N M) (H : EnergySpace
     simp [hopfieldOverlapVec_mem_Icc (Ξ := Ξ) (σ := σ)]
   simp [hopfieldOverlapImageMeasure, Measure.map_apply, hm, hpre]
 
-/-!
-### Kernel-level API boundary
-
-To make Hopfield compatible with the Vol II “prove statements for samplers/kernels” approach, we
-also package the overlap pushforward as a `Kernel (EnergySpace N) (Fin M → ℝ)`.
--/
+/-! ### Overlap pushforward kernel -/
 
 /-- Kernel sending an energy function `H` to the overlap-image law `(gibbsMeasure H).map m`. -/
 noncomputable def hopfieldOverlapKernel (Ξ : Patterns N M) :
@@ -125,9 +111,8 @@ instance (Ξ : Patterns N M) : ProbabilityTheory.IsMarkovKernel (hopfieldOverlap
       hopfieldOverlapArrayImageMeasure (N := N) (M := M) (n := n) Ξ H := by
   have hm : Measurable (hopfieldOverlapVec (N := N) (M := M) Ξ) := by fun_prop
   -- `orderArray` specialized to `u := hopfieldOverlapVec` is definitionally `hopfieldOverlapArray`.
-  simpa [hopfieldOverlapArrayKernel, hopfieldOverlapArrayImageMeasure, hopfieldOverlapArray, replicaGibbsMeasure, hm]
-    using (FiniteGibbs.orderArrayKernel_apply (α := Config N) (β := Fin M → ℝ)
-      (u := hopfieldOverlapVec (N := N) (M := M) Ξ) (n := n) hm H)
+  exact FiniteGibbs.orderArrayKernel_apply (α := Config N) (β := Fin M → ℝ)
+    (u := hopfieldOverlapVec (N := N) (M := M) Ξ) (n := n) hm H
 
 /-! ## Convolution as a pushforward of a product measure -/
 
@@ -166,9 +151,9 @@ instance (Ξ : Patterns N M) (γ : Measure (Fin M → ℝ)) [IsProbabilityMeasur
   let T : (Fin M → ℝ) × (Fin M → ℝ) → (Fin M → ℝ) := fun p => fun k => p.2 k + p.1 k
   have hT : Measurable T := by
     dsimp [T]; fun_prop
-  haveI : ProbabilityTheory.IsSFiniteKernel (hopfieldOverlapKernel (N := N) (M := M) Ξ) := by
+  have : ProbabilityTheory.IsSFiniteKernel (hopfieldOverlapKernel (N := N) (M := M) Ξ) := by
     infer_instance
-  haveI : ProbabilityTheory.IsSFiniteKernel (ProbabilityTheory.Kernel.const (EnergySpace N) γ) := by
+  have : ProbabilityTheory.IsSFiniteKernel (ProbabilityTheory.Kernel.const (EnergySpace N) γ) := by
     infer_instance
   ext s hs
   simp [hopfieldConvolutionKernel, ProbabilityTheory.Kernel.map_apply' _ hT _ hs, T, hopfieldConvolution,
@@ -211,10 +196,10 @@ theorem lintegral_hopfieldConvolution_overlapImage
     [SFinite γ] : (∫⁻ z, F z ∂hopfieldConvolution (M := M) (hopfieldOverlapImageMeasure (N := N)
     (M := M) Ξ H) γ) = ∫⁻ σ : Config N, ∫⁻ z, F (fun k => z k + hopfieldOverlapVec (N := N)
     (M := M) Ξ σ k) ∂γ ∂(gibbsMeasure (N := N) H) := by
-  haveI : IsFiniteMeasure (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H) := by
+  have : IsFiniteMeasure (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H) := by
     dsimp [hopfieldOverlapImageMeasure]; infer_instance
-  haveI : SigmaFinite (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H) := by infer_instance
-  haveI : SFinite (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H) := by infer_instance
+  have : SigmaFinite (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H) := by infer_instance
+  have : SFinite (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H) := by infer_instance
   have hbase := lintegral_hopfieldConvolution (M := M)
       (G' := hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H) (γ := γ) (F := F) hF
   let f : (Fin M → ℝ) → ℝ≥0∞ := fun m => ∫⁻ z, F (fun k => z k + m k) ∂γ
@@ -249,13 +234,7 @@ theorem lintegral_hopfieldConvolution_withDensity
 
 /-! ## Convolution against `volume.withDensity g` has a `withDensity` description -/
 
-/-- If `γ = volume.withDensity g`, then `G' * γ` is also absolutely continuous w.r.t. `volume`,
-with density given by the (additive) convolution formula
-\[
-z \mapsto \int g(z-m)\,dG'(m).
-\]
-
-This is the measure-theoretic core behind Talagrand’s Lemma 4.2.1. -/
+/-- If `γ = volume.withDensity g`, then `G' * γ` has density `z ↦ ∫ g(z-m) dG'(m)`. Talagrand Lemma 4.2.1. -/
 theorem hopfieldConvolution_withDensity_eq_withDensity
     (G' : Measure (Fin M → ℝ)) [SFinite G']
     (g : (Fin M → ℝ) → ℝ≥0∞) (hg : Measurable g) :
@@ -281,9 +260,8 @@ theorem hopfieldConvolution_withDensity_eq_withDensity
   have hmap_add (m : Fin M → ℝ) :
       Measure.map (fun z : Fin M → ℝ => fun k => z k + m k) (volume : Measure (Fin M → ℝ))
         = volume := by
-    simpa [Pi.add_apply] using
-      (MeasureTheory.Measure.IsAddRightInvariant.map_add_right_eq_self
-        (μ := (volume : Measure (Fin M → ℝ))) m)
+    exact MeasureTheory.Measure.IsAddRightInvariant.map_add_right_eq_self
+      (μ := (volume : Measure (Fin M → ℝ))) m
   have hinner (m : Fin M → ℝ) :
       (∫⁻ z, g z * (s.indicator (fun _ : (Fin M → ℝ) => (1 : ℝ≥0∞))
         (fun k => z k + m k)) ∂volume) =
@@ -295,7 +273,8 @@ theorem hopfieldConvolution_withDensity_eq_withDensity
     let H : (Fin M → ℝ) → ℝ≥0∞ :=
       fun z => (s.indicator (fun _ : (Fin M → ℝ) => (1 : ℝ≥0∞)) z) * g (fun k => z k - m k)
     have hH : Measurable H := by
-      fun_prop [H, hg]
+      simp only [H]
+      fun_prop
     have hmap :
         (∫⁻ z, H z ∂(Measure.map T (volume : Measure (Fin M → ℝ)))) = ∫⁻ z, H (T z) ∂volume := by
       simpa [H] using (lintegral_map hH hT)
@@ -316,7 +295,8 @@ theorem hopfieldConvolution_withDensity_eq_withDensity
       fun m z => (s.indicator (fun _ => (1 : ℝ≥0∞)) z) * g (fun k => z k - m k)
     have hf : AEMeasurable (Function.uncurry f) (G'.prod (volume : Measure (Fin M → ℝ))) := by
       have : Measurable (Function.uncurry f) := by
-        fun_prop [f, hg]
+        simp only [f]
+        fun_prop
       exact this.aemeasurable
     have hswap' :
         (∫⁻ m, ∫⁻ z, f m z ∂(volume : Measure (Fin M → ℝ)) ∂G')
@@ -329,7 +309,7 @@ theorem hopfieldConvolution_withDensity_eq_withDensity
           =
           fun z : Fin M → ℝ => (s.indicator (fun _ => (1 : ℝ≥0∞)) z) * dens z := by
       funext z
-      have hgm : Measurable (fun m : Fin M → ℝ => g (fun k => z k - m k)) := by fun_prop [hg]
+      have hgm : Measurable (fun m : Fin M → ℝ => g (fun k => z k - m k)) := by fun_prop
       simpa [f, dens] using
         (MeasureTheory.lintegral_const_mul
           (μ := G') (r := (s.indicator (fun _ => (1 : ℝ≥0∞)) z))
@@ -366,16 +346,11 @@ theorem hopfieldConvolution_withDensity_eq_withDensity
 
 /-! ## Talagrand’s Gaussian density and the `ψ`-representation (Lemma 4.2.1 core) -/
 
-/-- Talagrand’s normalization constant \(W = (N\beta/(2\pi))^{M/2}\), written as
-`(sqrt (Nβ/(2π)))^M` to avoid fractional exponents. -/
+/-- Talagrand’s `W = (Nβ/(2π))^{M/2}`, as `(sqrt (Nβ/(2π)))^M`. -/
 noncomputable def talagrandW (N M : ℕ) (β : ℝ) : ℝ :=
   (Real.sqrt ((β * (N : ℝ)) / (2 * Real.pi))) ^ M
 
-/-- Talagrand’s Gaussian density on `ℝ^M` (modeled as `Fin M → ℝ`) w.r.t. Lebesgue `volume`:
-\[
-g(z) = W \exp\left(-\frac{N\beta}{2}\|z\|^2\right).
-\]
-We package it as an `ℝ≥0∞` function suitable for `volume.withDensity`. -/
+/-- Talagrand Gaussian density `g(z) = W exp(-(Nβ/2) ‖z‖²)` on `Fin M → ℝ`. -/
 noncomputable def talagrandGaussianDensity (N M : ℕ) (β : ℝ) : (Fin M → ℝ) → ℝ≥0∞ :=
   fun z =>
     ENNReal.ofReal
@@ -389,7 +364,7 @@ lemma measurable_talagrandGaussianDensity (N M : ℕ) (β : ℝ) :
   apply ENNReal.measurable_ofReal.comp
   have hnorm : Measurable (fun z : Fin M → ℝ => finVecNormSq M z) :=
       measurable_finVecNormSq (M := M)
-  fun_prop [talagrandW, hnorm]
+  fun_prop [talagrandW]
 
 /-- Talagrand’s auxiliary Gaussian measure `γ` on `ℝ^M` as `volume.withDensity g`. -/
 noncomputable def talagrandGaussianMeasureDensity (N M : ℕ) (β : ℝ) : Measure (Fin M → ℝ) :=
@@ -529,7 +504,7 @@ lemma lintegral_talagrandGaussianDensity1_eq_one
     (∫⁻ x : ℝ, talagrandGaussianDensity1 (N := N) β x ∂(volume : Measure ℝ)) = 1 := by
   have hv : talagrandGaussianVar (N := N) β hβ ≠ 0 := by
     intro hv0
-    have hcoe : ((talagrandGaussianVar (N := N) β hβ : ℝ≥0) : ℝ) = 0 := by simpa [hv0]
+    have hcoe : ((talagrandGaussianVar (N := N) β hβ : ℝ≥0) : ℝ) = 0 := by simp [hv0]
     have : ((talagrandGaussianVar (N := N) β hβ : ℝ≥0) : ℝ) = (β * (N : ℝ))⁻¹ := by
       simp [talagrandGaussianVar]
     have : (β * (N : ℝ))⁻¹ = 0 := by simpa [this] using hcoe
@@ -548,9 +523,9 @@ theorem lintegral_talagrandGaussianDensity_eq_one
           (volume : Measure (Fin 0 → ℝ)) Set.univ
               = Measure.pi (fun _ : Fin 0 => (volume : Measure ℝ)) Set.univ := rfl
           _ = (∏ _i : Fin 0, (volume : Measure ℝ) Set.univ) := by
-                simpa using (MeasureTheory.pi_univ (μ := fun _ : Fin 0 => (volume : Measure ℝ)))
+                simp
           _ = 1 := by simp
-      simpa [talagrandGaussianDensity_eq_prod_density1, talagrandGaussianDensity1, huniv]
+      simp [talagrandGaussianDensity_eq_prod_density1, talagrandGaussianDensity1, huniv]
   | succ n ih =>
       let e :
           (Fin (n + 1) → ℝ) ≃ᵐ ℝ × (Fin n → ℝ) :=
@@ -565,7 +540,8 @@ theorem lintegral_talagrandGaussianDensity_eq_one
             * ∏ j : Fin n, talagrandGaussianDensity1 (N := N) β (p.2 j)
       have hf : Measurable f := by
         -- finite product of measurable factors
-        fun_prop [f, measurable_talagrandGaussianDensity1]
+        simp only [f]
+        fun_prop [measurable_talagrandGaussianDensity1]
       have hcomp :
           (fun z : Fin (n + 1) → ℝ => talagrandGaussianDensity (N := N) (M := n + 1) β z)
             =
@@ -576,7 +552,7 @@ theorem lintegral_talagrandGaussianDensity_eq_one
         -- split the product at `0` (so the remainder is indexed by `Fin n` via `succ`)
         rw [Fin.prod_univ_succ (f := fun k : Fin (n + 1) => talagrandGaussianDensity1 (N := N) β (z k))]
         -- `e z` is `(z 0, Fin.tail z)` at `i = 0`
-        simp [f, e, Fin.tail, mul_assoc, mul_left_comm, mul_comm]
+        simp [f, e, Fin.tail, mul_comm]
       calc
         (∫⁻ z : Fin (n + 1) → ℝ, talagrandGaussianDensity (N := N) (M := n + 1) β z
             ∂(volume : Measure (Fin (n + 1) → ℝ)))
@@ -586,7 +562,7 @@ theorem lintegral_talagrandGaussianDensity_eq_one
         _ = ∫⁻ p : ℝ × (Fin n → ℝ), f p ∂(volume : Measure (ℝ × (Fin n → ℝ))) := by
               simpa using (MeasurePreserving.lintegral_comp (hg := hmp) (f := f) hf)
         _ = ∫⁻ p : ℝ × (Fin n → ℝ), f p ∂((volume : Measure ℝ).prod (volume : Measure (Fin n → ℝ))) := by
-              simpa [MeasureTheory.Measure.volume_eq_prod]
+              simp [MeasureTheory.Measure.volume_eq_prod]
         _ =
             (∫⁻ x : ℝ, talagrandGaussianDensity1 (N := N) β x ∂(volume : Measure ℝ))
               *
@@ -618,11 +594,13 @@ theorem lintegral_talagrandGaussianDensity_eq_one
                       =
                       fun y : Fin n → ℝ => talagrandGaussianDensity (N := N) (M := n) β y := by
                   funext y
-                  simpa [talagrandGaussianDensity_eq_prod_density1 (N := N) (M := n) (β := β) y]
+                  simp [talagrandGaussianDensity_eq_prod_density1 (N := N) (M := n) (β := β) y]
                 simpa [hfacn] using ih
-              simpa [h1, h2]
+              simp [h1, h2]
 
-instance instIsProbabilityMeasure_talagrandGaussianMeasureDensity
+/-- `talagrandGaussianMeasureDensity` is a probability measure exactly when its density
+normalizes, i.e. for `0 ≤ β` and `β * N ≠ 0`. -/
+lemma isProbabilityMeasure_talagrandGaussianMeasureDensity
     (N M : ℕ) (β : ℝ) (hβ : 0 ≤ β) (hβN : β * (N : ℝ) ≠ 0) :
     IsProbabilityMeasure (talagrandGaussianMeasureDensity (N := N) (M := M) β) := by
   refine ⟨?_⟩
@@ -639,11 +617,12 @@ noncomputable def hopfieldConvolutionTalagrandKernel
   hopfieldConvolutionKernel (N := N) (M := M) Ξ
     (talagrandGaussianMeasureDensity (N := N) (M := M) β)
 
-instance instIsMarkovKernel_hopfieldConvolutionTalagrandKernel
+/-- The Talagrand-Gaussian convolution kernel is Markov for `0 ≤ β` and `β * N ≠ 0`. -/
+lemma isMarkovKernel_hopfieldConvolutionTalagrandKernel
     {N M : ℕ} (Ξ : Patterns N M) (β : ℝ) (hβ : 0 ≤ β) (hβN : β * (N : ℝ) ≠ 0) :
     ProbabilityTheory.IsMarkovKernel (hopfieldConvolutionTalagrandKernel (N := N) (M := M) Ξ β) := by
-  haveI : IsProbabilityMeasure (talagrandGaussianMeasureDensity (N := N) (M := M) β) :=
-    instIsProbabilityMeasure_talagrandGaussianMeasureDensity (N := N) (M := M) (β := β) hβ hβN
+  have : IsProbabilityMeasure (talagrandGaussianMeasureDensity (N := N) (M := M) β) :=
+    isProbabilityMeasure_talagrandGaussianMeasureDensity (N := N) (M := M) (β := β) hβ hβN
   simpa [hopfieldConvolutionTalagrandKernel] using
     (show ProbabilityTheory.IsMarkovKernel
         (hopfieldConvolutionKernel (N := N) (M := M) Ξ
@@ -656,12 +635,10 @@ instance instIsMarkovKernel_hopfieldConvolutionTalagrandKernel
       =
       hopfieldConvolution (M := M) (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H)
         (talagrandGaussianMeasureDensity (N := N) (M := M) β) := by
-  haveI : IsProbabilityMeasure (talagrandGaussianMeasureDensity (N := N) (M := M) β) :=
-    instIsProbabilityMeasure_talagrandGaussianMeasureDensity (N := N) (M := M) (β := β) hβ hβN
-  haveI : SFinite (talagrandGaussianMeasureDensity (N := N) (M := M) β) := by infer_instance
-  simpa [hopfieldConvolutionTalagrandKernel] using
-    (hopfieldConvolutionKernel_apply (N := N) (M := M) (Ξ := Ξ)
-      (γ := talagrandGaussianMeasureDensity (N := N) (M := M) β) (H := H))
+  have : IsProbabilityMeasure (talagrandGaussianMeasureDensity (N := N) (M := M) β) :=
+    isProbabilityMeasure_talagrandGaussianMeasureDensity (N := N) (M := M) (β := β) hβ hβN
+  have : SFinite (talagrandGaussianMeasureDensity (N := N) (M := M) β) := by infer_instance
+  simp [hopfieldConvolutionTalagrandKernel]
 
 /-! ### Talagrand Gaussian as a constant kernel (Vol II style) -/
 
@@ -670,12 +647,13 @@ noncomputable def talagrandGaussianKernelDensity
     (N M : ℕ) (β : ℝ) : ProbabilityTheory.Kernel (EnergySpace N) (Fin M → ℝ) :=
   ProbabilityTheory.Kernel.const (EnergySpace N) (talagrandGaussianMeasureDensity (N := N) (M := M) β)
 
-instance instIsMarkovKernel_talagrandGaussianKernelDensity
+/-- The constant Talagrand-Gaussian kernel is Markov for `0 ≤ β` and `β * N ≠ 0`. -/
+lemma isMarkovKernel_talagrandGaussianKernelDensity
     (N M : ℕ) (β : ℝ) (hβ : 0 ≤ β) (hβN : β * (N : ℝ) ≠ 0) :
     ProbabilityTheory.IsMarkovKernel (talagrandGaussianKernelDensity (N := N) (M := M) β) := by
-  haveI :
+  have :
       IsProbabilityMeasure (talagrandGaussianMeasureDensity (N := N) (M := M) β) :=
-    instIsProbabilityMeasure_talagrandGaussianMeasureDensity (N := N) (M := M) (β := β) hβ hβN
+    isProbabilityMeasure_talagrandGaussianMeasureDensity (N := N) (M := M) (β := β) hβ hβN
   -- `Kernel.const` is Markov iff the underlying measure is a probability measure.
   simpa [talagrandGaussianKernelDensity] using
     (show ProbabilityTheory.IsMarkovKernel
@@ -702,11 +680,11 @@ lemma hopfieldConvolution_overlapImage_talagrandGaussian_eq_withDensity
         ∫⁻ σ : Config N, talagrandGaussianDensity (N := N) (M := M) β
             (fun k => z k - hopfieldOverlapVec (N := N) (M := M) Ξ σ k)
           ∂(gibbsMeasure (N := N) H)) := by
-  haveI : IsFiniteMeasure (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H) := by
+  have : IsFiniteMeasure (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H) := by
     dsimp [hopfieldOverlapImageMeasure]
     infer_instance
-  haveI : SigmaFinite (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H) := by infer_instance
-  haveI : SFinite (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H) := by infer_instance
+  have : SigmaFinite (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H) := by infer_instance
+  have : SFinite (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H) := by infer_instance
   have h :=
     hopfieldConvolution_talagrandGaussian_eq_withDensity (N := N) (M := M)
       (G' := hopfieldOverlapImageMeasure (N := N) (M := M) Ξ H) (β := β)
@@ -834,15 +812,15 @@ lemma finVecDot_overlapVec
           =
           (N : ℝ) * ∑ k : Fin M, z k * ((1 / (N : ℝ)) * ∑ i : Fin N,
             hopfieldEta (N := N) (M := M) Ξ i k * spin N σ i) := by
-            simp [finVecDot, hm, mul_assoc, mul_left_comm, mul_comm]
+            simp [finVecDot, hm]
       _ =
           (N : ℝ) * ((1 / (N : ℝ)) * ∑ k : Fin M, z k * ∑ i : Fin N,
             hopfieldEta (N := N) (M := M) Ξ i k * spin N σ i) := by
-            simp [Finset.mul_sum, mul_assoc, mul_left_comm, mul_comm, div_eq_mul_inv]
+            simp [Finset.mul_sum, mul_left_comm, mul_comm, div_eq_mul_inv]
       _ =
           ∑ k : Fin M, z k * ∑ i : Fin N,
             hopfieldEta (N := N) (M := M) Ξ i k * spin N σ i := by
-            simp [div_eq_mul_inv, hN', mul_assoc, mul_left_comm, mul_comm]
+            simp [div_eq_mul_inv, hN', mul_comm]
       _ =
           ∑ i : Fin N, (∑ k : Fin M, hopfieldEta (N := N) (M := M) Ξ i k * z k) * spin N σ i := by
             have :
@@ -851,7 +829,7 @@ lemma finVecDot_overlapVec
                   ∑ k : Fin M, ∑ i : Fin N, z k * (hopfieldEta (N := N) (M := M) Ξ i k * spin N σ i) := by
                 refine Finset.sum_congr rfl ?_
                 intro k _hk
-                simp [Finset.mul_sum, mul_assoc]
+                simp [Finset.mul_sum]
             rw [this, Finset.sum_comm]
             refine Finset.sum_congr rfl ?_
             intro i _hi
@@ -923,8 +901,7 @@ lemma overlapImage_talagrandGaussianDensity_factor
         (hopfieldOverlapVec (N := N) (M := M) Ξ σ))
   simp [hcongr, MeasureTheory.lintegral_const_mul, hmeas]
 
-/-- The exact Talagrand `ψ`-density formula (finite volume) under the “first pattern constant”
-assumption, with explicit normalization by `Z`. -/
+/-- Finite-volume `ψ`-density of the overlap convolution, under `IsConstantPattern`, normalized by `Z`. -/
 theorem hopfieldConvolution_overlapImage_talagrandGaussian_eq_withDensity_psi
     (N M : ℕ) (Ξ : Patterns N M) (β h : ℝ) (k0 : Fin M)
     (hΞ : IsConstantPattern (N := N) Ξ k0) :
@@ -1033,7 +1010,7 @@ theorem hopfieldConvolution_overlapImage_talagrandGaussian_eq_withDensity_psi
           hopfieldOverlapVec (N := N) (M := M) Ξ σ k0
             =
             (1 / (N : ℝ)) * ∑ i : Fin N, spin N σ i := by
-        simp [hopfieldOverlapVec, hopfieldOverlap, hpat, mul_one, mul_assoc, mul_left_comm, mul_comm]
+        simp [hopfieldOverlapVec, hopfieldOverlap, hpat, mul_comm]
       by_cases hN0 : N = 0
       · subst hN0
         simp [hk0]
@@ -1086,11 +1063,11 @@ theorem hopfieldConvolution_overlapImage_talagrandGaussian_eq_withDensity_psi
             Real.exp
               ((∑ i : Fin N, (h) * spin N σ i)
                 + ∑ i : Fin N, (β * hopfieldEtaDot (N := N) (M := M) Ξ i z) * spin N σ i) := by
-              simp [hfield' σ, hdot' σ, add_assoc, add_left_comm, add_comm, mul_assoc, mul_left_comm, mul_comm]
+              simp [hfield' σ, hdot' σ, mul_assoc]
         _ =
             Real.exp
               (∑ i : Fin N, (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h) * spin N σ i) := by
-              simp [Finset.sum_add_distrib, add_mul, mul_add, add_assoc, add_left_comm, add_comm]
+              simp [Finset.sum_add_distrib, add_mul, add_comm]
     have hR :
         (Z N (hopfieldEnergyWithField (N := N) (M := M) β h Ξ k0))⁻¹
             *
@@ -1159,14 +1136,14 @@ theorem hopfieldConvolution_overlapImage_talagrandGaussian_eq_withDensity_psi
               ((2 : ℝ) ^ N
                 * Real.exp (∑ i : Fin N,
                     Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))))) := by
-            simp [hspin, mul_assoc, mul_left_comm, mul_comm]
+            simp [hspin, mul_left_comm]
   have hpsi :
       Real.exp (hopfieldPsi (N := N) (M := M) β h Ξ z)
         =
         Real.exp (-((β * (N : ℝ)) / 2) * finVecNormSq M z)
           *
           Real.exp (∑ i : Fin N, Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h))) := by
-    simp [hopfieldPsi, Real.exp_add, mul_assoc, mul_left_comm, mul_comm]
+    simp [hopfieldPsi, Real.exp_add, mul_comm]
   rw [hfactor, hlin']
   set A : ℝ :=
     talagrandW (N := N) (M := M) β * Real.exp (-((β * (N : ℝ)) / 2) * finVecNormSq M z)
@@ -1188,7 +1165,7 @@ theorem hopfieldConvolution_overlapImage_talagrandGaussian_eq_withDensity_psi
           Real.exp (∑ i : Fin N, Real.log (Real.cosh (β * hopfieldEtaDot (N := N) (M := M) Ξ i z + h)))
         =
         Real.exp (hopfieldPsi (N := N) (M := M) β h Ξ z) := by
-    simp [hpsi, mul_assoc, mul_left_comm, mul_comm]
+    simp [hpsi]
   have hB : 0 ≤ B := by
     dsimp [B]
     refine mul_nonneg ?_ (mul_nonneg (pow_nonneg (by norm_num) _) (Real.exp_pos _).le)
@@ -1249,11 +1226,7 @@ theorem hopfieldConvolutionTalagrandKernel_eq_withDensity_psi
     (hopfieldConvolution_overlapImage_talagrandGaussian_eq_withDensity_psi
       (N := N) (M := M) (Ξ := Ξ) (β := β) (h := h) (k0 := k0) hΞ)
 
-/-- Normalization identity obtained by integrating the `ψ`-density formula over `volume`.
-
-This is the partition-function consistency statement: if the Gaussian input measure is a
-probability measure, then the right-hand-side density integrates to `1`. This lemma is used to
-pass from Talagrand’s exact finite-volume `ψ`-representation to subsequent asymptotic arguments. -/
+/-- The Hopfield `ψ`-density integrates to `1` over `volume`. -/
 theorem lintegral_hopfieldPsi_density_eq_one
     (N M : ℕ) (Ξ : Patterns N M) (β h : ℝ) (k0 : Fin M)
     (hΞ : IsConstantPattern (N := N) Ξ k0)
@@ -1265,13 +1238,13 @@ theorem lintegral_hopfieldPsi_density_eq_one
               * Real.exp (hopfieldPsi (N := N) (M := M) β h Ξ z))
         ∂(volume : Measure (Fin M → ℝ)))
       = 1 := by
-  haveI : IsProbabilityMeasure (talagrandGaussianMeasureDensity (N := N) (M := M) β) :=
-    instIsProbabilityMeasure_talagrandGaussianMeasureDensity (N := N) (M := M) (β := β) hβ hβN
+  have : IsProbabilityMeasure (talagrandGaussianMeasureDensity (N := N) (M := M) β) :=
+    isProbabilityMeasure_talagrandGaussianMeasureDensity (N := N) (M := M) (β := β) hβ hβN
   have hψ :=
     hopfieldConvolution_overlapImage_talagrandGaussian_eq_withDensity_psi
       (N := N) (M := M) (Ξ := Ξ) (β := β) (h := h) (k0 := k0) hΞ
   -- The LHS is a convolution of two probability measures, hence has mass `1` on `univ`.
-  haveI :
+  have :
       IsProbabilityMeasure
         (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ
           (hopfieldEnergyWithField (N := N) (M := M) β h Ξ k0)) := by
@@ -1281,7 +1254,7 @@ theorem lintegral_hopfieldPsi_density_eq_one
     simpa using
       (Measure.isProbabilityMeasure_map (μ := gibbsMeasure (N := N) (hopfieldEnergyWithField (N := N) (M := M) β h Ξ k0))
         (f := hopfieldOverlapVec (N := N) (M := M) Ξ) hmeas.aemeasurable)
-  haveI :
+  have :
       IsProbabilityMeasure
         (hopfieldConvolution (M := M)
           (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ
@@ -1293,11 +1266,7 @@ theorem lintegral_hopfieldPsi_density_eq_one
           (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ
             (hopfieldEnergyWithField (N := N) (M := M) β h Ξ k0))
           (talagrandGaussianMeasureDensity (N := N) (M := M) β)) Set.univ = 1 := by
-    simpa using (measure_univ :
-      (hopfieldConvolution (M := M)
-          (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ
-            (hopfieldEnergyWithField (N := N) (M := M) β h Ξ k0))
-          (talagrandGaussianMeasureDensity (N := N) (M := M) β)) Set.univ = 1)
+    simp
   have hmass' :
       (volume.withDensity (fun z : Fin M → ℝ =>
           ENNReal.ofReal
@@ -1337,7 +1306,7 @@ theorem lintegral_hopfieldPsi_density_eq_one
             ((talagrandW (N := N) (M := M) β) * (2 : ℝ) ^ N
                 / Z N (hopfieldEnergyWithField (N := N) (M := M) β h Ξ k0)
                 * Real.exp (hopfieldPsi (N := N) (M := M) β h Ξ z)))) Set.univ := by
-          simpa using hmass'.symm
+          simp
     _ =
         (hopfieldConvolution (M := M)
           (hopfieldOverlapImageMeasure (N := N) (M := M) Ξ

@@ -6,6 +6,7 @@ Authors: Rémy Degenne
 
 import Mathlib.Analysis.InnerProductSpace.Dual
 import Mathlib.Analysis.Normed.Group.Completion
+import Mathlib.Analysis.Normed.Module.DoubleDual
 import Mathlib.Analysis.Normed.Module.Dual
 import Mathlib.Analysis.Normed.Operator.Extend
 import Mathlib.Topology.Algebra.Module.ClosedSubmodule
@@ -14,11 +15,7 @@ import Mathlib.Topology.GDelta.MetrizableSpace
 /-!
 # Completion results (vendored)
 
-This file is vendored from mathlib4 PR #26291 (Cameron–Martin theorem), to avoid depending on
-an unmerged Mathlib PR while keeping our Lean toolchain pinned.
-
-Placed in `Common/` so both `SpinGlass/` and `GibbsMeasure/` can depend on it without creating
-cross-library dependencies.
+Vendored from mathlib4 PR #26291 (Cameron–Martin theorem), pending upstream merge.
 -/
 
 @[expose] public section
@@ -34,28 +31,27 @@ instance instContinuousConstSMul_submodule {M R : Type*} [Semiring R] [AddCommMo
   classical
   refine ⟨fun c => ?_⟩
   -- continuity follows by composing the ambient `c • ·` with the subtype coercion
-  simpa using
-    ((continuous_const_smul c).comp continuous_subtype_val).subtype_mk fun x : s => s.smul_mem c x.2
+  convert ((continuous_const_smul c).comp continuous_subtype_val).subtype_mk
+      (fun x : s => s.smul_mem c x.2) using 1
+  ext x
+  rfl
 
 lemma InnerProductSpace.norm_le_dual_bound {E : Type*} [NormedAddCommGroup E]
     [InnerProductSpace ℝ E] [CompleteSpace E]
     (x : E) {M : ℝ} (hMp : 0 ≤ M) (hM : ∀ y : E, ⟪x, y⟫_ℝ ≤ M * ‖y‖) :
     ‖x‖ ≤ M := by
-  refine NormedSpace.norm_le_dual_bound ℝ _ hMp fun f ↦ ?_
+  refine NormedSpace.norm_le_dual_bound ℝ x hMp fun f ↦ ?_
   let y := (InnerProductSpace.toDual ℝ E).symm f
-  obtain hy : f x = ⟪x, y⟫_ℝ := by
-    unfold y
+  have hy : f x = ⟪x, y⟫_ℝ := by
     rw [real_inner_comm, InnerProductSpace.toDual_symm_apply]
-  rw [hy]
-  simp only [Real.norm_eq_abs, abs_le]
+  have hy_norm : ‖y‖ = ‖f‖ :=
+    LinearIsometryEquiv.norm_map (InnerProductSpace.toDual ℝ E).symm f
+  rw [hy, Real.norm_eq_abs, abs_le]
   constructor
-  · specialize hM (-y)
-    simp only [inner_neg_right, norm_neg] at hM
-    rw [← neg_le]
-    convert hM
-    simp [y]
-  · convert hM y
-    simp [y]
+  · have := hM (-y)
+    simp only [inner_neg_right, norm_neg, hy_norm] at this
+    linarith
+  · simpa [hy_norm] using hM y
 
 lemma norm_eval_le_norm_mul_ciSup {E G : Type*}
     [NormedAddCommGroup E] [NormedSpace ℝ E] [NormedAddCommGroup G] [Module ℝ G] [NormSMulClass ℝ G]
@@ -90,7 +86,7 @@ lemma norm_eval_le_norm_mul_ciSup {E G : Type*}
     simp only [ne_eq, norm_eq_zero]
     contrapose! hL_zero
     exact hL_zero_of_L2 hL_zero
-  simp only [ContinuousLinearMap.coe_smul', Pi.smul_apply, smul_eq_mul, norm_mul, norm_inv,
+  simp only [FunLike.coe_smul, Pi.smul_apply, smul_eq_mul, norm_mul, norm_inv,
     norm_norm, map_smul, norm_smul] at h
   rwa [mul_assoc, mul_le_mul_iff_of_pos_left] at h
   simp only [inv_pos, norm_pos_iff, ne_eq]
@@ -137,8 +133,10 @@ def coeClosureCLM {M R : Type*} [Semiring R] [AddCommMonoid M] [Module R M] [Top
   map_smul' := coeClosure_smul s
   cont := by
     -- continuity is inherited from the subtype map into `M`
-    simpa [coeClosure] using
-      (continuous_subtype_val.subtype_mk fun x : s => (Submodule.le_topologicalClosure s) x.2)
+    convert (continuous_subtype_val.subtype_mk
+        fun x : s => (Submodule.le_topologicalClosure s) x.2) using 1
+    ext x
+    rfl
 
 lemma IsUniformInducing_coeClosureCLM {M R : Type*} [Semiring R] [AddCommMonoid M] [Module R M]
     [UniformSpace M] [ContinuousAdd M] [ContinuousConstSMul R M] (s : Submodule R M) :
@@ -151,7 +149,7 @@ lemma IsUniformInducing_coeClosureCLM {M R : Type*} [Semiring R] [AddCommMonoid 
     fun x ↦ (coeClosure s x.1, coeClosure s x.2)
   have hp : v ∘ p = u := by
     funext x
-    simp [v, u, p, Function.comp, coeClosure]
+    simp [v, u, p, coeClosure]
   calc
     Filter.comap (fun x : s × s ↦ (coeClosureCLM s x.1, coeClosureCLM s x.2)) (uniformity s.topologicalClosure)
         = Filter.comap (v ∘ fun x : s × s ↦ (coeClosure s x.1, coeClosure s x.2)) (uniformity M) := by
@@ -169,8 +167,7 @@ lemma denseRange_coeClosureCLM {M R : Type*} [Semiring R] [AddCommMonoid M] [Mod
   refine mem_closure_iff.2 ?_
   intro U hU hyU
   rcases hU with ⟨V, hV, rfl⟩
-  have hy_cl : (y : M) ∈ closure (s : Set M) := by
-    simp
+  have hy_cl : (y : M) ∈ closure (s : Set M) := y.2
   rcases (mem_closure_iff.1 hy_cl) V hV hyU with ⟨z, hzV, hzs⟩
   refine ⟨coeClosureCLM s ⟨z, hzs⟩, ?_⟩
   refine ⟨hzV, ?_⟩

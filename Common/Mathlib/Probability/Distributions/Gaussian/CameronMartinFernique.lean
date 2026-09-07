@@ -1,17 +1,10 @@
 import Mathlib.Probability.Distributions.Gaussian.Fernique
 
 /-!
-# Fernique consequences for Cameron–Martin usage
+# Fernique consequences
 
-This file provides small, reusable lemmas that let us *use* Fernique's theorem in downstream
-arguments (dominated convergence/differentiation under Gaussian measures) without redoing the
-measure-theoretic work each time.
-
-The key point: for a Gaussian measure `μ` on a second-countable Banach space, Fernique gives
-integrability of `x ↦ exp (C * ‖x‖^2)` for some `C>0`. From this, we can derive exponential-square
-integrability for any continuous linear functional.
-
-This file is **additive** and does not change existing Cameron–Martin theorems.
+For a Gaussian measure `μ` on a second-countable Banach space, `x ↦ exp(C ‖x‖²)` is integrable
+for some `C > 0`. Main: exponential-square integrability of continuous linear functionals.
 -/
 
 open MeasureTheory ProbabilityTheory
@@ -25,7 +18,7 @@ variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] [MeasurableSpace
   [SecondCountableTopology E] [CompleteSpace E]
   {μ : Measure E} [ProbabilityTheory.IsGaussian μ]
 
-/-- Fernique theorem, re-exposed in a convenient form (using `rexp`). -/
+/-- Fernique: `∃ C > 0` such that `x ↦ rexp (C * ‖x‖²)` is integrable. -/
 theorem exists_C_pos_integrable_rexp_norm_sq :
     ∃ C : ℝ, 0 < C ∧ Integrable (fun x : E ↦ rexp (C * ‖x‖ ^ 2)) μ := by
   simpa using (ProbabilityTheory.IsGaussian.exists_integrable_exp_sq (μ := μ))
@@ -54,7 +47,7 @@ theorem integrable_one_add_norm_pow (n : ℕ) :
     simpa [pow_zero, one_pow, add_assoc, add_comm, add_left_comm] using hle
   simpa [hnorm]
 
-/-- A convenient corollary: any measurable function with polynomial growth is integrable. -/
+/-- Measurable `F` with `|F x| ≤ C (1 + ‖x‖)^m` is integrable under Gaussian `μ`. -/
 theorem integrable_of_abs_le_mul_one_add_norm_pow {F : E → ℝ} (hF_meas : Measurable F)
     {C : ℝ} {m : ℕ} (hC : 0 ≤ C) (hF_growth : ∀ x, |F x| ≤ C * (1 + ‖x‖) ^ m) :
     Integrable F μ := by
@@ -70,7 +63,7 @@ theorem memLp_strongDual (L : StrongDual ℝ E) (p : ℝ≥0∞) (hp : p ≠ ⊤
   -- `id` is in `L^p` by Fernique, hence so is any continuous linear map composed with `id`.
   simpa using (L.comp_memLp' (ProbabilityTheory.IsGaussian.memLp_id (μ := μ) p hp))
 
-/-- As a consequence, `|L x|^n` is integrable for all `n`. -/
+/-- `|L x|^n` is integrable for all `n`. -/
 theorem integrable_abs_pow_strongDual (L : StrongDual ℝ E) (n : ℕ) :
     Integrable (fun x : E ↦ |L x| ^ n) μ := by
   -- Use `L^p` with `p = max 1 n`, then lower the exponent to `n` and use `integrable_norm_pow'`.
@@ -85,7 +78,7 @@ theorem integrable_abs_pow_strongDual (L : StrongDual ℝ E) (n : ℕ) :
     MeasureTheory.MemLp.integrable_norm_pow' (μ := μ) (f := fun x : E ↦ L x) hLp'
   simpa [Real.norm_eq_abs] using hIntPow
 
-/-- A Fernique corollary: every continuous linear functional has some exponential-square moment. -/
+/-- Every `L : StrongDual ℝ E` has an exponential-square moment under Gaussian `μ`. -/
 theorem exists_C_pos_integrable_rexp_sq_dual (L : StrongDual ℝ E) :
     ∃ C : ℝ, 0 < C ∧ Integrable (fun x : E ↦ rexp (C * (L x) ^ 2)) μ := by
   obtain ⟨A, hApos, hA⟩ := exists_C_pos_integrable_rexp_norm_sq (μ := μ) (E := E)

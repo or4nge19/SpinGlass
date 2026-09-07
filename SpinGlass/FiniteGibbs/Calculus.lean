@@ -3,17 +3,10 @@ import Mathlib.Analysis.Calculus.ContDiff.Operations
 import Mathlib.Analysis.Calculus.MeanValue
 
 /-!
-# Calculus for `SpinGlass.FiniteGibbs`
+# Finite Gibbs calculus: smoothness
 
-This file adds the **smoothness / chain rule / derivative bounds** needed to use the generic
-finite-volume Gibbs calculus (`SpinGlass.FiniteGibbs`) as a backend for Talagrand-style
-interpolation arguments.
-
-In particular we provide:
-
-- `C^∞` regularity of `Z`, `gibbs_pmf`, and `free_energy_density`;
-- a convenient chain rule lemma for `t ↦ free_energy_density n (H t)`;
-- a uniform bound on the directional derivative of `free_energy_density`.
+`C^∞` regularity of `Z`, `gibbs_pmf`, and `free_energy_density`; chain rule along `t ↦ H t`;
+uniform bound on the directional derivative.
 -/
 
 open Real BigOperators Filter Topology
@@ -38,7 +31,8 @@ lemma contDiff_Z : ContDiff ℝ (∞) (fun H : EnergySpace α => Z (α := α) H)
   have hterm :
       ∀ σ : α, ContDiff ℝ (∞) (fun H : EnergySpace α => Real.exp (-H σ)) := by
     intro σ
-    simpa using (contDiff_exp.comp (contDiff_neg.comp (evalCLM (α := α) σ).contDiff))
+    simpa [Function.comp_def] using
+      (contDiff_exp.comp (contDiff_neg.comp (evalCLM (α := α) σ).contDiff))
   simpa [Z] using
     (ContDiff.sum (𝕜 := ℝ) (n := (∞)) (s := (Finset.univ : Finset α))
       (f := fun σ : α => fun H : EnergySpace α => Real.exp (-H σ))
@@ -49,12 +43,13 @@ lemma contDiff_gibbs_pmf (σ : α) :
     ContDiff ℝ (∞) (fun H : EnergySpace α => gibbs_pmf (α := α) H σ) := by
   have hnum :
       ContDiff ℝ (∞) (fun H : EnergySpace α => Real.exp (-H σ)) := by
-    simpa using (contDiff_exp.comp (contDiff_neg.comp (evalCLM (α := α) σ).contDiff))
+    simpa [Function.comp_def] using
+      (contDiff_exp.comp (contDiff_neg.comp (evalCLM (α := α) σ).contDiff))
   have hZ : ContDiff ℝ (∞) (fun H : EnergySpace α => Z (α := α) H) :=
     contDiff_Z (α := α)
   have hZne : ∀ H : EnergySpace α, Z (α := α) H ≠ 0 := fun H =>
     (Z_pos (α := α) (H := H)).ne'
-  simpa [gibbs_pmf] using hnum.div hZ hZne
+  simpa [gibbs_pmf] using hnum.fun_div hZ hZne
 
 /-- The free energy density `H ↦ (1/n) * log (Z H)` is smooth. -/
 lemma contDiff_free_energy_density (n : ℕ) :
@@ -66,12 +61,7 @@ lemma contDiff_free_energy_density (n : ℕ) :
   simpa [free_energy_density, smul_eq_mul, mul_assoc] using
     (ContDiff.const_smul (𝕜 := ℝ) (n := (∞)) (R := ℝ) (c := (1 / (n : ℝ))) hlog)
 
-/--
-Chain rule for the free energy density along a one-dimensional path `H : ℝ → EnergySpace α`.
-
-This is the basic analytic input for Talagrand’s interpolation: differentiation of
-`fun t ↦ free_energy_density n (H t)`.
--/
+/-- Chain rule for `t ↦ free_energy_density n (H t)`. -/
 lemma hasDerivAt_free_energy_density_comp
     (n : ℕ) {H : ℝ → EnergySpace α} {H' : EnergySpace α} {t : ℝ}
     (hH : HasDerivAt H H' t) :
@@ -87,19 +77,12 @@ lemma hasDerivAt_free_energy_density_comp
       HasFDerivAt (fun H : EnergySpace α => free_energy_density (α := α) n H)
         (fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) (H t)) (H t) :=
     hdiff.hasFDerivAt
-  simpa using
+  simpa [Function.comp_def] using
     (HasFDerivAt.comp_hasDerivAt (x := t) (f := H)
       (l := fun H : EnergySpace α => free_energy_density (α := α) n H)
       (l' := fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) (H t)) hF hH)
 
-/--
-Uniform bound on the directional derivative of the free energy density:
-\[
-|D F_n(H)[v]| \le \frac{1}{n} \|v\|.
-\]
-
-This is used as a dominated differentiation hypothesis in interpolation arguments.
--/
+/-- `|D F_n(H)[v]| ≤ (1/n) ‖v‖`. -/
 lemma abs_fderiv_free_energy_density_apply_le (n : ℕ) (H v : EnergySpace α) :
     |fderiv ℝ (fun H' : EnergySpace α => free_energy_density (α := α) n H') H v|
       ≤ (1 / (n : ℝ)) * ‖v‖ := by
@@ -109,7 +92,6 @@ lemma abs_fderiv_free_energy_density_apply_le (n : ℕ) (H v : EnergySpace α) :
     (abs_apply_le_norm (α := α) v σ)
   have hmain :
       |∑ σ : α, gibbs_pmf (α := α) H σ * v σ| ≤ ‖v‖ := by
-
     calc
       |∑ σ : α, gibbs_pmf (α := α) H σ * v σ|
           ≤ ∑ σ : α, |gibbs_pmf (α := α) H σ * v σ| := by
@@ -152,15 +134,7 @@ lemma norm_fderiv_free_energy_density_le (n : ℕ) (H : EnergySpace α) :
     abs_fderiv_free_energy_density_apply_le (α := α) (n := n) (H := H) (v := v)
   simpa [Real.norm_eq_abs] using habs
 
-/--
-Global Lipschitz bound for the free energy density:
-\[
-|F_n(H₂) - F_n(H₁)| \le \frac{1}{n}\,\|H₂ - H₁\|.
-\]
-
-This is the key regularity input for Gaussian concentration (and a useful shortcut in analytic
-interpolation arguments).
--/
+/-- `|F_n(H₂) - F_n(H₁)| ≤ (1/n) ‖H₂ - H₁‖`. -/
 lemma abs_free_energy_density_sub_le (n : ℕ) (H₁ H₂ : EnergySpace α) :
     |free_energy_density (α := α) n H₂ - free_energy_density (α := α) n H₁|
       ≤ (1 / (n : ℝ)) * ‖H₂ - H₁‖ := by

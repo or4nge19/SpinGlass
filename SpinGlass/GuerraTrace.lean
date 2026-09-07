@@ -3,17 +3,10 @@ import SpinGlass.Defs
 import SpinGlass.SKModel
 
 /-!
-## Guerra interpolation: from IBP to the trace/Hessian form
+# Guerra interpolation: IBP to trace/Hessian
 
-`SpinGlass/GuerraIBP.lean` rewrites the derivative value of the expected free energy density
-into a Gaussian IBP expression involving derivatives of `gibbs_pmf` on the disorder space.
-
-In this file we:
-- expand the covariance-operator vectors into explicit kernel sums (SK vs simple),
-- use the chain rule for the affine map `H_t_disorder` to convert derivatives on the disorder space
-  into derivatives on `EnergySpace`,
-- identify the resulting double sums with Talagrand’s trace/Hessian expression built from
-  `hessian_free_energy`.
+Expands covariance-operator vectors into SK/simple kernel sums and identifies the result with
+Talagrand’s trace/Hessian expression from `hessian_free_energy`.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology
@@ -60,17 +53,17 @@ private lemma fderiv_gibbs_pmf_disorder_eq
           gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ)
         ((fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H σ)
             (H_t_disorder (N := N) (h := h) t x)).comp (H_t_disorder_lin (N := N) t)) x := by
-    simpa [Function.comp] using h1.comp x hH
+    simpa [Function.comp_def] using h1.comp x hH
   simpa using hcomp.fderiv
 
 private lemma H_t_disorder_lin_std_basis_left (t : ℝ) (σ : Config N) :
     H_t_disorder_lin (N := N) t (std_basis_left (N := N) σ) = (Real.sqrt t) • (std_basis N σ) := by
-  simp [H_t_disorder_lin, std_basis_left, std_basis_right, add_comm, add_left_comm, add_assoc]
+  simp [H_t_disorder_lin, std_basis_left]
 
 private lemma H_t_disorder_lin_std_basis_right (t : ℝ) (σ : Config N) :
     H_t_disorder_lin (N := N) t (std_basis_right (N := N) σ) =
       (Real.sqrt (1 - t)) • (std_basis N σ) := by
-  simp [H_t_disorder_lin, std_basis_left, std_basis_right, add_comm, add_left_comm, add_assoc]
+  simp [H_t_disorder_lin, std_basis_right, add_comm]
 
 /-! ### Relating `fderiv gibbs_pmf` on basis directions to `hessian_free_energy` -/
 
@@ -107,14 +100,7 @@ private lemma hessian_free_energy_std_basis_eq_neg_fderiv_gibbs_pmf
     rw [hf]
     simp [hessian_free_energy, std_basis, FiniteGibbs.std_basis, hστ]
 
-/-!
-### Lemmas for the trace/Hessian step
-
-These isolate the last-mile steps after `derivative_value_guerraPhi_eq_ibp`:
-
-- swapping finite sums with integrals (requires integrability),
-- rewriting the `-(1/N)·fderiv` entries as `hessian_free_energy` entries.
--/
+/-! ### Trace/Hessian bookkeeping -/
 
 private lemma neg_one_div_N_mul_fderiv_eq_hessian
     (H : EnergySpace N) (σ τ : Config N) :
@@ -131,7 +117,7 @@ private lemma sum_integral_eq_integral_sum
     (hf : ∀ i : Config N, Integrable (f i) μ) :
     (∑ i : Config N, ∫ a, f i a ∂μ) = ∫ a, (∑ i : Config N, f i a) ∂μ := by
   simpa using
-    (MeasureTheory.integral_finset_sum (μ := μ) (s := (Finset.univ : Finset (Config N)))
+    (MeasureTheory.integral_finsetSum (μ := μ) (s := (Finset.univ : Finset (Config N)))
       (f := fun i : Config N => fun a : α => f i a)
       (by
         intro i hi
@@ -158,9 +144,10 @@ private lemma hessian_free_energy_std_basis_eq
 private lemma measurable_gibbs_pmf_disorder (t : ℝ) (σ : Config N) :
     Measurable (fun x : DisorderSpace (N := N) =>
       gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ) := by
-  simpa using (contDiff_gibbs_pmf_disorder (N := N) (h := h) (t := t) σ).continuous.measurable
+  exact (contDiff_gibbs_pmf_disorder (N := N) (h := h) (t := t) σ).continuous.measurable
 
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma aestronglyMeasurable_hessian_std_basis_disorder (t : ℝ) (σ τ : Config N) :
     AEStronglyMeasurable (fun x : DisorderSpace (N := N) =>
       hessian_free_energy N (H_t_disorder (N := N) (h := h) t x) (std_basis N σ) (std_basis N τ))
@@ -173,9 +160,17 @@ private lemma aestronglyMeasurable_hessian_std_basis_disorder (t : ℝ) (σ τ :
   have hmeas :
       Measurable (fun x : DisorderSpace (N := N) =>
         hessian_free_energy N (H_t_disorder (N := N) (h := h) t x) (std_basis N σ) (std_basis N τ)) := by
-    simpa [hessian_free_energy_std_basis_eq (N := N) (σ := σ) (τ := τ),
-      sub_eq_add_neg, mul_add, mul_assoc, mul_left_comm, mul_comm] using
-      (measurable_const.mul ((hσ.mul hδ).sub (hσ.mul hτ)))
+    have hEq : (fun x : DisorderSpace (N := N) =>
+        hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
+          (std_basis N σ) (std_basis N τ))
+        = fun x : DisorderSpace (N := N) => (1 / (N : ℝ)) *
+            (gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ * (if σ = τ then 1 else 0)
+              - gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) σ
+                * gibbs_pmf N (H_t_disorder (N := N) (h := h) t x) τ) :=
+      funext fun x => hessian_free_energy_std_basis_eq (N := N)
+        (H := H_t_disorder (N := N) (h := h) t x) (σ := σ) (τ := τ)
+    rw [hEq]
+    exact measurable_const.mul ((hσ.mul hδ).sub (hσ.mul hτ))
   exact hmeas.aestronglyMeasurable
 
 private lemma abs_hessian_std_basis_le (H : EnergySpace N) (σ τ : Config N) :
@@ -221,7 +216,7 @@ private lemma integrable_kernel_mul_hessian
       (μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim) := by
   classical
   let μ0 := μ (Ω := Ω) (N := N) (β := β) (h := h) (q := q) sk sim
-  haveI : IsFiniteMeasure μ0 := by infer_instance
+  have : IsFiniteMeasure μ0 := by infer_instance
   refine Integrable.of_bound (μ := μ0)
     ((aestronglyMeasurable_hessian_std_basis_disorder (Ω := Ω) (N := N) (β := β) (h := h) (q := q)
         (sk := sk) (sim := sim) (t := t) σ τ).const_mul (K σ τ))
@@ -260,6 +255,7 @@ private lemma hessian_free_energy_std_basis_symm (H : EnergySpace N) (σ τ : Co
     -- both sides reduce to the same explicit formula (the diagonal term vanishes)
     simp [hessian_free_energy_std_basis_eq (N := N) (H := H), hστ, eq_comm, mul_comm]
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma left_pointwise_trace
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)
     (t : ℝ) (hsqt : Real.sqrt t ≠ 0) (x : DisorderSpace (N := N)) (τ : Config N) :
@@ -318,7 +314,7 @@ private lemma left_pointwise_trace
             ((Real.sqrt t) *
               fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H τ)
                 (H_t_disorder (N := N) (h := h) t x) (std_basis N σ)) := by
-    simp [L, hL_sum, hL_basis, smul_eq_mul, mul_assoc, mul_left_comm, mul_comm]
+    simp [L, hL_sum, hL_basis, smul_eq_mul, mul_left_comm]
   rw [happly]
   have hsqt' : (2 * Real.sqrt t) ≠ 0 := mul_ne_zero (by norm_num) hsqt
   have hcancel : (1 / (2 * Real.sqrt t) : ℝ) * Real.sqrt t = (1 / 2 : ℝ) := by
@@ -350,7 +346,7 @@ private lemma left_pointwise_trace
             (sk_cov_kernel N β τ σ *
               hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
                 (std_basis N τ) (std_basis N σ)) := by
-    simp [mul_assoc, Finset.mul_sum, mul_left_comm, mul_comm]
+    simp [Finset.mul_sum]
   rw [hL, hR]
   refine Finset.sum_congr rfl (fun σ _hσ => ?_)
   have hconv :
@@ -413,6 +409,7 @@ private lemma left_pointwise_trace
         congrArg (fun y =>
             (1 / 2 : ℝ) * (sk_cov_kernel N β τ σ * y)) hconv
 
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 private lemma right_pointwise_trace
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)
     (t : ℝ) (hsqt1 : Real.sqrt (1 - t) ≠ 0) (x : DisorderSpace (N := N)) (τ : Config N) :
@@ -450,11 +447,7 @@ private lemma right_pointwise_trace
         =
         ∑ σ : Config N,
           L ((simple_cov_kernel N β (fun r => q * r) τ σ) • std_basis_right (N := N) σ) := by
-    simpa [L] using
-      (clm_apply_finset_sum (N := N) (s := (Finset.univ : Finset (Config N)))
-        (L := L)
-        (v := fun σ : Config N =>
-          (simple_cov_kernel N β (fun r => q * r) τ σ) • std_basis_right (N := N) σ))
+    simp [L]
   have hL_basis (σ : Config N) :
       L (std_basis_right (N := N) σ)
         =
@@ -481,7 +474,7 @@ private lemma right_pointwise_trace
             ((Real.sqrt (1 - t)) *
               fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H τ)
                 (H_t_disorder (N := N) (h := h) t x) (std_basis N σ)) := by
-    simp [L, hL_sum, hL_basis, smul_eq_mul, mul_assoc, mul_left_comm, mul_comm]
+    simp [L, hL_sum, hL_basis, smul_eq_mul, mul_left_comm]
   -- Rewrite using `happly`.
   rw [happly]
   -- Scalar identity: `(1 / (2 * √(1-t))) * √(1-t) = 1/2`.
@@ -569,7 +562,7 @@ private lemma right_pointwise_trace
                 ((-(1 / (N : ℝ))) *
                   fderiv ℝ (fun H : EnergySpace N => gibbs_pmf N H τ)
                     (H_t_disorder (N := N) (h := h) t x) (std_basis N σ))) := by
-          simp [mul_assoc, mul_left_comm, mul_comm]
+          simp [mul_assoc, mul_left_comm]
     _ = (1 / 2 : ℝ) *
           (simple_cov_kernel N β (fun r => q * r) τ σ *
             hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
@@ -582,12 +575,7 @@ private lemma right_pointwise_trace
 ### Main trace/Hessian form of the Guerra derivative (disorder-law version)
 -/
 
-/-!
-### (B3) Trace/kernel reduction
-
-This is the “last mile” step after the Gaussian IBP rewriting:
-it turns the covariance-operator contractions into Talagrand’s trace/Hessian expression.
--/
+/-! ### Trace/kernel reduction -/
 
 theorem ibp_value_guerraPhi_eq_trace_integral
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)
@@ -643,7 +631,7 @@ theorem ibp_value_guerraPhi_eq_trace_integral
           (std_basis N σ) (std_basis N τ)
   have hintSK : Integrable SK μ0 := by
     classical
-    refine MeasureTheory.integrable_finset_sum (μ := μ0)
+    refine MeasureTheory.integrable_finsetSum (μ := μ0)
       (s := (Finset.univ : Finset (Config N)))
       (f := fun σ : Config N => fun x : DisorderSpace (N := N) =>
         ∑ τ : Config N,
@@ -651,7 +639,7 @@ theorem ibp_value_guerraPhi_eq_trace_integral
             hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
               (std_basis N σ) (std_basis N τ)) ?_
     intro σ _hσ
-    refine MeasureTheory.integrable_finset_sum (μ := μ0)
+    refine MeasureTheory.integrable_finsetSum (μ := μ0)
       (s := (Finset.univ : Finset (Config N)))
       (f := fun τ : Config N => fun x : DisorderSpace (N := N) =>
         sk_cov_kernel N β σ τ *
@@ -662,7 +650,7 @@ theorem ibp_value_guerraPhi_eq_trace_integral
       (integrable_kernel_mul_hessian (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk)
         (sim := sim) (t := t) (K := fun σ τ => sk_cov_kernel N β σ τ) (σ := σ) (τ := τ))
   have hintSIM : Integrable SIM μ0 := by
-    refine MeasureTheory.integrable_finset_sum (μ := μ0)
+    refine MeasureTheory.integrable_finsetSum (μ := μ0)
       (s := (Finset.univ : Finset (Config N)))
       (f := fun σ : Config N => fun x : DisorderSpace (N := N) =>
         ∑ τ : Config N,
@@ -670,7 +658,7 @@ theorem ibp_value_guerraPhi_eq_trace_integral
             hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
               (std_basis N σ) (std_basis N τ)) ?_
     intro σ _hσ
-    refine MeasureTheory.integrable_finset_sum (μ := μ0)
+    refine MeasureTheory.integrable_finsetSum (μ := μ0)
       (s := (Finset.univ : Finset (Config N)))
       (f := fun τ : Config N => fun x : DisorderSpace (N := N) =>
         simple_cov_kernel N β (fun r => q * r) σ τ *
@@ -820,7 +808,7 @@ theorem ibp_value_guerraPhi_eq_trace_integral
               sk_cov_kernel N β τ σ *
                 hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
                   (std_basis N τ) (std_basis N σ)) μ0 := by
-        refine MeasureTheory.integrable_finset_sum (μ := μ0)
+        refine MeasureTheory.integrable_finsetSum (μ := μ0)
           (s := (Finset.univ : Finset (Config N)))
           (f := fun σ : Config N => fun x : DisorderSpace (N := N) =>
             sk_cov_kernel N β τ σ *
@@ -843,7 +831,7 @@ theorem ibp_value_guerraPhi_eq_trace_integral
     refine MeasureTheory.integral_congr_ae ?_
     refine Filter.Eventually.of_forall (fun x => ?_)
     simp [SK, Finset.sum_comm, Finset.mul_sum, sk_cov_kernel_symm (N := N) (β := β),
-      hessian_free_energy_std_basis_symm (N := N), mul_assoc, mul_left_comm, mul_comm]
+      hessian_free_energy_std_basis_symm (N := N)]
   have hSIMInt :
       (-(1 / (N : ℝ))) *
           ((1 / (2 * Real.sqrt (1 - t))) *
@@ -979,7 +967,7 @@ theorem ibp_value_guerraPhi_eq_trace_integral
               simple_cov_kernel N β (fun r => q * r) τ σ *
                 hessian_free_energy N (H_t_disorder (N := N) (h := h) t x)
                   (std_basis N τ) (std_basis N σ)) μ0 := by
-        refine MeasureTheory.integrable_finset_sum (μ := μ0)
+        refine MeasureTheory.integrable_finsetSum (μ := μ0)
           (s := (Finset.univ : Finset (Config N)))
           (f := fun σ : Config N => fun x : DisorderSpace (N := N) =>
             simple_cov_kernel N β (fun r => q * r) τ σ *
@@ -1004,7 +992,7 @@ theorem ibp_value_guerraPhi_eq_trace_integral
     refine Filter.Eventually.of_forall (fun x => ?_)
     simp [SIM, Finset.sum_comm, Finset.mul_sum,
       simple_cov_kernel_symm (N := N) (β := β) (xi := fun r => q * r),
-      hessian_free_energy_std_basis_symm (N := N), mul_assoc, mul_left_comm, mul_comm]
+      hessian_free_energy_std_basis_symm (N := N)]
   have hsub :
       (∫ x : DisorderSpace (N := N), (1 / 2 : ℝ) * SK x ∂μ0)
         - (∫ x : DisorderSpace (N := N), (1 / 2 : ℝ) * SIM x ∂μ0)
@@ -1045,15 +1033,9 @@ theorem ibp_value_guerraPhi_eq_trace_integral
     _ =
         ∫ x : DisorderSpace (N := N),
             (1 / 2 : ℝ) * (SK x - SIM x) ∂μ0 := by
-      simp [mul_sub, sub_eq_add_neg, mul_add, mul_assoc, mul_left_comm, mul_comm]
+      simp [sub_eq_add_neg, mul_add]
 
-/-!
-### Combined derivative value (B2 + B3)
-
-This is the original statement used downstream: the scalar derivative integrand value is equal to
-the trace/Hessian integral. It is now a one-line composition of the IBP identity (B2) and the
-trace/kernel reduction (B3).
--/
+/-! ### Combined derivative value -/
 
 theorem derivative_value_guerraPhi_eq_trace_integral
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)

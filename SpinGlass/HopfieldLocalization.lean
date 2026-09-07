@@ -1,15 +1,11 @@
 import SpinGlass.HopfieldCascades
 
 /-!
-# Hopfield localization: statement layer (Talagrand/Bovier–Gayrard)
+# Hopfield localization statements
 
-This file introduces **formal statement objects** for the main Hopfield localization theorems:
-
-- Talagrand Vol I, Thm 4.3.2 (Bovier–Gayrard): concentration near the `± m* e_k` "lumps";
-- Talagrand Vol II, Thm 10.3.1: concentration near the random center `c(Ξ)`.
-
-At this stage we only build the *measurable-set / measure* infrastructure in a Vol II–friendly
-kernel/law form, so later proofs can be plugged in without changing statement shapes.
+Talagrand Vol. I, Thm. 4.3.2 (Bovier–Gayrard): concentration near `± m* e_k`.
+Talagrand Vol. II, Thm. 10.3.1: concentration near the random center `c(Ξ)`.
+Main: `HopfieldLocalizationLumps`, `HopfieldLocalizationCenter`.
 -/
 
 open MeasureTheory ProbabilityTheory Real
@@ -21,12 +17,7 @@ section General
 
 variable {α : Type*} [MeasurableSpace α]
 
-/--
-“Overwhelming” / “exponentially small” tail bound at scale `N`.
-
-This is the standard Talagrand/Georgii error term shape \(K e^{-N/K}\) (up to constants).
-We phrase it directly as a bound on `μ (sᶜ)`.
--/
+/-- Exponential tail: `μ(sᶜ) ≤ K exp(-N/K)`. -/
 def EssentiallySupportedExp (μ : Measure α) (N : ℕ) (s : Set α) : Prop :=
   ∃ K : ℝ, 0 < K ∧ μ sᶜ ≤ ENNReal.ofReal (K * Real.exp (-(N : ℝ) / K))
 
@@ -86,14 +77,7 @@ section PatternsEnvironment
 variable (β h : ℝ) (k0 : Fin M)
 variable (μΞ : Measure (Patterns N M)) [IsProbabilityMeasure μΞ]
 
-/--
-**Bovier–Gayrard / Talagrand Vol I (Thm 4.3.2)** statement in *annealed overlap-law* form:
-
-the (annealed) law of a fresh overlap vector is essentially supported by the union of
-balls around `± m* e_k`.
-
-This matches the textbook quantity \( \mathbb E G_N'(A)\) by construction.
--/
+/-- Bovier–Gayrard: annealed overlap law supported near `± m* e_k`. Talagrand Vol. I, Thm. 4.3.2. -/
 def HopfieldLocalizationLumps
     (mStar ρ : ℝ) : Prop :=
   EssentiallySupportedExp
@@ -109,11 +93,7 @@ noncomputable def hopfieldPatternMean (Ξ : Patterns N M) (k : Fin M) : ℝ :=
 noncomputable def hopfieldCenterVec (mStar : ℝ) (Ξ : Patterns N M) : Fin M → ℝ :=
   fun k => mStar * hopfieldPatternMean (N := N) (M := M) Ξ k
 
-/--
-**Talagrand Vol II (Thm 10.3.1)** statement in annealed overlap-law form:
-
-concentration of the overlap vector near the random center `c(Ξ)` (a ball in `ℝ^M`).
--/
+/-- Overlap concentration near the random center `c(Ξ)`. Talagrand Vol. II, Thm. 10.3.1. -/
 def HopfieldLocalizationCenter
     (mStar ρ : ℝ) : Prop :=
   ∃ K : ℝ, 0 < K ∧

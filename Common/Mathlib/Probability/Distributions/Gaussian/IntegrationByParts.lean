@@ -6,27 +6,12 @@ Authors: Matteo Cipollina
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBPAnalytic
 
 /-!
-# Gaussian integration by parts (intrinsic Cameron–Martin interface)
+# Gaussian IBP (Cameron–Martin)
 
-This file is intended as the **single** intrinsic entry point for Gaussian integration by parts.
-
-The core statement is the Cameron–Martin integration-by-parts identity for a Gaussian measure `μ`
-on a real Banach space:
-
-`∫ y, (x y) * F y ∂μ = ∫ y, (fderiv ℝ F y) (cmCoe x) ∂μ`,
-
-for `x : cameronMartin μ`, with analytic assumptions provided in tiers:
-- a maximally general dominated/integrability form;
-- a powerful polynomial-growth corollary (discharging integrability via Fernique).
-
-All other formulations (1D Stein, Hilbert covariance-operator phrasing, RV-facing versions) should
-be derived as corollaries of these theorems.
-
-## Main results
-
-- `ProbabilityTheory.cameronMartin_integral_by_parts_of_integrable_bound`
-- `ProbabilityTheory.cameronMartin_integral_by_parts_bounded`
-- `ProbabilityTheory.cameronMartin_integral_by_parts_polyGrowth`
+For Gaussian `μ` and `x : cameronMartin μ`:
+`∫ (x y) * F y ∂μ = ∫ (fderiv ℝ F y) (cmCoe x) ∂μ`.
+Main: `cameronMartin_integral_by_parts_of_integrable_bound`,
+`cameronMartin_integral_by_parts_bounded`, `cameronMartin_integral_by_parts_polyGrowth`.
 -/
 
 export ProbabilityTheory

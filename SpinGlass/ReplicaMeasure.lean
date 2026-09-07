@@ -6,14 +6,10 @@ import Mathlib.MeasureTheory.Integral.Lebesgue.Countable
 import Mathlib.Data.Fintype.Pi
 
 /-!
-# Finite-volume replica measure (Talagrand, Vol. I/II)
+# Finite-volume replica measure
 
-This file isolates the **purely finite-volume** definitions around sampling `n` independent
-replicas from the finite Gibbs measure.
-
-Crucially, nothing here depends on an ambient probability space `Ω`: this makes the construction
-usable as a building block for Volume II (pure states, overlap arrays, cascades) where “replicas”
-are treated algebraically/measure-theoretically.
+`n` independent replicas from the finite Gibbs measure on `Config N`. Main: `replicaGibbsMeasure`,
+`gibbs_average_n_det`. Talagrand Vol. I, Eq. (1.17).
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators
@@ -29,11 +25,7 @@ abbrev ReplicaSpace (N n : ℕ) := Fin n → Config N
 /-- A function of `n` replicas. -/
 abbrev ReplicaFun (N n : ℕ) := ReplicaSpace N n → ℝ
 
-/--
-**Equation (1.17)** (Talagrand): the Gibbs average of a function of `n` replicas.
-
-This is the deterministic finite-volume object (no ambient probability space).
--/
+/-- Gibbs average of a function of `n` replicas. Talagrand Vol. I, Eq. (1.17). -/
 noncomputable def gibbs_average_n_det (N n : ℕ) (H : EnergySpace N) (f : ReplicaFun N n) : ℝ :=
   FiniteGibbs.gibbs_average_n_det (α := Config N) (n := n) H f
 
@@ -49,12 +41,7 @@ noncomputable def replicaGibbsMeasure (N n : ℕ) (H : EnergySpace N) : Measure 
 
 /-! ### Normalization and bracket-as-integral -/
 
-/--
-The product Gibbs weights on `n` replicas sum to `1`.
-
-This is the finite-dimensional fact that the `n`-replica Gibbs measure is the product of `n`
-copies of the one-replica Gibbs measure.
--/
+/-- Product Gibbs weights on `n` replicas sum to `1`. -/
 lemma sum_prod_gibbs_pmf_eq_one (N n : ℕ) (H : EnergySpace N) :
     (∑ σs : ReplicaSpace N n, ∏ l, gibbs_pmf N H (σs l)) = 1 := by
   simpa [ReplicaSpace, gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using

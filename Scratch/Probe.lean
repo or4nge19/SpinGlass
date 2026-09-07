@@ -1,0 +1,9 @@
+import Mathlib
+#check @Measurable.fun_add
+#check @Measurable.fun_mul
+#check @Measurable.fun_div
+#check @HasDerivAt.fun_add
+#check @HasFDerivAt.fun_add
+#check @ContDiff.fun_add
+#check @ContDiff.fun_comp
+#check @Pi.add_def

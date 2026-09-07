@@ -2,17 +2,10 @@ import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinIBP
 import Mathlib.Analysis.Calculus.Deriv.Basic
 
 /-!
-# Cameron–Martin IBP: abstract differentiation step
+# Cameron–Martin IBP: abstract step
 
-This file isolates the **conceptual core** of Gaussian integration-by-parts in the
-Cameron–Martin framework:
-
-1. `cameronMartinShiftFun = cameronMartinTiltFun` (tilt = shift),
-2. compute `HasDerivAt` of both sides at `t = 0`,
-3. conclude the IBP identity by uniqueness of derivatives.
-
-The heavy analytic work (dominated differentiation, Fernique bounds, growth assumptions on the
-test function) is *not* done here: it is intended to be provided in application-specific layers.
+If tilt equals shift near `0` and both are differentiable at `0`, uniqueness of derivatives yields
+Gaussian IBP. Main: `cameronMartin_integral_by_parts_of_hasDerivAt`.
 -/
 
 open MeasureTheory Filter
@@ -26,17 +19,7 @@ variable {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] [MeasurableSpace
 
 /-! ## IBP as “derivative of tilt = derivative of shift” -/
 
-/--
-**Cameron–Martin integration by parts (abstract form).**
-
-Assume:
-- the shift functional and the tilt functional are equal (`tilt = shift`) in a neighborhood of `0`,
-- each side is differentiable at `0` with the stated derivatives.
-
-Then the two derivative integrals coincide, giving the Gaussian IBP identity.
-
-This lemma is intentionally minimal: it is the *formal* differentiation step.
--/
+/-- If tilt equals shift near `0` and both are differentiable at `0`, the derivative integrals coincide. -/
 theorem cameronMartin_integral_by_parts_of_hasDerivAt
     (x : cameronMartin μ) (F : E → ℝ) (hF : Measurable F)
     (hShift : HasDerivAt (fun t => cameronMartinShiftFun (μ := μ) x F t) (∫ y, (fderiv ℝ F y)

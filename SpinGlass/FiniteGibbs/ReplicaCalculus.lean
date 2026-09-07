@@ -4,25 +4,10 @@ import SpinGlass.FiniteGibbs.ReplicaMeasure
 import Mathlib.Analysis.Calculus.FDeriv.Mul
 
 /-!
-# Replica calculus for `SpinGlass.FiniteGibbs`
+# Replica calculus for finite Gibbs
 
-This file provides **model-agnostic** Fréchet-derivative formulas and uniform bounds for
-deterministic objects built from sampling `n` independent replicas from a finite-volume Gibbs law.
-
-The results are used as the finite-volume backend for Talagrand’s interpolation / smart-path
-method (Vol. I, §1.4), where one differentiates Gibbs averages of functions of replicas and then
-applies Gaussian integration by parts on the disorder.
-
-## Main results
-
-- `abs_gibbs_average_n_det_le_sum_abs`: a crude bound on the deterministic Gibbs average.
-- `abs_n_mul_gibbs_pmf_sub_card_le`: a uniform bound on `(n * gibbs_pmf H τ) - count`.
-- `abs_sum_mul_prod_gibbs_pmf_mul_n_mul_sub_card_le`: a bound for the explicit `A`-summand used in IBP.
-- `fderiv_prod_gibbs_pmf_apply`: derivative of the product Gibbs weight on `n` replicas.
-- `norm_fderiv_prod_gibbs_pmf_le`: a uniform bound on the derivative of the product Gibbs weight.
-- `fderiv_gibbs_average_n_det_apply`: derivative of the deterministic Gibbs average.
-- `norm_fderiv_gibbs_pmf_le_two`: a uniform bound on the derivative of `gibbs_pmf`.
-- `norm_fderiv_gibbs_average_n_det_le`: a uniform bound on the derivative of `gibbs_average_n_det`.
+Fréchet derivatives and uniform bounds for Gibbs averages of functions of `n` independent
+replicas. Backend for Talagrand Vol. I, §1.4 interpolation.
 -/
 
 open Real BigOperators
@@ -104,12 +89,13 @@ lemma abs_n_mul_gibbs_pmf_sub_card_le [DecidableEq α] (n : ℕ) (H : EnergySpac
     simpa [g] using (gibbs_pmf_nonneg (α := α) (H := H) (σ := τ))
   have hg1 : g ≤ 1 := by
     simpa [g] using (gibbs_pmf_le_one (α := α) (H := H) (σ := τ))
-  have hcard_le : ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ) ≤ n := by
-    have h' :
-        (Finset.univ.filter fun l : Fin n => σs l = τ).card
-          ≤ (Finset.univ : Finset (Fin n)).card :=
-      Finset.card_le_card (Finset.filter_subset _ _)
-    simpa [Finset.card_univ] using (Nat.cast_le.2 h')
+  have hcard_nat :
+      (Finset.univ.filter fun l : Fin n => σs l = τ).card ≤ n := by
+    simpa [Finset.card_univ] using
+      Finset.card_le_card
+        (Finset.filter_subset (fun l : Fin n => σs l = τ) (Finset.univ : Finset (Fin n)))
+  have hcard_le : ((Finset.univ.filter fun l : Fin n => σs l = τ).card : ℝ) ≤ (n : ℝ) :=
+    Nat.cast_le.mpr hcard_nat
   have ha : |(n : ℝ) * g| ≤ n := by
     have hn0 : (0 : ℝ) ≤ (n : ℝ) := Nat.cast_nonneg _
     have hng0 : 0 ≤ (n : ℝ) * g := mul_nonneg hn0 hg0
@@ -214,7 +200,7 @@ lemma abs_sum_mul_prod_gibbs_pmf_mul_n_mul_sub_card_le [DecidableEq α] (n : ℕ
             intro σs _hσs
             exact hterm σs
     _ = (2 * (n : ℝ)) * (∑ σs : ReplicaSpace (α := α) n, |f σs|) := by
-            simpa [Finset.mul_sum, mul_comm, mul_left_comm, mul_assoc]
+            simp [Finset.mul_sum, mul_comm]
 
 /-! ## Bounds for the derivative of `gibbs_pmf` -/
 
@@ -295,10 +281,7 @@ lemma norm_fderiv_gibbs_pmf_le_two (H : EnergySpace α) (σ : α) :
 
 /-! ## Derivatives for products over replicas and deterministic Gibbs averages -/
 
-/--
-The derivative of the product Gibbs weight
-`H ↦ ∏ l, gibbs_pmf H (σs l)` in direction `v`.
--/
+/-- Directional derivative of `H ↦ ∏ l, gibbs_pmf H (σs l)`. -/
 lemma fderiv_prod_gibbs_pmf_apply (n : ℕ) (H v : EnergySpace α) (σs : ReplicaSpace (α := α) n) :
     fderiv ℝ (fun H' => ∏ l : Fin n, gibbs_pmf (α := α) H' (σs l)) H v =
       (∏ l : Fin n, gibbs_pmf (α := α) H (σs l)) *
@@ -310,12 +293,12 @@ lemma fderiv_prod_gibbs_pmf_apply (n : ℕ) (H v : EnergySpace α) (σs : Replic
     intro l
     exact (hasFDerivAt_gibbs_pmf (α := α) (H := H) (σ := σs l)).differentiableAt
   have h_fderiv_prod :=
-    fderiv_finset_prod
+    fderiv_finsetProd
       (𝕜 := ℝ) (E := EnergySpace α) (𝔸' := ℝ) (u := (Finset.univ : Finset (Fin n)))
       (g := fun l H' => gibbs_pmf (α := α) H' (σs l))
       (fun l _hl => hdiff l)
   rw [h_fderiv_prod]
-  simp only [ContinuousLinearMap.sum_apply, ContinuousLinearMap.smul_apply]
+  simp only [sum_apply, smul_apply]
   have hterm :
       ∀ l : Fin n,
         (∏ j ∈ (Finset.univ : Finset (Fin n)).erase l, gibbs_pmf (α := α) H (σs j)) *
@@ -439,7 +422,7 @@ lemma differentiableAt_prod_gibbs_pmf (n : ℕ) (H : EnergySpace α) (σs : Repl
     intro l _hl
     exact (hasFDerivAt_gibbs_pmf (α := α) (H := H) (σ := σs l)).differentiableAt.hasFDerivAt
   have hHas :=
-    (HasFDerivAt.finset_prod (u := (Finset.univ : Finset (Fin n)))
+    (HasFDerivAt.finsetProd (u := (Finset.univ : Finset (Fin n)))
       (g := fun l H' => gibbs_pmf (α := α) H' (σs l))
       (g' := fun l => fderiv ℝ (fun H' => gibbs_pmf (α := α) H' (σs l)) H)
       (x := H) hg).differentiableAt

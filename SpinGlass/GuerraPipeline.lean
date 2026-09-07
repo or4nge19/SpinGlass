@@ -1,13 +1,10 @@
 import SpinGlass.GuerraTrace
 
 /-!
-# Guerra interpolation: combined derivative theorem
+# Guerra interpolation: combined derivative
 
-`SpinGlass.GuerraTrace` identifies the derivative value appearing in `hasDerivAt_guerraPhi` with
-Talagrand’s trace/Hessian expression under the intrinsic disorder law.
-
-This file records the combined statement as `hasDerivAt_guerraPhi_eq_trace_integral`, so that
-downstream arguments (e.g. the Guerra bound) can use it directly.
+`hasDerivAt_guerraPhi` plus the trace/Hessian identity. Main:
+`hasDerivAt_guerraPhi_eq_trace_integral`. Talagrand Vol. I, §1.3.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology
@@ -24,16 +21,7 @@ variable (sk : SKDisorder (Ω := Ω) (N := N) β h) (sim : SimpleDisorder (Ω :=
 private abbrev μ : Measure (DisorderSpace (N := N)) :=
   disorderPairLaw (Ω := Ω) (N := N) (β := β) (h := h) (q := q) (sk := sk) (sim := sim)
 
-/--
-**Guerra derivative in trace/Hessian form (combined statement).**
-
-For \(t\in(0,1)\), the function `guerraPhi` is differentiable at `t` and its derivative is given by
-the Talagrand trace/Hessian expression, integrated against the intrinsic disorder law
-`disorderPairLaw`.
-
-This is exactly `hasDerivAt_guerraPhi` composed with the trace identity
-`derivative_value_guerraPhi_eq_trace_integral`.
--/
+/-- For `t ∈ (0,1)`, `guerraPhi` is differentiable with Talagrand’s trace/Hessian derivative. -/
 theorem hasDerivAt_guerraPhi_eq_trace_integral
     (hindep : sk.U ⟂ᵢ[(ℙ : Measure Ω)] sim.V)
     (t : ℝ) (ht : t ∈ Set.Ioo (0 : ℝ) 1) :

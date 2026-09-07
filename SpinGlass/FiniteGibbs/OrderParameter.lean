@@ -2,20 +2,9 @@ import SpinGlass.FiniteGibbs.Kernel
 import Mathlib.Probability.Kernel.Composition.MapComap
 
 /-!
-# Order-parameter kernels (finite-volume, model-agnostic)
+# Order-parameter kernels
 
-Talagrand Vol. II style arguments are most naturally phrased in terms of **samplers**: the finite
-Gibbs law `G_H` is a kernel `H ↦ G_H`, and any “order parameter” is a measurable map
-
-`u : α → β`.
-
-This file provides the induced pushforward laws as kernels
-
-- `orderKernel u : EnergySpace α ⟶ β`,
-- `orderArrayKernel u n : EnergySpace α ⟶ (Fin n → β)`,
-
-and provides the core API (apply/pushforward identities, and composition lemmas) so that concrete
-models (Hopfield, perceptron, …) become one-line instantiations.
+Pushforwards of the finite Gibbs sampler along `u : α → β`. Main: `orderKernel`, `orderArrayKernel`.
 -/
 
 open MeasureTheory ProbabilityTheory Real BigOperators
@@ -32,25 +21,24 @@ variable {α : Type*} [Fintype α] [Nonempty α] [MeasurableSpace α] [Measurabl
 
 variable {β : Type*} [MeasurableSpace β]
 
-/--
-Order-parameter sampler: send `H` to the pushforward law of `u(σ)` when `σ ∼ G_H`.
-
-This is just `gibbsKernel.map u`.
--/
+/-- Kernel `H ↦ Law(u(σ))` for `σ ∼ G_H`; definitionally `gibbsKernel.map u`. -/
 noncomputable def orderKernel (u : α → β) : Kernel (EnergySpace α) β :=
   (gibbsKernel (α := α)).map u
 
+omit [MeasurableSingletonClass α] in
 lemma orderKernel_apply (u : α → β) (hu : Measurable u) (H : EnergySpace α) :
     orderKernel (α := α) u H = (gibbsMeasure (α := α) H).map u := by
   simpa [orderKernel, gibbsKernel_apply] using
     (ProbabilityTheory.Kernel.map_apply (κ := gibbsKernel (α := α)) (f := u) hu H)
 
+omit [MeasurableSingletonClass α] in
 lemma orderKernel_apply' (u : α → β) (hu : Measurable u) (H : EnergySpace α)
     {s : Set β} (hs : MeasurableSet s) :
     orderKernel (α := α) u H s = gibbsMeasure (α := α) H (u ⁻¹' s) := by
   simpa [orderKernel, gibbsKernel_apply] using
     (ProbabilityTheory.Kernel.map_apply' (κ := gibbsKernel (α := α)) (f := u) hu H hs)
 
+omit [MeasurableSingletonClass α] in
 lemma orderKernel_isMarkovKernel (u : α → β) (hu : Measurable u) :
     IsMarkovKernel (orderKernel (α := α) u) := by
   simpa [orderKernel] using
@@ -67,10 +55,7 @@ omit [Fintype α] [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass �
 lemma orderArray_apply (u : α → β) (n : ℕ) (σs : ReplicaSpace (α := α) n) (ℓ : Fin n) :
     orderArray (α := α) (β := β) u n σs ℓ = u (σs ℓ) := rfl
 
-/--
-Order-parameter array sampler: send `H` to the law of `(ℓ ↦ u(σ^ℓ))` for `n` independent Gibbs
-replicas `(σ^ℓ)`.
--/
+/-- Kernel `H ↦ Law(ℓ ↦ u(σ^ℓ))` for `n` independent Gibbs replicas. -/
 noncomputable def orderArrayKernel (u : α → β) (n : ℕ) :
     Kernel (EnergySpace α) (Fin n → β) :=
   (replicaGibbsKernel (α := α) n).map (orderArray (α := α) (β := β) u n)
@@ -109,6 +94,7 @@ lemma orderArrayKernel_isMarkovKernel (u : α → β) (n : ℕ) (hu : Measurable
 
 variable {γ : Type*} [MeasurableSpace γ]
 
+omit [MeasurableSingletonClass α] in
 lemma orderKernel_comp (u : α → β) (hu : Measurable u) (v : β → γ) (hv : Measurable v) :
     orderKernel (α := α) (β := γ) (v ∘ u) = (orderKernel (α := α) (β := β) u).map v := by
   simpa [orderKernel] using

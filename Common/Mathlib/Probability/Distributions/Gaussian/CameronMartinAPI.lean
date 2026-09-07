@@ -4,17 +4,11 @@ import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinRV
 
 /-!
-# Cameron–Martin toolkit: public API
+# Cameron–Martin toolkit
 
-This file is the **public-facing** entry point for the Cameron–Martin toolkit in this repo:
-
-- Cameron–Martin theorem / laws (`hasLaw_cameronMartin`, ...)
-- Fernique consequences (`exists_C_pos_integrable_rexp_sq_dual`, ...)
-- Gaussian integration by parts in Cameron–Martin form
-  (`cameronMartin_integral_by_parts_bounded`,
-   `cameronMartin_integral_by_parts_of_integrable_bound`).
-
-Downstream developments should prefer importing this file over the implementation files.
+Public API: Cameron–Martin theorem (`hasLaw_cameronMartin`), Fernique
+(`exists_C_pos_integrable_rexp_sq_dual`), and Gaussian IBP
+(`cameronMartin_integral_by_parts_bounded`, `cameronMartin_integral_by_parts_of_integrable_bound`).
 -/
 
 export ProbabilityTheory
