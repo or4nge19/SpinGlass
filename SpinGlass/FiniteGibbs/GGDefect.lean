@@ -130,18 +130,22 @@ omit [Nonempty α] in
     covKernel μ w σ τ = (covarianceOperator μ (w σ)) τ := rfl
 
 /-- **The component field of the disorder in a family of directions**: the vector whose value at
-`σ` is `⟪H, w σ⟫`.
+`σ` is `⟪x, w σ⟫`.
 
-For `w σ = Wᵀ e_σ` with `W` a continuous linear map this is `W H`, the corresponding linear
-component of the disorder; for `w = e_·` it is `H` itself. Packaging it as a vector of
+The disorder `x` lives in an arbitrary real inner-product space. For `Ω = EnergySpace α` and
+`w σ = Wᵀ e_σ` with `W` a continuous linear map this is `W H`, the corresponding linear component
+of the disorder; for `w = e_·` it is `H` itself; for `Ω = E × E` and `w σ = (0, e_σ)` it is the
+second summand of a Hamiltonian built from two independent pieces. Packaging it as a vector of
 `EnergySpace α` is what lets the whole finite-volume calculus — written for the energy — be reused
 verbatim for a component. -/
-def componentField (w : α → EnergySpace α) (H : EnergySpace α) : EnergySpace α :=
-  WithLp.toLp 2 fun σ => ⟪H, w σ⟫_ℝ
+def componentField {Ω : Type*} [NormedAddCommGroup Ω] [InnerProductSpace ℝ Ω]
+    (w : α → Ω) (x : Ω) : EnergySpace α :=
+  WithLp.toLp 2 fun σ => ⟪x, w σ⟫_ℝ
 
-omit [Nonempty α] in
-@[simp] lemma componentField_apply (w : α → EnergySpace α) (H : EnergySpace α) (σ : α) :
-    (componentField (α := α) w H) σ = ⟪H, w σ⟫_ℝ := rfl
+omit [Fintype α] [Nonempty α] in
+@[simp] lemma componentField_apply {Ω : Type*} [NormedAddCommGroup Ω] [InnerProductSpace ℝ Ω]
+    (w : α → Ω) (x : Ω) (σ : α) :
+    (componentField (α := α) w x) σ = ⟪x, w σ⟫_ℝ := rfl
 
 omit [Nonempty α] in
 /-- The component field in the coordinate directions is the disorder itself. -/
@@ -351,6 +355,336 @@ theorem integral_gibbs_average_one_energy
       congrArg (gibbs_average_n_det (α := α) (n := 1) H)
         (funext fun τs => hco H (τs 0)))] at h
   exact h
+
+/-! ### The component cavity identity for a linear-image Hamiltonian -/
+
+section LinearImage
+
+variable {Ω : Type*} [NormedAddCommGroup Ω] [InnerProductSpace ℝ Ω] [CompleteSpace Ω]
+variable [MeasurableSpace Ω] [BorelSpace Ω] [SecondCountableTopology Ω]
+variable {P : Measure Ω} [IsGaussian P]
+
+/-- **The cross-covariance kernel of a component of the disorder against a linear-image
+Hamiltonian**: `c_{A,w}(σ, τ) = Cov(⟪x, w σ⟫, (A x) τ)`.
+
+With `Ω = E × E`, `A (x, y) = x + t y` and `w σ = (0, e_σ)` this is `t` times the covariance of the
+second summand — the kernel of a single `p`-spin term of a mixed Hamiltonian. -/
+def crossKernel (P : Measure Ω) (A : Ω →L[ℝ] EnergySpace α) (w : α → Ω) (σ τ : α) : ℝ :=
+  (A (covarianceOperator P (w σ))) τ
+
+omit [Fintype α] [Nonempty α] [SecondCountableTopology Ω] in
+@[simp] lemma crossKernel_apply (P : Measure Ω) (A : Ω →L[ℝ] EnergySpace α) (w : α → Ω)
+    (σ τ : α) : crossKernel P A w σ τ = (A (covarianceOperator P (w σ))) τ := rfl
+
+omit [Nonempty α] [SecondCountableTopology Ω] [IsGaussian P] in
+/-- Every entry of a cross-covariance kernel is bounded. -/
+lemma abs_crossKernel_le (A : Ω →L[ℝ] EnergySpace α) {w : α → Ω} {Mw : ℝ}
+    (hw : ∀ σ : α, ‖w σ‖ ≤ Mw) (σ τ : α) :
+    |crossKernel P A w σ τ| ≤ ‖A‖ * (‖covarianceOperator P‖ * Mw) := by
+  calc |crossKernel P A w σ τ| ≤ ‖A (covarianceOperator P (w σ))‖ :=
+        abs_apply_le_norm (α := α) (A (covarianceOperator P (w σ))) τ
+    _ ≤ ‖A‖ * ‖covarianceOperator P (w σ)‖ := ContinuousLinearMap.le_opNorm _ _
+    _ ≤ ‖A‖ * (‖covarianceOperator P‖ * ‖w σ‖) :=
+        mul_le_mul_of_nonneg_left (ContinuousLinearMap.le_opNorm _ _) (norm_nonneg A)
+    _ ≤ ‖A‖ * (‖covarianceOperator P‖ * Mw) :=
+        mul_le_mul_of_nonneg_left
+          (mul_le_mul_of_nonneg_left (hw σ) (norm_nonneg _)) (norm_nonneg A)
+
+omit [Nonempty α] in
+/-- **The Hamiltonian's own covariance kernel is the cross kernel at the adjoint directions.**
+
+If `w σ` represents the `σ`-th coordinate of the Hamiltonian, in the sense that
+`⟪p, w σ⟫ = (A p) σ` for every disorder `p` — that is, `w = Aᵀ e_·` — then the covariance kernel of
+the *law of the Hamiltonian* is the cross kernel of `w`:
+
+`Cov((A x) σ, (A x) τ) = (A (C_P (w σ))) τ`.
+
+No adjoint is needed in the statement or the proof: the defining property of `w` is used twice,
+once on each side. -/
+theorem covarianceOperator_map_std_basis_eq_crossKernel
+    (A : Ω →L[ℝ] EnergySpace α) {w : α → Ω}
+    (hw : ∀ (p : Ω) (σ : α), ⟪p, w σ⟫_ℝ = (A p) σ) (σ τ : α) :
+    (covarianceOperator (P.map A) (std_basis (α := α) σ)) τ = crossKernel P A w σ τ := by
+  classical
+  have hmemP : MemLp (id : Ω → Ω) 2 P := ProbabilityTheory.IsGaussian.memLp_two_id
+  have hgauss : ProbabilityTheory.IsGaussian (P.map A) :=
+    ProbabilityTheory.isGaussian_map (μ := P) A
+  have hmemA : MemLp (id : EnergySpace α → EnergySpace α) 2 (P.map A) :=
+    ProbabilityTheory.IsGaussian.memLp_two_id
+  -- the left-hand side, as an uncentered second moment
+  have hL : (covarianceOperator (P.map A) (std_basis (α := α) σ)) τ
+      = ∫ z : EnergySpace α, ⟪std_basis (α := α) σ, z⟫_ℝ * ⟪std_basis (α := α) τ, z⟫_ℝ
+          ∂(P.map A) := by
+    rw [show (covarianceOperator (P.map A) (std_basis (α := α) σ)) τ
+        = inner ℝ (covarianceOperator (P.map A) (std_basis (α := α) σ))
+            (std_basis (α := α) τ) from by
+      rw [real_inner_comm, inner_std_basis_apply]]
+    exact ProbabilityTheory.covarianceOperator_inner hmemA _ _
+  have hLmap : (∫ z : EnergySpace α, ⟪std_basis (α := α) σ, z⟫_ℝ
+        * ⟪std_basis (α := α) τ, z⟫_ℝ ∂(P.map A))
+      = ∫ p : Ω, (A p) σ * (A p) τ ∂P := by
+    rw [MeasureTheory.integral_map (μ := P) (φ := A)
+      (f := fun z : EnergySpace α => ⟪std_basis (α := α) σ, z⟫_ℝ
+        * ⟪std_basis (α := α) τ, z⟫_ℝ)
+      A.continuous.measurable.aemeasurable
+      (((continuous_const.inner continuous_id).mul
+        (continuous_const.inner continuous_id)).aestronglyMeasurable)]
+    exact integral_congr_ae (Filter.Eventually.of_forall fun p => by
+      simp only [inner_std_basis_apply])
+  -- the right-hand side, likewise
+  have hR : crossKernel P A w σ τ = ∫ p : Ω, (A p) σ * (A p) τ ∂P := by
+    rw [crossKernel, ← hw (covarianceOperator P (w σ)) τ,
+      ProbabilityTheory.covarianceOperator_inner hmemP]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun p => ?_)
+    change ⟪w σ, p⟫_ℝ * ⟪w τ, p⟫_ℝ = (A p) σ * (A p) τ
+    rw [real_inner_comm p (w σ), real_inner_comm p (w τ), hw p σ, hw p τ]
+  rw [hL, hLmap, hR]
+
+/-- **The component cavity identity with the diagonal term separated.** When the cross kernel has
+constant diagonal `c_{A,w} σ σ = d`, the `l = i` summand is `d ⟨f⟩` and the rest of the sum runs
+over `l ≠ i`. -/
+theorem integral_gibbs_average_n_det_inner_mul_comp_erase
+    (hmean0 : (∫ x : Ω, x ∂P) = 0) (A : Ω →L[ℝ] EnergySpace α) (c₀ : EnergySpace α)
+    (w : α → Ω) {d : ℝ} (hdiag : ∀ σ : α, crossKernel P A w σ σ = d)
+    (m : ℕ) (f : ReplicaFun (α := α) m) (i : Fin m) :
+    (∫ x : Ω, gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+        (fun σs => ⟪x, w (σs i)⟫_ℝ * f σs) ∂P)
+      = ∫ x : Ω,
+          ((m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+                (fun σs => f σs
+                  * freshKernelAvg (α := α) (A x + c₀) (crossKernel P A w) (σs i))
+            - d * gibbs_average_n_det (α := α) (n := m) (A x + c₀) f
+            - ∑ l ∈ Finset.univ.erase i, gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+                (fun σs => f σs * crossKernel P A w (σs i) (σs l))) ∂P := by
+  classical
+  rw [integral_gibbs_average_n_det_inner_mul_comp (P := P) hmean0 A c₀ w m f i]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
+  have hsplit : (∑ l : Fin m, gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+        (fun σs => f σs * (A (covarianceOperator P (w (σs i)))) (σs l)))
+      = gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+          (fun σs => f σs * (A (covarianceOperator P (w (σs i)))) (σs i))
+        + ∑ l ∈ Finset.univ.erase i, gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+            (fun σs => f σs * (A (covarianceOperator P (w (σs i)))) (σs l)) :=
+    (Finset.add_sum_erase _ _ (Finset.mem_univ i)).symm
+  have hdiagAvg : gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+      (fun σs => f σs * (A (covarianceOperator P (w (σs i)))) (σs i))
+      = d * gibbs_average_n_det (α := α) (n := m) (A x + c₀) f := by
+    rw [gibbs_average_n_det, gibbs_average_n_det, Finset.mul_sum]
+    exact Finset.sum_congr rfl fun σs _ => by
+      have := hdiag (σs i)
+      rw [crossKernel_apply] at this
+      rw [this]; ring
+  simp only [freshKernelAvg, crossKernel_apply]
+  rw [hsplit, hdiagAvg]
+  ring
+
+/-- **The mean of a component field is its mean cross kernel against a fresh replica, minus the
+diagonal**: `𝔼⟨⟪x, w ·⟫⟩ = 𝔼⟨c_{A,w}(σ¹, σ²)⟩ - d`. -/
+theorem integral_gibbs_average_one_inner_comp
+    (hmean0 : (∫ x : Ω, x ∂P) = 0) (A : Ω →L[ℝ] EnergySpace α) (c₀ : EnergySpace α)
+    {w : α → Ω} {Mw : ℝ} (hw : ∀ σ : α, ‖w σ‖ ≤ Mw) {d : ℝ}
+    (hdiag : ∀ σ : α, crossKernel P A w σ σ = d) :
+    (∫ x : Ω, gibbs_average_n_det (α := α) (n := 1) (A x + c₀)
+        (fun τs => ⟪x, w (τs 0)⟫_ℝ) ∂P)
+      = (∫ x : Ω, gibbs_average_n_det (α := α) (n := 1) (A x + c₀)
+          (fun τs => freshKernelAvg (α := α) (A x + c₀) (crossKernel P A w) (τs 0)) ∂P) - d := by
+  classical
+  have hone := integral_gibbs_average_n_det_inner_mul_comp_erase (P := P) hmean0 A c₀ w hdiag 1
+    (fun _ => (1 : ℝ)) 0
+  have herase : (Finset.univ.erase (0 : Fin 1)) = ∅ := by
+    ext l
+    simp [Subsingleton.elim l 0]
+  have hker := abs_crossKernel_le (P := P) A hw
+  have hbd := abs_freshKernelAvg_le (α := α) hker
+  have hI1' : Integrable
+      (fun x : Ω => gibbs_average_n_det (α := α) (n := 1) (A x + c₀)
+        (fun τs => freshKernelAvg (α := α) (A x + c₀) (crossKernel P A w) (τs 0))) P := by
+    have hcont : Continuous fun x : Ω => gibbs_average_n_det (α := α) (n := 1) (A x + c₀)
+        (fun τs => freshKernelAvg (α := α) (A x + c₀) (crossKernel P A w) (τs 0)) := by
+      simp only [gibbs_average_n_det]
+      exact continuous_finsetSum _ fun τs _ =>
+        (((continuous_freshKernelAvg (α := α) (crossKernel P A w) (τs 0)).comp
+            (A.continuous.add continuous_const)).mul
+          (continuous_finsetProd _ fun l _ =>
+            ((contDiff_gibbs_pmf (α := α) (τs l)).continuous).comp
+              (A.continuous.add continuous_const)))
+    have hM0 : (0 : ℝ) ≤ ‖A‖ * (‖covarianceOperator P‖ * Mw) :=
+      le_trans (abs_nonneg _) (hker (Classical.arbitrary α) (Classical.arbitrary α))
+    refine ProbabilityTheory.IsGaussian.integrable_of_abs_le_mul_one_add_norm_pow (μ := P)
+      hcont.measurable (C := ‖A‖ * (‖covarianceOperator P‖ * Mw)) (m := 0) hM0 fun x => ?_
+    rw [gibbs_average_one]
+    refine le_trans (Finset.abs_sum_le_sum_abs _ _) ?_
+    have hterm : ∀ τ : α,
+        |freshKernelAvg (α := α) (A x + c₀) (crossKernel P A w) τ
+            * gibbs_pmf (α := α) (A x + c₀) τ|
+          ≤ (‖A‖ * (‖covarianceOperator P‖ * Mw)) * gibbs_pmf (α := α) (A x + c₀) τ := by
+      intro τ
+      rw [abs_mul, abs_of_nonneg (gibbs_pmf_nonneg (α := α) (A x + c₀) τ)]
+      exact mul_le_mul_of_nonneg_right (hbd (A x + c₀) τ)
+        (gibbs_pmf_nonneg (α := α) (A x + c₀) τ)
+    calc (∑ τ : α, |freshKernelAvg (α := α) (A x + c₀) (crossKernel P A w) τ
+            * gibbs_pmf (α := α) (A x + c₀) τ|)
+        ≤ ∑ τ : α, (‖A‖ * (‖covarianceOperator P‖ * Mw))
+            * gibbs_pmf (α := α) (A x + c₀) τ := Finset.sum_le_sum fun τ _ => hterm τ
+      _ = ‖A‖ * (‖covarianceOperator P‖ * Mw) := by
+          rw [← Finset.mul_sum, sum_gibbs_pmf, mul_one]
+      _ ≤ ‖A‖ * (‖covarianceOperator P‖ * Mw) * (1 + ‖x‖) ^ 0 := by simp
+  rw [show (fun x : Ω => gibbs_average_n_det (α := α) (n := 1) (A x + c₀)
+        (fun τs => ⟪x, w (τs 0)⟫_ℝ)) = fun x : Ω =>
+      gibbs_average_n_det (α := α) (n := 1) (A x + c₀)
+        (fun τs => ⟪x, w (τs 0)⟫_ℝ * (1 : ℝ)) from by
+    funext x; simp]
+  rw [hone, herase]
+  simp only [Finset.sum_empty, sub_zero, Nat.cast_one, one_mul, gibbs_average_one_const,
+    mul_one, one_mul]
+  rw [MeasureTheory.integral_sub hI1' (integrable_const d), MeasureTheory.integral_const]
+  simp
+
+/-- A replica average along a linear-image Hamiltonian is integrable as soon as the observable is
+continuous in the disorder and uniformly bounded. -/
+lemma integrable_gibbs_average_n_det_comp_of_bounded (A : Ω →L[ℝ] EnergySpace α)
+    (c₀ : EnergySpace α) (m : ℕ) (g : Ω → ReplicaFun (α := α) m)
+    (hg : Continuous fun x : Ω => gibbs_average_n_det (α := α) (n := m) (A x + c₀) (g x))
+    {B : ℝ} (hB : ∀ x σs, ‖g x σs‖ ≤ B) :
+    Integrable (fun x : Ω => gibbs_average_n_det (α := α) (n := m) (A x + c₀) (g x)) P := by
+  classical
+  have hB0 : 0 ≤ B := le_trans (norm_nonneg _) (hB 0 (fun _ => Classical.arbitrary α))
+  have hbound : ∀ x : Ω,
+      |gibbs_average_n_det (α := α) (n := m) (A x + c₀) (g x)|
+        ≤ (Fintype.card (ReplicaSpace (α := α) m) : ℝ) * B := by
+    intro x
+    refine le_trans (abs_gibbs_average_n_det_le_sum_abs (α := α) m (A x + c₀) (g x)) ?_
+    calc (∑ σs : ReplicaSpace (α := α) m, ‖g x σs‖)
+        ≤ ∑ _σs : ReplicaSpace (α := α) m, B := Finset.sum_le_sum fun σs _ => hB x σs
+      _ = (Fintype.card (ReplicaSpace (α := α) m) : ℝ) * B := by
+          rw [Finset.sum_const, Finset.card_univ, nsmul_eq_mul]
+  exact ProbabilityTheory.IsGaussian.integrable_of_abs_le_mul_one_add_norm_pow (μ := P)
+    hg.measurable (C := (Fintype.card (ReplicaSpace (α := α) m) : ℝ) * B) (m := 0)
+    (by positivity) (fun x => by simpa using hbound x)
+
+/-- The replica bracket of a component field along a linear-image Hamiltonian is integrable. -/
+lemma integrable_gibbs_average_n_det_inner_mul_comp (A : Ω →L[ℝ] EnergySpace α)
+    (c₀ : EnergySpace α) {w : α → Ω} {Mw : ℝ} (hw : ∀ σ : α, ‖w σ‖ ≤ Mw)
+    (m : ℕ) (f : ReplicaFun (α := α) m) (i : Fin m) :
+    Integrable (fun x : Ω => gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+      (fun σs => ⟪x, w (σs i)⟫_ℝ * f σs)) P := by
+  classical
+  have hMw0 : (0 : ℝ) ≤ Mw := le_trans (norm_nonneg _) (hw (Classical.arbitrary α))
+  set Bf : ℝ := ∑ σs : ReplicaSpace (α := α) m, ‖f σs‖ with hBf
+  have hBf0 : 0 ≤ Bf := Finset.sum_nonneg fun _ _ => norm_nonneg _
+  have hfle : ∀ σs : ReplicaSpace (α := α) m, ‖f σs‖ ≤ Bf :=
+    fun σs => Finset.single_le_sum (f := fun σs' => ‖f σs'‖)
+      (fun _ _ => norm_nonneg _) (Finset.mem_univ σs)
+  have hcont : Continuous fun x : Ω =>
+      gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+        (fun σs => ⟪x, w (σs i)⟫_ℝ * f σs) := by
+    simp only [gibbs_average_n_det]
+    exact continuous_finsetSum _ fun σs _ =>
+      (((continuous_id.inner continuous_const).mul continuous_const).mul
+        (continuous_finsetProd _ fun l _ =>
+          ((contDiff_gibbs_pmf (α := α) (σs l)).continuous).comp
+            (A.continuous.add continuous_const)))
+  refine ProbabilityTheory.IsGaussian.integrable_of_abs_le_mul_one_add_norm_pow (μ := P)
+    hcont.measurable (C := Bf * Mw) (m := 1) (mul_nonneg hBf0 hMw0) fun x => ?_
+  refine le_trans (abs_gibbs_average_n_det_le_sum_abs (α := α) m (A x + c₀) _) ?_
+  calc (∑ σs : ReplicaSpace (α := α) m, ‖⟪x, w (σs i)⟫_ℝ * f σs‖)
+      ≤ ∑ σs : ReplicaSpace (α := α) m, (‖x‖ * Mw) * ‖f σs‖ := by
+        refine Finset.sum_le_sum fun σs _ => ?_
+        rw [Real.norm_eq_abs, abs_mul]
+        refine mul_le_mul_of_nonneg_right ?_ (abs_nonneg _)
+        calc |⟪x, w (σs i)⟫_ℝ| ≤ ‖x‖ * ‖w (σs i)‖ := abs_real_inner_le_norm x (w (σs i))
+          _ ≤ ‖x‖ * Mw := mul_le_mul_of_nonneg_left (hw (σs i)) (norm_nonneg x)
+    _ = (‖x‖ * Mw) * Bf := by rw [← Finset.mul_sum]
+    _ ≤ (Bf * Mw) * (1 + ‖x‖) ^ 1 := by
+        have hn : (0 : ℝ) ≤ ‖x‖ := norm_nonneg x
+        have hpow : (1 + ‖x‖) ^ 1 = 1 + ‖x‖ := pow_one _
+        rw [hpow]
+        nlinarith [hBf0, hMw0, hn]
+
+/-- The mean absolute deviation of a component field along a linear-image Hamiltonian is
+integrable. -/
+lemma integrable_sum_gibbs_pmf_mul_abs_inner_sub_comp (A : Ω →L[ℝ] EnergySpace α)
+    (c₀ : EnergySpace α) {w : α → Ω} {Mw : ℝ} (hw : ∀ σ : α, ‖w σ‖ ≤ Mw) (a : ℝ) :
+    Integrable (fun x : Ω =>
+      ∑ σ : α, gibbs_pmf (α := α) (A x + c₀) σ * |⟪x, w σ⟫_ℝ - a|) P := by
+  classical
+  have hMw0 : (0 : ℝ) ≤ Mw := le_trans (norm_nonneg _) (hw (Classical.arbitrary α))
+  have hcont : Continuous fun x : Ω =>
+      ∑ σ : α, gibbs_pmf (α := α) (A x + c₀) σ * |⟪x, w σ⟫_ℝ - a| :=
+    continuous_finsetSum _ fun σ _ =>
+      (((contDiff_gibbs_pmf (α := α) σ).continuous).comp
+        (A.continuous.add continuous_const)).mul
+        (((continuous_id.inner continuous_const).sub continuous_const).abs)
+  have hnn : ∀ x : Ω,
+      0 ≤ ∑ σ : α, gibbs_pmf (α := α) (A x + c₀) σ * |⟪x, w σ⟫_ℝ - a| :=
+    fun x => Finset.sum_nonneg fun σ _ =>
+      mul_nonneg (gibbs_pmf_nonneg (α := α) (A x + c₀) σ) (abs_nonneg _)
+  have hbd : ∀ x : Ω,
+      (∑ σ : α, gibbs_pmf (α := α) (A x + c₀) σ * |⟪x, w σ⟫_ℝ - a|) ≤ Mw * ‖x‖ + |a| := by
+    intro x
+    calc (∑ σ : α, gibbs_pmf (α := α) (A x + c₀) σ * |⟪x, w σ⟫_ℝ - a|)
+        ≤ ∑ _σ : α, gibbs_pmf (α := α) (A x + c₀) _σ * (Mw * ‖x‖ + |a|) := by
+          refine Finset.sum_le_sum fun σ _ => ?_
+          refine mul_le_mul_of_nonneg_left ?_ (gibbs_pmf_nonneg (α := α) (A x + c₀) σ)
+          have hb : |⟪x, w σ⟫_ℝ| ≤ Mw * ‖x‖ := by
+            calc |⟪x, w σ⟫_ℝ| ≤ ‖x‖ * ‖w σ‖ := abs_real_inner_le_norm x (w σ)
+              _ ≤ ‖x‖ * Mw := mul_le_mul_of_nonneg_left (hw σ) (norm_nonneg x)
+              _ = Mw * ‖x‖ := mul_comm _ _
+          calc |⟪x, w σ⟫_ℝ - a| ≤ |⟪x, w σ⟫_ℝ| + |a| := abs_sub _ _
+            _ ≤ Mw * ‖x‖ + |a| := by linarith
+      _ = Mw * ‖x‖ + |a| := by rw [← Finset.sum_mul, sum_gibbs_pmf, one_mul]
+  refine ProbabilityTheory.IsGaussian.integrable_of_abs_le_mul_one_add_norm_pow (μ := P)
+    hcont.measurable (C := Mw + |a|) (m := 1) (by linarith [abs_nonneg a]) fun x => ?_
+  rw [abs_of_nonneg (hnn x), pow_one]
+  have h := hbd x
+  nlinarith [norm_nonneg x, abs_nonneg a, hMw0]
+
+/-- **Talagrand, Vol. II, Lemma 12.1.4, for a component of the disorder.** The mean of the
+component field is at most twice the size of its cross kernel — hence *uniform in the volume*
+whenever the kernel is, which for a `p`-spin term of a mixed model (`aₚ N Rᵖ`) it is after dividing
+by `N`. -/
+theorem abs_integral_gibbs_average_one_inner_comp_le
+    (hmean0 : (∫ x : Ω, x ∂P) = 0) (A : Ω →L[ℝ] EnergySpace α) (c₀ : EnergySpace α)
+    {w : α → Ω} {Mw : ℝ} (hw : ∀ σ : α, ‖w σ‖ ≤ Mw) {d : ℝ}
+    (hdiag : ∀ σ : α, crossKernel P A w σ σ = d) {M : ℝ}
+    (hker : ∀ σ τ : α, |crossKernel P A w σ τ| ≤ M) :
+    |∫ x : Ω, gibbs_average_n_det (α := α) (n := 1) (A x + c₀)
+        (fun τs => ⟪x, w (τs 0)⟫_ℝ) ∂P| ≤ 2 * M := by
+  classical
+  have hbd := abs_freshKernelAvg_le (α := α) hker
+  have hd : |d| ≤ M := by rw [← hdiag (Classical.arbitrary α)]; exact hker _ _
+  have hptwise : ∀ x : Ω,
+      |gibbs_average_n_det (α := α) (n := 1) (A x + c₀)
+        (fun τs => freshKernelAvg (α := α) (A x + c₀) (crossKernel P A w) (τs 0))| ≤ M := by
+    intro x
+    rw [gibbs_average_one]
+    refine le_trans (Finset.abs_sum_le_sum_abs _ _) ?_
+    calc (∑ τ : α, |freshKernelAvg (α := α) (A x + c₀) (crossKernel P A w) τ
+            * gibbs_pmf (α := α) (A x + c₀) τ|)
+        ≤ ∑ τ : α, M * gibbs_pmf (α := α) (A x + c₀) τ := by
+          refine Finset.sum_le_sum fun τ _ => ?_
+          rw [abs_mul, abs_of_nonneg (gibbs_pmf_nonneg (α := α) (A x + c₀) τ)]
+          exact mul_le_mul_of_nonneg_right (hbd (A x + c₀) τ)
+            (gibbs_pmf_nonneg (α := α) (A x + c₀) τ)
+      _ = M := by rw [← Finset.mul_sum, sum_gibbs_pmf, mul_one]
+  have hint : |∫ x : Ω, gibbs_average_n_det (α := α) (n := 1) (A x + c₀)
+      (fun τs => freshKernelAvg (α := α) (A x + c₀) (crossKernel P A w) (τs 0)) ∂P| ≤ M := by
+    have h := MeasureTheory.norm_integral_le_of_norm_le_const (μ := P)
+      (f := fun x : Ω => gibbs_average_n_det (α := α) (n := 1) (A x + c₀)
+        (fun τs => freshKernelAvg (α := α) (A x + c₀) (crossKernel P A w) (τs 0)))
+      (C := M) (Filter.Eventually.of_forall fun x => by
+        simpa [Real.norm_eq_abs] using hptwise x)
+    simpa [Real.norm_eq_abs, measure_univ] using h
+  rw [integral_gibbs_average_one_inner_comp (P := P) hmean0 A c₀ hw hdiag]
+  calc |(∫ x : Ω, gibbs_average_n_det (α := α) (n := 1) (A x + c₀)
+          (fun τs => freshKernelAvg (α := α) (A x + c₀) (crossKernel P A w) (τs 0)) ∂P) - d|
+      ≤ |∫ x : Ω, gibbs_average_n_det (α := α) (n := 1) (A x + c₀)
+          (fun τs => freshKernelAvg (α := α) (A x + c₀) (crossKernel P A w) (τs 0)) ∂P| + |d| :=
+        abs_sub _ _
+    _ ≤ M + M := add_le_add hint hd
+    _ = 2 * M := by ring
+
+end LinearImage
 
 /-! ### The Ghirlanda–Guerra combination -/
 
@@ -581,8 +915,131 @@ theorem ghirlandaGuerra_defect
           (funext fun τs => hco H (τs 0)))] at h
   exact h
 
+/-! ### The Ghirlanda–Guerra defect and error of a component -/
+
+section LinearImageDefect
+
+variable {Ω : Type*} [NormedAddCommGroup Ω] [InnerProductSpace ℝ Ω] [CompleteSpace Ω]
+variable [MeasurableSpace Ω] [BorelSpace Ω] [SecondCountableTopology Ω]
+variable {P : Measure Ω} [IsGaussian P]
+
+omit [Nonempty α] [CompleteSpace Ω] [SecondCountableTopology Ω] [IsGaussian P] in
+/-- Change of variables along an affine linear image of the disorder. -/
+lemma integral_map_clm_add_const (A : Ω →L[ℝ] EnergySpace α) (c₀ : EnergySpace α)
+    {g : EnergySpace α → ℝ} (hg : Continuous g) :
+    (∫ H : EnergySpace α, g H ∂(P.map (fun x : Ω => A x + c₀))) = ∫ x : Ω, g (A x + c₀) ∂P :=
+  MeasureTheory.integral_map
+    (A.continuous.add continuous_const).measurable.aemeasurable hg.aestronglyMeasurable
+
+/-- **The Ghirlanda–Guerra defect of a component, for a linear-image Hamiltonian.**
+
+The law of the Hamiltonian is `P.map (A · + c₀)`; the Ghirlanda–Guerra combination of the *cross*
+kernel of a component is the covariance between that component's field at the `i`-th replica and
+the observable. Taking `Ω = E × E`, `A (x,y) = x + t y` and `w σ = (0, e_σ)` this is the defect of
+a single summand of the Hamiltonian. -/
+theorem ghirlandaGuerra_defect_of_comp
+    (hmean0 : (∫ x : Ω, x ∂P) = 0) (A : Ω →L[ℝ] EnergySpace α) (c₀ : EnergySpace α)
+    {w : α → Ω} {Mw : ℝ} (hw : ∀ σ : α, ‖w σ‖ ≤ Mw) {d : ℝ}
+    (hdiag : ∀ σ : α, crossKernel P A w σ σ = d)
+    (m : ℕ) (f : ReplicaFun (α := α) m) (i : Fin m) :
+    ghirlandaGuerraCombinationOf (P.map (fun x : Ω => A x + c₀)) (crossKernel P A w) m f i
+      = (∫ x : Ω, gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+            (fun σs => ⟪x, w (σs i)⟫_ℝ * f σs) ∂P)
+        - (∫ x : Ω, gibbs_average_n_det (α := α) (n := m) (A x + c₀) f ∂P)
+            * (∫ x : Ω, gibbs_average_n_det (α := α) (n := 1) (A x + c₀)
+                (fun τs => ⟪x, w (τs 0)⟫_ℝ) ∂P) := by
+  classical
+  set c : α → α → ℝ := crossKernel P A w with hc
+  have hkerbd := abs_crossKernel_le (P := P) A hw
+  have hM0 : (0 : ℝ) ≤ ‖A‖ * (‖covarianceOperator P‖ * Mw) :=
+    le_trans (abs_nonneg _) (hkerbd (Classical.arbitrary α) (Classical.arbitrary α))
+  -- the four change-of-variables steps
+  have hcA : Continuous fun H : EnergySpace α => gibbs_average_n_det (α := α) (n := m) H
+      (fun σs => f σs * freshKernelAvg (α := α) H c (σs i)) := by
+    simp only [gibbs_average_n_det]
+    exact continuous_finsetSum _ fun σs _ =>
+      ((continuous_const.mul (continuous_freshKernelAvg (α := α) c (σs i))).mul
+        (continuous_finsetProd _ fun l _ => (contDiff_gibbs_pmf (α := α) (σs l)).continuous))
+  have hcB : Continuous fun H : EnergySpace α =>
+      gibbs_average_n_det (α := α) (n := m) H f :=
+    (contDiff_gibbs_average_n_det (α := α) m f).continuous
+  have hcC : Continuous fun H : EnergySpace α => gibbs_average_n_det (α := α) (n := 1) H
+      (fun τs => freshKernelAvg (α := α) H c (τs 0)) := by
+    simp only [gibbs_average_n_det]
+    exact continuous_finsetSum _ fun τs _ =>
+      ((continuous_freshKernelAvg (α := α) c (τs 0)).mul
+        (continuous_finsetProd _ fun l _ => (contDiff_gibbs_pmf (α := α) (τs l)).continuous))
+  have hcD : ∀ l : Fin m, Continuous fun H : EnergySpace α =>
+      gibbs_average_n_det (α := α) (n := m) H (fun σs => f σs * c (σs i) (σs l)) :=
+    fun l => (contDiff_gibbs_average_n_det (α := α) m _).continuous
+  rw [ghirlandaGuerraCombinationOf,
+    integral_map_clm_add_const (P := P) A c₀ hcA,
+    integral_map_clm_add_const (P := P) A c₀ hcB,
+    integral_map_clm_add_const (P := P) A c₀ hcC,
+    Finset.sum_congr rfl fun l (_ : l ∈ Finset.univ.erase i) =>
+      integral_map_clm_add_const (P := P) A c₀ (hcD l)]
+  -- now the two cavity identities
+  set Bf : ℝ := ∑ σs : ReplicaSpace (α := α) m, ‖f σs‖ with hBf
+  have hBf0 : 0 ≤ Bf := Finset.sum_nonneg fun _ _ => norm_nonneg _
+  have hfle : ∀ σs : ReplicaSpace (α := α) m, ‖f σs‖ ≤ Bf :=
+    fun σs => Finset.single_le_sum (f := fun σs' => ‖f σs'‖)
+      (fun _ _ => norm_nonneg _) (Finset.mem_univ σs)
+  have hI2 : Integrable
+      (fun x : Ω => gibbs_average_n_det (α := α) (n := m) (A x + c₀) f) P :=
+    integrable_gibbs_average_n_det_comp_of_bounded (P := P) A c₀ m (fun _ => f)
+      (hcB.comp (A.continuous.add continuous_const)) (B := Bf) (fun _ σs => hfle σs)
+  have hI1 : Integrable
+      (fun x : Ω => gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+        (fun σs => f σs * freshKernelAvg (α := α) (A x + c₀) c (σs i))) P := by
+    refine integrable_gibbs_average_n_det_comp_of_bounded (P := P) A c₀ m
+      (fun x σs => f σs * freshKernelAvg (α := α) (A x + c₀) c (σs i))
+      (hcA.comp (A.continuous.add continuous_const))
+      (B := Bf * (‖A‖ * (‖covarianceOperator P‖ * Mw))) fun x σs => ?_
+    rw [Real.norm_eq_abs, abs_mul]
+    exact mul_le_mul (by simpa [Real.norm_eq_abs] using hfle σs)
+      (abs_freshKernelAvg_le (α := α) hkerbd (A x + c₀) (σs i)) (abs_nonneg _) hBf0
+  have hI3 : ∀ l : Fin m, Integrable
+      (fun x : Ω => gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+        (fun σs => f σs * c (σs i) (σs l))) P := by
+    intro l
+    refine integrable_gibbs_average_n_det_comp_of_bounded (P := P) A c₀ m
+      (fun _ σs => f σs * c (σs i) (σs l))
+      ((hcD l).comp (A.continuous.add continuous_const))
+      (B := Bf * (‖A‖ * (‖covarianceOperator P‖ * Mw))) fun x σs => ?_
+    rw [Real.norm_eq_abs, abs_mul]
+    exact mul_le_mul (by simpa [Real.norm_eq_abs] using hfle σs)
+      (hkerbd (σs i) (σs l)) (abs_nonneg _) hBf0
+  have hI4 : Integrable
+      (fun x : Ω => gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+        (fun σs => ⟪x, w (σs i)⟫_ℝ * f σs)) P :=
+    integrable_gibbs_average_n_det_inner_mul_comp (P := P) A c₀ hw m f i
+  have hstar := integral_gibbs_average_n_det_inner_mul_comp_erase (P := P) hmean0 A c₀ w hdiag
+    m f i
+  have hIsum : Integrable (fun x : Ω =>
+      ∑ l ∈ Finset.univ.erase i, gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+        (fun σs => f σs * c (σs i) (σs l))) P :=
+    integrable_finsetSum _ fun l _ => hI3 l
+  have hIa : Integrable (fun x : Ω => (m : ℝ) *
+      gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+        (fun σs => f σs * freshKernelAvg (α := α) (A x + c₀) c (σs i))) P := hI1.const_mul _
+  have hIb : Integrable (fun x : Ω => d *
+      gibbs_average_n_det (α := α) (n := m) (A x + c₀) f) P := hI2.const_mul _
+  have hIdiff : Integrable (fun x : Ω =>
+      (m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+          (fun σs => f σs * freshKernelAvg (α := α) (A x + c₀) c (σs i))
+        - d * gibbs_average_n_det (α := α) (n := m) (A x + c₀) f) P := hIa.sub hIb
+  rw [MeasureTheory.integral_sub hIdiff hIsum,
+    MeasureTheory.integral_sub hIa hIb,
+    MeasureTheory.integral_const_mul, MeasureTheory.integral_const_mul,
+    MeasureTheory.integral_finsetSum _ fun l (_ : l ∈ Finset.univ.erase i) => hI3 l] at hstar
+  rw [integral_gibbs_average_one_inner_comp (P := P) hmean0 A c₀ hw hdiag]
+  linarith [hstar]
+
+end LinearImageDefect
+
 end
 
 end FiniteGibbs
+
 
 end SpinGlass

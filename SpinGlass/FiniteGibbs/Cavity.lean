@@ -100,6 +100,26 @@ lemma fderiv_gibbs_average_n_det_apply_eq (n : ℕ) (H v : EnergySpace α)
   · rw [Finset.sum_comm]
     exact Finset.sum_congr rfl fun l _ => by rw [gibbs_average_n_det]
 
+/-- The derivative of the replica bracket along a *shifted* Hamiltonian is the derivative at the
+shifted point: the shift is affine with derivative the identity. -/
+lemma fderiv_gibbs_average_n_det_add_const (n : ℕ) (c K : EnergySpace α)
+    (f : ReplicaFun (α := α) n) :
+    fderiv ℝ (fun K' : EnergySpace α => gibbs_average_n_det (α := α) (n := n) (K' + c) f) K
+      = fderiv ℝ (fun K' : EnergySpace α => gibbs_average_n_det (α := α) (n := n) K' f)
+          (K + c) := by
+  have hd : DifferentiableAt ℝ
+      (fun K' : EnergySpace α => gibbs_average_n_det (α := α) (n := n) K' f) (K + c) :=
+    ((contDiff_gibbs_average_n_det (α := α) n f).differentiable (by simp)) _
+  have h1 : HasFDerivAt (fun K' : EnergySpace α => K' + c)
+      (ContinuousLinearMap.id ℝ (EnergySpace α)) K := (hasFDerivAt_id K).add_const c
+  have h2 := hd.hasFDerivAt.comp K h1
+  have h3 : HasFDerivAt
+      (fun K' : EnergySpace α => gibbs_average_n_det (α := α) (n := n) (K' + c) f)
+      (fderiv ℝ (fun K' : EnergySpace α => gibbs_average_n_det (α := α) (n := n) K' f) (K + c)) K
+        := by
+    simpa [Function.comp_def] using h2
+  exact h3.fderiv
+
 /-! ### The cavity identity for a Hamiltonian that is a linear image of the disorder -/
 
 section LinearImage
@@ -125,14 +145,14 @@ case `Ω = EnergySpace α`, `A = id` is
 
 Talagrand, *Mean Field Models for Spin Glasses*, Vol. I, §1.7 and Vol. II, §12.2. -/
 theorem integral_inner_mul_gibbs_average_n_det_comp
-    (hmean0 : (∫ x : Ω, x ∂P) = 0) (A : Ω →L[ℝ] EnergySpace α)
+    (hmean0 : (∫ x : Ω, x ∂P) = 0) (A : Ω →L[ℝ] EnergySpace α) (c : EnergySpace α)
     (n : ℕ) (f : ReplicaFun (α := α) n) (h : Ω) :
-    (∫ x : Ω, ⟪x, h⟫_ℝ * gibbs_average_n_det (α := α) (n := n) (A x) f ∂P)
+    (∫ x : Ω, ⟪x, h⟫_ℝ * gibbs_average_n_det (α := α) (n := n) (A x + c) f ∂P)
       = ∫ x : Ω,
-          ((n : ℝ) * gibbs_average_n_det (α := α) (n := n) (A x) f
-              * (∑ τ : α, gibbs_pmf (α := α) (A x) τ
+          ((n : ℝ) * gibbs_average_n_det (α := α) (n := n) (A x + c) f
+              * (∑ τ : α, gibbs_pmf (α := α) (A x + c) τ
                   * (A (covarianceOperator P h)) τ)
-            - ∑ l : Fin n, gibbs_average_n_det (α := α) (n := n) (A x)
+            - ∑ l : Fin n, gibbs_average_n_det (α := α) (n := n) (A x + c)
                 (fun σs => f σs * (A (covarianceOperator P h)) (σs l))) ∂P := by
   classical
   set S : ℝ := ∑ σs : ReplicaSpace (α := α) n, ‖f σs‖ with hS
@@ -140,27 +160,29 @@ theorem integral_inner_mul_gibbs_average_n_det_comp
   set C : ℝ := (1 + 2 * (n : ℝ)) * S with hC
   have hC0 : 0 ≤ C := by positivity
   have hc1 : ContDiff ℝ 1
-      (fun K : EnergySpace α => gibbs_average_n_det (α := α) (n := n) K f) :=
-    (contDiff_gibbs_average_n_det (α := α) n f).of_le (by simp)
+      (fun K : EnergySpace α => gibbs_average_n_det (α := α) (n := n) (K + c) f) :=
+    ((contDiff_gibbs_average_n_det (α := α) n f).of_le (by simp)).comp
+      (contDiff_id.add contDiff_const)
   have hgrowth : ∀ K : EnergySpace α,
-      |gibbs_average_n_det (α := α) (n := n) K f| ≤ C * (1 + ‖K‖) ^ 0 := by
+      |gibbs_average_n_det (α := α) (n := n) (K + c) f| ≤ C * (1 + ‖K‖) ^ 0 := by
     intro K
-    have hb := abs_gibbs_average_n_det_le_sum_abs (α := α) n K f
+    have hb := abs_gibbs_average_n_det_le_sum_abs (α := α) n (K + c) f
     have hSC : S ≤ C := by nlinarith [hS0, Nat.cast_nonneg (α := ℝ) n]
     simpa [Real.norm_eq_abs] using hb.trans hSC
   have hgrowth' : ∀ K : EnergySpace α,
-      ‖fderiv ℝ (fun K' => gibbs_average_n_det (α := α) (n := n) K' f) K‖
+      ‖fderiv ℝ (fun K' => gibbs_average_n_det (α := α) (n := n) (K' + c) f) K‖
         ≤ C * (1 + ‖K‖) ^ 0 := by
     intro K
-    have hb := norm_fderiv_gibbs_average_n_det_le (α := α) n K f
+    rw [fderiv_gibbs_average_n_det_add_const (α := α) n c K f]
+    have hb := norm_fderiv_gibbs_average_n_det_le (α := α) n (K + c) f
     have hSC : (2 * (n : ℝ)) * S ≤ C := by nlinarith [hS0]
     simpa [Real.norm_eq_abs] using hb.trans hSC
   have hIBP := ProbabilityTheory.IsGaussian.integral_inner_mul_comp_clm P hmean0 A h
-    (fun K : EnergySpace α => gibbs_average_n_det (α := α) (n := n) K f) hc1 hC0
+    (fun K : EnergySpace α => gibbs_average_n_det (α := α) (n := n) (K + c) f) hc1 hC0
     hgrowth hgrowth'
   rw [hIBP]
   refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
-  simp only [fderiv_gibbs_average_n_det_apply_eq]
+  simp only [fderiv_gibbs_average_n_det_add_const, fderiv_gibbs_average_n_det_apply_eq]
 
 end LinearImage
 
@@ -187,7 +209,7 @@ theorem integral_inner_mul_gibbs_average_n_det
             - ∑ l : Fin n, gibbs_average_n_det (α := α) (n := n) H
                 (fun σs => f σs * (covarianceOperator μ w) (σs l))) ∂μ := by
   have h := integral_inner_mul_gibbs_average_n_det_comp (P := μ) hmean0
-    (ContinuousLinearMap.id ℝ (EnergySpace α)) n f w
+    (ContinuousLinearMap.id ℝ (EnergySpace α)) 0 n f w
   simpa using h
 
 /-- **The cavity identity at a coordinate direction.** The case `w = e_ρ` of
@@ -489,15 +511,15 @@ Taking `Ω = EnergySpace α`, `A = id` and `w = e_·` recovers
 `A (x, y) = x + t y` and `w σ = (0, e_σ)` isolates the second summand of the Hamiltonian: the
 kernel becomes `t` times the second block's covariance. Talagrand, Vol. I, §1.7; Vol. II, §12.2. -/
 theorem integral_gibbs_average_n_det_inner_mul_comp
-    (hmean0 : (∫ x : Ω, x ∂P) = 0) (A : Ω →L[ℝ] EnergySpace α) (w : α → Ω)
+    (hmean0 : (∫ x : Ω, x ∂P) = 0) (A : Ω →L[ℝ] EnergySpace α) (c : EnergySpace α) (w : α → Ω)
     (m : ℕ) (f : ReplicaFun (α := α) m) (i : Fin m) :
-    (∫ x : Ω, gibbs_average_n_det (α := α) (n := m) (A x)
+    (∫ x : Ω, gibbs_average_n_det (α := α) (n := m) (A x + c)
         (fun σs => ⟪x, w (σs i)⟫_ℝ * f σs) ∂P)
       = ∫ x : Ω,
-          ((m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x)
-              (fun σs => f σs * (∑ τ : α, gibbs_pmf (α := α) (A x) τ
+          ((m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x + c)
+              (fun σs => f σs * (∑ τ : α, gibbs_pmf (α := α) (A x + c) τ
                   * (A (covarianceOperator P (w (σs i)))) τ))
-            - ∑ l : Fin m, gibbs_average_n_det (α := α) (n := m) (A x)
+            - ∑ l : Fin m, gibbs_average_n_det (α := α) (n := m) (A x + c)
                 (fun σs => f σs * (A (covarianceOperator P (w (σs i)))) (σs l))) ∂P := by
   classical
   set S : ℝ := ∑ σs : ReplicaSpace (α := α) m, ‖f σs‖ with hS
@@ -512,18 +534,19 @@ theorem integral_gibbs_average_n_det_inner_mul_comp
   -- the per-direction cavity identity
   set v : α → EnergySpace α := fun ρ => A (covarianceOperator P (w ρ)) with hv
   have hcav : ∀ ρ : α, (∫ x : Ω,
-        ⟪x, w ρ⟫_ℝ * gibbs_average_n_det (α := α) (n := m) (A x) (fρ ρ) ∂P)
+        ⟪x, w ρ⟫_ℝ * gibbs_average_n_det (α := α) (n := m) (A x + c) (fρ ρ) ∂P)
       = ∫ x : Ω,
-          ((m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x) (fρ ρ)
-              * (∑ τ : α, gibbs_pmf (α := α) (A x) τ * (v ρ) τ)
-            - ∑ l : Fin m, gibbs_average_n_det (α := α) (n := m) (A x)
+          ((m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x + c) (fρ ρ)
+              * (∑ τ : α, gibbs_pmf (α := α) (A x + c) τ * (v ρ) τ)
+            - ∑ l : Fin m, gibbs_average_n_det (α := α) (n := m) (A x + c)
                 (fun σs => fρ ρ σs * (v ρ) (σs l))) ∂P :=
-    fun ρ => integral_inner_mul_gibbs_average_n_det_comp (P := P) hmean0 A m (fρ ρ) (w ρ)
+    fun ρ => integral_inner_mul_gibbs_average_n_det_comp (P := P) hmean0 A c m (fρ ρ) (w ρ)
   have hcontAvg : ∀ (g : ReplicaFun (α := α) m),
-      Continuous fun x : Ω => gibbs_average_n_det (α := α) (n := m) (A x) g :=
-    fun g => (contDiff_gibbs_average_n_det (α := α) m g).continuous.comp A.continuous
+      Continuous fun x : Ω => gibbs_average_n_det (α := α) (n := m) (A x + c) g :=
+    fun g => (contDiff_gibbs_average_n_det (α := α) m g).continuous.comp
+      (A.continuous.add continuous_const)
   have hIntL : ∀ ρ : α, Integrable
-      (fun x : Ω => ⟪x, w ρ⟫_ℝ * gibbs_average_n_det (α := α) (n := m) (A x) (fρ ρ)) P := by
+      (fun x : Ω => ⟪x, w ρ⟫_ℝ * gibbs_average_n_det (α := α) (n := m) (A x + c) (fρ ρ)) P := by
     intro ρ
     have hcontIn : Continuous fun x : Ω => ⟪x, w ρ⟫_ℝ :=
       continuous_id.inner continuous_const
@@ -531,9 +554,9 @@ theorem integral_gibbs_average_n_det_inner_mul_comp
       ((hcontIn.mul (hcontAvg (fρ ρ))).measurable)
       (C := S * ‖w ρ‖) (m := 1) (mul_nonneg hS0 (norm_nonneg _)) fun x => ?_
     have h1 : |⟪x, w ρ⟫_ℝ| ≤ ‖x‖ * ‖w ρ‖ := abs_real_inner_le_norm x (w ρ)
-    have h2 : |gibbs_average_n_det (α := α) (n := m) (A x) (fρ ρ)| ≤ S :=
-      le_trans (abs_gibbs_average_n_det_le_sum_abs (α := α) m (A x) (fρ ρ)) (hfρ_bdd ρ)
-    have h3 : |⟪x, w ρ⟫_ℝ * gibbs_average_n_det (α := α) (n := m) (A x) (fρ ρ)|
+    have h2 : |gibbs_average_n_det (α := α) (n := m) (A x + c) (fρ ρ)| ≤ S :=
+      le_trans (abs_gibbs_average_n_det_le_sum_abs (α := α) m (A x + c) (fρ ρ)) (hfρ_bdd ρ)
+    have h3 : |⟪x, w ρ⟫_ℝ * gibbs_average_n_det (α := α) (n := m) (A x + c) (fρ ρ)|
         ≤ (‖x‖ * ‖w ρ‖) * S := by
       rw [abs_mul]
       exact mul_le_mul h1 h2 (abs_nonneg _) (by positivity)
@@ -545,33 +568,34 @@ theorem integral_gibbs_average_n_det_inner_mul_comp
     nlinarith [hS0, hn, hwn]
   have hIntR : ∀ ρ : α, Integrable
       (fun x : Ω =>
-        (m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x) (fρ ρ)
-            * (∑ τ : α, gibbs_pmf (α := α) (A x) τ * (v ρ) τ)
-          - ∑ l : Fin m, gibbs_average_n_det (α := α) (n := m) (A x)
+        (m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x + c) (fρ ρ)
+            * (∑ τ : α, gibbs_pmf (α := α) (A x + c) τ * (v ρ) τ)
+          - ∑ l : Fin m, gibbs_average_n_det (α := α) (n := m) (A x + c)
               (fun σs => fρ ρ σs * (v ρ) (σs l))) P := by
     intro ρ
     refine integrable_of_bounded_gaussian (P := P) ?_ (C := (m : ℝ) * (S * ‖v ρ‖)
         + (m : ℝ) * (S * ‖v ρ‖)) fun x => ?_
     · refine ((continuous_const.mul (hcontAvg (fρ ρ))).mul ?_).sub ?_
       · exact (continuous_finsetSum _ fun τ _ =>
-          ((contDiff_gibbs_pmf (α := α) τ).continuous).mul continuous_const).comp A.continuous
+          ((contDiff_gibbs_pmf (α := α) τ).continuous).mul continuous_const).comp
+            (A.continuous.add continuous_const)
       · exact continuous_finsetSum _ fun l _ => hcontAvg _
-    · have hA : |gibbs_average_n_det (α := α) (n := m) (A x) (fρ ρ)| ≤ S :=
-        le_trans (abs_gibbs_average_n_det_le_sum_abs (α := α) m (A x) (fρ ρ)) (hfρ_bdd ρ)
-      have hB : |∑ τ : α, gibbs_pmf (α := α) (A x) τ * (v ρ) τ| ≤ ‖v ρ‖ := by
-        simpa [gibbs_pmf_eq_softmax] using Real.abs_sum_softmax_mul_le (-(A x)) (v ρ)
-      have h1 : |(m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x) (fρ ρ)
-          * (∑ τ : α, gibbs_pmf (α := α) (A x) τ * (v ρ) τ)| ≤ (m : ℝ) * (S * ‖v ρ‖) := by
+    · have hA : |gibbs_average_n_det (α := α) (n := m) (A x + c) (fρ ρ)| ≤ S :=
+        le_trans (abs_gibbs_average_n_det_le_sum_abs (α := α) m (A x + c) (fρ ρ)) (hfρ_bdd ρ)
+      have hB : |∑ τ : α, gibbs_pmf (α := α) (A x + c) τ * (v ρ) τ| ≤ ‖v ρ‖ := by
+        simpa [gibbs_pmf_eq_softmax] using Real.abs_sum_softmax_mul_le (-(A x + c)) (v ρ)
+      have h1 : |(m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x + c) (fρ ρ)
+          * (∑ τ : α, gibbs_pmf (α := α) (A x + c) τ * (v ρ) τ)| ≤ (m : ℝ) * (S * ‖v ρ‖) := by
         rw [abs_mul, abs_mul, abs_of_nonneg (Nat.cast_nonneg m), mul_assoc]
         exact mul_le_mul_of_nonneg_left
           (mul_le_mul hA hB (abs_nonneg _) hS0) (Nat.cast_nonneg m)
-      have h2 : |∑ l : Fin m, gibbs_average_n_det (α := α) (n := m) (A x)
+      have h2 : |∑ l : Fin m, gibbs_average_n_det (α := α) (n := m) (A x + c)
           (fun σs => fρ ρ σs * (v ρ) (σs l))| ≤ (m : ℝ) * (S * ‖v ρ‖) := by
         refine le_trans (Finset.abs_sum_le_sum_abs _ _) ?_
-        have hterm : ∀ l : Fin m, |gibbs_average_n_det (α := α) (n := m) (A x)
+        have hterm : ∀ l : Fin m, |gibbs_average_n_det (α := α) (n := m) (A x + c)
             (fun σs => fρ ρ σs * (v ρ) (σs l))| ≤ S * ‖v ρ‖ := by
           intro l
-          refine le_trans (abs_gibbs_average_n_det_le_sum_abs (α := α) m (A x) _) ?_
+          refine le_trans (abs_gibbs_average_n_det_le_sum_abs (α := α) m (A x + c) _) ?_
           calc (∑ σs : ReplicaSpace (α := α) m, ‖fρ ρ σs * (v ρ) (σs l)‖)
               ≤ ∑ σs : ReplicaSpace (α := α) m, ‖fρ ρ σs‖ * ‖v ρ‖ := by
                 refine Finset.sum_le_sum fun σs _ => ?_
@@ -580,49 +604,49 @@ theorem integral_gibbs_average_n_det_inner_mul_comp
                   (abs_nonneg _)
             _ = (∑ σs : ReplicaSpace (α := α) m, ‖fρ ρ σs‖) * ‖v ρ‖ := (Finset.sum_mul _ _ _).symm
             _ ≤ S * ‖v ρ‖ := mul_le_mul_of_nonneg_right (hfρ_bdd ρ) (norm_nonneg _)
-        calc (∑ l : Fin m, |gibbs_average_n_det (α := α) (n := m) (A x)
+        calc (∑ l : Fin m, |gibbs_average_n_det (α := α) (n := m) (A x + c)
               (fun σs => fρ ρ σs * (v ρ) (σs l))|)
             ≤ ∑ _l : Fin m, S * ‖v ρ‖ := Finset.sum_le_sum fun l _ => hterm l
           _ = (m : ℝ) * (S * ‖v ρ‖) := by
               rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
       exact le_trans (abs_sub _ _) (add_le_add h1 h2)
   have hsum : (∑ ρ : α, ∫ x : Ω,
-        ⟪x, w ρ⟫_ℝ * gibbs_average_n_det (α := α) (n := m) (A x) (fρ ρ) ∂P)
+        ⟪x, w ρ⟫_ℝ * gibbs_average_n_det (α := α) (n := m) (A x + c) (fρ ρ) ∂P)
       = ∑ ρ : α, ∫ x : Ω,
-          ((m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x) (fρ ρ)
-              * (∑ τ : α, gibbs_pmf (α := α) (A x) τ * (v ρ) τ)
-            - ∑ l : Fin m, gibbs_average_n_det (α := α) (n := m) (A x)
+          ((m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x + c) (fρ ρ)
+              * (∑ τ : α, gibbs_pmf (α := α) (A x + c) τ * (v ρ) τ)
+            - ∑ l : Fin m, gibbs_average_n_det (α := α) (n := m) (A x + c)
                 (fun σs => fρ ρ σs * (v ρ) (σs l))) ∂P :=
     Finset.sum_congr rfl fun ρ _ => hcav ρ
   rw [← MeasureTheory.integral_finsetSum _ fun ρ (_ : ρ ∈ Finset.univ) => hIntL ρ,
     ← MeasureTheory.integral_finsetSum _ fun ρ (_ : ρ ∈ Finset.univ) => hIntR ρ] at hsum
-  calc (∫ x : Ω, gibbs_average_n_det (α := α) (n := m) (A x)
+  calc (∫ x : Ω, gibbs_average_n_det (α := α) (n := m) (A x + c)
         (fun σs => ⟪x, w (σs i)⟫_ℝ * f σs) ∂P)
       = ∫ x : Ω, (∑ ρ : α,
-          ⟪x, w ρ⟫_ℝ * gibbs_average_n_det (α := α) (n := m) (A x) (fρ ρ)) ∂P :=
+          ⟪x, w ρ⟫_ℝ * gibbs_average_n_det (α := α) (n := m) (A x + c) (fρ ρ)) ∂P :=
         integral_congr_ae (Filter.Eventually.of_forall fun x =>
-          (sum_apply_mul_gibbs_average_indicator (α := α) m (A x) f i
+          (sum_apply_mul_gibbs_average_indicator (α := α) m (A x + c) f i
             (fun ρ => ⟪x, w ρ⟫_ℝ)).symm)
     _ = ∫ x : Ω, (∑ ρ : α,
-          ((m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x) (fρ ρ)
-              * (∑ τ : α, gibbs_pmf (α := α) (A x) τ * (v ρ) τ)
-            - ∑ l : Fin m, gibbs_average_n_det (α := α) (n := m) (A x)
+          ((m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x + c) (fρ ρ)
+              * (∑ τ : α, gibbs_pmf (α := α) (A x + c) τ * (v ρ) τ)
+            - ∑ l : Fin m, gibbs_average_n_det (α := α) (n := m) (A x + c)
                 (fun σs => fρ ρ σs * (v ρ) (σs l)))) ∂P := hsum
     _ = _ := integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
   simp only []
   rw [Finset.sum_sub_distrib, hv]
   congr 1
-  · rw [show (∑ ρ : α, (m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x) (fρ ρ)
-          * (∑ τ : α, gibbs_pmf (α := α) (A x) τ * (v ρ) τ))
-        = (m : ℝ) * ∑ ρ : α, gibbs_average_n_det (α := α) (n := m) (A x) (fρ ρ)
-            * (∑ τ : α, gibbs_pmf (α := α) (A x) τ * (v ρ) τ) from by
+  · rw [show (∑ ρ : α, (m : ℝ) * gibbs_average_n_det (α := α) (n := m) (A x + c) (fρ ρ)
+          * (∑ τ : α, gibbs_pmf (α := α) (A x + c) τ * (v ρ) τ))
+        = (m : ℝ) * ∑ ρ : α, gibbs_average_n_det (α := α) (n := m) (A x + c) (fρ ρ)
+            * (∑ τ : α, gibbs_pmf (α := α) (A x + c) τ * (v ρ) τ) from by
       rw [Finset.mul_sum]
       exact Finset.sum_congr rfl fun ρ _ => by ring,
-      sum_gibbs_average_indicator_mul (α := α) m (A x) f i
-        (fun ρ => ∑ τ : α, gibbs_pmf (α := α) (A x) τ * (v ρ) τ)]
+      sum_gibbs_average_indicator_mul (α := α) m (A x + c) f i
+        (fun ρ => ∑ τ : α, gibbs_pmf (α := α) (A x + c) τ * (v ρ) τ)]
   · rw [Finset.sum_comm]
     refine Finset.sum_congr rfl fun l _ => ?_
-    exact sum_gibbs_average_indicator_weight (α := α) m (A x) f i (fun ρ σs => (v ρ) (σs l))
+    exact sum_gibbs_average_indicator_weight (α := α) m (A x + c) f i (fun ρ σs => (v ρ) (σs l))
 
 end LinearImageField
 

@@ -89,24 +89,44 @@ lemma monotone_deriv_integral_free_energy_density (n : ℕ) (hU : Measurable U) 
   intro x y hxy
   exact h (mem_univ x) (mem_univ y) hxy
 
-/-! ### Continuity in the parameter -/
+/-! ### Continuity in the parameter
+
+The Hamiltonian is allowed to depend on a parameter `x` in an arbitrary first-countable space `E`,
+continuously for each sample and measurably for each parameter: `H : E → Ω → EnergySpace α`. The
+affine path `x ↦ U + x • V` is the case `E = ℝ`; the multi-coupling perturbations of Talagrand's
+§12.2 are the case `E = Fin S → ℝ`. -/
+
+section GeneralParameter
+
+variable {E : Type*} {H : E → Ω → EnergySpace α}
 
 omit [IsProbabilityMeasure P] in
-lemma abs_integral_gibbs_average_path_le (n : ℕ) (hU : Measurable U) (hV : Measurable V)
-    (hVi : Integrable (fun w => ‖V w‖) P) (x : ℝ) :
-    |∫ w, (1 / (n : ℝ)) * gibbs_average (α := α) (U w + x • V w) (V w) ∂P|
+lemma measurable_gibbs_average_param (hH : ∀ x, Measurable (H x)) (hV : Measurable V) (x : E) :
+    Measurable fun w => gibbs_average (α := α) (H x w) (V w) := by
+  classical
+  have hpmf : ∀ σ : α, Measurable fun w => gibbs_pmf (α := α) (H x w) σ := fun σ =>
+    ((contDiff_gibbs_pmf (α := α) σ).continuous.measurable).comp (hH x)
+  have hev : ∀ σ : α, Measurable fun w => (V w) σ := fun σ =>
+    (measurable_eval (α := α) σ).comp hV
+  simp only [gibbs_average]
+  exact Finset.measurable_sum _ fun σ _ => (hpmf σ).mul (hev σ)
+
+omit [IsProbabilityMeasure P] in
+lemma abs_integral_gibbs_average_param_le (n : ℕ) (hH : ∀ x, Measurable (H x))
+    (hV : Measurable V) (hVi : Integrable (fun w => ‖V w‖) P) (x : E) :
+    |∫ w, (1 / (n : ℝ)) * gibbs_average (α := α) (H x w) (V w) ∂P|
       ≤ (1 / (n : ℝ)) * ∫ w, ‖V w‖ ∂P := by
   have hint : Integrable
-      (fun w => (1 / (n : ℝ)) * gibbs_average (α := α) (U w + x • V w) (V w)) P := by
+      (fun w => (1 / (n : ℝ)) * gibbs_average (α := α) (H x w) (V w)) P := by
     refine Integrable.mono' (hVi.const_mul (1 / (n : ℝ)))
-      ((measurable_gibbs_average_path hU hV x).const_mul _).aestronglyMeasurable
+      ((measurable_gibbs_average_param hH hV x).const_mul _).aestronglyMeasurable
       (Filter.Eventually.of_forall fun w => ?_)
     rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg (by positivity : (0:ℝ) ≤ 1 / (n : ℝ))]
     exact mul_le_mul_of_nonneg_left (abs_gibbs_average_le (α := α) _ _) (by positivity)
-  calc |∫ w, (1 / (n : ℝ)) * gibbs_average (α := α) (U w + x • V w) (V w) ∂P|
-      ≤ ∫ w, |(1 / (n : ℝ)) * gibbs_average (α := α) (U w + x • V w) (V w)| ∂P := by
+  calc |∫ w, (1 / (n : ℝ)) * gibbs_average (α := α) (H x w) (V w) ∂P|
+      ≤ ∫ w, |(1 / (n : ℝ)) * gibbs_average (α := α) (H x w) (V w)| ∂P := by
         simpa [Real.norm_eq_abs] using norm_integral_le_integral_norm (μ := P)
-          (fun w => (1 / (n : ℝ)) * gibbs_average (α := α) (U w + x • V w) (V w))
+          (fun w => (1 / (n : ℝ)) * gibbs_average (α := α) (H x w) (V w))
     _ ≤ ∫ w, (1 / (n : ℝ)) * ‖V w‖ ∂P := by
         refine integral_mono hint.abs (hVi.const_mul _) fun w => ?_
         rw [abs_mul, abs_of_nonneg (by positivity : (0:ℝ) ≤ 1 / (n : ℝ))]
@@ -114,39 +134,139 @@ lemma abs_integral_gibbs_average_path_le (n : ℕ) (hU : Measurable U) (hV : Mea
     _ = (1 / (n : ℝ)) * ∫ w, ‖V w‖ ∂P := integral_const_mul _ _
 
 omit [IsProbabilityMeasure P] in
-lemma continuous_integral_gibbs_average_path (n : ℕ) (hU : Measurable U) (hV : Measurable V)
+lemma measurable_totalFluct_param (n : ℕ) (hH : ∀ x, Measurable (H x)) (hV : Measurable V)
+    (x : E) :
+    Measurable fun w => gibbs_average (α := α) (H x w)
+      (fun σ => |(1 / (n : ℝ)) * V w σ
+        - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (H x w') (V w') ∂P|) := by
+  classical
+  have hpmf : ∀ σ : α, Measurable fun w => gibbs_pmf (α := α) (H x w) σ := fun σ =>
+    ((contDiff_gibbs_pmf (α := α) σ).continuous.measurable).comp (hH x)
+  have hev : ∀ σ : α, Measurable fun w => (V w) σ := fun σ =>
+    (measurable_eval (α := α) σ).comp hV
+  simp only [gibbs_average]
+  refine Finset.measurable_sum _ fun σ _ => (hpmf σ).mul ?_
+  have hd : Measurable fun w => (1 / (n : ℝ)) * (V w) σ
+      - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (H x w') (V w') ∂P :=
+    ((hev σ).const_mul _).sub measurable_const
+  fun_prop
+
+lemma integrable_totalFluct_param (n : ℕ) (hH : ∀ x, Measurable (H x)) (hV : Measurable V)
+    (hVi : Integrable (fun w => ‖V w‖) P) (x : E) :
+    Integrable (fun w => gibbs_average (α := α) (H x w)
+      (fun σ => |(1 / (n : ℝ)) * V w σ
+        - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (H x w') (V w') ∂P|)) P := by
+  have hdom : Integrable (fun w => (1 / (n : ℝ)) * ‖V w‖
+      + (1 / (n : ℝ)) * ∫ w', ‖V w'‖ ∂P) P :=
+    (hVi.const_mul (1 / (n : ℝ))).add (integrable_const _)
+  refine Integrable.mono' hdom
+    (measurable_totalFluct_param n hH hV x).aestronglyMeasurable
+    (Filter.Eventually.of_forall fun w => ?_)
+  rw [Real.norm_eq_abs,
+    abs_of_nonneg (gibbs_average_abs_smul_sub_const_nonneg (α := α) n (H x w) (V w) _)]
+  refine (gibbs_average_abs_smul_sub_const_le_norm (α := α) n (H x w) (V w) _).trans ?_
+  exact add_le_add le_rfl (abs_integral_gibbs_average_param_le n hH hV hVi x)
+
+variable [TopologicalSpace E] [FirstCountableTopology E]
+
+omit [MeasurableSpace Ω] [IsProbabilityMeasure P] [FirstCountableTopology E] in
+/-- The Gibbs average of a fixed field is continuous in the Hamiltonian. -/
+lemma continuous_gibbs_average_param (hHc : ∀ w, Continuous fun x : E => H x w) (w : Ω) :
+    Continuous fun x : E => gibbs_average (α := α) (H x w) (V w) := by
+  classical
+  have hp : ∀ σ : α, Continuous fun x : E => gibbs_pmf (α := α) (H x w) σ := fun σ =>
+    ((contDiff_gibbs_pmf (α := α) σ).continuous).comp (hHc w)
+  simp only [gibbs_average]
+  exact continuous_finsetSum _ fun σ _ => (hp σ).mul continuous_const
+
+omit [IsProbabilityMeasure P] in
+/-- **The mean energy of a field is continuous in the parameter of the Hamiltonian.** -/
+lemma continuous_integral_gibbs_average_param (n : ℕ) (hH : ∀ x, Measurable (H x))
+    (hHc : ∀ w, Continuous fun x : E => H x w) (hV : Measurable V)
     (hVi : Integrable (fun w => ‖V w‖) P) :
-    Continuous fun x : ℝ =>
-      ∫ w, (1 / (n : ℝ)) * gibbs_average (α := α) (U w + x • V w) (V w) ∂P := by
+    Continuous fun x : E => ∫ w, (1 / (n : ℝ)) * gibbs_average (α := α) (H x w) (V w) ∂P := by
   refine continuous_of_dominated
-    (fun x => ((measurable_gibbs_average_path hU hV x).const_mul _).aestronglyMeasurable)
+    (fun x => ((measurable_gibbs_average_param hH hV x).const_mul _).aestronglyMeasurable)
     (fun x => Filter.Eventually.of_forall fun w => ?_) (hVi.const_mul (1 / (n : ℝ)))
     (Filter.Eventually.of_forall fun w =>
-      (continuous_gibbs_average_path (α := α) (U w) (V w)).const_mul _)
+      (continuous_gibbs_average_param (α := α) (V := V) hHc w).const_mul _)
   rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg (by positivity : (0:ℝ) ≤ 1 / (n : ℝ))]
   exact mul_le_mul_of_nonneg_left (abs_gibbs_average_le (α := α) _ _) (by positivity)
 
-lemma continuous_integral_abs_meanEnergy_sub (n : ℕ) (hU : Measurable U) (hV : Measurable V)
+lemma continuous_integral_abs_meanEnergy_sub_param (n : ℕ) (hH : ∀ x, Measurable (H x))
+    (hHc : ∀ w, Continuous fun x : E => H x w) (hV : Measurable V)
     (hVi : Integrable (fun w => ‖V w‖) P) :
-    Continuous fun x : ℝ => ∫ w, |(1 / (n : ℝ)) * gibbs_average (α := α) (U w + x • V w) (V w)
-      - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (U w' + x • V w') (V w') ∂P| ∂P := by
-  have hq := continuous_integral_gibbs_average_path (α := α) n hU hV hVi
+    Continuous fun x : E => ∫ w, |(1 / (n : ℝ)) * gibbs_average (α := α) (H x w) (V w)
+      - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (H x w') (V w') ∂P| ∂P := by
+  have hq := continuous_integral_gibbs_average_param (α := α) n hH hHc hV hVi
   refine continuous_of_dominated (fun x => ?_) (fun x => Filter.Eventually.of_forall fun w => ?_)
     ((hVi.const_mul (1 / (n : ℝ))).add
       (integrable_const ((1 / (n : ℝ)) * ∫ w, ‖V w‖ ∂P)))
     (Filter.Eventually.of_forall fun w => ?_)
-  · have hm : Measurable fun w => (1 / (n : ℝ)) * gibbs_average (α := α) (U w + x • V w) (V w)
-        - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (U w' + x • V w') (V w') ∂P :=
-      ((measurable_gibbs_average_path hU hV x).const_mul _).sub measurable_const
-    have : Measurable fun w => |(1 / (n : ℝ)) * gibbs_average (α := α) (U w + x • V w) (V w)
-        - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (U w' + x • V w') (V w') ∂P| := by
-      fun_prop
-    exact this.aestronglyMeasurable
+  · have hm : Measurable fun w => (1 / (n : ℝ)) * gibbs_average (α := α) (H x w) (V w)
+        - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (H x w') (V w') ∂P :=
+      ((measurable_gibbs_average_param hH hV x).const_mul _).sub measurable_const
+    exact (continuous_abs.measurable.comp hm).aestronglyMeasurable
   · rw [Real.norm_eq_abs, abs_abs]
-    refine (abs_sub _ _).trans (add_le_add ?_ (abs_integral_gibbs_average_path_le n hU hV hVi x))
+    refine (abs_sub _ _).trans
+      (add_le_add ?_ (abs_integral_gibbs_average_param_le n hH hV hVi x))
     rw [abs_mul, abs_of_nonneg (by positivity : (0:ℝ) ≤ 1 / (n : ℝ))]
     exact mul_le_mul_of_nonneg_left (abs_gibbs_average_le (α := α) _ _) (by positivity)
-  · exact (((continuous_gibbs_average_path (α := α) (U w) (V w)).const_mul _).sub hq).abs
+  · exact (((continuous_gibbs_average_param (α := α) (V := V) hHc w).const_mul _).sub hq).abs
+
+/-- **The total energy fluctuation of a field is continuous in the parameter of the
+Hamiltonian**, for a Hamiltonian depending on a parameter in any first-countable space. -/
+lemma continuous_integral_totalFluct_param (n : ℕ) (hH : ∀ x, Measurable (H x))
+    (hHc : ∀ w, Continuous fun x : E => H x w) (hV : Measurable V)
+    (hVi : Integrable (fun w => ‖V w‖) P) :
+    Continuous fun x : E => ∫ w, gibbs_average (α := α) (H x w)
+      (fun σ => |(1 / (n : ℝ)) * V w σ
+        - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (H x w') (V w') ∂P|) ∂P := by
+  classical
+  have hq := continuous_integral_gibbs_average_param (α := α) n hH hHc hV hVi
+  have hdom : Integrable (fun w => (1 / (n : ℝ)) * ‖V w‖
+      + (1 / (n : ℝ)) * ∫ w', ‖V w'‖ ∂P) P :=
+    (hVi.const_mul (1 / (n : ℝ))).add (integrable_const _)
+  refine continuous_of_dominated
+    (fun x => (measurable_totalFluct_param n hH hV x).aestronglyMeasurable)
+    (fun x => Filter.Eventually.of_forall fun w => ?_) hdom
+    (Filter.Eventually.of_forall fun w => ?_)
+  · rw [Real.norm_eq_abs,
+      abs_of_nonneg (gibbs_average_abs_smul_sub_const_nonneg (α := α) n (H x w) (V w) _)]
+    refine (gibbs_average_abs_smul_sub_const_le_norm (α := α) n (H x w) (V w) _).trans ?_
+    exact add_le_add le_rfl (abs_integral_gibbs_average_param_le n hH hV hVi x)
+  · have hp : ∀ σ : α, Continuous fun x : E => gibbs_pmf (α := α) (H x w) σ := fun σ =>
+      ((contDiff_gibbs_pmf (α := α) σ).continuous).comp (hHc w)
+    simp only [gibbs_average]
+    exact continuous_finsetSum _ fun σ _ => (hp σ).mul ((continuous_const.sub hq).abs)
+
+end GeneralParameter
+
+/-! ### The affine path `x ↦ U + x • V` -/
+
+
+omit [IsProbabilityMeasure P] in
+lemma abs_integral_gibbs_average_path_le (n : ℕ) (hU : Measurable U) (hV : Measurable V)
+    (hVi : Integrable (fun w => ‖V w‖) P) (x : ℝ) :
+    |∫ w, (1 / (n : ℝ)) * gibbs_average (α := α) (U w + x • V w) (V w) ∂P|
+      ≤ (1 / (n : ℝ)) * ∫ w, ‖V w‖ ∂P :=
+  abs_integral_gibbs_average_param_le (H := fun x w => U w + x • V w) n
+    (fun _ => by fun_prop) hV hVi x
+
+omit [IsProbabilityMeasure P] in
+lemma continuous_integral_gibbs_average_path (n : ℕ) (hU : Measurable U) (hV : Measurable V)
+    (hVi : Integrable (fun w => ‖V w‖) P) :
+    Continuous fun x : ℝ =>
+      ∫ w, (1 / (n : ℝ)) * gibbs_average (α := α) (U w + x • V w) (V w) ∂P :=
+  continuous_integral_gibbs_average_param (H := fun x w => U w + x • V w) n
+    (fun _ => by fun_prop) (fun _ => by fun_prop) hV hVi
+
+lemma continuous_integral_abs_meanEnergy_sub (n : ℕ) (hU : Measurable U) (hV : Measurable V)
+    (hVi : Integrable (fun w => ‖V w‖) P) :
+    Continuous fun x : ℝ => ∫ w, |(1 / (n : ℝ)) * gibbs_average (α := α) (U w + x • V w) (V w)
+      - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (U w' + x • V w') (V w') ∂P| ∂P :=
+  continuous_integral_abs_meanEnergy_sub_param (H := fun x w => U w + x • V w) n
+    (fun _ => by fun_prop) (fun _ => by fun_prop) hV hVi
 
 /-! ### The second half of Theorem 12.1.1 -/
 
@@ -296,59 +416,23 @@ omit [IsProbabilityMeasure P] in
 lemma measurable_totalFluct_path (n : ℕ) (hU : Measurable U) (hV : Measurable V) (x : ℝ) :
     Measurable fun w => gibbs_average (α := α) (U w + x • V w)
       (fun σ => |(1 / (n : ℝ)) * V w σ
-        - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (U w' + x • V w') (V w') ∂P|) := by
-  classical
-  have hpath : Measurable fun w => U w + x • V w := by fun_prop
-  have hpmf : ∀ σ : α, Measurable fun w => gibbs_pmf (α := α) (U w + x • V w) σ := fun σ =>
-    ((contDiff_gibbs_pmf (α := α) σ).continuous.measurable).comp hpath
-  have hev : ∀ σ : α, Measurable fun w => (V w) σ := fun σ =>
-    (measurable_eval (α := α) σ).comp hV
-  simp only [gibbs_average]
-  refine Finset.measurable_sum _ fun σ _ => (hpmf σ).mul ?_
-  have hd : Measurable fun w => (1 / (n : ℝ)) * (V w) σ
-      - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (U w' + x • V w') (V w') ∂P :=
-    ((hev σ).const_mul _).sub measurable_const
-  fun_prop
+        - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (U w' + x • V w') (V w') ∂P|) :=
+  measurable_totalFluct_param (H := fun x w => U w + x • V w) n (fun _ => by fun_prop) hV x
 
 lemma integrable_totalFluct_path (n : ℕ) (hU : Measurable U) (hV : Measurable V)
     (hVi : Integrable (fun w => ‖V w‖) P) (x : ℝ) :
     Integrable (fun w => gibbs_average (α := α) (U w + x • V w)
       (fun σ => |(1 / (n : ℝ)) * V w σ
-        - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (U w' + x • V w') (V w') ∂P|)) P := by
-  have hdom : Integrable (fun w => (1 / (n : ℝ)) * ‖V w‖
-      + (1 / (n : ℝ)) * ∫ w', ‖V w'‖ ∂P) P :=
-    (hVi.const_mul (1 / (n : ℝ))).add (integrable_const _)
-  refine Integrable.mono' hdom
-    (measurable_totalFluct_path n hU hV x).aestronglyMeasurable
-    (Filter.Eventually.of_forall fun w => ?_)
-  rw [Real.norm_eq_abs,
-    abs_of_nonneg (gibbs_average_abs_smul_sub_const_nonneg (α := α) n (U w + x • V w) (V w) _)]
-  refine (gibbs_average_abs_smul_sub_const_le_norm (α := α) n (U w + x • V w) (V w) _).trans ?_
-  exact add_le_add le_rfl (abs_integral_gibbs_average_path_le n hU hV hVi x)
+        - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (U w' + x • V w') (V w') ∂P|)) P :=
+  integrable_totalFluct_param (H := fun x w => U w + x • V w) n (fun _ => by fun_prop) hV hVi x
 
 lemma continuous_integral_totalFluct (n : ℕ) (hU : Measurable U) (hV : Measurable V)
     (hVi : Integrable (fun w => ‖V w‖) P) :
     Continuous fun x : ℝ => ∫ w, gibbs_average (α := α) (U w + x • V w)
       (fun σ => |(1 / (n : ℝ)) * V w σ
-        - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (U w' + x • V w') (V w') ∂P|) ∂P := by
-  classical
-  have hq := continuous_integral_gibbs_average_path (α := α) n hU hV hVi
-  have hdom : Integrable (fun w => (1 / (n : ℝ)) * ‖V w‖
-      + (1 / (n : ℝ)) * ∫ w', ‖V w'‖ ∂P) P :=
-    (hVi.const_mul (1 / (n : ℝ))).add (integrable_const _)
-  refine continuous_of_dominated
-    (fun x => (measurable_totalFluct_path n hU hV x).aestronglyMeasurable)
-    (fun x => Filter.Eventually.of_forall fun w => ?_) hdom
-    (Filter.Eventually.of_forall fun w => ?_)
-  · rw [Real.norm_eq_abs,
-      abs_of_nonneg (gibbs_average_abs_smul_sub_const_nonneg (α := α) n (U w + x • V w) (V w) _)]
-    refine (gibbs_average_abs_smul_sub_const_le_norm (α := α) n (U w + x • V w) (V w) _).trans ?_
-    exact add_le_add le_rfl (abs_integral_gibbs_average_path_le n hU hV hVi x)
-  · have hpath : Continuous fun x : ℝ => U w + x • V w := by fun_prop
-    have hp : ∀ σ : α, Continuous fun x : ℝ => gibbs_pmf (α := α) (U w + x • V w) σ := fun σ =>
-      ((contDiff_gibbs_pmf (α := α) σ).continuous).comp hpath
-    simp only [gibbs_average]
-    exact continuous_finsetSum _ fun σ _ => (hp σ).mul ((continuous_const.sub hq).abs)
+        - ∫ w', (1 / (n : ℝ)) * gibbs_average (α := α) (U w' + x • V w') (V w') ∂P|) ∂P :=
+  continuous_integral_totalFluct_param (H := fun x w => U w + x • V w) n
+    (fun _ => by fun_prop) (fun _ => by fun_prop) hV hVi
 
 /-- **The total fluctuation of the energy splits into its Gibbs part and its disorder part.**
 Talagrand, Vol. II, §12.1: the passage from Theorem 12.1.1 to the two integrals (12.4) and (12.5).

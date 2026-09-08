@@ -109,9 +109,102 @@ with profile `A + t²B` — so the family through the model at `t = 1` has an ov
 with nonnegative coefficients at every `t`, and differentiating in `t` differentiates in a single
 `p`-spin coupling.
 
+`MixedPSpinComponent` closes the first half of that programme: `exists_gaussianDisorder_pair_indepFun`
+produces a pair of independent centered Gaussian disorders with *arbitrary* prescribed positive
+semidefinite kernels (the SK/reference pair is now a two-line corollary), `pairAffine` is the
+interpolation `(x, y) ↦ x + t y` — affine in the Hamiltonian, hence a convex path —
+`crossKernel_pairAffine_std_basis_right` computes the cross kernel of the second block as `t K₂`,
+and `abs_integral_gibbs_average_component_le` is **Talagrand's Lemma 12.1.4 for a component**:
+`|𝔼⟨H_B⟩| ≤ 2|t| M₂`, so the mean `p`-spin energy per site is bounded by `2|t| aₚ` uniformly in the
+volume. `covarianceOperator_map_std_basis_eq_crossKernel` identifies a linear-image Hamiltonian's
+*own* kernel as the cross kernel at the adjoint directions — no adjoint appears in statement or
+proof — and `covarianceOperator_map_pairAffine_std_basis` reads off the interpolated Hamiltonian's
+kernel as `K₁ + t²K₂`, which for a mixed `p`-spin model is `N(ξ − (1−t²)aₚrᵖ)(R)`: overlap-driven
+with nonnegative coefficients at every `t`, so the §12.1 hypotheses hold along the whole path. All the linear-image cavity identities are stated for the *affine* Hamiltonian `A x + c`, so
+the external field costs nothing.
+
+Both halves of §12.1 now run along that interpolation:
+`integral_abs_free_energy_density_pairAffine_sub_mean_le` is the free-energy concentration
+(Gaussian Poincaré on the pair space, evaluated with `covarianceOperator_map_pairAffine_std_basis`
+— no identification of the interpolated law needed), and
+`intervalIntegral_component_fluctuation_le` is **Theorem 12.1.1 for a component**: three explicit
+terms, `O(N^{-1/2}) + O(δ) + O(N^{-1/2}/δ)`, hence `O(N^{-1/4})` at `δ = N^{-1/4}`. **The `p`-spin
+component self-averages.**
+
+The composition is then carried out: the sharp `L¹` bound now allows the Hamiltonian and the tested
+field to be *separate* functions of the disorder (`abs_integral_gibbs_average_field_mul_sub_le_integral_abs'`,
+with no Gaussian hypothesis at all), `ghirlandaGuerra_defect_of_comp` and
+`ghirlandaGuerra_error_of_comp_le_integral_abs` give the component defect identity and error bound
+for a linear-image Hamiltonian, `abs_ghirlandaGuerraCombinationOf_component_le` shows the error is
+`B N` times exactly the quantity Theorem 12.1.1 controls, and
+`exists_coupling_abs_ghirlandaGuerraCombinationOf_component_le` composes the two with the mean
+value theorem: **at some coupling in every window, the Ghirlanda–Guerra combination of the
+`p`-spin component's kernel is `O(N^{3/4})`, so the defect in (15.40) at `φ(r) = rᵖ` is
+`O(N^{-1/4})`.** No new definition is needed for the pair setting —
+`ghirlandaGuerraCombinationOf` at the pushforward law of the Hamiltonian *is* the pair-setting
+combination, so the whole §15.3 translation applies verbatim.
+
+`MixedPSpinComponentGG` closes the chain. The Mathlib gap on the way is filled in general:
+`ProbabilityTheory.IsGaussian.eq_multivariateGaussian` says every Gaussian measure on a Euclidean
+space is `multivariateGaussian μ[id] (covMatrix μ)` — no hypotheses — with `covMatrix` Mathlib's
+`LinearMap.toMatrix₂` of `covarianceBilin` in the standard basis (positive semidefinite by
+`posSemidef_covMatrix`), built on `ContinuousLinearMap.ext_basis₂`, the continuous
+`LinearMap.ext_basis`. Hence `map_pairAffine_disorderPairLaw`: the law of `H_A + t H_B` *is* the
+centered Gaussian field with kernel `K₁ + t²K₂`. `exists_coupling_abs_ghirlandaGuerra_defect_component_le`
+is the identity at the profile of a component with an explicit rate, and
+`exists_coupling_abs_ghirlandaGuerra_defect_mixedPSpin_le` is the **mixed `p`-spin capstone of
+§12.2**: for every mixed `p`-spin model, external field, and window `[a,b] ⊂ (0,∞)`, at some
+`x ∈ [a,b]` the model with its `p`-th coefficient rescaled by `x²` — the canonical field
+`gaussField N (overlapCovMatrix N ξₓ)`, no coupling space in the statement — satisfies the
+Ghirlanda–Guerra identity at `φ(r) = rᵖ` up to an explicit `O(N^{-1/4})`;
+`exists_coupling_abs_ghirlandaGuerra_defect_split_le` is the same for any split `ξ = A + B` at
+`φ = B`.
+
+`MultiComponent` and `MixedPSpinPerturbation` are **Talagrand's Theorem 12.2.2 at finite volume**
+(the extended Ghirlanda–Guerra identities). The Mathlib gaps filled on the way:
+`multivariateGaussian_map_sum_smul_pi` (a linear combination of independent centered multivariate
+Gaussians is the centered Gaussian with the combined covariance, under `Measure.pi`),
+`multivariateGaussian_zero`, `Fin.insertNth_eq_update`, and the continuity of the
+energy-fluctuation functionals in a Hamiltonian parameter ranging over any first-countable space
+(`continuous_integral_totalFluct_param`). On top of them: the canonical carrier `familyLaw` of a
+finite family of independent Gaussian disorders, with the pair `(∑_{i≠s} cᵢωᵢ, ωₛ)` as independent
+`GaussianDisorder`s (`familyRest`, `familyCoord`); the perturbed Hamiltonian `familyHam` and the
+fluctuation functional `familyFluct` of each component, continuous in the couplings; Theorem
+12.1.1 for one component uniformly in the others (`intervalIntegral_familyFluct_update_le`); the
+defect bound `abs_ghirlandaGuerra_defect_family_le`; Fubini over the box of couplings
+(`setIntegral_familyFluct_le`) and the mean value principle (`exists_couplings_familyFluct_le`);
+and the capstone `exists_couplings_abs_ghirlandaGuerra_defect_family_le`: **couplings
+`β ∈ [a,b]^{m+1}` at which the perturbed model satisfies the Ghirlanda–Guerra identity at every
+component profile simultaneously, for every test function, with an explicit rate.**
+`exists_couplings_abs_ghirlandaGuerra_defect_mixedPSpin_monomials_le` is the mixed `p`-spin
+instance: perturbing by `wₛ² N Rˢ⁺¹` the perturbed model is the mixed `p`-spin model with profile
+`ξ(r) + ∑ₛ (βₛwₛ)² rˢ⁺¹`, and the identities hold at all monomials `r, …, rᵐ⁺¹` at once. The family is
+finite, the window sits in `(0,∞)`, and the couplings are exhibited rather than averaged over —
+exactly what the limit consumes.
+
+`Limit.GhirlandaGuerraLimit` and `MixedPSpinLimit` pass to the limit. `ggDefect` is the defect in
+Talagrand's (15.40), continuous in the law (`continuous_ggDefect`), and the identities are its
+vanishing (`satisfiesGhirlandaGuerra_iff_ggDefect`); `satisfiesGhirlandaGuerra_of_tendsto_ggDefect`
+is the passage from approximate to exact identities, and `exists_subseq_tendsto_satisfiesGhirlandaGuerra`
+extracts, from any sequence of exchangeable Gram array laws with vanishing monomial defects, a
+convergent subsequence whose limit satisfies the identities. `mixedPSpinArrayLaw N ξ h` is the
+annealed overlap-array law of the mixed `p`-spin model, and
+**`exists_subseq_tendsto_satisfiesGhirlandaGuerra_mixedPSpin`** is the capstone of §12.2: for every
+mixed `p`-spin model and every admissible scaling `(m_N, c_N, δ_N)`, couplings `β_N` exist such that
+along a subsequence the perturbed models (profile `ξ(r) + ∑ₛ (β_{N,s}c_N)² rˢ⁺¹`, perturbation
+variance `→ 0`) converge in distribution to a jointly exchangeable Gram law **satisfying the
+Ghirlanda–Guerra identities**; `…_explicit` fixes the scaling `c_N = N^{-1/16}`, `δ_N = N^{-1/4}`,
+`m_N = ⌊N^{1/16}⌋`, leaving no free parameter.
+
+`GaussianPerturbation` is Talagrand's Lemma 12.2.1: `gaussFreeEnergy N S h ≤ gaussFreeEnergy N (S+T) h
+≤ gaussFreeEnergy N S h + D/(2N)` for an independent perturbation of variance `≤ D` per
+configuration (Jensen for the convex free energy; Jensen for the logarithm and the Gaussian
+exponential moment `integral_exp_mul_apply_gaussField`), and
+`abs_gaussFreeEnergy_perturbedProfile_sub_le`: the perturbation producing the Ghirlanda–Guerra
+identities moves the free energy by at most `(∑ₛ wₛ²)/2 → 0`.
+
 Cascades, `Parisi.T`, and the finite-volume GG defect/error are scaffolding toward the Vol. II
-capstones. Still to discharge: the self-averaging of a disorder component (§12.1 run along the
-interpolation above), and with it the identities at all monomial test functions in the limit;
+capstones. Still to discharge:
 Panchenko's ultrametricity theorem (Talagrand's Research Problem 15.3.7), the Dovbysh–Sudakov
 representation, the Parisi equality, broken-RSB Guerra, Gardner and the Hopfield limits.
 

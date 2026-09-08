@@ -32,27 +32,6 @@ section Law
 
 variable {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω}
 
-/-! ### The law of a Gaussian disorder is the canonical multivariate Gaussian -/
-
-/-- **The law of a centered Gaussian disorder is the canonical `multivariateGaussian` at its
-covariance matrix.** Together with `posSemidef_skCovMatrix` this says that the SK model has one
-disorder law, whatever probability space carries it. -/
-theorem GaussianDisorder.map_U_eq_multivariateGaussian {N : ℕ}
-    {S : Matrix (Config N) (Config N) ℝ} (hS : S.PosSemidef)
-    {K : Config N → Config N → ℝ} (hK : ∀ σ τ, K σ τ = S σ τ)
-    (G : GaussianDisorder (Ω := Ω) (N := N) P K) :
-    P.map G.U = multivariateGaussian (0 : EnergySpace N) S := by
-  have hGg : ProbabilityTheory.IsGaussian (P.map G.U) := G.isGaussian
-  have hmean : (∫ x : EnergySpace N, x ∂(multivariateGaussian (0 : EnergySpace N) S)) = 0 := by
-    simp
-  refine ProbabilityTheory.IsGaussian.ext ?_ ?_
-  · simp [G.mean0]
-  · ext x y
-    rw [covarianceBilin_eq_of_cov_std_basis (K := fun σ τ => S σ τ) _ G.mean0
-        (fun σ τ => (G.cov_eq σ τ).trans (hK σ τ)) x y,
-      covarianceBilin_eq_of_cov_std_basis (K := fun σ τ => S σ τ) _ hmean
-        (fun σ τ => inner_covarianceOperator_multivariateGaussian_std_basis S hS σ τ) x y]
-
 /-! ### The free energy is a function of the covariance alone -/
 
 /-- **The free energy of a centered Gaussian disorder with covariance matrix `S`** in the external
@@ -65,7 +44,7 @@ def gaussFreeEnergy (N : ℕ) (S : Matrix (Config N) (Config N) ℝ) (h : ℝ) :
 
 /-- **Every Gaussian disorder with covariance `S` computes `gaussFreeEnergy`.** -/
 theorem integral_free_energy_density_eq_gaussFreeEnergy {N : ℕ}
-    {S : Matrix (Config N) (Config N) ℝ} (hS : S.PosSemidef)
+    {S : Matrix (Config N) (Config N) ℝ}
     {K : Config N → Config N → ℝ} (hK : ∀ σ τ, K σ τ = S σ τ) (h : ℝ)
     (G : GaussianDisorder (Ω := Ω) (N := N) P K) :
     (∫ ω, free_energy_density (N := N) (G.U ω + H_field N h) ∂P) = gaussFreeEnergy N S h := by
@@ -75,7 +54,7 @@ theorem integral_free_energy_density_eq_gaussFreeEnergy {N : ℕ}
   have hmap := MeasureTheory.integral_map (μ := P) (φ := G.U)
     (f := fun H : EnergySpace N => free_energy_density (N := N) (H + H_field N h))
     G.measU.aemeasurable hcont.aestronglyMeasurable
-  rw [gaussFreeEnergy, ← hmap, GaussianDisorder.map_U_eq_multivariateGaussian hS hK G]
+  rw [gaussFreeEnergy, ← hmap, GaussianDisorder.map_U_eq_multivariateGaussian hK G]
 
 /-- **The SK free energy at size `N`**, inverse temperature `β` and external field `h`. This is the
 sequence `p_N` of Talagrand Vol. I, §1.3. -/
@@ -85,8 +64,7 @@ def skFreeEnergy (N : ℕ) (β h : ℝ) : ℝ := gaussFreeEnergy N (skCovMatrix 
 theorem integral_free_energy_density_eq_skFreeEnergy {N : ℕ} {β : ℝ} (h : ℝ)
     (sk : GaussianDisorder (Ω := Ω) N P (sk_cov_kernel N β)) :
     (∫ ω, free_energy_density (N := N) (sk.U ω + H_field N h) ∂P) = skFreeEnergy N β h :=
-  integral_free_energy_density_eq_gaussFreeEnergy (posSemidef_skCovMatrix N β)
-    (fun _ _ => rfl) h sk
+  integral_free_energy_density_eq_gaussFreeEnergy (fun _ _ => rfl) h sk
 
 end Law
 

@@ -255,22 +255,111 @@ lemma integrable_sum_gibbs_pmf_mul_abs_inner_sub {w : α → EnergySpace α} {Mw
 
 /-! ### The error bound -/
 
-omit [IsGaussian μ] in
+section AbstractDisorder
+
+variable {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω}
+
 /-- **The field–observable covariance is controlled by the *mean absolute* field fluctuation.**
 
-For any field `u` of the disorder (a vector `u H : EnergySpace α`, so a real number `(u H) σ` at
-each configuration), any constant `a`, any `m`-replica test function `f` bounded by `B` and any
-index `i`,
+The Hamiltonian `Hm p` and the tested field `u p` are *independent* functions of the disorder `p`:
+this is what the interpolation `Hm p = p₁ + x p₂`, `u p = p₂` needs, where the field is one summand
+of the Hamiltonian rather than the Hamiltonian itself. For any constant `a`, any `m`-replica test
+function `f` bounded by `B` and any index `i`,
 
-`|𝔼⟨(u H)_{σⁱ} f⟩ - a 𝔼⟨f⟩| ≤ B · 𝔼⟨|u H - a|⟩`.
+`|𝔼⟨(u p)_{σⁱ} f⟩ - a 𝔼⟨f⟩| ≤ B · 𝔼⟨|u p - a|⟩`.
 
 This is the sharp form — Hölder, not Cauchy–Schwarz — and it is stated with the three integrability
-facts as *hypotheses*, since they are the only place the nature of `u` enters: the `i`-th
+facts as *hypotheses*, since they are the only place the nature of `Hm` and `u` enters: the `i`-th
 coordinate is averaged out by `gibbs_average_n_det_eval`, and what remains is a pointwise bound
-integrated once. Taking `u = id` gives the energy itself
-(`abs_integral_gibbs_average_energy_mul_sub_le_integral_abs`); taking `u H = W H` for a continuous
-linear `W` gives a *component* of the disorder, which is what the Ghirlanda–Guerra identities at
-individual monomial test functions need. -/
+integrated once. There is **no Gaussian hypothesis and no restriction on the measure.** -/
+theorem abs_integral_gibbs_average_field_mul_sub_le_integral_abs'
+    (Hm u : Ω → EnergySpace α)
+    (m : ℕ) (f : ReplicaFun (α := α) m) (i : Fin m) {B : ℝ} (hB : ∀ σs, |f σs| ≤ B) (a : ℝ)
+    (hI1 : Integrable (fun p : Ω => gibbs_average_n_det (α := α) (n := m) (Hm p)
+      (fun σs => (u p) (σs i) * f σs)) P)
+    (hI2 : Integrable
+      (fun p : Ω => gibbs_average_n_det (α := α) (n := m) (Hm p) f) P)
+    (hIW : Integrable
+      (fun p : Ω => ∑ σ : α, gibbs_pmf (α := α) (Hm p) σ * |(u p) σ - a|) P) :
+    |(∫ p : Ω,
+          gibbs_average_n_det (α := α) (n := m) (Hm p) (fun σs => (u p) (σs i) * f σs) ∂P)
+        - a * ∫ p : Ω, gibbs_average_n_det (α := α) (n := m) (Hm p) f ∂P|
+      ≤ B * ∫ p : Ω,
+          (∑ σ : α, gibbs_pmf (α := α) (Hm p) σ * |(u p) σ - a|) ∂P := by
+  classical
+  set W : Ω → ℝ :=
+    fun p => ∑ σ : α, gibbs_pmf (α := α) (Hm p) σ * |(u p) σ - a| with hW
+  -- (1) the left-hand side is a single integral
+  have hdiff : (∫ p : Ω,
+        gibbs_average_n_det (α := α) (n := m) (Hm p) (fun σs => (u p) (σs i) * f σs) ∂P)
+      - a * ∫ p : Ω, gibbs_average_n_det (α := α) (n := m) (Hm p) f ∂P
+      = ∫ p : Ω, (gibbs_average_n_det (α := α) (n := m) (Hm p)
+          (fun σs => (u p) (σs i) * f σs)
+          - a * gibbs_average_n_det (α := α) (n := m) (Hm p) f) ∂P := by
+    rw [MeasureTheory.integral_sub hI1 (hI2.const_mul a), MeasureTheory.integral_const_mul]
+  -- (2) the pointwise bound, by averaging out the `i`-th replica
+  have hptwise : ∀ p : Ω,
+      |gibbs_average_n_det (α := α) (n := m) (Hm p) (fun σs => (u p) (σs i) * f σs)
+        - a * gibbs_average_n_det (α := α) (n := m) (Hm p) f| ≤ B * W p := by
+    intro p
+    have hEq : gibbs_average_n_det (α := α) (n := m) (Hm p) (fun σs => (u p) (σs i) * f σs)
+        - a * gibbs_average_n_det (α := α) (n := m) (Hm p) f
+        = gibbs_average_n_det (α := α) (n := m) (Hm p)
+            (fun σs => ((u p) (σs i) - a) * f σs) := by
+      simp only [gibbs_average_n_det, Finset.mul_sum, ← Finset.sum_sub_distrib]
+      exact Finset.sum_congr rfl fun σs _ => by ring
+    rw [hEq]
+    have hstep : |gibbs_average_n_det (α := α) (n := m) (Hm p)
+          (fun σs => ((u p) (σs i) - a) * f σs)|
+        ≤ ∑ σs : ReplicaSpace (α := α) m,
+            |((u p) (σs i) - a) * f σs| * ∏ l, gibbs_pmf (α := α) (Hm p) (σs l) := by
+      rw [gibbs_average_n_det]
+      refine le_trans (Finset.abs_sum_le_sum_abs _ _)
+        (le_of_eq (Finset.sum_congr rfl fun σs _ => ?_))
+      rw [abs_mul,
+        abs_of_nonneg (Finset.prod_nonneg fun l _ => gibbs_pmf_nonneg (α := α) (Hm p) (σs l))]
+    refine le_trans hstep ?_
+    calc (∑ σs : ReplicaSpace (α := α) m,
+            |((u p) (σs i) - a) * f σs| * ∏ l, gibbs_pmf (α := α) (Hm p) (σs l))
+        ≤ ∑ σs : ReplicaSpace (α := α) m,
+            (B * |(u p) (σs i) - a|) * ∏ l, gibbs_pmf (α := α) (Hm p) (σs l) := by
+          refine Finset.sum_le_sum fun σs _ => ?_
+          refine mul_le_mul_of_nonneg_right ?_
+            (Finset.prod_nonneg fun l _ => gibbs_pmf_nonneg (α := α) (Hm p) (σs l))
+          rw [abs_mul, mul_comm B]
+          exact mul_le_mul_of_nonneg_left (hB σs) (abs_nonneg _)
+      _ = B * gibbs_average_n_det (α := α) (n := m) (Hm p)
+            (fun σs => |(u p) (σs i) - a|) := by
+          rw [gibbs_average_n_det, Finset.mul_sum]
+          exact Finset.sum_congr rfl fun σs _ => by ring
+      _ = B * W p := by
+          rw [gibbs_average_n_det_eval (α := α) m (Hm p) (fun σ => |(u p) σ - a|) i, hW]
+          exact congrArg (fun t => B * t) (Finset.sum_congr rfl fun σ _ => mul_comm _ _)
+  -- (3) integrate the pointwise bound
+  rw [hdiff]
+  calc |∫ p : Ω, (gibbs_average_n_det (α := α) (n := m) (Hm p)
+          (fun σs => (u p) (σs i) * f σs)
+        - a * gibbs_average_n_det (α := α) (n := m) (Hm p) f) ∂P|
+      ≤ ∫ p : Ω, ‖gibbs_average_n_det (α := α) (n := m) (Hm p)
+          (fun σs => (u p) (σs i) * f σs)
+        - a * gibbs_average_n_det (α := α) (n := m) (Hm p) f‖ ∂P := by
+        simpa [Real.norm_eq_abs] using norm_integral_le_integral_norm (μ := P)
+          (fun p : Ω => gibbs_average_n_det (α := α) (n := m) (Hm p)
+            (fun σs => (u p) (σs i) * f σs)
+            - a * gibbs_average_n_det (α := α) (n := m) (Hm p) f)
+    _ ≤ ∫ p : Ω, B * W p ∂P :=
+        integral_mono_of_nonneg (Filter.Eventually.of_forall fun _ => norm_nonneg _)
+          (hIW.const_mul B)
+          (Filter.Eventually.of_forall fun p => by
+            simpa [Real.norm_eq_abs] using hptwise p)
+    _ = B * ∫ p : Ω, W p ∂P := MeasureTheory.integral_const_mul _ _
+
+end AbstractDisorder
+
+omit [IsGaussian μ] in
+/-- **The field–observable covariance is controlled by the *mean absolute* field fluctuation**, for
+a field of the Hamiltonian itself: the case `Hm = id` of
+`SpinGlass.FiniteGibbs.abs_integral_gibbs_average_field_mul_sub_le_integral_abs'`. -/
 theorem abs_integral_gibbs_average_field_mul_sub_le_integral_abs
     (u : EnergySpace α → EnergySpace α)
     (m : ℕ) (f : ReplicaFun (α := α) m) (i : Fin m) {B : ℝ} (hB : ∀ σs, |f σs| ≤ B) (a : ℝ)
@@ -284,72 +373,9 @@ theorem abs_integral_gibbs_average_field_mul_sub_le_integral_abs
           gibbs_average_n_det (α := α) (n := m) H (fun σs => (u H) (σs i) * f σs) ∂μ)
         - a * ∫ H : EnergySpace α, gibbs_average_n_det (α := α) (n := m) H f ∂μ|
       ≤ B * ∫ H : EnergySpace α,
-          (∑ σ : α, gibbs_pmf (α := α) H σ * |(u H) σ - a|) ∂μ := by
-  classical
-  set W : EnergySpace α → ℝ :=
-    fun H => ∑ σ : α, gibbs_pmf (α := α) H σ * |(u H) σ - a| with hW
-  -- (1) the left-hand side is a single integral
-  have hdiff : (∫ H : EnergySpace α,
-        gibbs_average_n_det (α := α) (n := m) H (fun σs => (u H) (σs i) * f σs) ∂μ)
-      - a * ∫ H : EnergySpace α, gibbs_average_n_det (α := α) (n := m) H f ∂μ
-      = ∫ H : EnergySpace α, (gibbs_average_n_det (α := α) (n := m) H
-          (fun σs => (u H) (σs i) * f σs)
-          - a * gibbs_average_n_det (α := α) (n := m) H f) ∂μ := by
-    rw [MeasureTheory.integral_sub hI1 (hI2.const_mul a), MeasureTheory.integral_const_mul]
-  -- (2) the pointwise bound, by averaging out the `i`-th replica
-  have hptwise : ∀ H : EnergySpace α,
-      |gibbs_average_n_det (α := α) (n := m) H (fun σs => (u H) (σs i) * f σs)
-        - a * gibbs_average_n_det (α := α) (n := m) H f| ≤ B * W H := by
-    intro H
-    have hEq : gibbs_average_n_det (α := α) (n := m) H (fun σs => (u H) (σs i) * f σs)
-        - a * gibbs_average_n_det (α := α) (n := m) H f
-        = gibbs_average_n_det (α := α) (n := m) H (fun σs => ((u H) (σs i) - a) * f σs) := by
-      simp only [gibbs_average_n_det, Finset.mul_sum, ← Finset.sum_sub_distrib]
-      exact Finset.sum_congr rfl fun σs _ => by ring
-    rw [hEq]
-    have hstep : |gibbs_average_n_det (α := α) (n := m) H
-          (fun σs => ((u H) (σs i) - a) * f σs)|
-        ≤ ∑ σs : ReplicaSpace (α := α) m,
-            |((u H) (σs i) - a) * f σs| * ∏ l, gibbs_pmf (α := α) H (σs l) := by
-      rw [gibbs_average_n_det]
-      refine le_trans (Finset.abs_sum_le_sum_abs _ _)
-        (le_of_eq (Finset.sum_congr rfl fun σs _ => ?_))
-      rw [abs_mul,
-        abs_of_nonneg (Finset.prod_nonneg fun l _ => gibbs_pmf_nonneg (α := α) H (σs l))]
-    refine le_trans hstep ?_
-    calc (∑ σs : ReplicaSpace (α := α) m,
-            |((u H) (σs i) - a) * f σs| * ∏ l, gibbs_pmf (α := α) H (σs l))
-        ≤ ∑ σs : ReplicaSpace (α := α) m,
-            (B * |(u H) (σs i) - a|) * ∏ l, gibbs_pmf (α := α) H (σs l) := by
-          refine Finset.sum_le_sum fun σs _ => ?_
-          refine mul_le_mul_of_nonneg_right ?_
-            (Finset.prod_nonneg fun l _ => gibbs_pmf_nonneg (α := α) H (σs l))
-          rw [abs_mul, mul_comm B]
-          exact mul_le_mul_of_nonneg_left (hB σs) (abs_nonneg _)
-      _ = B * gibbs_average_n_det (α := α) (n := m) H (fun σs => |(u H) (σs i) - a|) := by
-          rw [gibbs_average_n_det, Finset.mul_sum]
-          exact Finset.sum_congr rfl fun σs _ => by ring
-      _ = B * W H := by
-          rw [gibbs_average_n_det_eval (α := α) m H (fun σ => |(u H) σ - a|) i, hW]
-          exact congrArg (fun t => B * t) (Finset.sum_congr rfl fun σ _ => mul_comm _ _)
-  -- (3) integrate the pointwise bound
-  rw [hdiff]
-  calc |∫ H : EnergySpace α, (gibbs_average_n_det (α := α) (n := m) H
-          (fun σs => (u H) (σs i) * f σs)
-        - a * gibbs_average_n_det (α := α) (n := m) H f) ∂μ|
-      ≤ ∫ H : EnergySpace α, ‖gibbs_average_n_det (α := α) (n := m) H
-          (fun σs => (u H) (σs i) * f σs)
-        - a * gibbs_average_n_det (α := α) (n := m) H f‖ ∂μ := by
-        simpa [Real.norm_eq_abs] using norm_integral_le_integral_norm (μ := μ)
-          (fun H : EnergySpace α => gibbs_average_n_det (α := α) (n := m) H
-            (fun σs => (u H) (σs i) * f σs)
-            - a * gibbs_average_n_det (α := α) (n := m) H f)
-    _ ≤ ∫ H : EnergySpace α, B * W H ∂μ :=
-        integral_mono_of_nonneg (Filter.Eventually.of_forall fun _ => norm_nonneg _)
-          (hIW.const_mul B)
-          (Filter.Eventually.of_forall fun H => by
-            simpa [Real.norm_eq_abs] using hptwise H)
-    _ = B * ∫ H : EnergySpace α, W H ∂μ := MeasureTheory.integral_const_mul _ _
+          (∑ σ : α, gibbs_pmf (α := α) H σ * |(u H) σ - a|) ∂μ :=
+  abs_integral_gibbs_average_field_mul_sub_le_integral_abs' (P := μ)
+    (fun H => H) u m f i hB a hI1 hI2 hIW
 
 /-- **The energy–observable covariance is controlled by the *mean absolute* energy fluctuation.**
 For any constant `a`, any `m`-replica test function `f` bounded by `B`, and any index `i`,
@@ -568,8 +594,62 @@ theorem ghirlandaGuerra_error_of_le_integral_abs
     mul_comm (∫ H : EnergySpace α, gibbs_average_n_det (α := α) (n := m) H f ∂μ) a]
   exact key
 
+/-! ### The Ghirlanda–Guerra error of a component, for a linear-image Hamiltonian -/
+
+section LinearImageError
+
+variable {Ω : Type*} [NormedAddCommGroup Ω] [InnerProductSpace ℝ Ω] [CompleteSpace Ω]
+variable [MeasurableSpace Ω] [BorelSpace Ω] [SecondCountableTopology Ω]
+variable {P : Measure Ω} [IsGaussian P]
+
+/-- **The Ghirlanda–Guerra error of a component, for a linear-image Hamiltonian.**
+
+The Ghirlanda–Guerra combination of a component's cross kernel is bounded by `B` times the mean
+absolute fluctuation of the *component field* around its mean. Exact at every finite volume. -/
+theorem ghirlandaGuerra_error_of_comp_le_integral_abs
+    (hmean0 : (∫ x : Ω, x ∂P) = 0) (A : Ω →L[ℝ] EnergySpace α) (c₀ : EnergySpace α)
+    {w : α → Ω} {Mw : ℝ} (hw : ∀ σ : α, ‖w σ‖ ≤ Mw) {d : ℝ}
+    (hdiag : ∀ σ : α, crossKernel P A w σ σ = d)
+    (m : ℕ) (f : ReplicaFun (α := α) m) (i : Fin m) {B : ℝ} (hB : ∀ σs, |f σs| ≤ B) :
+    |ghirlandaGuerraCombinationOf (P.map (fun x : Ω => A x + c₀))
+        (crossKernel P A w) m f i|
+      ≤ B * ∫ x : Ω, (∑ σ : α, gibbs_pmf (α := α) (A x + c₀) σ
+          * |⟪x, w σ⟫_ℝ - ∫ x' : Ω, gibbs_average_n_det (α := α) (n := 1) (A x' + c₀)
+              (fun τs => ⟪x', w (τs 0)⟫_ℝ) ∂P|) ∂P := by
+  classical
+  set a : ℝ := ∫ x' : Ω, gibbs_average_n_det (α := α) (n := 1) (A x' + c₀)
+    (fun τs => ⟪x', w (τs 0)⟫_ℝ) ∂P with ha
+  set Bf : ℝ := ∑ σs : ReplicaSpace (α := α) m, ‖f σs‖ with hBf
+  have hBf0 : 0 ≤ Bf := Finset.sum_nonneg fun _ _ => norm_nonneg _
+  have hfle : ∀ σs : ReplicaSpace (α := α) m, ‖f σs‖ ≤ Bf :=
+    fun σs => Finset.single_le_sum (f := fun σs' => ‖f σs'‖)
+      (fun _ _ => norm_nonneg _) (Finset.mem_univ σs)
+  have hI2 : Integrable
+      (fun x : Ω => gibbs_average_n_det (α := α) (n := m) (A x + c₀) f) P :=
+    integrable_gibbs_average_n_det_comp_of_bounded (P := P) A c₀ m (fun _ => f)
+      (((contDiff_gibbs_average_n_det (α := α) m f).continuous).comp
+        (A.continuous.add continuous_const)) (B := Bf) (fun _ σs => hfle σs)
+  have hI1 : Integrable (fun x : Ω => gibbs_average_n_det (α := α) (n := m) (A x + c₀)
+      (fun σs => (componentField (α := α) w x) (σs i) * f σs)) P := by
+    simpa only [componentField_apply] using
+      integrable_gibbs_average_n_det_inner_mul_comp (P := P) A c₀ hw m f i
+  have hIW : Integrable (fun x : Ω =>
+      ∑ σ : α, gibbs_pmf (α := α) (A x + c₀) σ
+        * |(componentField (α := α) w x) σ - a|) P := by
+    simpa only [componentField_apply] using
+      integrable_sum_gibbs_pmf_mul_abs_inner_sub_comp (P := P) A c₀ hw a
+  have key := abs_integral_gibbs_average_field_mul_sub_le_integral_abs' (P := P)
+    (fun x : Ω => A x + c₀) (componentField (α := α) w) m f i hB a hI1 hI2 hIW
+  simp only [componentField_apply] at key
+  rw [ghirlandaGuerra_defect_of_comp (P := P) hmean0 A c₀ hw hdiag m f i,
+    mul_comm (∫ x : Ω, gibbs_average_n_det (α := α) (n := m) (A x + c₀) f ∂P) a]
+  exact key
+
+end LinearImageError
+
 end
 
 end FiniteGibbs
+
 
 end SpinGlass

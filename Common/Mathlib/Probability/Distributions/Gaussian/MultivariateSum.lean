@@ -107,3 +107,78 @@ theorem multivariateGaussian_map_add_smul_prod {S T : Matrix ι ι ℝ}
         multivariateGaussian_map_add_prod hS hT'
 
 end ProbabilityTheory
+
+namespace ProbabilityTheory
+
+variable {ι : Type*} [Fintype ι] [DecidableEq ι]
+
+/-- The multivariate Gaussian with zero covariance is the Dirac mass at its mean. -/
+@[simp] lemma multivariateGaussian_zero (m : EuclideanSpace ℝ ι) :
+    multivariateGaussian m (0 : Matrix ι ι ℝ) = Measure.dirac m := by
+  simp [multivariateGaussian, CFC.sqrt, Measure.map_const]
+
+/-- **A linear combination of independent centered multivariate Gaussians is the centered
+multivariate Gaussian with the corresponding combination of covariances**:
+`∑ i, c i • xᵢ ∼ mvG 0 (∑ i, (c i)² • S i)` for independent `xᵢ ∼ mvG 0 (S i)`. -/
+theorem multivariateGaussian_map_sum_smul_pi {n : ℕ} {S : Fin n → Matrix ι ι ℝ}
+    (hS : ∀ i, (S i).PosSemidef) (c : Fin n → ℝ) :
+    (Measure.pi fun i => multivariateGaussian (0 : EuclideanSpace ℝ ι) (S i)).map
+        (fun x : Fin n → EuclideanSpace ℝ ι => ∑ i, c i • x i)
+      = multivariateGaussian (0 : EuclideanSpace ℝ ι) (∑ i, (c i) ^ 2 • S i) := by
+  induction n with
+  | zero =>
+    have hmeas : Measurable fun x : Fin 0 → EuclideanSpace ℝ ι => ∑ i, c i • x i :=
+      Subsingleton.measurable
+    rw [Measure.pi_of_empty, Measure.map_dirac' hmeas]
+    simp
+  | succ n ih =>
+    set μ : Fin (n + 1) → Measure (EuclideanSpace ℝ ι) :=
+      fun i => multivariateGaussian (0 : EuclideanSpace ℝ ι) (S i) with hμ
+    have hpres := measurePreserving_piFinSuccAbove μ 0
+    -- the sum splits as `c 0 • x 0 + ∑ j, c j.succ • x j.succ`
+    have hsplit : (fun x : Fin (n + 1) → EuclideanSpace ℝ ι => ∑ i, c i • x i)
+        = (fun p : EuclideanSpace ℝ ι × (Fin n → EuclideanSpace ℝ ι) =>
+            c 0 • p.1 + ∑ j, c j.succ • p.2 j)
+          ∘ (MeasurableEquiv.piFinSuccAbove (fun _ => EuclideanSpace ℝ ι) 0) := by
+      funext x
+      simp [MeasurableEquiv.piFinSuccAbove, Fin.sum_univ_succ, Fin.insertNthEquiv,
+        Fin.zero_succAbove, Fin.tail]
+    have hmeas_g : Measurable (fun p : EuclideanSpace ℝ ι × (Fin n → EuclideanSpace ℝ ι) =>
+        c 0 • p.1 + ∑ j, c j.succ • p.2 j) := by fun_prop
+    rw [hsplit, ← Measure.map_map hmeas_g (MeasurableEquiv.piFinSuccAbove _ 0).measurable,
+      hpres.map_eq]
+    -- the pair `(c 0 • y, ∑ j, c j.succ • z j)` has the product law of the two pieces
+    have hpair : ((μ 0).prod (Measure.pi fun j => μ ((0 : Fin (n + 1)).succAbove j))).map
+          (fun p : EuclideanSpace ℝ ι × (Fin n → EuclideanSpace ℝ ι) =>
+            (c 0 • p.1, ∑ j, c j.succ • p.2 j))
+        = (multivariateGaussian (0 : EuclideanSpace ℝ ι) ((c 0) ^ 2 • S 0)).prod
+            (multivariateGaussian (0 : EuclideanSpace ℝ ι)
+              (∑ j : Fin n, (c j.succ) ^ 2 • S j.succ)) := by
+      have h := Measure.map_prod_map (μ 0) (Measure.pi fun j => μ ((0 : Fin (n + 1)).succAbove j))
+        (by fun_prop : Measurable fun y : EuclideanSpace ℝ ι => c 0 • y)
+        (by fun_prop : Measurable fun z : Fin n → EuclideanSpace ℝ ι => ∑ j, c j.succ • z j)
+      rw [show (fun p : EuclideanSpace ℝ ι × (Fin n → EuclideanSpace ℝ ι) =>
+          (c 0 • p.1, ∑ j, c j.succ • p.2 j))
+          = Prod.map (fun y : EuclideanSpace ℝ ι => c 0 • y)
+              (fun z : Fin n → EuclideanSpace ℝ ι => ∑ j, c j.succ • z j) from rfl, ← h]
+      congr 1
+      · rw [hμ]
+        simpa [smul_zero] using multivariateGaussian_map_smul (0 : EuclideanSpace ℝ ι) (hS 0) (c 0)
+      · simp only [hμ, Fin.zero_succAbove]
+        exact ih (S := fun j => S j.succ) (fun j => hS j.succ) (fun j => c j.succ)
+    have hadd : Measurable fun p : EuclideanSpace ℝ ι × EuclideanSpace ℝ ι => p.1 + p.2 := by
+      fun_prop
+    have hpm : Measurable (fun p : EuclideanSpace ℝ ι × (Fin n → EuclideanSpace ℝ ι) =>
+        (c 0 • p.1, ∑ j, c j.succ • p.2 j)) := by fun_prop
+    have hsumPSD : (∑ j : Fin n, (c j.succ) ^ 2 • S j.succ).PosSemidef :=
+      Finset.sum_induction _ Matrix.PosSemidef (fun _ _ ha hb => ha.add hb) Matrix.PosSemidef.zero
+        (fun j _ => (hS j.succ).smul_sq (c j.succ))
+    rw [show (fun p : EuclideanSpace ℝ ι × (Fin n → EuclideanSpace ℝ ι) =>
+        c 0 • p.1 + ∑ j, c j.succ • p.2 j)
+        = (fun q : EuclideanSpace ℝ ι × EuclideanSpace ℝ ι => q.1 + q.2)
+          ∘ (fun p : EuclideanSpace ℝ ι × (Fin n → EuclideanSpace ℝ ι) =>
+            (c 0 • p.1, ∑ j, c j.succ • p.2 j)) from rfl,
+      ← Measure.map_map hadd hpm, hpair,
+      multivariateGaussian_map_add_prod ((hS 0).smul_sq (c 0)) hsumPSD, Fin.sum_univ_succ]
+
+end ProbabilityTheory

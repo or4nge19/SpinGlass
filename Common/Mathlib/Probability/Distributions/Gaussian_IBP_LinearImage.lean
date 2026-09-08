@@ -11,8 +11,8 @@ import Common.Mathlib.Probability.Distributions.Gaussian_IBP_Hilbert
 `ProbabilityTheory.IsGaussian.integral_inner_mul_eq_integral_fderiv_covarianceOperator` is
 Gaussian integration by parts for a functional of the Gaussian vector itself. In applications the
 functional depends on the vector only through a **linear image** of it: the Hamiltonian of a spin
-glass is a linear function `A x` of an underlying Gaussian vector `x`, and one wants to differentiate
-with respect to a *component* of `x` that is not the Hamiltonian.
+glass is a linear function `A x` of an underlying Gaussian vector `x`, and one wants to
+differentiate with respect to a *component* of `x` that is not the Hamiltonian.
 
 The substituted formula
 

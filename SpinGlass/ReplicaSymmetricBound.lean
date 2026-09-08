@@ -66,16 +66,13 @@ theorem mul_refFreeEnergy_add {N₁ N₂ : ℕ} (hN₁ : 0 < N₁) (hN₂ : 0 < 
     fun σ τ => simple_cov_kernel_eq_splitCovKernel N₁ N₂ β q σ τ
   have hL : (∫ ω, free_energy_density (N := N₁ + N₂) (Gs.U ω + H_field (N₁ + N₂) h) ∂ℙ)
       = refFreeEnergy (N₁ + N₂) β q h :=
-    integral_free_energy_density_eq_gaussFreeEnergy
-      (posSemidef_refCovMatrix (N₁ + N₂) β q hq) hker h Gs
+    integral_free_energy_density_eq_gaussFreeEnergy hker h Gs
   have h1 : (∫ ω, free_energy_density (N := N₁) (G₁.U ω + H_field N₁ h) ∂ℙ)
       = refFreeEnergy N₁ β q h :=
-    integral_free_energy_density_eq_gaussFreeEnergy
-      (posSemidef_refCovMatrix N₁ β q hq) (fun _ _ => rfl) h G₁
+    integral_free_energy_density_eq_gaussFreeEnergy (fun _ _ => rfl) h G₁
   have h2 : (∫ ω, free_energy_density (N := N₂) (G₂.U ω + H_field N₂ h) ∂ℙ)
       = refFreeEnergy N₂ β q h :=
-    integral_free_energy_density_eq_gaussFreeEnergy
-      (posSemidef_refCovMatrix N₂ β q hq) (fun _ _ => rfl) h G₂
+    integral_free_energy_density_eq_gaussFreeEnergy (fun _ _ => rfl) h G₂
   -- The composite Hamiltonian splits, so the free energies add pointwise.
   have hpt : ∀ ω : Ω, ((N₁ + N₂ : ℕ) : ℝ) *
       free_energy_density (N := N₁ + N₂) (Gs.U ω + H_field (N₁ + N₂) h)
@@ -245,7 +242,7 @@ theorem refFreeEnergy_one_eq (β q h : ℝ) (hq : 0 ≤ q) :
     refFreeEnergy 1 β q h
       = ∫ z : ℝ, Real.log (2 * Real.cosh (β * Real.sqrt q * z + h)) ∂(gaussianReal 0 1) := by
   have hcomp := integral_free_energy_density_eq_gaussFreeEnergy
-    (P := gaussianReal 0 1) (posSemidef_refCovMatrix 1 β q hq) (fun _ _ => rfl) h
+    (P := gaussianReal 0 1) (S := refCovMatrix 1 β q) (fun _ _ => rfl) h
     (oneSiteRefDisorder β q hq)
   have hrf : refFreeEnergy 1 β q h
       = ∫ ω : ℝ, free_energy_density (N := 1)
@@ -266,8 +263,8 @@ theorem skFreeEnergy_le_refFreeEnergy {N : ℕ} (hN : 0 < N) (β q h : ℝ) (hq 
     exists_skDisorder_simpleDisorder_indepFun N β q hq
   have hle := integral_free_energy_density_le_rs (Ω := Ω) h hN sk sim hindep
   rw [integral_free_energy_density_eq_skFreeEnergy h sk,
-    integral_free_energy_density_eq_gaussFreeEnergy
-      (posSemidef_refCovMatrix N β q hq) (fun _ _ => rfl) h sim] at hle
+    integral_free_energy_density_eq_gaussFreeEnergy (S := refCovMatrix N β q)
+      (fun _ _ => rfl) h sim] at hle
   exact hle
 
 /-- **Guerra's replica-symmetric bound in the thermodynamic limit.** For every order parameter

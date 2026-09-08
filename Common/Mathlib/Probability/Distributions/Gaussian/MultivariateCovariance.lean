@@ -61,6 +61,22 @@ end EuclideanSpace
 
 namespace ProbabilityTheory
 
+section Bridge
+
+variable {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℝ E] [CompleteSpace E]
+  [MeasurableSpace E] [BorelSpace E] {μ : Measure E} [IsFiniteMeasure μ]
+
+/-- **The covariance bilinear form of a centered measure is the bilinear form of its covariance
+operator.** Mathlib's `covarianceOperator` is the *uncentered* second-moment operator, so the two
+agree exactly when the mean vanishes. -/
+theorem covarianceBilin_eq_inner_covarianceOperator (hmem : MemLp (id : E → E) 2 μ)
+    (hmean0 : (∫ z, z ∂μ) = 0) (x y : E) :
+    covarianceBilin μ x y = ⟪covarianceOperator μ x, y⟫_ℝ := by
+  rw [covarianceBilin_apply hmem, covarianceOperator_inner hmem]
+  simp [hmean0]
+
+end Bridge
+
 variable {ι : Type*} [Fintype ι] [DecidableEq ι]
 
 /-- **The bilinear form of the covariance operator of a centered multivariate Gaussian is the
@@ -74,12 +90,7 @@ theorem inner_covarianceOperator_multivariateGaussian {S : Matrix ι ι ℝ} (hS
   have hmem : MemLp (id : EuclideanSpace ℝ ι → EuclideanSpace ℝ ι) 2 μ :=
     ProbabilityTheory.IsGaussian.memLp_two_id
   have hmean : (∫ z : EuclideanSpace ℝ ι, z ∂μ) = 0 := by simp [hμ]
-  have hbilin : ProbabilityTheory.covarianceBilin μ x y
-      = ⟪covarianceOperator μ x, y⟫_ℝ := by
-    rw [ProbabilityTheory.covarianceBilin_apply hmem,
-      ProbabilityTheory.covarianceOperator_inner hmem]
-    simp [hmean]
-  rw [← hbilin]
+  rw [← covarianceBilin_eq_inner_covarianceOperator hmem hmean x y]
   simpa [hμ] using
     ProbabilityTheory.covarianceBilin_multivariateGaussian
       (μ := (0 : EuclideanSpace ℝ ι)) hS x y

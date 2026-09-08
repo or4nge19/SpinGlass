@@ -118,11 +118,77 @@ lemma measurable_DisorderSample_snd (N : ℕ) :
     Measurable (DisorderSample.snd (N := N)) :=
   measurable_snd
 
+/-- **The joint law of a pair of independent centered Gaussian disorders** with prescribed
+covariance matrices. -/
+def pairSampleLaw (N : ℕ) (S T : Matrix (Config N) (Config N) ℝ) : Measure (DisorderSample N) :=
+  (multivariateGaussian (0 : EnergySpace N) S).prod (multivariateGaussian (0 : EnergySpace N) T)
+
+instance isProbabilityMeasure_pairSampleLaw (N : ℕ) (S T : Matrix (Config N) (Config N) ℝ) :
+    IsProbabilityMeasure (pairSampleLaw N S T) :=
+  inferInstanceAs (IsProbabilityMeasure
+    ((multivariateGaussian (0 : EnergySpace N) S).prod
+      (multivariateGaussian (0 : EnergySpace N) T)))
+
+/-- `DisorderSample N` as a measure space carrying `pairSampleLaw`. -/
+@[instance_reducible] def pairMeasureSpace (N : ℕ) (S T : Matrix (Config N) (Config N) ℝ) :
+    MeasureSpace (DisorderSample N) :=
+  ⟨pairSampleLaw N S T⟩
+
+/-- **A pair of independent centered Gaussian disorders with prescribed positive semidefinite
+covariance kernels exists.** Every downstream interpolation — Guerra's replica-symmetric
+comparison, the Guerra–Toninelli splitting, and the isolation of a single `p`-spin term of a mixed
+Hamiltonian — is an instance of this. -/
+theorem exists_gaussianDisorder_pair_indepFun (N : ℕ) {S T : Matrix (Config N) (Config N) ℝ}
+    (hS : S.PosSemidef) (hT : T.PosSemidef) :
+    ∃ (Ω : Type) (_ : MeasureSpace Ω) (_ : IsProbabilityMeasure (ℙ : Measure Ω))
+      (G₁ : GaussianDisorder (Ω := Ω) (N := N) (ℙ : Measure Ω) (fun σ τ => S σ τ))
+      (G₂ : GaussianDisorder (Ω := Ω) (N := N) (ℙ : Measure Ω) (fun σ τ => T σ τ)),
+      ProbabilityTheory.IndepFun G₁.U G₂.U (ℙ : Measure Ω) := by
+  classical
+  let inst : MeasureSpace (DisorderSample N) := pairMeasureSpace N S T
+  refine ⟨DisorderSample N, inst, ?_, ?_⟩
+  · exact isProbabilityMeasure_pairSampleLaw N S T
+  set μ₁ : Measure (EnergySpace N) := multivariateGaussian (0 : EnergySpace N) S with hμ₁
+  set μ₂ : Measure (EnergySpace N) := multivariateGaussian (0 : EnergySpace N) T with hμ₂
+  have hprob₁ : IsProbabilityMeasure μ₁ := by rw [hμ₁]; infer_instance
+  have hprob₂ : IsProbabilityMeasure μ₂ := by rw [hμ₂]; infer_instance
+  have hmapfst : (ℙ : Measure (DisorderSample N)).map DisorderSample.fst = μ₁ := by
+    have hfp := Measure.map_fst_prod (μ := μ₁) (ν := μ₂)
+    rw [measure_univ, one_smul] at hfp
+    exact hfp
+  have hmapsnd : (ℙ : Measure (DisorderSample N)).map DisorderSample.snd = μ₂ := by
+    have hsp := Measure.map_snd_prod (μ := μ₁) (ν := μ₂)
+    rw [measure_univ, one_smul] at hsp
+    exact hsp
+  refine ⟨{ U := DisorderSample.fst
+            measU := measurable_DisorderSample_fst N
+            hU := by
+              have : ProbabilityTheory.IsGaussian
+                  ((ℙ : Measure (DisorderSample N)).map DisorderSample.fst) := by
+                rw [hmapfst, hμ₁]; infer_instance
+              exact ProbabilityTheory.IsGaussian.hasGaussianLaw
+            mean0 := by rw [hmapfst, hμ₁]; simp
+            cov_eq := fun σ τ => by
+              rw [hmapfst, hμ₁]
+              exact inner_covarianceOperator_multivariateGaussian_std_basis S hS σ τ },
+          { U := DisorderSample.snd
+            measU := measurable_DisorderSample_snd N
+            hU := by
+              have : ProbabilityTheory.IsGaussian
+                  ((ℙ : Measure (DisorderSample N)).map DisorderSample.snd) := by
+                rw [hmapsnd, hμ₂]; infer_instance
+              exact ProbabilityTheory.IsGaussian.hasGaussianLaw
+            mean0 := by rw [hmapsnd, hμ₂]; simp
+            cov_eq := fun σ τ => by
+              rw [hmapsnd, hμ₂]
+              exact inner_covarianceOperator_multivariateGaussian_std_basis T hT σ τ }, ?_⟩
+  exact ProbabilityTheory.indepFun_prod (μ := μ₁) (ν := μ₂)
+    (X := id) (Y := id) measurable_id measurable_id
+
 /-- The joint disorder law: independent centered Gaussians with the SK and reference
 covariances. -/
 def disorderSampleLaw (N : ℕ) (β q : ℝ) : Measure (DisorderSample N) :=
-  (multivariateGaussian (0 : EnergySpace N) (skCovMatrix N β)).prod
-    (multivariateGaussian (0 : EnergySpace N) (refCovMatrix N β q))
+  pairSampleLaw N (skCovMatrix N β) (refCovMatrix N β q)
 
 instance isProbabilityMeasure_disorderSampleLaw (N : ℕ) (β q : ℝ) :
     IsProbabilityMeasure (disorderSampleLaw N β q) := by
@@ -146,54 +212,9 @@ carrying independent centered Gaussian Hamiltonians whose covariance kernels are
 theorem exists_skDisorder_simpleDisorder_indepFun (N : ℕ) (β q : ℝ) (hq : 0 ≤ q) :
     ∃ (Ω : Type) (_ : MeasureSpace Ω) (_ : IsProbabilityMeasure (ℙ : Measure Ω))
       (sk : SKDisorder (Ω := Ω) N β) (sim : SimpleDisorder (Ω := Ω) N β q),
-      ProbabilityTheory.IndepFun sk.U sim.U (ℙ : Measure Ω) := by
-  classical
-  let inst : MeasureSpace (DisorderSample N) := disorderMeasureSpace N β q
-  refine ⟨DisorderSample N, inst, ?_, ?_⟩
-  · exact isProbabilityMeasure_disorderSampleLaw N β q
-  set μsk : Measure (EnergySpace N) :=
-    multivariateGaussian (0 : EnergySpace N) (skCovMatrix N β) with hμsk
-  set μref : Measure (EnergySpace N) :=
-    multivariateGaussian (0 : EnergySpace N) (refCovMatrix N β q) with hμref
-  have hSsk : (skCovMatrix N β).PosSemidef := posSemidef_skCovMatrix N β
-  have hSref : (refCovMatrix N β q).PosSemidef := posSemidef_refCovMatrix N β q hq
-  have hprobsk : IsProbabilityMeasure μsk := by rw [hμsk]; infer_instance
-  have hprobref : IsProbabilityMeasure μref := by rw [hμref]; infer_instance
-  -- The marginals of the product law are the two prescribed Gaussians.
-  have hmapfst : (ℙ : Measure (DisorderSample N)).map DisorderSample.fst = μsk := by
-    have hfp := Measure.map_fst_prod (μ := μsk) (ν := μref)
-    rw [measure_univ, one_smul] at hfp
-    exact hfp
-  have hmapsnd : (ℙ : Measure (DisorderSample N)).map DisorderSample.snd = μref := by
-    have hsp := Measure.map_snd_prod (μ := μsk) (ν := μref)
-    rw [measure_univ, one_smul] at hsp
-    exact hsp
-  refine ⟨{ U := DisorderSample.fst
-            measU := measurable_DisorderSample_fst N
-            hU := by
-              have : ProbabilityTheory.IsGaussian
-                  ((ℙ : Measure (DisorderSample N)).map DisorderSample.fst) := by
-                rw [hmapfst, hμsk]; infer_instance
-              exact ProbabilityTheory.IsGaussian.hasGaussianLaw
-            mean0 := by rw [hmapfst, hμsk]; simp
-            cov_eq := fun σ τ => by
-              rw [hmapfst, hμsk]
-              exact inner_covarianceOperator_multivariateGaussian_std_basis
-                (skCovMatrix N β) hSsk σ τ },
-          { U := DisorderSample.snd
-            measU := measurable_DisorderSample_snd N
-            hU := by
-              have : ProbabilityTheory.IsGaussian
-                  ((ℙ : Measure (DisorderSample N)).map DisorderSample.snd) := by
-                rw [hmapsnd, hμref]; infer_instance
-              exact ProbabilityTheory.IsGaussian.hasGaussianLaw
-            mean0 := by rw [hmapsnd, hμref]; simp
-            cov_eq := fun σ τ => by
-              rw [hmapsnd, hμref]
-              exact inner_covarianceOperator_multivariateGaussian_std_basis
-                (refCovMatrix N β q) hSref σ τ }, ?_⟩
-  exact ProbabilityTheory.indepFun_prod (μ := μsk) (ν := μref)
-    (X := id) (Y := id) measurable_id measurable_id
+      ProbabilityTheory.IndepFun sk.U sim.U (ℙ : Measure Ω) :=
+  exists_gaussianDisorder_pair_indepFun N (posSemidef_skCovMatrix N β)
+    (posSemidef_refCovMatrix N β q hq)
 
 end
 
