@@ -261,6 +261,93 @@ theorem satisfiesGhirlandaGuerra_map {μ : Measure (ℕ → ℕ → OverlapValue
   rw [e1, e2, e3, Finset.sum_congr rfl e4]
   exact hμ n hn (f.comp (mapEntrywise ψ)) hf' (φ.comp ψ)
 
+/-! ### `DependsOnFirst` is factorisation through the finite overlap block
+
+Talagrand's restriction on the test function — that it depend only on `x_{l,l'}` for `l, l' ≤ n` —
+says exactly that it factors through the `n × n` block of the array. Making that precise turns the
+predicate from an ad hoc side condition into a usable one: *every* continuous function of the
+finite overlap matrix is an admissible test function, and the admissible ones form an algebra. -/
+
+/-- Restriction of an array to its first `n × n` block. -/
+def blockRestrict (n : ℕ) : C(ℕ → ℕ → OverlapValue, Fin n → Fin n → OverlapValue) :=
+  ⟨fun R l l' => R l l',
+    continuous_pi fun l => continuous_pi fun l' =>
+      (continuous_apply (l' : ℕ)).comp (continuous_apply (l : ℕ))⟩
+
+@[simp] lemma blockRestrict_apply (n : ℕ) (R : ℕ → ℕ → OverlapValue) (l l' : Fin n) :
+    blockRestrict n R l l' = R l l' := rfl
+
+/-- Extension of an `n × n` block to a full array, constant outside the block. -/
+def blockExtend (n : ℕ) (d : OverlapValue) :
+    C(Fin n → Fin n → OverlapValue, ℕ → ℕ → OverlapValue) :=
+  ⟨fun x l l' => if h : l < n ∧ l' < n then x ⟨l, h.1⟩ ⟨l', h.2⟩ else d, by
+    refine continuous_pi fun l => continuous_pi fun l' => ?_
+    by_cases h : l < n ∧ l' < n
+    · have hfun : (fun x : Fin n → Fin n → OverlapValue =>
+          if h' : l < n ∧ l' < n then x ⟨l, h'.1⟩ ⟨l', h'.2⟩ else d)
+          = fun x => x ⟨l, h.1⟩ ⟨l', h.2⟩ := by
+        funext x; simp [h]
+      rw [hfun]
+      exact (continuous_apply _).comp (continuous_apply _)
+    · have hfun : (fun x : Fin n → Fin n → OverlapValue =>
+          if h' : l < n ∧ l' < n then x ⟨l, h'.1⟩ ⟨l', h'.2⟩ else d)
+          = fun _ => d := by
+        funext x; simp [h]
+      rw [hfun]
+      exact continuous_const⟩
+
+lemma blockExtend_apply_of_lt (n : ℕ) (d : OverlapValue)
+    (x : Fin n → Fin n → OverlapValue) {l l' : ℕ} (hl : l < n) (hl' : l' < n) :
+    blockExtend n d x l l' = x ⟨l, hl⟩ ⟨l', hl'⟩ := by
+  simp [blockExtend, hl, hl']
+
+/-- **`DependsOnFirst n f` means `f` factors through the `n × n` overlap block.** -/
+theorem dependsOnFirst_iff_exists (n : ℕ) (f : C(ℕ → ℕ → OverlapValue, ℝ)) :
+    DependsOnFirst n f ↔
+      ∃ g : C(Fin n → Fin n → OverlapValue, ℝ), ∀ R, f R = g (blockRestrict n R) := by
+  constructor
+  · intro hf
+    refine ⟨f.comp (blockExtend n ⟨0, by norm_num⟩), fun R => ?_⟩
+    exact hf R _ fun l hl l' hl' =>
+      (blockExtend_apply_of_lt n _ (blockRestrict n R) hl hl').symm
+  · rintro ⟨g, hg⟩ R R' hRR'
+    rw [hg, hg]
+    congr 1
+    funext l l'
+    exact hRR' l l.2 l' l'.2
+
+/-- Every continuous function of the `n × n` overlap block is an admissible test function. -/
+theorem dependsOnFirst_comp_blockRestrict (n : ℕ)
+    (g : C(Fin n → Fin n → OverlapValue, ℝ)) :
+    DependsOnFirst n (g.comp (blockRestrict n)) :=
+  (dependsOnFirst_iff_exists n (g.comp (blockRestrict n))).2 ⟨g, fun _ => rfl⟩
+
+lemma dependsOnFirst_const (n : ℕ) (c : ℝ) :
+    DependsOnFirst n (fun _ : ℕ → ℕ → OverlapValue => c) := fun _ _ _ => rfl
+
+lemma dependsOnFirst_entry (n : ℕ) {l l' : ℕ} (hl : l < n) (hl' : l' < n)
+    (φ : C(OverlapValue, ℝ)) :
+    DependsOnFirst n fun R : ℕ → ℕ → OverlapValue => φ (R l l') := by
+  intro R R' h
+  simp only []
+  rw [h l hl l' hl']
+
+lemma DependsOnFirst.add {n : ℕ} {f g : (ℕ → ℕ → OverlapValue) → ℝ}
+    (hf : DependsOnFirst n f) (hg : DependsOnFirst n g) : DependsOnFirst n (f + g) :=
+  fun R R' h => by simp [Pi.add_apply, hf R R' h, hg R R' h]
+
+lemma DependsOnFirst.mul {n : ℕ} {f g : (ℕ → ℕ → OverlapValue) → ℝ}
+    (hf : DependsOnFirst n f) (hg : DependsOnFirst n g) : DependsOnFirst n (f * g) :=
+  fun R R' h => by simp [Pi.mul_apply, hf R R' h, hg R R' h]
+
+lemma DependsOnFirst.smul {n : ℕ} {f : (ℕ → ℕ → OverlapValue) → ℝ} (c : ℝ)
+    (hf : DependsOnFirst n f) : DependsOnFirst n (c • f) :=
+  fun R R' h => by simp [Pi.smul_apply, hf R R' h]
+
+lemma DependsOnFirst.mono {m n : ℕ} (hmn : m ≤ n) {f : (ℕ → ℕ → OverlapValue) → ℝ}
+    (hf : DependsOnFirst m f) : DependsOnFirst n f :=
+  fun R R' h => hf R R' fun l hl l' hl' => h l (hl.trans_le hmn) l' (hl'.trans_le hmn)
+
 /-! ### Reduction to a dense set of test functions
 
 The identities (15.40) are **linear in the test function `φ`** and each term is bounded by
@@ -269,11 +356,19 @@ to verify them for `φ` ranging over a dense subset of `C([-1,1], ℝ)` — for 
 (Stone–Weierstrass). This is what lets a family of models whose covariance profiles span the
 polynomials produce the identities for every continuous `φ`. -/
 
-lemma integrable_continuousMap {μ : Measure (ℕ → ℕ → OverlapValue)} [IsFiniteMeasure μ]
-    (g : C(ℕ → ℕ → OverlapValue, ℝ)) : Integrable (fun R => g R) μ :=
+lemma integrable_continuousMap {X : Type*} [TopologicalSpace X] [CompactSpace X]
+    [MeasurableSpace X] [OpensMeasurableSpace X] {μ : Measure X} [IsFiniteMeasure μ]
+    (g : C(X, ℝ)) : Integrable (fun x => g x) μ :=
   Integrable.of_bound g.continuous.aestronglyMeasurable ‖g‖
-    (Filter.Eventually.of_forall fun R => by
-      simpa [Real.norm_eq_abs] using g.norm_coe_le_norm R)
+    (Filter.Eventually.of_forall fun x => by
+      simpa [Real.norm_eq_abs] using g.norm_coe_le_norm x)
+
+/-- A continuous real function on a compact space is integrable against any finite measure: it is
+bounded. The unbundled form of `SpinGlass.integrable_continuousMap`. -/
+lemma integrable_of_continuous {X : Type*} [TopologicalSpace X] [CompactSpace X]
+    [MeasurableSpace X] [OpensMeasurableSpace X] {μ : Measure X} [IsFiniteMeasure μ]
+    {f : X → ℝ} (hf : Continuous f) : Integrable f μ :=
+  integrable_continuousMap (μ := μ) ⟨f, hf⟩
 
 /-- For a fixed weight `g`, the linear functional `φ ↦ ∫ φ(R_{l,l'}) g(R) dμ` is Lipschitz in the
 uniform norm, with constant `‖g‖`. -/
@@ -304,9 +399,34 @@ lemma lipschitzWith_integral_comp_mul (μ : Measure (ℕ → ℕ → OverlapValu
         simpa using this
     _ = ↑‖g‖₊ * dist φ₁ φ₂ := by rw [coe_nnnorm]; ring
 
-/-- **The Ghirlanda–Guerra identities need only be checked on a dense set of test functions.** -/
-theorem satisfiesGhirlandaGuerra_of_dense {μ : Measure (ℕ → ℕ → OverlapValue)}
-    [IsProbabilityMeasure μ] {S : Set C(OverlapValue, ℝ)} (hS : Dense S)
+/-- The functional `φ ↦ ∫ φ(R_{l,l'}) g(R) dμ` is additive. -/
+lemma integral_comp_mul_add (μ : Measure (ℕ → ℕ → OverlapValue)) [IsProbabilityMeasure μ]
+    (g : C(ℕ → ℕ → OverlapValue, ℝ)) (l l' : ℕ) (φ₁ φ₂ : C(OverlapValue, ℝ)) :
+    (∫ R, (φ₁ + φ₂) (R l l') * g R ∂μ)
+      = (∫ R, φ₁ (R l l') * g R ∂μ) + ∫ R, φ₂ (R l l') * g R ∂μ := by
+  have hi : ∀ φ : C(OverlapValue, ℝ), Integrable (fun R => φ (R l l') * g R) μ := fun φ =>
+    integrable_continuousMap (μ := μ) ((φ.comp (evalCM l l')) * g)
+  rw [← MeasureTheory.integral_add (hi φ₁) (hi φ₂)]
+  exact MeasureTheory.integral_congr_ae (Filter.Eventually.of_forall fun R => by
+    simp [ContinuousMap.add_apply]; ring)
+
+/-- The functional `φ ↦ ∫ φ(R_{l,l'}) g(R) dμ` is homogeneous. -/
+lemma integral_comp_mul_smul (μ : Measure (ℕ → ℕ → OverlapValue)) [IsProbabilityMeasure μ]
+    (g : C(ℕ → ℕ → OverlapValue, ℝ)) (l l' : ℕ) (c : ℝ) (φ : C(OverlapValue, ℝ)) :
+    (∫ R, (c • φ) (R l l') * g R ∂μ) = c * ∫ R, φ (R l l') * g R ∂μ := by
+  rw [← MeasureTheory.integral_const_mul]
+  exact MeasureTheory.integral_congr_ae (Filter.Eventually.of_forall fun R => by
+    simp [ContinuousMap.smul_apply]; ring)
+
+/-- **The Ghirlanda–Guerra identities need only be checked on a set whose *span* is dense.** For
+fixed `n` and `f` the identity is a *linear* condition on the test function `φ` and a closed one, so
+it propagates from `S` to `span S` and then to its closure. The span is what matters: the monomials
+`x ↦ xᵖ` are not dense in `C([-1,1], ℝ)`, but they span a dense subspace, and monomials are exactly
+what a family of models produces. -/
+theorem satisfiesGhirlandaGuerra_of_denseSpan {μ : Measure (ℕ → ℕ → OverlapValue)}
+    [IsProbabilityMeasure μ] {S : Set C(OverlapValue, ℝ)}
+    (hS : Dense ((Submodule.span ℝ S : Submodule ℝ C(OverlapValue, ℝ)) :
+      Set C(OverlapValue, ℝ)))
     (h : ∀ (n : ℕ), 0 < n → ∀ f : C(ℕ → ℕ → OverlapValue, ℝ), DependsOnFirst n f →
       ∀ φ ∈ S,
         (∫ R, φ (R 0 n) * f R ∂μ)
@@ -318,6 +438,9 @@ theorem satisfiesGhirlandaGuerra_of_dense {μ : Measure (ℕ → ℕ → Overlap
   set B : C(OverlapValue, ℝ) → ℝ := fun φ =>
     (1 / (n : ℝ)) * ((∫ R, φ (R 0 n) ∂μ) * ∫ R, f R ∂μ)
       + (1 / (n : ℝ)) * ∑ l ∈ Finset.Ico 1 n, ∫ R, φ (R 0 l) * f R ∂μ with hB
+  have hone : ∀ φ : C(OverlapValue, ℝ), (∫ R, φ (R 0 n) ∂μ)
+      = ∫ R, φ (R 0 n) * (1 : C(ℕ → ℕ → OverlapValue, ℝ)) R ∂μ := by
+    intro φ; simp
   have hcA : Continuous A := (lipschitzWith_integral_comp_mul μ f 0 n).continuous
   have hcB : Continuous B := by
     refine Continuous.add (continuous_const.mul (Continuous.mul ?_ continuous_const))
@@ -326,12 +449,129 @@ theorem satisfiesGhirlandaGuerra_of_dense {μ : Measure (ℕ → ℕ → Overlap
         (1 : C(ℕ → ℕ → OverlapValue, ℝ)) 0 n).continuous).congr fun φ => ?_
       simp
     · exact (lipschitzWith_integral_comp_mul μ f 0 l).continuous
-  have hclosed : IsClosed {φ : C(OverlapValue, ℝ) | A φ = B φ} := isClosed_eq hcA hcB
-  have hsub : S ⊆ {φ : C(OverlapValue, ℝ) | A φ = B φ} := fun φ hφ => h n hn f hf φ hφ
-  have : (Set.univ : Set C(OverlapValue, ℝ)) ⊆ {φ | A φ = B φ} := by
+  -- the identity is linear in `φ`
+  have hAadd : ∀ φ₁ φ₂, A (φ₁ + φ₂) = A φ₁ + A φ₂ := fun φ₁ φ₂ =>
+    integral_comp_mul_add μ f 0 n φ₁ φ₂
+  have hAsmul : ∀ (c : ℝ) φ, A (c • φ) = c * A φ := fun c φ =>
+    integral_comp_mul_smul μ f 0 n c φ
+  have hBadd : ∀ φ₁ φ₂, B (φ₁ + φ₂) = B φ₁ + B φ₂ := by
+    intro φ₁ φ₂
+    simp only [hB, hone]
+    rw [integral_comp_mul_add μ 1 0 n φ₁ φ₂,
+      Finset.sum_congr rfl fun l _ => integral_comp_mul_add μ f 0 l φ₁ φ₂,
+      Finset.sum_add_distrib]
+    ring
+  have hBsmul : ∀ (c : ℝ) φ, B (c • φ) = c * B φ := by
+    intro c φ
+    simp only [hB, hone]
+    rw [integral_comp_mul_smul μ 1 0 n c φ,
+      Finset.sum_congr rfl fun l _ => integral_comp_mul_smul μ f 0 l c φ,
+      ← Finset.mul_sum]
+    ring
+  have hspan : ((Submodule.span ℝ S : Submodule ℝ C(OverlapValue, ℝ)) :
+      Set C(OverlapValue, ℝ)) ⊆ {φ | A φ = B φ} := by
+    intro φ hφ
+    induction hφ using Submodule.span_induction with
+    | mem x hx => exact h n hn f hf x hx
+    | zero =>
+        have hA0 : A 0 = 0 := by simp [hA]
+        have hB0 : B 0 = 0 := by simp [hB]
+        simp [hA0, hB0]
+    | add x y _ _ ihx ihy => simp only [Set.mem_ofPred_eq] at *; rw [hAadd, hBadd, ihx, ihy]
+    | smul c x _ ih => simp only [Set.mem_ofPred_eq] at *; rw [hAsmul, hBsmul, ih]
+  have hall : (Set.univ : Set C(OverlapValue, ℝ)) ⊆ {φ | A φ = B φ} := by
     rw [← hS.closure_eq]
-    exact hclosed.closure_subset_iff.2 hsub
-  exact fun φ => this (Set.mem_univ φ)
+    exact (isClosed_eq hcA hcB).closure_subset_iff.2 hspan
+  exact fun φ => hall (Set.mem_univ φ)
+
+/-- **The Ghirlanda–Guerra identities need only be checked on a dense set of test functions.** -/
+theorem satisfiesGhirlandaGuerra_of_dense {μ : Measure (ℕ → ℕ → OverlapValue)}
+    [IsProbabilityMeasure μ] {S : Set C(OverlapValue, ℝ)} (hS : Dense S)
+    (h : ∀ (n : ℕ), 0 < n → ∀ f : C(ℕ → ℕ → OverlapValue, ℝ), DependsOnFirst n f →
+      ∀ φ ∈ S,
+        (∫ R, φ (R 0 n) * f R ∂μ)
+          = (1 / (n : ℝ)) * ((∫ R, φ (R 0 n) ∂μ) * ∫ R, f R ∂μ)
+            + (1 / (n : ℝ)) * ∑ l ∈ Finset.Ico 1 n, ∫ R, φ (R 0 l) * f R ∂μ) :
+    SatisfiesGhirlandaGuerra μ :=
+  satisfiesGhirlandaGuerra_of_denseSpan (hS.mono Submodule.subset_span) h
+
+/-! ### Polynomial and monomial test functions -/
+
+lemma dense_polynomialFunctions :
+    Dense ((polynomialFunctions (Set.Icc (-1 : ℝ) 1) :
+      Subalgebra ℝ C(Set.Icc (-1 : ℝ) 1, ℝ)) : Set C(Set.Icc (-1 : ℝ) 1, ℝ)) := by
+  rw [dense_iff_closure_eq, ← Subalgebra.topologicalClosure_coe,
+    polynomialFunctions_closure_eq_top (-1 : ℝ) 1]
+  rfl
+
+/-- The polynomial functions on `[-1,1]` lie in the span of the monomials. -/
+lemma polynomialFunctions_subset_span_monomials :
+    ((polynomialFunctions (Set.Icc (-1 : ℝ) 1) :
+        Subalgebra ℝ C(Set.Icc (-1 : ℝ) 1, ℝ)) : Set C(Set.Icc (-1 : ℝ) 1, ℝ))
+      ⊆ ((Submodule.span ℝ (Set.range fun p : ℕ =>
+          ((Polynomial.X : Polynomial ℝ) ^ p).toContinuousMapOn (Set.Icc (-1 : ℝ) 1)) :
+        Submodule ℝ C(Set.Icc (-1 : ℝ) 1, ℝ)) : Set C(Set.Icc (-1 : ℝ) 1, ℝ)) := by
+  rw [polynomialFunctions_coe]
+  rintro _ ⟨p, rfl⟩
+  induction p using Polynomial.induction_on' with
+  | add p q hp hq =>
+      have : (Polynomial.toContinuousMapOnAlgHom (Set.Icc (-1 : ℝ) 1)) (p + q)
+          = (Polynomial.toContinuousMapOnAlgHom (Set.Icc (-1 : ℝ) 1)) p
+            + (Polynomial.toContinuousMapOnAlgHom (Set.Icc (-1 : ℝ) 1)) q := map_add _ _ _
+      rw [this]
+      exact Submodule.add_mem _ hp hq
+  | monomial k a =>
+      have hmon : (Polynomial.toContinuousMapOnAlgHom (Set.Icc (-1 : ℝ) 1))
+            (Polynomial.monomial k a)
+          = a • ((Polynomial.X : Polynomial ℝ) ^ k).toContinuousMapOn (Set.Icc (-1 : ℝ) 1) := by
+        ext x
+        simp [Polynomial.toContinuousMapOnAlgHom, Polynomial.toContinuousMapOn,
+          Polynomial.eval_monomial]
+      rw [hmon]
+      exact Submodule.smul_mem _ _ (Submodule.subset_span ⟨k, rfl⟩)
+
+/-- **Monomial test functions suffice.** The monomials `x ↦ xᵖ` are not dense in `C([-1,1], ℝ)`,
+but they span a dense subspace (Stone–Weierstrass), and the identity is linear in the test function.
+This is the sharpest usable form: a mixed `p`-spin family has covariance profile
+`ξ(r) = ∑ₚ βₚ² rᵖ`, and differentiating in the couplings isolates the individual monomials. -/
+theorem satisfiesGhirlandaGuerra_of_monomial {μ : Measure (ℕ → ℕ → OverlapValue)}
+    [IsProbabilityMeasure μ]
+    (h : ∀ (n : ℕ), 0 < n → ∀ f : C(ℕ → ℕ → OverlapValue, ℝ), DependsOnFirst n f →
+      ∀ p : ℕ,
+        (∫ R, entry R 0 n ^ p * f R ∂μ)
+          = (1 / (n : ℝ)) * ((∫ R, entry R 0 n ^ p ∂μ) * ∫ R, f R ∂μ)
+            + (1 / (n : ℝ)) * ∑ l ∈ Finset.Ico 1 n, ∫ R, entry R 0 l ^ p * f R ∂μ) :
+    SatisfiesGhirlandaGuerra μ := by
+  refine satisfiesGhirlandaGuerra_of_denseSpan
+    (dense_polynomialFunctions.mono polynomialFunctions_subset_span_monomials) ?_
+  rintro n hn f hf φ ⟨p, rfl⟩
+  have hval : ∀ (R : ℕ → ℕ → OverlapValue) (l : ℕ),
+      (((Polynomial.X : Polynomial ℝ) ^ p).toContinuousMapOn (Set.Icc (-1 : ℝ) 1)) (R 0 l)
+        = entry R 0 l ^ p := by
+    intro R l
+    simp [Polynomial.toContinuousMapOn, entry]
+  simp only [hval]
+  exact h n hn f hf p
+
+/-- **Polynomial test functions suffice.** -/
+theorem satisfiesGhirlandaGuerra_of_polynomial {μ : Measure (ℕ → ℕ → OverlapValue)}
+    [IsProbabilityMeasure μ]
+    (h : ∀ (n : ℕ), 0 < n → ∀ f : C(ℕ → ℕ → OverlapValue, ℝ), DependsOnFirst n f →
+      ∀ p : Polynomial ℝ,
+        (∫ R, p.eval (entry R 0 n) * f R ∂μ)
+          = (1 / (n : ℝ)) * ((∫ R, p.eval (entry R 0 n) ∂μ) * ∫ R, f R ∂μ)
+            + (1 / (n : ℝ)) * ∑ l ∈ Finset.Ico 1 n, ∫ R, p.eval (entry R 0 l) * f R ∂μ) :
+    SatisfiesGhirlandaGuerra μ := by
+  refine satisfiesGhirlandaGuerra_of_dense (S := Set.range fun p : Polynomial ℝ =>
+    p.toContinuousMapOn (Set.Icc (-1 : ℝ) 1)) ?_ ?_
+  · have hcoe : ((polynomialFunctions (Set.Icc (-1 : ℝ) 1) :
+        Subalgebra ℝ C(Set.Icc (-1 : ℝ) 1, ℝ)) : Set C(Set.Icc (-1 : ℝ) 1, ℝ))
+        = Set.range fun p : Polynomial ℝ => p.toContinuousMapOn (Set.Icc (-1 : ℝ) 1) :=
+      polynomialFunctions_coe _
+    rw [← hcoe]
+    exact dense_polynomialFunctions
+  · rintro n hn f hf φ ⟨p, rfl⟩
+    exact h n hn f hf p
 
 /-! ### Panchenko's form of the identities
 

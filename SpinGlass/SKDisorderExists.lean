@@ -1,3 +1,4 @@
+import Common.Mathlib.Probability.Distributions.Gaussian.MultivariateCovariance
 import SpinGlass.SKModel
 import SpinGlass.CovariancePosSemidef
 import Mathlib.Probability.Distributions.Gaussian.Multivariate
@@ -19,6 +20,7 @@ with exactly those covariances, and the product measure on
 
 ## Main statements
 
+- `mulVec_ofLp_std_basis`, `dotProduct_ofLp_std_basis`: matrices and Dirac vectors.
 - `inner_covarianceOperator_multivariateGaussian_std_basis`: the covariance operator of a centered
   `multivariateGaussian` reads off the defining matrix in the Dirac basis.
 - `exists_skDisorder_simpleDisorder_indepFun`: **the disorder pair exists** for `0 ≤ q`.
@@ -35,6 +37,30 @@ variable {N : ℕ}
 
 /-! ### Reading off the covariance of a centered multivariate Gaussian -/
 
+/-- Applying a matrix to a Dirac vector reads off a column. -/
+lemma mulVec_ofLp_std_basis (S : Matrix (Config N) (Config N) ℝ) (τ i : Config N) :
+    (S *ᵥ (WithLp.ofLp (std_basis N τ))) i = S i τ := by
+  classical
+  have hbasis : ∀ ρ κ : Config N,
+      (std_basis N ρ : Config N → ℝ) κ = if ρ = κ then 1 else 0 := by
+    intro ρ κ
+    by_cases hρκ : ρ = κ
+    · subst hρκ; simp [std_basis]
+    · simp [hρκ, std_basis]
+  simp [Matrix.mulVec, dotProduct, hbasis]
+
+/-- Pairing with a Dirac vector reads off a coordinate. -/
+lemma dotProduct_ofLp_std_basis (v : Config N → ℝ) (τ : Config N) :
+    v ⬝ᵥ (WithLp.ofLp (std_basis N τ)) = v τ := by
+  classical
+  have hbasis : ∀ ρ κ : Config N,
+      (std_basis N ρ : Config N → ℝ) κ = if ρ = κ then 1 else 0 := by
+    intro ρ κ
+    by_cases hρκ : ρ = κ
+    · subst hρκ; simp [std_basis]
+    · simp [hρκ, std_basis]
+  simp [dotProduct, hbasis]
+
 /-- For a centered `multivariateGaussian`, the covariance operator recovers the defining matrix in
 the Dirac basis. -/
 lemma inner_covarianceOperator_multivariateGaussian_std_basis
@@ -43,38 +69,19 @@ lemma inner_covarianceOperator_multivariateGaussian_std_basis
         (multivariateGaussian (0 : EnergySpace N) S) (std_basis N σ)) (std_basis N τ)
       = S σ τ := by
   classical
-  set μ : Measure (EnergySpace N) := multivariateGaussian (0 : EnergySpace N) S with hμdef
-  have hmem : MeasureTheory.MemLp (id : EnergySpace N → EnergySpace N) 2 μ :=
-    ProbabilityTheory.IsGaussian.memLp_two_id
-  have hmean : (∫ x : EnergySpace N, x ∂μ) = 0 := by
-    simp [hμdef]
-  -- `covarianceBilin` and `⟪covarianceOperator ·, ·⟫` agree because the mean vanishes.
-  have hbilin : ProbabilityTheory.covarianceBilin μ (std_basis N σ) (std_basis N τ)
-      = inner ℝ (ProbabilityTheory.covarianceOperator μ (std_basis N σ)) (std_basis N τ) := by
-    rw [ProbabilityTheory.covarianceBilin_apply hmem,
-      ProbabilityTheory.covarianceOperator_inner hmem]
-    simp [hmean]
-  -- Mathlib evaluates `covarianceBilin` of a `multivariateGaussian` as a quadratic form.
-  have hquad : ProbabilityTheory.covarianceBilin μ (std_basis N σ) (std_basis N τ)
-      = (std_basis N σ) ⬝ᵥ S *ᵥ (std_basis N τ) := by
-    simpa [hμdef] using
-      ProbabilityTheory.covarianceBilin_multivariateGaussian (μ := (0 : EnergySpace N)) hS
-        (std_basis N σ) (std_basis N τ)
-  have hdot : (std_basis N σ) ⬝ᵥ S *ᵥ (std_basis N τ) = S σ τ := by
-    have hbasis : ∀ ρ κ : Config N,
-        (std_basis N ρ : Config N → ℝ) κ = if ρ = κ then 1 else 0 := by
-      intro ρ κ
-      by_cases hρκ : ρ = κ
-      · subst hρκ; simp [std_basis]
-      · simp [hρκ, std_basis]
-    have hmv : ∀ i : Config N, (S *ᵥ (std_basis N τ : Config N → ℝ)) i = S i τ := by
-      intro i
-      simp [Matrix.mulVec, dotProduct, hbasis]
-    calc (std_basis N σ) ⬝ᵥ S *ᵥ (std_basis N τ)
-        = ∑ i : Config N, (std_basis N σ : Config N → ℝ) i * S i τ := by
-          simp [dotProduct, hmv]
-      _ = S σ τ := by simp [hbasis]
-  rw [← hbilin, hquad, hdot]
+  have hbasis : ∀ ρ κ : Config N,
+      (std_basis N ρ : Config N → ℝ) κ = if ρ = κ then 1 else 0 := by
+    intro ρ κ
+    by_cases hρκ : ρ = κ
+    · subst hρκ; simp [std_basis]
+    · simp [hρκ, std_basis]
+  have hmv : ∀ i : Config N, (S *ᵥ (WithLp.ofLp (std_basis N τ))) i = S i τ :=
+    mulVec_ofLp_std_basis S τ
+  rw [inner_covarianceOperator_multivariateGaussian (ι := Config N) hS]
+  calc (WithLp.ofLp (std_basis N σ)) ⬝ᵥ S *ᵥ (WithLp.ofLp (std_basis N τ))
+      = ∑ i : Config N, (std_basis N σ : Config N → ℝ) i * S i τ := by
+        simp [dotProduct, hmv]
+    _ = S σ τ := by simp [hbasis]
 
 /-! ### The canonical disorder sample space -/
 

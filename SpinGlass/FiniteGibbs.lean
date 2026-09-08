@@ -89,6 +89,10 @@ noncomputable def Z (H : EnergySpace α) : ℝ :=
 noncomputable def gibbs_pmf (H : EnergySpace α) (σ : α) : ℝ :=
   Real.exp (-H σ) / Z (α := α) H
 
+/-- The **Gibbs average** `⟨f⟩_H = ∑_σ p_H(σ) f σ`. Talagrand Vol. I, §1.1. -/
+noncomputable def gibbs_average (H : EnergySpace α) (f : α → ℝ) : ℝ :=
+  ∑ σ : α, gibbs_pmf (α := α) H σ * f σ
+
 /-- Free energy density with explicit scaling parameter `n` (system size). -/
 noncomputable def free_energy_density (n : ℕ) (H : EnergySpace α) : ℝ :=
   (1 / (n : ℝ)) * Real.log (Z (α := α) H)

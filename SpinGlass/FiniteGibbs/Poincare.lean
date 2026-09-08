@@ -70,6 +70,48 @@ theorem memLp_free_energy_density (n : ℕ) :
       _ = (C0 ^ 2) * (1 + ‖H‖) ^ 2 := by ring
   exact (memLp_two_iff_integrable_sq hmeas).2 hIntSq
 
+/-- The free energy density along an affine path in the Hamiltonian is square-integrable under any
+Gaussian law: the growth bound `abs_free_energy_density_le` is linear, and an affine substitution
+keeps it linear. -/
+theorem memLp_free_energy_density_affine (n : ℕ) (c₀ : EnergySpace α) (y : ℝ) :
+    MemLp (fun H : EnergySpace α => free_energy_density (α := α) n (c₀ + y • H)) 2 μ := by
+  classical
+  set C0 : ℝ := Real.log (Fintype.card α) + 1 with hC0
+  have hC0nn : 0 ≤ C0 := by
+    have := log_card_nonneg (α := α); rw [hC0]; linarith
+  set D : ℝ := C0 * (1 + ‖c₀‖ + |y|) with hD
+  have hDnn : 0 ≤ D := by rw [hD]; positivity
+  have hFmeas : Measurable
+      (fun H : EnergySpace α => free_energy_density (α := α) n (c₀ + y • H)) := by
+    have h1 : Continuous fun H : EnergySpace α => c₀ + y • H := by fun_prop
+    exact ((contDiff_free_energy_density (α := α) (n := n)).continuous.comp h1).measurable
+  have hmeas : AEStronglyMeasurable
+      (fun H : EnergySpace α => free_energy_density (α := α) n (c₀ + y • H)) μ :=
+    hFmeas.aestronglyMeasurable
+  have hIntSq : Integrable
+      (fun H : EnergySpace α => (free_energy_density (α := α) n (c₀ + y • H)) ^ 2) μ := by
+    refine ProbabilityTheory.IsGaussian.integrable_of_abs_le_mul_one_add_norm_pow (μ := μ)
+      (E := EnergySpace α)
+      (F := fun H : EnergySpace α => (free_energy_density (α := α) n (c₀ + y • H)) ^ 2)
+      (by simpa using hFmeas.pow_const 2) (C := D ^ 2) (m := 2) (hC := by positivity) ?_
+    intro H
+    have habs : |free_energy_density (α := α) n (c₀ + y • H)| ≤ C0 * (1 + ‖c₀ + y • H‖) := by
+      simpa [hC0] using (abs_free_energy_density_le (α := α) (n := n) (H := c₀ + y • H))
+    have hnorm : 1 + ‖c₀ + y • H‖ ≤ (1 + ‖c₀‖ + |y|) * (1 + ‖H‖) := by
+      have h1 : ‖c₀ + y • H‖ ≤ ‖c₀‖ + |y| * ‖H‖ := by
+        refine (norm_add_le _ _).trans_eq ?_
+        rw [norm_smul, Real.norm_eq_abs]
+      nlinarith [norm_nonneg c₀, norm_nonneg H, abs_nonneg y]
+    have hle : |free_energy_density (α := α) n (c₀ + y • H)| ≤ D * (1 + ‖H‖) := by
+      refine habs.trans ?_
+      rw [hD, mul_assoc]
+      exact mul_le_mul_of_nonneg_left hnorm hC0nn
+    calc |(free_energy_density (α := α) n (c₀ + y • H)) ^ 2|
+        = |free_energy_density (α := α) n (c₀ + y • H)| ^ 2 := by simp
+      _ ≤ (D * (1 + ‖H‖)) ^ 2 := pow_le_pow_left₀ (abs_nonneg _) hle 2
+      _ = (D ^ 2) * (1 + ‖H‖) ^ 2 := by ring
+  exact (memLp_two_iff_integrable_sq hmeas).2 hIntSq
+
 /-- `Var[free_energy_density; μ] ≤ ‖covarianceOperator μ‖ / n²`. -/
 theorem variance_free_energy_density_le
     (hmean0 : (∫ x : EnergySpace α, x ∂μ) = 0) (n : ℕ) :
@@ -212,6 +254,60 @@ theorem variance_free_energy_density_le_gibbs_covariance
   rw [← MeasureTheory.integral_const_mul]
   exact integral_congr_ae (Filter.Eventually.of_forall fun H =>
     inner_covarianceOperator_gradient_free_energy_density (α := α) (μ := μ) n H)
+
+/-! ### The free energy in an external field
+
+The free energy of `H + c₀` for a deterministic `c₀` is a function of the same disorder with the
+same derivative bound, and its gradient is the Gibbs measure at `H + c₀`. So the sharp
+self-averaging bound holds verbatim with the brackets taken at `H + c₀`: an external field costs
+nothing. This is the form the parameter calculus consumes, where the field carries the external
+magnetic field and the disorder strength multiplies `H`. -/
+
+lemma fderiv_free_energy_density_add_const (n : ℕ) (c₀ x : EnergySpace α) :
+    fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n (H + c₀)) x
+      = fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) (x + c₀) := by
+  have hdiff : Differentiable ℝ (fun H : EnergySpace α => free_energy_density (α := α) n H) :=
+    (contDiff_free_energy_density (α := α) (n := n)).differentiable (by simp)
+  have h := ((hdiff (x + c₀)).hasFDerivAt).comp x ((hasFDerivAt_id x).add_const c₀)
+  simpa [Function.comp_def] using h.fderiv
+
+lemma gradient_free_energy_density_add_const (n : ℕ) (c₀ x : EnergySpace α) :
+    ∇ (fun H : EnergySpace α => free_energy_density (α := α) n (H + c₀)) x
+      = ∇ (fun H : EnergySpace α => free_energy_density (α := α) n H) (x + c₀) :=
+  congrArg _ (fderiv_free_energy_density_add_const (α := α) n c₀ x)
+
+/-- **Self-averaging of the free energy density in an external field, sharp form.** -/
+theorem variance_free_energy_density_add_const_le_gibbs_covariance
+    (hmean0 : (∫ x : EnergySpace α, x ∂μ) = 0) (n : ℕ) (c₀ : EnergySpace α) :
+    Var[(fun H : EnergySpace α => free_energy_density (α := α) n (H + c₀)); μ]
+      ≤ (1 / (n : ℝ)) ^ 2 * ∫ H : EnergySpace α,
+          (∑ σ : α, ∑ τ : α, gibbs_pmf (α := α) (H + c₀) σ * gibbs_pmf (α := α) (H + c₀) τ
+            * (ProbabilityTheory.covarianceOperator μ (std_basis (α := α) σ)) τ) ∂μ := by
+  classical
+  have hf : ContDiff ℝ 1 (fun H : EnergySpace α => free_energy_density (α := α) n (H + c₀)) :=
+    ((contDiff_free_energy_density (α := α) (n := n)).of_le (by simp)).comp
+      (contDiff_id.add contDiff_const)
+  have hderiv : ∀ x : EnergySpace α,
+      ‖fderiv ℝ (fun H : EnergySpace α => free_energy_density (α := α) n (H + c₀)) x‖
+        ≤ (1 / (n : ℝ)) := by
+    intro x
+    rw [fderiv_free_energy_density_add_const (α := α) n c₀ x]
+    exact norm_fderiv_free_energy_density_le (α := α) (n := n) (x + c₀)
+  refine le_trans
+    (ProbabilityTheory.IsGaussian.variance_le_integral_inner_covarianceOperator_gradient
+      (μ := μ) hmean0 hf hderiv) (le_of_eq ?_)
+  have hpt : ∀ H : EnergySpace α,
+      ⟪ProbabilityTheory.covarianceOperator μ
+          (∇ (fun H' : EnergySpace α => free_energy_density (α := α) n (H' + c₀)) H),
+        ∇ (fun H' : EnergySpace α => free_energy_density (α := α) n (H' + c₀)) H⟫
+        = (1 / (n : ℝ)) ^ 2 * ∑ σ : α, ∑ τ : α,
+            gibbs_pmf (α := α) (H + c₀) σ * gibbs_pmf (α := α) (H + c₀) τ
+              * (ProbabilityTheory.covarianceOperator μ (std_basis (α := α) σ)) τ := by
+    intro H
+    rw [gradient_free_energy_density_add_const (α := α) n c₀ H]
+    exact inner_covarianceOperator_gradient_free_energy_density (α := α) (μ := μ) n (H + c₀)
+  rw [← MeasureTheory.integral_const_mul]
+  exact integral_congr_ae (Filter.Eventually.of_forall hpt)
 
 /-! ### Sub-Gaussian concentration -/
 

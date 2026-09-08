@@ -150,7 +150,7 @@ lemma integral_energy_sq_weight (hmean0 : (∫ x : EnergySpace α, x ∂μ) = 0)
   refine integral_congr_ae (Filter.Eventually.of_forall fun H => ?_)
   simp only []
   rw [fderiv_energy_weight_apply]
-  simp only [freshCov]
+  simp only [freshCov_apply]
 
 /-! ### The second moment of the energy -/
 
@@ -540,7 +540,7 @@ theorem integral_gibbs_average_sub_mean_sq_eq_covariance
     intro H
     rw [gibbs_average_two (α := α) H
       (fun σ τ => H σ * (covarianceOperator μ (std_basis (α := α) σ)) τ)]
-    simp only [freshCov, Finset.mul_sum]
+    simp only [freshCov_apply, Finset.mul_sum]
     exact Finset.sum_congr rfl fun σ _ => Finset.sum_congr rfl fun τ _ => by ring
   have hcavR : ∀ H : EnergySpace α,
       (((2 : ℕ) : ℝ) * gibbs_average_n_det (α := α) (n := 2) H
@@ -560,7 +560,7 @@ theorem integral_gibbs_average_sub_mean_sq_eq_covariance
         (covarianceOperator μ (std_basis (α := α) σ)) τ
           * ∑ ρ : α, gibbs_pmf (α := α) H ρ
               * (covarianceOperator μ (std_basis (α := α) σ)) ρ)]
-      simp only [hT, freshCov]
+      simp only [hT, freshCov_apply]
       refine Finset.sum_congr rfl fun σ _ => ?_
       have hrow : (∑ τ : α, gibbs_pmf (α := α) H σ * gibbs_pmf (α := α) H τ
             * ((covarianceOperator μ (std_basis (α := α) σ)) τ
@@ -580,7 +580,7 @@ theorem integral_gibbs_average_sub_mean_sq_eq_covariance
       rw [gibbs_average_two (α := α) H (fun σ τ =>
         (covarianceOperator μ (std_basis (α := α) σ)) τ
           * (covarianceOperator μ (std_basis (α := α) σ)) σ)]
-      simp only [hdiag, hA, freshCov, Finset.mul_sum]
+      simp only [hdiag, hA, freshCov_apply, Finset.mul_sum]
       exact Finset.sum_congr rfl fun σ _ => Finset.sum_congr rfl fun τ _ => by ring
     have e3 : gibbs_average_n_det (α := α) (n := 2) H
         (fun σs => (covarianceOperator μ (std_basis (α := α) (σs 0))) (σs 1)

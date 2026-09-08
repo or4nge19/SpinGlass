@@ -22,7 +22,7 @@ variable {α : Type*} [Fintype α] [Nonempty α]
 
 section
 
-variable {Ω : Type*} [MeasureSpace Ω] (P : Measure Ω)
+variable {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω)
 
 lemma integrable_free_energy_density_of_integrable_norm
     [IsFiniteMeasure P] (n : ℕ) {g : Ω → EnergySpace α} (hg_meas : Measurable g)

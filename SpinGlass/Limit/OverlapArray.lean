@@ -47,24 +47,13 @@ noncomputable section
 
 /-! ### The overlap takes values in `[-1,1]` -/
 
-/-- The overlap of two configurations lies in `[-1,1]`. -/
-theorem abs_overlap_le_one (N : ℕ) (σ τ : Config N) : |overlap N σ τ| ≤ 1 := by
-  rcases Nat.eq_zero_or_pos N with rfl | hN
-  · simp [overlap, overlapOf]
-  · have hN' : (0 : ℝ) < (N : ℝ) := by exact_mod_cast hN
-    have hov : overlap N σ τ = (1 / (N : ℝ)) * ∑ i : Fin N, spin N σ i * spin N τ i := rfl
-    have hsum : |∑ i : Fin N, spin N σ i * spin N τ i| ≤ (N : ℝ) := by
-      calc |∑ i : Fin N, spin N σ i * spin N τ i|
-          ≤ ∑ i : Fin N, |spin N σ i * spin N τ i| :=
-            Finset.abs_sum_le_sum_abs _ _
-        _ = (N : ℝ) := by simp [abs_mul, abs_spin_eq_one]
-    rw [hov, abs_mul, abs_of_nonneg (by positivity : (0 : ℝ) ≤ 1 / (N : ℝ))]
-    calc (1 / (N : ℝ)) * |∑ i : Fin N, spin N σ i * spin N τ i|
-        ≤ (1 / (N : ℝ)) * (N : ℝ) := by gcongr
-      _ = 1 := by field_simp
-
 /-- The compact interval `[-1,1]` in which overlaps take their values. -/
 abbrev OverlapValue : Type := Set.Icc (-1 : ℝ) 1
+
+/-- Registering `-1 ≤ 1` unlocks Mathlib's order-theoretic API for `Set.Icc (-1) 1`: it is a
+bounded order, hence in particular nonempty — which is what makes it a legitimate target for a
+regular conditional distribution (`ProbabilityTheory.condDistrib` requires `Nonempty`). -/
+instance : Fact ((-1 : ℝ) ≤ 1) := ⟨by norm_num⟩
 
 /-- The overlap, valued in `[-1,1]`. -/
 def overlapUnit (N : ℕ) (σ τ : Config N) : OverlapValue :=
