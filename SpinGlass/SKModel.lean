@@ -9,6 +9,7 @@ import Mathlib.MeasureTheory.Function.L1Space.Integrable
 import Mathlib.Analysis.InnerProductSpace.ProdL2
 import Common.Mathlib.Probability.Distributions.Gaussian_ProdCovariance
 import Mathlib.Probability.Distributions.Gaussian.CharFun
+import Common.Mathlib.Probability.Distributions.Gaussian.MultivariateUniqueness
 
 open MeasureTheory ProbabilityTheory Real BigOperators Filter Topology
 open scoped ENNReal
@@ -77,6 +78,21 @@ lemma integral_eq_zero (G : GaussianDisorder (Ω := Ω) (N := N) P K) :
     simpa using (MeasureTheory.integral_map (μ := P) (φ := G.U)
       G.measU.aemeasurable measurable_id.aestronglyMeasurable)
   simpa [hmap] using G.mean0
+
+/-- **The law of a centered Gaussian disorder is the canonical `multivariateGaussian` at its
+covariance matrix** — an instance of
+`ProbabilityTheory.IsGaussian.eq_multivariateGaussian_of_inner_covarianceOperator`. No positivity
+hypothesis is needed: the matrix is a covariance matrix, hence positive semidefinite. -/
+theorem map_U_eq_multivariateGaussian {S : Matrix (Config N) (Config N) ℝ}
+    (hK : ∀ σ τ, K σ τ = S σ τ) (G : GaussianDisorder (Ω := Ω) (N := N) P K) :
+    P.map G.U = multivariateGaussian (0 : EnergySpace N) S := by
+  classical
+  have hGg : ProbabilityTheory.IsGaussian (P.map G.U) := G.isGaussian
+  refine ProbabilityTheory.IsGaussian.eq_multivariateGaussian_of_inner_covarianceOperator _
+    G.mean0 fun σ τ => ?_
+  have hsingle : ∀ ρ : Config N, EuclideanSpace.single ρ (1 : ℝ) = std_basis N ρ :=
+    fun ρ => (FiniteGibbs.std_basis_eq_single (α := Config N) ρ).symm
+  rw [hsingle, hsingle, G.cov_eq σ τ, hK]
 
 /-- The pair of two Gaussian disorders — on possibly *different* systems — is centered. -/
 lemma integral_prodMk_eq_zero {N₁ N₂ : ℕ}
@@ -300,47 +316,6 @@ section Law
 variable {N : ℕ} {K : Config N → Config N → ℝ}
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
-/-- The covariance bilinear form of a centered Gaussian measure whose covariance operator has
-kernel `K` in the Dirac basis, expanded in coordinates. Two such measures therefore have the same
-covariance form, which is what `ProbabilityTheory.IsGaussian.ext` consumes. -/
-lemma covarianceBilin_eq_of_cov_std_basis (μ : Measure (EnergySpace N))
-    [ProbabilityTheory.IsGaussian μ] (hmean : (∫ x : EnergySpace N, x ∂μ) = 0)
-    (hK : ∀ σ τ, inner ℝ (ProbabilityTheory.covarianceOperator μ (std_basis N σ))
-      (std_basis N τ) = K σ τ) (x y : EnergySpace N) :
-    ProbabilityTheory.covarianceBilin μ x y
-      = ∑ τ : Config N, (∑ ρ : Config N, K τ ρ * x ρ) * y τ := by
-  classical
-  have hmem : MeasureTheory.MemLp (id : EnergySpace N → EnergySpace N) 2 μ :=
-    ProbabilityTheory.IsGaussian.memLp_two_id
-  have hbil : ∀ u v : EnergySpace N, ProbabilityTheory.covarianceBilin μ u v
-      = inner ℝ (ProbabilityTheory.covarianceOperator μ u) v := by
-    intro u v
-    rw [ProbabilityTheory.covarianceBilin_apply hmem,
-      ProbabilityTheory.covarianceOperator_inner hmem]
-    simp [hmean]
-  have hCe : ∀ τ : Config N, ProbabilityTheory.covarianceOperator μ (std_basis N τ)
-      = WithLp.toLp 2 (fun ρ : Config N => K τ ρ) := by
-    intro τ
-    ext ρ
-    have h := hK τ ρ
-    rw [real_inner_comm] at h
-    simpa [inner_std_basis_apply] using h
-  have hcoord : ∀ τ : Config N,
-      (ProbabilityTheory.covarianceOperator μ x) τ = ∑ ρ : Config N, K τ ρ * x ρ := by
-    intro τ
-    have h1 : (ProbabilityTheory.covarianceOperator μ x) τ
-        = inner ℝ (ProbabilityTheory.covarianceOperator μ x) (std_basis N τ) := by
-      rw [real_inner_comm, inner_std_basis_apply]
-    rw [h1, ← hbil x (std_basis N τ), ProbabilityTheory.covarianceBilin_comm,
-      hbil (std_basis N τ) x, hCe τ]
-    simp [PiLp.inner_apply, mul_comm]
-  rw [hbil, PiLp.inner_apply]
-  refine Finset.sum_congr rfl fun τ _ => ?_
-  rw [hcoord τ]
-  simp only [RCLike.inner_apply, conj_trivial]
-  ring
-
-omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 /-- **The law of a centered Gaussian disorder is determined by its covariance kernel.** Two
 Gaussian Hamiltonians with the same kernel — carried by any two probability spaces — have the same
 law. Hence every disorder average, the free energy in particular, is a function of the kernel
@@ -349,13 +324,8 @@ theorem GaussianDisorder.map_U_eq {Ω' : Type*} [MeasureSpace Ω']
     (G : GaussianDisorder (Ω := Ω) (N := N) (ℙ : Measure Ω) K)
     (G' : GaussianDisorder (Ω := Ω') (N := N) (ℙ : Measure Ω') K) :
     (ℙ : Measure Ω).map G.U = (ℙ : Measure Ω').map G'.U := by
-  have hμ : ProbabilityTheory.IsGaussian ((ℙ : Measure Ω).map G.U) := G.isGaussian
-  have hν : ProbabilityTheory.IsGaussian ((ℙ : Measure Ω').map G'.U) := G'.isGaussian
-  refine ProbabilityTheory.IsGaussian.ext ?_ ?_
-  · simp [G.mean0, G'.mean0]
-  · ext x y
-    rw [covarianceBilin_eq_of_cov_std_basis (K := K) _ G.mean0 G.cov_eq x y,
-      covarianceBilin_eq_of_cov_std_basis (K := K) _ G'.mean0 G'.cov_eq x y]
+  rw [GaussianDisorder.map_U_eq_multivariateGaussian (S := Matrix.of K) (fun _ _ => rfl) G,
+    GaussianDisorder.map_U_eq_multivariateGaussian (S := Matrix.of K) (fun _ _ => rfl) G']
 
 omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
 /-- **Every disorder average depends only on the covariance kernel.** -/

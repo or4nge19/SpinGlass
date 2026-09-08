@@ -212,12 +212,19 @@ ninety downstream declarations, and in `disorderPair`/`disorderPairLaw` as an un
   Hamiltonian evaluated at a replica is traded for covariances between that replica and the
   others, plus one fresh replica. Obtained from the identity below by expanding over the value of
   the `i`-th replica and collapsing the indicators.
-- `FiniteGibbs.integral_apply_mul_gibbs_average_n_det` — **the cavity identity**:
-  `𝔼[H_ρ ⟨f⟩] = 𝔼[ n ⟨f⟩ ⟨C e_ρ⟩ - ∑_{l<n} ⟨f · (C e_ρ)(σˡ)⟩ ]`, obtained by Gaussian
+- `FiniteGibbs.integral_inner_mul_gibbs_average_n_det` — **the cavity identity**, in an arbitrary
+  direction: `𝔼[⟪H, w⟫ ⟨f⟩] = 𝔼[ n ⟨f⟩ ⟨C w⟩ - ∑_{l<n} ⟨f · (C w)(σˡ)⟩ ]`, obtained by Gaussian
   integration by parts applied to the Gibbs average as a functional of the Hamiltonian. It is
   **exact at every finite volume**, for an arbitrary finite configuration space and an arbitrary
   centered Gaussian Hamiltonian law — unlike the Ghirlanda–Guerra identities, which are its
   asymptotic shadow after the Hamiltonian is replaced by its mean.
+  `FiniteGibbs.integral_apply_mul_gibbs_average_n_det` is the coordinate case `w = e_ρ`.
+- `FiniteGibbs.integral_gibbs_average_n_det_inner_mul` — the same with an arbitrary *field*
+  `σ ↦ ⟪H, w σ⟫` inside the bracket. The generality in `w` is what puts a **component** of the
+  disorder on the same footing as the energy: the `p`-spin part of a mixed Hamiltonian is a linear
+  image `W H` of it (and a component that is not a function of `H` may be replaced by its
+  conditional expectation given `H`, which is), so `(W H) σ = ⟪H, Wᵀ e_σ⟫`. This is the
+  prerequisite for the Ghirlanda–Guerra identities at *individual* monomial test functions.
 
 ## Proved: the Ghirlanda–Guerra defect (Vol. II, §12.2)
 
@@ -232,7 +239,8 @@ ninety downstream declarations, and in `disorderPair`/`disorderPairLaw` as an un
   replicas equals exactly `𝔼⟨H_{σⁱ} f⟩ - 𝔼⟨f⟩ · 𝔼⟨H⟩`. So the identity holds *exactly* iff the
   energy decorrelates from the observable, and any bound on that covariance — for instance from
   the Gaussian covariance inequality below — is a bound on the Ghirlanda–Guerra error. This is the
-  exact finite-volume replacement for the (false) `SK_GG1_gibbsKernel`.
+  exact finite-volume replacement for the Ghirlanda–Guerra identities, which are false at finite
+  volume.
 - Supporting: `FiniteGibbs.freshCov` (the Gibbs average of the covariance against a fresh
   replica), `norm_std_basis`, `gibbs_average_one`, `integrable_gibbs_average_n_det_of_bounded`.
 
@@ -326,6 +334,799 @@ Panchenko's *asymptotic Gibbs measure*.
   arbitrary sequence of Hamiltonians and an arbitrary family of embeddings, some subsequence of the
   replica-array laws converges, and the limit is `∫ λ^{⊗ℕ} m(dλ)` for a *unique* probability
   measure `m` on the probability measures of the spin space. Unconditional.
+- `MeasureTheory.GibbsMeasure.isExchangeable_bind` — a **mixture** of exchangeable laws is
+  exchangeable (`Measure.map_bind`: pushing a mixture forward is the mixture of the pushforwards).
+- `FiniteGibbs.continuous_gibbs_pmf`, `FiniteGibbs.measurable_gibbsMeasure` — **the Gibbs measure
+  depends measurably on the Hamiltonian**, which is what lets a random Hamiltonian be integrated
+  out.
+- `SpinGlass.annealedReplicaArrayLaw`, `SpinGlass.isExchangeable_annealedReplicaArrayLaw`,
+  `SpinGlass.exists_asymptoticGibbsMeasure_random` — the same for a **random** Hamiltonian: the
+  disorder-averaged replica array is a mixture of exchangeable laws, hence exchangeable, and de
+  Finetti's mixing measure of its limit is the **law of the random asymptotic Gibbs measure**. This
+  is Panchenko's object; the statement is unconditional in the sequence of random Hamiltonians.
+
+## Proved: the asymptotic overlap array (Vol. II, Ch. 12–15; the Dovbysh–Sudakov hypothesis)
+
+De Finetti is about exchangeable *sequences*; Vol. II is about exchangeable **arrays** — the
+overlap array `R_{l,l'}`, invariant under the *diagonal* action of a permutation of the replica
+index. Its law lives on `[-1,1]^{ℕ×ℕ}`, compact metrizable **independently of `N`**, which is why
+the thermodynamic limit is taken there and not on the configuration space.
+
+- `MeasureTheory.GibbsMeasure.permuteArray`, `MeasureTheory.GibbsMeasure.IsJointlyExchangeable` —
+  the diagonal action and joint (weak) exchangeability; `measurable_permuteArray`,
+  `continuous_permuteArray`.
+- `MeasureTheory.GibbsMeasure.pairArray`,
+  `MeasureTheory.GibbsMeasure.isJointlyExchangeable_map_of_isExchangeable` — **the array of
+  pairwise values of an exchangeable sequence is jointly exchangeable**, for an arbitrary
+  two-variable measurable function. This is how the overlap array acquires the hypothesis of
+  Aldous–Hoover and Dovbysh–Sudakov, and it is the bridge from de Finetti-style exchangeability to
+  array exchangeability. Absent from Mathlib and from the `GibbsMeasure` package.
+- `MeasureTheory.GibbsMeasure.isJointlyExchangeable_bind`,
+  `..._of_tendsto`, `exists_subseq_tendsto_jointlyExchangeable` — mixtures, weak limits, and
+  Prokhorov limit points, exactly as for sequences.
+- `MeasureTheory.ProbabilityMeasure.measure_eq_one_of_tendsto_of_isClosed` — **a closed
+  almost-sure property survives a weak limit** (portmanteau at mass one). With
+  `isClosed_setOf_map_eq` this is the pair of general facts that let a limit law inherit both the
+  symmetries and the pointwise constraints of the approximating laws.
+- `SpinGlass.abs_overlap_le_one`, `SpinGlass.overlapUnit` — the overlap valued in `[-1,1]`;
+  `SpinGlass.configReplicaArrayLaw`, `SpinGlass.overlapArrayLaw`, `SpinGlass.overlapArray` and
+  `SpinGlass.isJointlyExchangeable_overlapArrayLaw`.
+- `SpinGlass.gramArray`, `SpinGlass.isClosed_gramArray`,
+  `SpinGlass.pairArray_overlapUnit_mem_gramArray` — the **Gram condition** (symmetric, unit
+  diagonal, positive semidefinite) is closed, and every finite-`N` overlap array satisfies it: the
+  positive semidefiniteness is the identity
+  `∑_{l,l'} c_l c_{l'} R(σ^l,σ^{l'}) = (1/N) ∑_i (∑_l c_l σ^l_i)²`.
+- `SpinGlass.exists_asymptoticOverlapArray` and
+  `SpinGlass.exists_asymptoticOverlapArray_random` — **the asymptotic overlap array exists**, is
+  jointly exchangeable, and is almost surely a Gram array, for an arbitrary sequence of (random)
+  Hamiltonians on arbitrary positive system sizes. Unconditional. This is precisely the hypothesis
+  of the Dovbysh–Sudakov theorem.
+
+## Proved: the §15.3 ontology and its stability (Vol. II, Definitions 15.3.1–15.3.4)
+
+Talagrand Vol. II, §15.3 fixes the three properties expected of the limiting law `μ*` of the
+overlap array. `IsJointlyExchangeable` is his Definition 15.3.1 (*symmetric*, i.e. weakly
+exchangeable) and `gramArray` is his `𝓒⁺`; that `μ*(𝓒⁺) = 1`, which he asserts, is
+`exists_asymptoticOverlapArray`. The remaining two definitions and everything structural about them
+are here. Talagrand's Definition 15.3.4 is stated with *continuous* test functions, which is what is
+formalised; Panchenko writes the same identities with bounded measurable ones.
+
+- `SpinGlass.IsUltrametric` (Definition 15.3.2, form (15.38); Panchenko (1.3)) and
+  `SpinGlass.isUltrametric_iff_forall` — **the equivalence with form (15.39)**, which Talagrand
+  states without proof: the complement of the ultrametric set is the countable union over the
+  rationals of the sets of (15.39).
+- `SpinGlass.isClosed_ultrametricSet`, `SpinGlass.isUltrametric_of_tendsto` — ultrametricity is a
+  closed condition, hence passes to weak limits.
+- `SpinGlass.SatisfiesGhirlandaGuerra` (Definition 15.3.4, equation (15.40); Panchenko (1.1)),
+  with `SpinGlass.DependsOnFirst` for Talagrand's restriction on the test function.
+- `SpinGlass.satisfiesGhirlandaGuerra_of_tendsto` — **the Ghirlanda–Guerra identities pass to weak
+  limits**: every term of (15.40) is the integral of a fixed continuous function, hence a
+  continuous function of the measure, so the identity is a closed condition.
+- `SpinGlass.satisfiesGhirlandaGuerra_map` — **Exercise 15.3.5**: the identities survive an
+  entrywise continuous change of variable.
+- `SpinGlass.oneOverlapLaw`, `SpinGlass.map_entry_eq_oneOverlapLaw` — **all pairwise overlaps of a
+  weakly exchangeable array are equidistributed**, so "the limiting law of the overlap" of (15.41)
+  is well defined. The permutation carrying `(0,1)` to `(l,l')` is built from two transpositions.
+- `SpinGlass.tendsto_asymptoticArrayLaw` — the four properties (weak exchangeability, the Gram
+  condition, ultrametricity, Ghirlanda–Guerra) **all pass to weak limits simultaneously**, so each
+  may be verified along any approximating sequence.
+
+- `SpinGlass.blockRestrict`, `SpinGlass.blockExtend`, `SpinGlass.dependsOnFirst_iff_exists` —
+  **Talagrand's restriction on the test function is factorisation through the `n × n` overlap
+  block**. Every continuous function of the finite overlap matrix is admissible
+  (`dependsOnFirst_comp_blockRestrict`), and the admissible functions form an algebra
+  (`dependsOnFirst_const`, `dependsOnFirst_entry`, `DependsOnFirst.add`, `.mul`, `.smul`, `.mono`).
+  Without this the side condition would have no verified instances.
+- `SpinGlass.satisfiesGhirlandaGuerra_of_denseSpan` — **the identities need only be checked on a
+  set whose *span* is dense**. For fixed `n` and `f` the identity is a *linear* condition on `φ`
+  (`integral_comp_mul_add`, `integral_comp_mul_smul`) and a closed one (each term is bounded by
+  `‖φ‖‖f‖`, `lipschitzWith_integral_comp_mul`), so it propagates from `S` to `Submodule.span ℝ S`
+  and then to its closure. The span, not the set, is what may be assumed dense —
+  `satisfiesGhirlandaGuerra_of_dense` is the corollary at `S` itself dense.
+- `SpinGlass.satisfiesGhirlandaGuerra_of_monomial` — hence **monomial test functions suffice**. The
+  monomials `x ↦ xᵖ` are *not* dense in `C([-1,1], ℝ)`, so the dense-set form would not apply; they
+  do span a dense subspace (`polynomialFunctions_subset_span_monomials` with Stone–Weierstrass,
+  `dense_polynomialFunctions`). This is the sharpest usable form and the one a family of models
+  delivers: a mixed `p`-spin Hamiltonian has covariance profile `ξ(r) = ∑ₚ βₚ² rᵖ`, and
+  differentiating in the couplings isolates the individual monomials.
+  `satisfiesGhirlandaGuerra_of_polynomial` is the intermediate form.
+- `SpinGlass.SatisfiesGhirlandaGuerra'` and
+  `SpinGlass.satisfiesGhirlandaGuerra_iff_of_isJointlyExchangeable` — **Talagrand's (15.40) and
+  Panchenko's (1.1) are the same condition for a weakly exchangeable law**: the two differ only in
+  whether the isolated factor is `𝔼ψ(R_{1,n+1})` or `𝔼ψ(R_{1,2})`, and those agree by
+  `map_entry_eq_oneOverlapLaw`.
+- `SpinGlass.isUltrametric_bind` — ultrametricity, being almost sure, survives mixtures.
+- `SpinGlass.constArray`, `SpinGlass.rsArrayLaw` and
+  `isJointlyExchangeable_rsArrayLaw`, `constArray_mem_gramArray`, `gramArray_rsArrayLaw`,
+  `isUltrametric_rsArrayLaw`, `satisfiesGhirlandaGuerra_rsArrayLaw`, `oneOverlapLaw_rsArrayLaw` —
+  **the ontology is non-vacuous**: for `q ∈ [0,1]` the array with all off-diagonal entries `q`
+  satisfies *every* §15.3 property at once, with one-overlap law `δ_q`. It is the
+  replica-symmetric `μ*` of Talagrand's Theorem 15.3.6 at `μ = δ_q`, and it shows that the four
+  conditions are jointly satisfiable — a definition with no instance would be worthless.
+
+In this ontology, Talagrand's Research Problem 15.3.7 — do the Ghirlanda–Guerra identities on `𝓒⁺`
+imply ultrametricity? — reads `SatisfiesGhirlandaGuerra μ → μ gramArray = 1 → IsUltrametric μ`. It
+was answered affirmatively by Panchenko (*The Parisi ultrametricity conjecture*, Ann. of Math. 177
+(2013), Theorem 1) and is the next capstone.
+
+## Proved: the Ghirlanda–Guerra identities as a disintegration (Vol. II, (15.40); Panchenko (1.2))
+
+Talagrand and Panchenko both *state* the identities as integral identities against test functions,
+and that is the form in which they are verified. It is not the form in which they are used: every
+downstream argument reads them as a statement about the **conditional law of the new overlap given
+the overlaps of the first `n` replicas**. That implication is proved here, and with it the
+identities extend from continuous, block-only test functions to arbitrary bounded measurable ones
+that may also depend on the new overlap.
+
+- `SpinGlass.ggKernel` — the Ghirlanda–Guerra kernel `x ↦ (1/n) ν + (1/n) ∑_{l=1}^{n-1} δ_{x₀ₗ}`,
+  a genuine Markov kernel on the space of `n × n` overlap blocks
+  (`SpinGlass.isMarkovKernel_ggKernel`); `SpinGlass.integral_ggKernel_of_bounded` computes
+  integrals against it.
+- `SpinGlass.map_prod_blockRestrict_eq_compProd` — **the disintegration**: the joint law of
+  `(Rⁿ, R_{0,n})` is `(law of Rⁿ) ⊗ₘ ggKernel n ν`. The proof is a measure-identification, not an
+  approximation: both sides integrate products of bounded continuous functions equally, and a
+  finite Borel measure on a product of `HasOuterApproxClosed` spaces is determined by those
+  integrals (`MeasureTheory.Measure.ext_of_integral_mul_boundedContinuousFunction`).
+- `SpinGlass.condDistrib_entry_eq_ggKernel` — Panchenko's (1.2): the regular conditional
+  distribution `condDistrib (R_{0,n}) (Rⁿ)` **is** the Ghirlanda–Guerra kernel.
+- `SpinGlass.integral_ghirlandaGuerra` — **the identities for bounded measurable test functions**,
+  with the test function allowed to depend jointly on the block and on the new overlap. This is
+  strictly stronger than the hypothesis it is derived from.
+- `SpinGlass.SatisfiesGhirlandaGuerra'.map_prod_blockRestrict_eq_compProd` and
+  `SpinGlass.SatisfiesGhirlandaGuerra.map_prod_blockRestrict_eq_compProd` — the two stated forms
+  both disintegrate, the second for a weakly exchangeable law, with `ν = oneOverlapLaw μ`.
+- Supporting Mathlib gap: `ProbabilityTheory.Kernel.instModule` — **kernels form a module over the
+  scalars that act on measures**. Mathlib gives `Kernel` only the `ℕ`-action from its additive
+  monoid structure, so no explicit mixture kernel could be written down.
+
+## Proved: Griffiths' lemma (Vol. I, §1.3, after Theorem 1.3.9; Vol. II, Lemma 12.1.5)
+
+Convexity is what converts the existence of the thermodynamic limit into convergence of its
+*derivatives*. Mathlib has the complete one-sided derivative calculus for convex functions but not
+this consequence, and it has no convexity statement for log-sum-exp at all.
+
+- `Real.log_sum_exp_le`, `convexOn_log_sum_exp` — **log-sum-exp is convex** (a Mathlib gap). The
+  proof is the classical one: after normalising, the inequality is weighted AM–GM applied
+  coordinatewise, i.e. Hölder.
+- `SpinGlass.FiniteGibbs.convexOn_log_Z`, `convexOn_free_energy_density`,
+  `convexOn_free_energy_density_comp_affine` — **the free energy is convex in the Hamiltonian**
+  (Talagrand Vol. I (1.81), Vol. II (12.8)), hence in every parameter entering it affinely.
+- `ConvexOn.rightDeriv_le_slope_add`, `ConvexOn.sub_le_rightDeriv` — **the two-scale sandwich**: the
+  right derivative of a convex `θ` at `x` lies between the difference quotients of an *arbitrary*
+  comparison function `p`, up to `‖θ - p‖/b` at the three points `x - b, x, x + b`.
+- `ConvexOn.abs_rightDeriv_sub_le` — **Talagrand Vol. II, Lemma 12.1.5**, in one-sided form: no
+  differentiability is assumed anywhere.
+- `ConvexOn.tendsto_rightDeriv_of_tendsto`, `ConvexOn.tendsto_deriv_of_tendsto` — **Griffiths'
+  lemma**. Weaker hypotheses than the reference: the approximating functions need not be
+  differentiable, and the limit need only have equal one-sided derivatives at the point.
+- `ConvexOn.countable_setOf_leftDeriv_ne_rightDeriv` — **a convex function on `ℝ` is differentiable
+  off a countable set**: the jump intervals `(leftDeriv p x, rightDeriv p x)` at distinct points are
+  pairwise disjoint. This discharges the hypothesis of Griffiths' lemma for all but countably many
+  points, which is how Talagrand uses it. `ConvexOn.hasDerivAt_of_leftDeriv_eq_rightDeriv` and
+  `ConvexOn.countable_setOf_not_differentiableAt` are the same statements for the two-sided
+  derivative.
+- `ConvexOn.integral_abs_rightDeriv_sub_le` — **Griffiths' lemma in mean**, Talagrand Vol. II,
+  Lemmas 12.1.5–12.1.6 combined: for a *random* convex `θ` with mean `p`,
+  `𝔼|θ'(x) - p'(x)| ≤ (p'(x+b) - p'(x-b)) + (1/b)·(the three mean fluctuations of θ)`. This is the
+  step that converts concentration of the free energy into self-averaging of the energy.
+
+## Proved: the free energy along an affine path in the Hamiltonian
+
+Talagrand Vol. I (1.83); Vol. II (12.6)–(12.9).
+
+Every parameter of a mean-field model enters the Hamiltonian affinely, so every parameter
+derivative of the free energy is a derivative along `x ↦ H + x • V`. These identities are ordinary
+calculus for log-sum-exp: no probabilistic hypothesis, no Gaussianity, exact at every finite volume
+and for an arbitrary finite configuration space.
+
+- `SpinGlass.FiniteGibbs.gibbs_average` — the Gibbs bracket `⟨f⟩_H`, at last stated for an
+  arbitrary finite configuration space; `SpinGlass.gibbs_average` is its `Config N` instance.
+- `SpinGlass.FiniteGibbs.hasDerivAt_free_energy_density_add_smul` — `n Φ'(x) = -⟨V⟩`, Talagrand
+  Vol. I (1.83), Vol. II (12.6).
+- `SpinGlass.FiniteGibbs.hasDerivAt_gibbsAverage_add_smul` and
+  `SpinGlass.FiniteGibbs.hessian_free_energy_self_eq_variance` — `n Φ''(x) = ⟨(V - ⟨V⟩)²⟩`,
+  Talagrand Vol. II (12.8): **the second derivative of the free energy in any parameter is the
+  Gibbs fluctuation of the conjugate energy**. Hence
+  `hessian_free_energy_self_nonneg`, convexity with a quantitative witness.
+- `SpinGlass.FiniteGibbs.hasDerivAt_integral_free_energy_density`,
+  `SpinGlass.FiniteGibbs.hasDerivAt_integral_gibbsAvg` — the same two identities after averaging
+  over the disorder, by differentiation under the integral sign. The domination is uniform in the
+  parameter (`|Φ'| ≤ ‖V‖/n`, `|Φ''| ≤ 2‖V‖²/n`), so the derivative exists at *every* parameter
+  value, not merely locally.
+- `SpinGlass.FiniteGibbs.integral_fluctuation_eq_sub` and
+  `SpinGlass.FiniteGibbs.integral_variance_eq_sub` — **Talagrand Vol. II, equation (12.9)**:
+  `∫_a^b 𝔼⟨(V - ⟨V⟩)²⟩/n dx = p'(b) - p'(a)`. The integrand is nonnegative, so the *total* energy
+  fluctuation over a parameter window is bounded by an increment of `p'`: this is the mechanism by
+  which the energy self-averages, and, through `ghirlandaGuerra_error_le`, the mechanism by which
+  the Ghirlanda–Guerra identities become exact in the limit.
+
+## Proved: Griffiths' lemma for the SK free energy (Vol. I, §1.3)
+
+- `ProbabilityTheory.multivariateGaussian_map_smul` (a Mathlib gap) and
+  `Matrix.PosSemidef.smul_sq` — a multivariate Gaussian scales: dilating by `c` scales the mean by
+  `c` and the covariance matrix by `c²`.
+- `SpinGlass.skCovMatrix_eq_smul`, `SpinGlass.skFreeEnergy_eq_integral_smul` — since the SK
+  covariance is `N β² R²/2`, the disorder at inverse temperature `β` is `β` times **one**
+  `β`-independent Gaussian field (Talagrand Vol. I, (1.82)).
+- `SpinGlass.convexOn_skFreeEnergy`, `SpinGlass.convexOn_skFreeEnergyLimit` — the free energy and
+  its thermodynamic limit are convex in `β` (Talagrand Vol. I, (1.81)).
+- `SpinGlass.tendsto_rightDeriv_skFreeEnergy` — **Griffiths' lemma for the SK model**: at every `β`
+  where the limiting free energy is differentiable, `∂p_N/∂β → ∂p/∂β`.
+  `SpinGlass.countable_setOf_not_tendsto_rightDeriv_skFreeEnergy` and
+  `SpinGlass.ae_tendsto_rightDeriv_skFreeEnergy` — this holds at all but countably many `β`, hence
+  at almost every `β`. Combined with Talagrand's Lemma 1.3.11,
+  `∂p_N/∂β = (β/2)(1 - 𝔼⟨R₁₂²⟩)`, it is the statement that `lim_N 𝔼⟨R₁₂²⟩` exists.
+- `SpinGlass.hasDerivAt_skFreeEnergy` — the SK free energy is differentiable in `β` at every point,
+  with `∂p_N/∂β = -𝔼⟨H⟩/N`; hence `SpinGlass.tendsto_deriv_skFreeEnergy`,
+  `SpinGlass.countable_setOf_not_differentiableAt_skFreeEnergyLimit` and
+  `SpinGlass.ae_tendsto_deriv_skFreeEnergy` state Griffiths' lemma for the honest two-sided
+  derivative.
+- `SpinGlass.integral_skFluctuation_eq_sub` — **equation (12.9) for the SK model**: the Gibbs
+  fluctuation of the energy, integrated over the inverse temperature, is the increment of
+  `∂p_N/∂β`.
+
+## Proved: the derivative of the free energy is the covariance gap
+
+Talagrand Vol. I, Lemma 1.3.11; Vol. II, Lemma 12.1.4.
+
+The parameter calculus above computes `∂p_n/∂β = -𝔼⟨H⟩/n` — a statement about the Hamiltonian. One
+Gaussian integration by parts removes the Hamiltonian and leaves the overlap.
+
+- `SpinGlass.FiniteGibbs.covarianceGap` and
+  `SpinGlass.FiniteGibbs.hessian_free_energy_covarianceOperator_std_basis` — contracting the Gibbs
+  covariance form with `(C e_σ, e_σ)` gives `(p_σ c(σ,σ) - p_σ ⟨c(σ,·)⟩)/n`, so the trace of the
+  Hessian against the covariance is the gap between the diagonal bracket and the two-replica
+  bracket.
+- `SpinGlass.FiniteGibbs.integral_gibbs_average_self_eq_covariance_gap` — **the general identity**:
+  for a centered Gaussian disorder with covariance kernel `c` and an arbitrary deterministic field,
+  `∂/∂β 𝔼F_n(βH + c₀) = (β/n) 𝔼(⟨c(σ,σ)⟩ - ⟨c(σ¹,σ²)⟩)`. The proof is the two-map trace identity
+  `integral_fderiv_free_energy_density_clm_add_apply_clm` at `A = β·id`, `B = id`.
+  `integral_gibbs_average_self_eq_of_diag` is its constant-diagonal form, which is the case of
+  every mixed `p`-spin model.
+- `SpinGlass.deriv_skFreeEnergy_eq` — **Talagrand's Lemma 1.3.11**, `∂p_N/∂β = (β/2)(1 - 𝔼⟨R₁₂²⟩)`.
+  Combined with `ae_tendsto_deriv_skFreeEnergy` this is exactly the statement Talagrand records
+  after Theorem 1.3.9: **`lim_N 𝔼⟨R₁₂²⟩` exists at almost every inverse temperature.**
+- `SpinGlass.deriv_skFreeEnergy_nonneg_le` — **Talagrand's Lemma 12.1.4**, `0 ≤ ∂p_N/∂β ≤ β/2`,
+  uniformly in the volume: the bound that makes `(12.9)` say the energy self-averages.
+- Supporting general lemmas: `SpinGlass.abs_overlap_le_one`, `abs_overlap_sq_le_one`,
+  `gibbs_average₂_le_of_le`, `abs_gibbs_average₂_le`, `sum_gibbs_pmf_mul_sum_gibbs_pmf` — the
+  two-replica bracket is a probability average, so it inherits any bound on its integrand.
+
+## Proved: self-averaging of the energy (Vol. II, Theorem 12.1.1 / equation (12.10))
+
+Equation `(12.9)` controls the fluctuation in `L²`; what the Ghirlanda–Guerra error bound consumes
+is the `L¹` fluctuation. Three Cauchy–Schwarz steps bridge them.
+
+- `MeasureTheory.sq_integral_le_measureReal_univ_mul_integral_sq` (a Mathlib gap) — **Cauchy–Schwarz
+  against the constant function**, `(∫ f dμ)² ≤ μ(univ) ∫ f² dμ`, for any finite measure. Mathlib
+  has Hölder for `lintegral` and Cauchy–Schwarz inside `L²`, but not this. Proof: the discriminant
+  of `t ↦ ∫ (f - t)² dμ`. The square-root forms and the interval forms
+  (`intervalIntegral.sq_integral_le_mul_integral_sq`,
+  `intervalIntegral.integral_le_sqrt_mul_integral_sq`) are corollaries; the interval form is
+  `(∫_a^b f)² ≤ (b-a) ∫_a^b f²`.
+- `SpinGlass.FiniteGibbs.sq_gibbs_average_abs_sub_le` — Cauchy–Schwarz inside the Gibbs bracket:
+  `(⟨|V - ⟨V⟩|⟩/n)² ≤ (1/n)·Φ''`.
+- `SpinGlass.FiniteGibbs.integral_absFluct_le_sqrt` — Cauchy–Schwarz against the disorder.
+- `SpinGlass.FiniteGibbs.intervalIntegral_absFluct_le` — **equation (12.10)**:
+  `∫_a^b 𝔼⟨|V/n - ⟨V/n⟩|⟩ dx ≤ √((b-a)(p'(b) - p'(a))/n)`.
+- `SpinGlass.intervalIntegral_skEnergy_fluctuation_le` — **Theorem 12.1.1 for the SK model**:
+  `∫_a^b 𝔼⟨|H/N - ⟨H/N⟩|⟩ dβ ≤ √((b-a)·b/(2N))`. The uniform bound `0 ≤ ∂p_N/∂β ≤ β/2` is what
+  makes the right-hand side vanish; the rate is `N^{-1/2}`, sharper than the `N^{-1/4}` of
+  Talagrand's Theorem 12.1.1 (whose rate is limited by its other half, the disorder fluctuation of
+  `⟨H⟩`, controlled by `ConvexOn.integral_abs_rightDeriv_sub_le` together with Gaussian
+  concentration).
+- Supporting: `SpinGlass.FiniteGibbs.gibbs_average_abs_le`,
+  `gibbs_average_abs_sub_gibbs_average_le`, `gibbs_average_abs_smul_sub_const_le_norm` — the Gibbs
+  mean absolute deviation of a direction is at most twice its norm.
+
+## Proved: Theorem 12.1.1 — the energy self-averages (Vol. II, §12.1)
+
+The other half of Theorem 12.1.1 controls the fluctuation of `⟨V/n⟩` under the **disorder**.
+Convexity converts concentration of the free energy into concentration of its derivative; the
+resulting error telescopes when integrated in the parameter.
+
+- `intervalIntegral.integral_sub_shift_le_of_monotone` (a Mathlib gap) — for monotone `g` and
+  `δ > 0`, `∫_a^b (g(x+δ) - g(x-δ)) dx ≤ 2δ (g(b+δ) - g(a-δ))`, with **no ordering of `a` and `b`
+  required**: interval integrals are signed and the telescoping is unconditional. This is what
+  makes the `1/δ` price of Griffiths' lemma integrable in the parameter.
+- `ConvexOn.abs_deriv_sub_le` and `ConvexOn.integral_abs_deriv_sub_le` — Talagrand's
+  Lemmas 12.1.5–12.1.6 in the two-sided-derivative form he states them.
+- `SpinGlass.FiniteGibbs.convexOn_integral_free_energy_density`,
+  `deriv_integral_free_energy_density`, `monotone_deriv_integral_free_energy_density` — the mean
+  free energy is convex and differentiable everywhere along an affine path, so its derivative is
+  monotone.
+- `SpinGlass.FiniteGibbs.intervalIntegral_integral_abs_meanEnergy_sub_le` — **the second half**:
+  `∫_a^b 𝔼|⟨V/n⟩ - 𝔼⟨V/n⟩| dx ≤ 2δ (p'(b+δ) - p'(a-δ)) + 3(b-a)C/δ` for any `C` bounding the mean
+  absolute deviation of the free energy *on the enlarged window* — a weaker hypothesis than a
+  global bound, which matters because the SK constant grows with `β`.
+- `SpinGlass.FiniteGibbs.gibbs_average_abs_smul_sub_const_le` and
+  `SpinGlass.FiniteGibbs.intervalIntegral_integral_totalFluct_le` — **the split**: the total
+  fluctuation is at most the Gibbs part plus the disorder part.
+- `SpinGlass.FiniteGibbs.variance_free_energy_density_add_const_le_gibbs_covariance` and
+  `memLp_free_energy_density_affine` — the sharp self-averaging bound and the `L²` membership, both
+  generalized to carry an **external field** inside the free energy (the previous statements were
+  the `c₀ = 0` case).
+- `SpinGlass.variance_skFreeEnergy_le` — `Var[p_N^ω(β)] ≤ β²/(2N)`, Talagrand Vol. I,
+  Theorem 1.3.4 for the SK model, from the Dirichlet-energy form of Gaussian Poincaré; hence
+  `SpinGlass.integral_abs_skFreeEnergy_sub_mean_le`, `𝔼|p_N^ω(β) - p_N(β)| ≤ |β|/√(2N)`.
+- `SpinGlass.intervalIntegral_skMeanEnergy_fluctuation_le` and
+  `SpinGlass.intervalIntegral_skTotalEnergy_fluctuation_le` — **Theorem 12.1.1 for the SK model**,
+  fully explicit:
+  `∫_a^b 𝔼⟨|H/N - 𝔼⟨H/N⟩|⟩ dβ ≤ √((b-a)b/(2N)) + δ(b+δ) + 3(b-a)(b+δ)/(δ√(2N))`
+  for every `δ > 0`; at `δ = N^{-1/4}` this is `O(N^{-1/4})`, Talagrand's rate. **The energy per
+  site self-averages.**
+
+## Proved: self-averaging for an arbitrary bounded Gaussian disorder (Vol. II, §12.1–12.2)
+
+Everything Talagrand proves about the fluctuations of the energy uses only three properties of the
+covariance matrix `S`: it is positive semidefinite, its diagonal is the constant `D`, and
+`|S σ τ| ≤ D`. Every mixed `p`-spin model has them (`posSemidef_overlapPolyMatrix` supplies the
+first; `D = N ξ(1)` and `|ξ(r)| ≤ ξ(1)` on `[-1,1]` the others), and so does Guerra's
+replica-symmetric reference kernel. The whole chain is therefore proved once, for such an `S`, and
+the Sherrington–Kirkpatrick statements are the instance `S = skCovMatrix N 1`, `D = N/2`.
+
+- `SpinGlass.gaussField`, `gaussField_map_smul`, `covarianceOperator_gaussField_apply` — the
+  reference field, and the fact that the disorder at strength `β` is the reference field **dilated**
+  by `β`. That dilation is what makes the free energy convex in `β` with computable derivative.
+- `SpinGlass.gaussFreeEnergy_eq_integral_smul`, `hasDerivAt_gaussFreeEnergy`.
+- `SpinGlass.deriv_gaussFreeEnergy_eq` — **Lemma 1.3.11 in general form**:
+  `∂p_N/∂β = (β/N)(D - 𝔼⟨S(σ¹,σ²)⟩)`; `abs_deriv_gaussFreeEnergy_le` — **Lemma 12.1.4**,
+  `|∂p_N/∂β| ≤ 2βD/N`.
+- `SpinGlass.variance_gaussFreeEnergy_le` — **Theorem 1.3.4**, `Var[p_N^ω(β)] ≤ β²D/N²`; and
+  `integral_abs_gaussFreeEnergy_sub_mean_le`, `𝔼|p_N^ω - p_N| ≤ |β|√D/N`.
+- `SpinGlass.intervalIntegral_gaussEnergy_fluctuation_le`,
+  `intervalIntegral_gaussMeanEnergy_fluctuation_le`,
+  `intervalIntegral_gaussTotalEnergy_fluctuation_le` — **Theorem 12.1.1**, in the two halves and
+  combined, with every constant explicit.
+- `SpinGlass.integral_gibbs_average_abs_sub_mean_gaussField_eq` — the normalisation dictionary
+  between the error bound (Gibbs measure at the Gaussian sample) and Theorem 12.1.1 (the dilation
+  path over a fixed reference field): they differ by exactly one factor `β N`.
+- `SpinGlass.abs_gaussGhirlandaGuerra_error_le` and
+  `exists_beta_abs_gaussGhirlandaGuerra_error_le` — **the Ghirlanda–Guerra error and its
+  `O(N^{-1/4})` bound**, for any such disorder.
+
+## Proved: the Ghirlanda–Guerra identities for the SK model, up to `O(N^{-1/4})` (Vol. II, §12.2)
+
+- `FiniteGibbs.abs_integral_gibbs_average_energy_mul_sub_le_integral_abs` and
+  `FiniteGibbs.ghirlandaGuerra_error_le_integral_abs` — **the sharp `L¹` error bound**,
+  `|𝔼⟨H_{σⁱ}f⟩ - a𝔼⟨f⟩| ≤ B · 𝔼⟨|H - a|⟩`. This is Hölder, not Cauchy–Schwarz, and it is the form
+  Theorem 12.1.1 closes: that theorem controls exactly the mean *absolute* fluctuation. The `L²`
+  form `abs_integral_gibbs_average_energy_mul_sub_le` / `ghirlandaGuerra_error_le` is now a
+  corollary of it, obtained by two further Cauchy–Schwarz steps — the previous statements were the
+  weaker ones.
+- `SpinGlass.skCovMatrix_diag`, `abs_skCovMatrix_le`, `skFieldAt`, `skFieldAt_eq`,
+  `skField_map_smul_eq_skFieldAt` — the SK model as an instance of the general hypotheses:
+  `S = skCovMatrix N 1`, `D = N/2`.
+- `SpinGlass.abs_skGhirlandaGuerra_error_le` — **the Ghirlanda–Guerra error of the SK model at
+  inverse temperature `β`**, bounded by `B β N` times the fluctuation of Theorem 12.1.1. Exact at
+  every finite volume, with no perturbation added.
+- `SpinGlass.exists_beta_abs_skGhirlandaGuerra_error_le` — **the identities hold up to an explicit
+  `O(N^{-1/4})` error at some inverse temperature in every window.** The mean value theorem for
+  interval integrals turns Theorem 12.1.1's integrated bound into a bound at a single `β`, which is
+  Talagrand's conclusion "for the typical value of `x`".
+- `SpinGlass.variance_skFreeEnergy_le`, `integral_abs_skFreeEnergy_sub_mean_le` are now one-line
+  instances of the general theorems; the sharper SK constants in
+  `intervalIntegral_skTotalEnergy_fluctuation_le` come from the sharper input
+  `0 ≤ ∂p_N/∂β ≤ β/2` (`deriv_skFreeEnergy_nonneg_le`), which uses `0 ≤ 𝔼⟨R₁₂²⟩ ≤ 1` and is not
+  available for a general kernel.
+
+## Proved: the Ghirlanda–Guerra combination of a kernel, and of a disorder *component* (§12.2)
+
+The identities at the model's own profile `ξ` come from the defect identity for the Hamiltonian.
+The identities at *individual monomial* test functions `r ↦ rᵖ` come from the same identity applied
+to a single `p`-spin **component** of a mixed Hamiltonian. This section is that generalisation,
+carried out once at the level of the finite replica calculus.
+
+- `FiniteGibbs.freshKernelAvg` — the fresh-replica average `⟨c ρ ·⟩` of an *arbitrary* kernel: no
+  Gaussian structure, and linear in the kernel (`freshKernelAvg_add`, `freshKernelAvg_smul`).
+- `FiniteGibbs.covKernel μ w σ τ = Cov(⟪H, w σ⟫, H τ)` — the cross-covariance kernel along a family
+  of directions `w`; for `w = e_·` the Hamiltonian's own kernel, for `w σ = Wᵀ e_σ` the cross kernel
+  of the component `W H`. In general **not symmetric**.
+- `FiniteGibbs.componentField w H` — the component field `σ ↦ ⟪H, w σ⟫`, packaged as a vector of
+  `EnergySpace α` so that the whole calculus written for the energy applies to it verbatim;
+  `componentField_std_basis` says the coordinate case is the disorder itself.
+- `FiniteGibbs.ghirlandaGuerraCombinationOf μ c m f i` — **the Ghirlanda–Guerra combination of a
+  kernel** (Vol. II, Definition 15.3.4; Panchenko (1.1)), with the kernel a parameter;
+  `ghirlandaGuerraCombination` is the Hamiltonian's own case.
+- `FiniteGibbs.integral_inner_mul_gibbs_average_n_det`,
+  `FiniteGibbs.integral_gibbs_average_n_det_inner_mul`,
+  `FiniteGibbs.integral_gibbs_average_n_det_inner_mul_erase`,
+  `FiniteGibbs.integral_gibbs_average_one_inner` — the cavity identity, the cavity identity with a
+  component field inside the bracket, its diagonal-separated form, and the mean of a component
+  field. The coordinate cases are the energy statements, now corollaries.
+- `FiniteGibbs.ghirlandaGuerra_defect_of` — **the component defect identity**: the
+  Ghirlanda–Guerra combination of `c_w` is the covariance between the component field at the `i`-th
+  replica and the observable.
+- `FiniteGibbs.abs_integral_gibbs_average_field_mul_sub_le_integral_abs` — the sharp `L¹` bound
+  `|𝔼⟨(u H)_{σⁱ} f⟩ - a 𝔼⟨f⟩| ≤ B 𝔼⟨|u H - a|⟩` for an **arbitrary** field `u`, with the three
+  integrability facts as hypotheses and **no Gaussian hypothesis at all**.
+- `FiniteGibbs.ghirlandaGuerra_error_of_le_integral_abs` — **the component Ghirlanda–Guerra error
+  bound**: the combination of `c_w` is at most `B` times the mean absolute fluctuation of the
+  component field. Exact at every finite volume.
+- `LinearMap.IsPositive.range_le_range_of_le` — **Douglas' lemma in finite dimensions** (a Mathlib
+  gap): `0 ≤ T ≤ S ⟹ range T ≤ range S`, via
+  `LinearMap.IsPositive.apply_eq_zero_of_inner_self_eq_zero` and
+  `LinearMap.IsSymmetric.range_le_range_of_ker_le_ker`. This is what produces the directions `w`
+  realising a prescribed monomial kernel: with `S` the Hamiltonian's covariance and `T` the
+  monomial's, every column of `T` is `S` applied to something — the conditional expectation of the
+  component given the Hamiltonian.
+
+## Proved: the disorder as a linear image of an abstract Gaussian (Vol. I, §1.7; Vol. II, §12.1)
+
+The Hamiltonian of a spin glass built from independent pieces is a *linear image* `A x` of an
+underlying Gaussian vector `x`, and the perturbation arguments differentiate with respect to a
+component of `x` that is not the Hamiltonian. The whole cavity layer is therefore stated for
+`(P, A)`, with the current theory as the case `A = id`.
+
+- `ProbabilityTheory.IsGaussian.integral_inner_mul_comp_clm` — **first-order Gaussian integration
+  by parts along a linear substitution** (a Mathlib gap):
+  `∫ ⟪x, h⟫ G(A x) ∂P = ∫ (DG (A x)) (A (C_P h)) ∂P`. The direction in which `G` is differentiated
+  is the *cross-covariance* `A (C_P h)`; this is the first-order companion of the second-order
+  two-map trace identity `IsGaussian.integral_fderiv_clm_add_apply_clm`.
+- `FiniteGibbs.integral_inner_mul_gibbs_average_n_det_comp` — **the cavity identity for a
+  Hamiltonian that is a linear image of the disorder**:
+  `∫ ⟪x, h⟫ ⟨f⟩_{A x} ∂P = ∫ ( n ⟨f⟩ ⟨v⟩ - ∑_{l<n} ⟨f · v(σˡ)⟩ ) ∂P` with `v = A (C_P h)`.
+  `integral_inner_mul_gibbs_average_n_det` and `integral_apply_mul_gibbs_average_n_det` are now
+  three-line corollaries.
+- `FiniteGibbs.integral_gibbs_average_n_det_inner_mul_comp` — **the same with a component field
+  inside the bracket**: for directions `w` in the *disorder* space,
+  `𝔼⟨⟪x, w(σⁱ)⟫ f⟩ = 𝔼[ m ⟨f ⟨c(σⁱ,·)⟩⟩ - ∑_{l<m} ⟨f c(σⁱ,σˡ)⟩ ]` with the cross-covariance
+  kernel `c(σ,τ) = Cov(⟪x, w σ⟫, (A x) τ) = (A (C_P (w σ))) τ`. With `Ω = E × E`,
+  `A (x,y) = x + t y` and `w σ = (0, e_σ)` this isolates the second summand of the Hamiltonian and
+  its kernel is `t` times the second block's covariance — constant diagonal, as §12.1 requires.
+- `Matrix.PosSemidef.apply_symm`, `Matrix.PosSemidef.transpose_eq`,
+  `EuclideanSpace.real_inner_eq_dotProduct` — the elementary algebra, for an arbitrary finite index
+  type.
+- `ProbabilityTheory.inner_covarianceOperator_multivariateGaussian`,
+  `covarianceOperator_multivariateGaussian_apply` — **the covariance operator of a centered
+  `multivariateGaussian` is multiplication by its matrix** (a Mathlib gap: Mathlib has the bilinear
+  form, but it is the *operator* that appears in Gaussian integration by parts).
+- `ProbabilityTheory.multivariateGaussian_map_add_prod` — **the sum of two independent centered
+  multivariate Gaussians is the centered multivariate Gaussian with the summed covariance** (a
+  Mathlib gap), and `multivariateGaussian_map_add_smul_prod` — the law of the interpolating field
+  `x + t y` is `mvG 0 (S + t²T)`.
+- `SpinGlass.overlapCovMatrix_add_smul`, `nonneg_coeff_add_smul_sq`,
+  `map_add_smul_prod_gaussField_overlapCovMatrix` — **the interpolating field of two independent
+  mixed `p`-spin disorders is again a mixed `p`-spin disorder**, with profile `A + t²B`. Taking
+  `B = aₚrᵖ` and `A = ξ - aₚrᵖ` the family passes through the model at `t = 1`, its covariance is
+  overlap-driven with nonnegative coefficients for *every* `t` — hence constant diagonal and
+  dominated by it — and differentiating in `t` differentiates in the `p`-spin coupling alone.
+
+## Proved: Lemma 12.1.4 for a component of the disorder (Vol. II, §12.1)
+
+The cavity layer is now complete for a linear-image Hamiltonian, and the first quantitative
+consequence — a *volume-uniform* bound on the mean energy of a single summand — is in place.
+
+- `FiniteGibbs.crossKernel P A w σ τ = Cov(⟪x, w σ⟫, (A x) τ)` — **the cross-covariance kernel of
+  a component of the disorder against a linear-image Hamiltonian**, with `abs_crossKernel_le`.
+- `FiniteGibbs.fderiv_gibbs_average_n_det_add_const` — the replica bracket differentiates through
+  an additive shift of the Hamiltonian, so the external field costs nothing: all the linear-image
+  cavity identities are stated for the **affine** Hamiltonian `A x + c`.
+- `FiniteGibbs.integral_gibbs_average_n_det_inner_mul_comp_erase` — the component cavity identity
+  with the diagonal term separated.
+- `FiniteGibbs.integral_gibbs_average_one_inner_comp` — the mean of a component field is its mean
+  cross kernel against a fresh replica, minus the diagonal.
+- `FiniteGibbs.abs_integral_gibbs_average_one_inner_comp_le` — **Talagrand, Vol. II, Lemma 12.1.4,
+  for a component**: `|𝔼⟨⟪x, w ·⟫⟩| ≤ 2 M` whenever the cross kernel is bounded by `M`.
+- `SpinGlass.exists_gaussianDisorder_pair_indepFun` — **a pair of independent centered Gaussian
+  disorders with prescribed positive semidefinite covariance kernels exists**, for *arbitrary*
+  kernels. `exists_skDisorder_simpleDisorder_indepFun` is now a two-line corollary.
+- `SpinGlass.pairAffine` — the interpolation `(x, y) ↦ x + t y` as a continuous linear map. Unlike
+  `gaussianInterp` this path is **affine in the Hamiltonian**, so the free energy is convex along
+  it, which is what Griffiths' lemma and the second half of Theorem 12.1.1 require.
+- `SpinGlass.crossKernel_pairAffine_std_basis_right` — the cross kernel of the second block against
+  `H_A + t H_B` is `t K₂`: symmetric, constant diagonal, dominated by it.
+- `SpinGlass.abs_integral_gibbs_average_component_le` — **Lemma 12.1.4 for the `p`-spin
+  component**: `|𝔼⟨H_B⟩| ≤ 2|t| M₂`, so for a mixed `p`-spin model the mean `p`-spin energy *per
+  site* is at most `2|t| aₚ` — a constant, uniform in the volume.
+- `FiniteGibbs.covarianceOperator_map_std_basis_eq_crossKernel` — **the Hamiltonian's own
+  covariance kernel is the cross kernel at the adjoint directions**: if `⟪p, w σ⟫ = (A p) σ` then
+  `Cov((A x) σ, (A x) τ) = (A (C_P (w σ))) τ`. No adjoint appears in the statement or the proof —
+  the defining property of `w` is used once on each side.
+- `SpinGlass.pairDir`, `inner_pairDir`, `crossKernel_pairAffine_pairDir` and
+  `covarianceOperator_map_pairAffine_std_basis` — **the interpolated Hamiltonian `H_A + t H_B` has
+  covariance kernel `K₁ + t² K₂`**, read off directly from the covariance operator with no
+  identification of the law. For a mixed `p`-spin model that is `N(ξ - (1-t²)aₚrᵖ)(R)`: again
+  overlap-driven with nonnegative coefficients for *every* real `t`, hence with constant diagonal
+  and dominated by it — the §12.1 hypotheses, along the whole path.
+
+## Proved: Theorem 12.1.1 for a component of the disorder (Vol. II, §12.1)
+
+The two halves of Theorem 12.1.1 now run along the affine interpolation `H_A + x H_B`, giving the
+self-averaging of a *single summand* of a mixed Hamiltonian.
+
+- `SpinGlass.integral_id_map_pairAffine` — the interpolated Hamiltonian is centered.
+- `SpinGlass.integral_abs_free_energy_density_pairAffine_sub_mean_le` — **the free energy
+  concentrates along the interpolation**: `𝔼|Φ - 𝔼Φ| ≤ √(M₁ + x² M₂)/N`. Proved by Gaussian
+  Poincaré on the *pair* space, transported by `variance_map` and evaluated with
+  `covarianceOperator_map_pairAffine_std_basis`; no identification of the interpolated law is
+  needed.
+- `SpinGlass.intervalIntegral_component_fluctuation_le` — **Theorem 12.1.1 for a component**:
+
+  `∫_a^b 𝔼⟨|H_B/N - 𝔼⟨H_B/N⟩|⟩ dx ≤ √((b-a)·2(|a|+|b|)M₂/N²)`
+  `                                   + (4δ(|a|+|b|+2δ)M₂/N + 3(b-a)√(M₁+(|a|+|b|+δ)²M₂)/(δN))`.
+
+  All three terms are explicit. For a mixed `p`-spin model `M₁, M₂ = O(N)`, so they are
+  `O(N^{-1/2})`, `O(δ)` and `O(N^{-1/2}/δ)`: at `δ = N^{-1/4}` the bound is `O(N^{-1/4})`,
+  Talagrand's rate. **The `p`-spin component self-averages.**
+
+## Proved: the Ghirlanda–Guerra error of a component (Vol. II, §12.2)
+
+- `FiniteGibbs.abs_integral_gibbs_average_field_mul_sub_le_integral_abs'` — the sharp `L¹`
+  bound with the Hamiltonian `Hm p` and the tested field `u p` *separate* functions of the
+  disorder, on an arbitrary measure space, with **no Gaussian hypothesis**. The old statement is
+  the case `Hm = id`.
+- `FiniteGibbs.componentField` — now defined for an arbitrary real inner-product disorder space.
+- `FiniteGibbs.integrable_gibbs_average_n_det_comp_of_bounded`,
+  `integrable_gibbs_average_n_det_inner_mul_comp`,
+  `integrable_sum_gibbs_pmf_mul_abs_inner_sub_comp` — the integrability layer for a linear-image
+  Hamiltonian.
+- `FiniteGibbs.ghirlandaGuerra_defect_of_comp` — **the component defect identity** for a
+  linear-image Hamiltonian: the combination of the cross kernel, taken against the law
+  `P.map (A · + c₀)` of the Hamiltonian, is the component–observable covariance. (No new definition
+  is needed: `ghirlandaGuerraCombinationOf` at that pushforward *is* the pair-setting combination,
+  so the whole §15.3 translation applies verbatim.)
+- `FiniteGibbs.ghirlandaGuerra_error_of_comp_le_integral_abs` — **the component Ghirlanda–Guerra
+  error bound** for a linear-image Hamiltonian.
+- `SpinGlass.abs_ghirlandaGuerraCombinationOf_component_le` — **the error is `B N` times exactly
+  the quantity Theorem 12.1.1 controls.**
+- `SpinGlass.exists_coupling_abs_ghirlandaGuerraCombinationOf_component_le` — **the composition**:
+  at some coupling `x` in every window, the Ghirlanda–Guerra combination of the component's cross
+  kernel is at most `B N · ε/(b-a)` with `ε` Theorem 12.1.1's bound, hence `O(N^{3/4})` — and
+  dividing by the kernel scale `x aₚ N`, the defect in Talagrand's (15.40) at `φ(r) = rᵖ` is
+  `O(N^{-1/4})`.
+
+## Proved: the Ghirlanda–Guerra identity of a component, with a rate (Vol. II, §12.2 → §15.3)
+
+The composition is closed and instantiated. The one Mathlib gap on the way — a Gaussian measure on
+a Euclidean space *is* the multivariate Gaussian of its covariance matrix — is filled in general.
+
+- `ContinuousLinearMap.ext_basis₂` — two continuous bilinear maps agreeing on all pairs of basis
+  vectors are equal (the continuous `LinearMap.ext_basis`; a Mathlib gap).
+- `ProbabilityTheory.covarianceBilin_eq_inner_covarianceOperator` — for a centered measure with
+  second moments, `covarianceBilin μ x y = ⟪C_μ x, y⟫`.
+- `ProbabilityTheory.covMatrix μ` — the covariance matrix of a measure on `EuclideanSpace ℝ ι`, as
+  `LinearMap.toMatrix₂` of `covarianceBilin μ` in the standard basis; `posSemidef_covMatrix`,
+  `dotProduct_covMatrix_mulVec`, `covMatrix_multivariateGaussian`.
+- `ProbabilityTheory.IsGaussian.eq_multivariateGaussian` — **every Gaussian measure on a Euclidean
+  space is `multivariateGaussian μ[id] (covMatrix μ)`**, with no hypothesis; and the identification
+  forms `eq_multivariateGaussian_of_covarianceBilin` and
+  `eq_multivariateGaussian_of_inner_covarianceOperator` from a covariance kernel prescribed on the
+  standard basis (a Mathlib gap: Mathlib has
+  `IsGaussian.ext` but never records the finite-dimensional consequence).
+- `SpinGlass.map_pairAffine_disorderPairLaw` — hence **the law of `H_A + t H_B` is the centered
+  Gaussian field with kernel `K₁ + t² K₂`**, not merely a measure with that covariance.
+- `SpinGlass.exists_coupling_abs_ghirlandaGuerra_defect_component_le` — **the identity at the
+  profile of a component, with a rate**: if `K₂ = κ₀ φ(R)` then at some coupling `x` in every window
+  the defect in Definition 15.3.4, Eq. (15.40), at `φ` is at most `‖g‖ N ε / ((b-a) n |x κ₀|)`, `ε`
+  being Theorem 12.1.1's bound for the component.
+- `SpinGlass.exists_coupling_abs_ghirlandaGuerra_defect_split_le` — for any split `ξ = A + B` of
+  an overlap profile into nonnegative-coefficient parts, the model with profile `A + x² B` satisfies
+  the identity at `φ = B` up to that bound with `M₁ = N A(1)`, `M₂ = N B(1)`, `κ₀ = N`.
+- `SpinGlass.exists_coupling_abs_ghirlandaGuerra_defect_mixedPSpin_le` — **the mixed `p`-spin
+  capstone of §12.2**: for every mixed `p`-spin model `ξ` with `aₚ ≠ 0`, external field `h`, and
+  window `[a,b] ⊂ (0,∞)`, there is `x ∈ [a,b]` such that the model with its `p`-th coefficient
+  rescaled by `x²` satisfies the Ghirlanda–Guerra identity at `φ(r) = rᵖ` up to
+
+  `‖g‖ N (√((b-a)·2(|a|+|b|)aₚ/N) + 4δ(|a|+|b|+2δ)aₚ`
+  `      + 3(b-a)√(N(ξ(1)-aₚ) + (|a|+|b|+δ)²aₚN)/(δN)) / ((b-a) n x aₚ N)`,
+
+  i.e. `O(N^{-1/4})` at `δ = N^{-1/4}`. The statement is about the canonical field
+  `gaussField N (overlapCovMatrix N ξₓ)` shifted by the external field — no coupling space, no
+  perturbation, no unproved hypothesis, at every finite volume.
+
+## Proved: the extended Ghirlanda–Guerra identities at finite volume (Vol. II, Theorem 12.2.2)
+
+Talagrand perturbs a Hamiltonian by a family of independent Gaussian components `∑ₛ βₛ Hₛ` and
+isolates one at a time: for each `s` the pair `(∑_{i≠s} βᵢHᵢ, Hₛ)` is an independent pair to which
+Theorem 12.1.1 applies, and Fubini over the couplings produces one coupling vector good for every
+component. All of it is now formal, with the couplings *exhibited* rather than averaged over.
+
+- `ProbabilityTheory.multivariateGaussian_zero` — `multivariateGaussian m 0 = dirac m`.
+- `ProbabilityTheory.multivariateGaussian_map_sum_smul_pi` — **a linear combination of independent
+  centered multivariate Gaussians is the centered multivariate Gaussian with the combined
+  covariance**: `∑ᵢ cᵢ xᵢ ∼ mvG 0 (∑ᵢ cᵢ² Sᵢ)` under `Measure.pi` (a Mathlib gap; the two-summand
+  `multivariateGaussian_map_add_prod` is its induction step).
+- `Fin.insertNth_eq_update` — inserting at `p` is updating the `p`-th coordinate (a Mathlib gap).
+- `SpinGlass.FiniteGibbs.continuous_integral_totalFluct_param` (and the chain
+  `measurable_gibbs_average_param`, `abs_integral_gibbs_average_param_le`,
+  `continuous_integral_gibbs_average_param`, `continuous_integral_abs_meanEnergy_sub_param`,
+  `integrable_totalFluct_param`) — **the energy-fluctuation functionals are continuous in a
+  parameter of the Hamiltonian ranging over any first-countable space**; the affine-path statements
+  are now the case `E = ℝ`.
+- `SpinGlass.GaussianDisorder.ofMap` — a measurable Hamiltonian whose law is `gaussField N S` is a
+  Gaussian disorder with kernel `S`.
+- `SpinGlass.familyLaw`, `familyLaw_map_eval`, `familyLaw_map_sum_smul`,
+  `familyLaw_map_sum_erase_smul`, `iIndepFun_eval_familyLaw`, `indepFun_sum_erase_eval`,
+  `familyCoord`, `familyRest`, `indepFun_familyRest_familyCoord` — **the canonical carrier of a
+  finite family of independent Gaussian disorders** (the product of the canonical fields), its
+  coordinates, their combinations, and the independent pair `(∑_{i≠s} cᵢ ωᵢ, ωₛ)` as
+  `GaussianDisorder`s.
+- `SpinGlass.familyHam`, `familyHam_update_eq`, `sum_erase_sq_smul_add` — the perturbed
+  Hamiltonian `c₀ + H₀ + ∑ₛ βₛ Hₛ` (Talagrand's (12.33)) and its pair decomposition at each `s`.
+- `SpinGlass.familyFluct`, `continuous_familyFluct`, `familyFluct_update_eq` — **the fluctuation
+  functional `𝔼⟨|Hₛ/N − 𝔼⟨Hₛ/N⟩|⟩` of component `s`** as a continuous function of the couplings.
+- `SpinGlass.energyFluctuationBound` — Theorem 12.1.1's explicit three-term bound, named.
+- `SpinGlass.integral_disorderPairLaw_totalFluct` — the pair-space fluctuation integrand pulled
+  back to the sample space.
+- `SpinGlass.intervalIntegral_familyFluct_update_le` — **Theorem 12.1.1 for one component of a
+  family**, uniformly in the other couplings.
+- `SpinGlass.abs_ghirlandaGuerra_defect_family_le` — **the (15.40) defect of the perturbed model
+  at the profile of component `s` is at most `‖g‖ N 𝔼⟨|Hₛ/N − 𝔼⟨Hₛ/N⟩|⟩/(k |βₛ κₛ|)`**, for the
+  canonical law `gaussField N (T 0 + ∑ₛ βₛ² Tₛ)` shifted by the external field.
+- `SpinGlass.setIntegral_familyFluct_le` — **Fubini over the box** `[a,b]^{m+1}`
+  (`measurePreserving_piFinSuccAbove`, `integral_prod_symm`, `Measure.restrict_pi_pi`).
+- `SpinGlass.exists_couplings_familyFluct_le` — **one coupling vector good for every component**,
+  by the mean value principle `MeasureTheory.exists_le_setAverage`.
+- `SpinGlass.exists_couplings_abs_ghirlandaGuerra_defect_family_le` — **Theorem 12.2.2 at finite
+  volume**: for a family of overlap-driven components `Tₛ = κₛ φₛ(R)` and `[a,b] ⊂ (0,∞)`, couplings
+  `β ∈ [a,b]^{m+1}` at which the perturbed model satisfies the Ghirlanda–Guerra identity at every
+  `φₛ` simultaneously, for every test function, up to `‖g‖ N (∑ₚ εₚ)/((b-a) k |βₛ κₛ|)`.
+- `SpinGlass.monomialPerturbationKernel`, `monomialPerturbationKernel_zero_add_sum`,
+  `exists_couplings_abs_ghirlandaGuerra_defect_mixedPSpin_monomials_le` — **the mixed `p`-spin
+  instance**: perturbing by `wₛ² N Rˢ⁺¹`, `s = 0, …, m`, the perturbed model is the mixed `p`-spin
+  model with profile `ξ(r) + ∑ₛ (βₛwₛ)² rˢ⁺¹`, and at the exhibited couplings it satisfies the
+  identities at **all monomials `r, …, rᵐ⁺¹` at once**, with the explicit rate. With
+  `wₛ = c_N 2^{-(s+1)}`, `δ = N^{-1/4}` this is Talagrand's `O(N^{-1/4} c_N^{-2})`.
+
+Talagrand's statement takes `β ∈ [-1,1]^ℕ` (infinitely many components) and bounds the defect on
+average. Here the family is finite (`m+1` components, `m` arbitrary), the window `[a,b] ⊂ (0,∞)`
+avoids the singularity at `βₛ = 0`, and the good couplings are exhibited — which is exactly what
+the passage to the limit consumes.
+
+## Proved: the Ghirlanda–Guerra identities in the thermodynamic limit (Vol. II, §12.2 → §15.3)
+
+The finite-volume extended identities hold up to a defect; in the limit they hold exactly. The
+passage is formal and the capstone is fully explicit.
+
+- `SpinGlass.ggDefect ν n φ g` — **the defect in Talagrand's (15.40)** for a law `ν` of overlap
+  arrays; `continuous_ggDefect` (it is continuous in the law, in the topology of convergence in
+  distribution); `satisfiesGhirlandaGuerra_iff_ggDefect` (the identities are its vanishing at every
+  block observable); `ggDefect_monomial_zero` (it vanishes identically at `φ = 1`).
+- `SpinGlass.satisfiesGhirlandaGuerra_of_tendsto_ggDefect` — **approximate identities pass to the
+  limit**: if the defects at every monomial tend to `0` along a convergent family of laws, the limit
+  satisfies the identities at every continuous test function.
+- `SpinGlass.exists_subseq_tendsto_satisfiesGhirlandaGuerra` — for a sequence of jointly
+  exchangeable Gram array laws with vanishing monomial defects, some subsequence converges to a
+  jointly exchangeable Gram law satisfying the Ghirlanda–Guerra identities.
+- `SpinGlass.mixedPSpinArrayLaw N ξ h` — **the annealed overlap-array law of the mixed `p`-spin
+  model** with profile `ξ` and field `h`; `isJointlyExchangeable_mixedPSpinArrayLaw`,
+  `mixedPSpinArrayLaw_gramArray`; `perturbedProfile ξ w` — the profile `ξ(r) + ∑ₛ wₛ² rˢ⁺¹`.
+- `SpinGlass.tendsto_perturbation_rate` — the finite-volume rate, normalised by the kernel scale,
+  vanishes under the scaling hypotheses `c_N → 0`, `δ_N → 0`, `(m_N+1)δ_N → 0`,
+  `(m_N+1)c_N² → 0`, `(m_N+1)/(c_N²δ_N√N) → 0`.
+- `SpinGlass.exists_subseq_tendsto_satisfiesGhirlandaGuerra_mixedPSpin` — **the capstone of
+  §12.2**: for every mixed `p`-spin model and every admissible scaling, there are couplings
+  `β_N ∈ [a,b]^{m_N+1}` such that along a subsequence the annealed overlap-array laws of the
+  perturbed models (profile `ξ(r) + ∑ₛ (β_{N,s}c_N)² rˢ⁺¹`, perturbation variance per site
+  `≤ b²(m_N+1)c_N² → 0`) converge in distribution to a jointly exchangeable Gram law that
+  **satisfies the Ghirlanda–Guerra identities**.
+- `SpinGlass.tendsto_floor_rpow_mul_rpow_neg`, `explicitScaling_tendsto`,
+  `exists_subseq_tendsto_satisfiesGhirlandaGuerra_mixedPSpin_explicit` — the same with the
+  **explicit scaling** `c_N = N^{-1/16}`, `δ_N = N^{-1/4}`, `m_N = ⌊N^{1/16}⌋`: no free parameter
+  remains.
+
+## Proved: the free energy under an independent Gaussian perturbation (Vol. II, Lemma 12.2.1)
+
+- `SpinGlass.integral_exp_mul_apply_gaussField` — **the exponential moment of a coordinate of a
+  Gaussian field**: `𝔼 exp(t H(σ)) = exp(T σ σ t²/2)`, through Mathlib's one-dimensional marginal
+  `IsGaussian.map_eq_gaussianReal` and `mgf_gaussianReal`; `integrable_exp_mul_apply_gaussField`.
+- `SpinGlass.le_integral_free_energy_density_add` — Jensen for the convex free energy: an
+  independent centered perturbation cannot lower the mean free energy.
+- `SpinGlass.integral_free_energy_density_add_le` — Jensen for the logarithm (through the tangent
+  line at the mean partition function) and the Gaussian exponential moment: a perturbation of
+  variance at most `D` per configuration raises the free energy per site by at most `D/(2N)`.
+- `SpinGlass.gaussFreeEnergy_le_gaussFreeEnergy_add`, `SpinGlass.gaussFreeEnergy_add_le` —
+  **Lemma 12.2.1**: `gaussFreeEnergy N S h ≤ gaussFreeEnergy N (S + T) h ≤ gaussFreeEnergy N S h
+  + D/(2N)`, for the law of the sum of independent fields (`multivariateGaussian_map_add_prod`) and
+  Fubini.
+- `SpinGlass.abs_gaussFreeEnergy_perturbedProfile_sub_le` — for a mixed `p`-spin model perturbed by
+  the monomial components with weights `w`, **the free energy moves by at most `(∑ₛ wₛ²)/2`**; with
+  the couplings of the Ghirlanda–Guerra capstone this is `≤ b²(m_N+1)c_N²/2 → 0`: the perturbation
+  that produces the identities is invisible to the free energy in the limit.
+
+## Proved: single monomials are components of the disorder (Vol. II, §12.2 → §15.3)
+
+Douglas' lemma turns the algebra into an actual construction, and the Ghirlanda–Guerra identities
+at *individual monomial* test functions are then reduced to one concentration statement.
+
+- `SpinGlass.inner_covarianceOperator_multivariateGaussian` — for a centered
+  `multivariateGaussian`, the covariance operator's bilinear form is the quadratic form of the
+  matrix, at **every** pair of vectors (the Dirac-basis statement is now its corollary).
+- `SpinGlass.exists_directions_covKernel_eq` — **every positive semidefinite kernel dominated by
+  the disorder's own covariance is the cross kernel of a component of the disorder**: if
+  `0 ≤ T ≤ S` then there are directions `w` with `Cov(⟪H, w σ⟫, H τ) = T σ τ`.
+- `SpinGlass.exists_directions_covKernel_monomial` — for a mixed `p`-spin model, applied to the
+  single monomial `aₚ N Rᵖ` (the difference `N ξ(R) - aₚ N Rᵖ` is again an overlap-driven kernel
+  with nonnegative coefficients, hence positive semidefinite).
+- `SpinGlass.ghirlandaGuerraCombinationOf_eq_overlapArrayLaw`,
+  `ghirlandaGuerra_defect_eq_combinationOf`, `abs_ghirlandaGuerra_defect_of_le` — the translation
+  and the defect identity, now for an **arbitrary** kernel `c σ τ = κ φ(R_{στ})`, not only the
+  Hamiltonian's own; the own-kernel statements are corollaries.
+- `SpinGlass.abs_ghirlandaGuerra_defect_le_of_covKernel_monomial` (and its existence form
+  `exists_abs_ghirlandaGuerra_defect_monomial_le`) — **the monomial capstone**: for a mixed
+  `p`-spin model, the defect in Definition 15.3.4 at `φ(r) = rᵖ` is at most `‖g‖/(n aₚ N)` times
+  the mean absolute fluctuation of the `p`-spin component field `σ ↦ ⟪H, w σ⟫`. Exact at every
+  finite volume, no perturbation added. Since monomial test functions suffice
+  (`satisfiesGhirlandaGuerra_of_monomial`), the identities at *every* continuous test function are
+  now reduced to the self-averaging of that single field.
+
+## Proved: mixed `p`-spin models as an instance (Vol. II, Eq. (14.57))
+
+Talagrand's realizability criterion says that `c(σ,τ) = N ξ(R_{στ})` is a Gaussian covariance as
+soon as `ξ` has nonnegative coefficients. That makes every mixed `p`-spin model an instance of the
+three hypotheses (`PosSemidef`, constant diagonal `D`, `|S| ≤ D`) under which the whole of §12.1
+was proved above, with `D = N ξ(1)`, so that `D/N = ξ(1)` is a constant and every bound is
+uniform in the volume.
+
+- `Polynomial.eval_one_nonneg_of_nonneg_coeff` and
+  `Polynomial.abs_eval_le_eval_one_of_nonneg_coeff` — `|P(r)| ≤ P(1)` for `|r| ≤ 1` when the
+  coefficients are nonnegative (a Mathlib gap).
+- `SpinGlass.overlapCovMatrix`, `overlapCovMatrix_diag` (`= N ξ(1)`), `abs_overlapCovMatrix_le`,
+  `posSemidef_overlapCovMatrix_of_polynomial` — the model and its three properties.
+- `SpinGlass.deriv_mixedPSpinFreeEnergy_eq` — **Lemma 1.3.11 for a mixed `p`-spin model**:
+  `∂p_N/∂β = β(ξ(1) - 𝔼⟨ξ(R₁₂)⟩)`.
+- `SpinGlass.abs_deriv_mixedPSpinFreeEnergy_le` — **Lemma 12.1.4**: `|∂p_N/∂β| ≤ 2βξ(1)`.
+- `SpinGlass.variance_mixedPSpinFreeEnergy_le` — **Theorem 1.3.4**: `Var[p_N^ω(β)] ≤ β²ξ(1)/N`;
+  and `integral_abs_mixedPSpinFreeEnergy_sub_mean_le` — `𝔼|p_N - 𝔼p_N| ≤ |β|√(ξ(1)/N)`.
+- `SpinGlass.intervalIntegral_mixedPSpinTotalEnergy_fluctuation_le` — **Theorem 12.1.1**.
+- `SpinGlass.exists_beta_abs_mixedPSpinGhirlandaGuerra_error_le` — the Ghirlanda–Guerra error of an
+  arbitrary mixed `p`-spin model, `O(N^{-1/4})` at some `β` in every window.
+
+## Proved: Theorem 12.1.1 in Markov form (Vol. II, §12.1)
+
+Theorem 12.1.1 bounds the energy fluctuation *on average* over a temperature window; Markov's
+inequality converts that into a statement about *most* temperatures, which is strictly stronger
+than the mean-value form.
+
+- `MeasureTheory.measureReal_setOf_le_inter_le_of_integrableOn` and
+  `intervalIntegral.measureReal_setOf_le_le`, `..._of_continuous` — **Markov's inequality on a set
+  and for an interval integral** (a Mathlib gap: Mathlib had only the whole-space form
+  `mul_meas_ge_le_integral_of_nonneg`).
+- `SpinGlass.measureReal_setOf_gaussTotalEnergy_fluctuation_ge_le` — the set of `β ∈ (a,b]` where
+  the mean absolute energy fluctuation exceeds `t` has measure at most `ε/t`, `ε` being Theorem
+  12.1.1's bound.
+- `SpinGlass.measureReal_setOf_gaussGhirlandaGuerra_error_gt_le` — hence **the Ghirlanda–Guerra
+  identities hold at all but a set of inverse temperatures of measure `≤ ε/t`**.
+
+## Proved: overlap-array integrals are finite Gibbs brackets (the §12.2 ↔ §15.3 dictionary)
+
+Talagrand states the identities for the *law of the overlap array* (Ch. 15) and proves them by the
+*finite replica calculus* (§12.2). These are the same numbers, and the translation is now a
+theorem.
+
+- `SpinGlass.FiniteGibbs.gibbs_average_n_det_mul_sum_gibbs_pmf` — **the fresh-replica identity**:
+  averaging a kernel against an independent extra draw turns an `n`-replica bracket into an
+  `(n+1)`-replica bracket, `⟨F ∑_τ p(τ) c(σⁱ,τ)⟩ₙ = ⟨F c(σⁱ,σⁿ⁺¹)⟩ₙ₊₁`. This is what puts the
+  "new replica" term and the "old replica" terms in one and the same space.
+- `SpinGlass.map_take_configReplicaArrayLaw` — any finite injectively-indexed family of replicas
+  of the i.i.d. replica array is the finite replica Gibbs measure.
+- `SpinGlass.integral_overlapArrayLaw_comp_take` — **the dictionary**: for any injective indexing
+  of `k` replica labels, `∫ g(R_{e l, e l'}) d(overlapArrayLaw N H) = ⟨g((R(σˡ,σˡ')))⟩ₖ`. The
+  generality in the indexing is what lets the four terms of (15.40) — which live on the label sets
+  `{0,…,n-1}`, `{0,…,n}` and `{0,n}` — all be translated at once.
+- `SpinGlass.integral_bind_overlapArrayLaw_comp_take`,
+  `integral_annealedOverlapArrayLaw_comp_take` — the disorder-averaged forms, via
+  `MeasureTheory.Measure.integral_bind`.
+
+## Proved: the Ghirlanda–Guerra combination **is** the defect in (15.40) (Vol. II, §12.2 ↔ §15.3)
+
+- `SpinGlass.FiniteGibbs.ghirlandaGuerraCombination` — the Ghirlanda–Guerra combination as a
+  **definition** (Vol. II, Definition 15.3.4 / Eq. (15.40); Panchenko (1.1)), replacing the
+  spelled-out expression that previously appeared in every statement.
+- `SpinGlass.overlapReplicaFun`, `SpinGlass.blockEntryCM`, `SpinGlass.blockReindex` — pulling a
+  continuous test function of the `n × n` overlap block back to a function of `n` configurations.
+- `SpinGlass.ghirlandaGuerraCombination_eq_overlapArrayLaw` — **the translation**: for any
+  Hamiltonian law whose covariance kernel is `κ φ(R_{στ})`,
+  `ggCombination ν n (g ∘ overlaps) i`
+  `  = κ (n ∫ φ(R_{i,n}) g - (∫φ(R_{i,n}))(∫g) - ∑_{l≠i} ∫ φ(R_{i,l}) g)`.
+- `SpinGlass.ghirlandaGuerra_defect_eq_combination` — hence **the defect in Talagrand's identity
+  (15.40) is exactly `ggCombination/(nκ)`**, and `abs_ghirlandaGuerra_defect_le` turns any bound on
+  the combination into a bound on the defect.
+- `SpinGlass.exists_beta_abs_mixedPSpinGhirlandaGuerra_defect_le` — **the capstone**: for every
+  mixed `p`-spin model, at some inverse temperature in every window, the defect in (15.40) at the
+  model's own profile `φ = ξ` is at most `‖g‖/(nβ)` times Theorem 12.1.1's bracket, which is
+  `O(N^{-1/4})`. No perturbation, no limit: an explicit finite-volume rate.
 
 ## Proved: Gaussian concentration (Vol. I, §1.3)
 
@@ -428,7 +1229,10 @@ comparison is one theorem with two instances: the replica-symmetric bound and th
   stated for a pair of random vectors valued in **two different** Hilbert spaces. That is what a
   splitting argument needs (the two blocks live on different configuration spaces) and it is the
   general form of the statement; the same-space case used by Guerra's interpolation is an instance.
-- `GaussianDisorder.map_U_eq` — two Gaussian Hamiltonians with the same covariance kernel, carried
+- `GaussianDisorder.map_U_eq_multivariateGaussian` (now with **no positivity hypothesis**: the
+  covariance matrix of a Gaussian law is positive semidefinite by
+  `ProbabilityTheory.posSemidef_covMatrix`) and
+  `GaussianDisorder.map_U_eq` — two Gaussian Hamiltonians with the same covariance kernel, carried
   by any two probability spaces, have the same law (`ProbabilityTheory.IsGaussian.ext` at the
   coordinate expansion of `covarianceBilin`), and `GaussianDisorder.integral_comp_eq` — hence every
   disorder average is a function of the kernel alone.
@@ -505,10 +1309,11 @@ These are `Prop`-valued definitions recording Talagrand's statements; each still
   Ghirlanda–Guerra identities. `GG1_of_GG1_prefix` and
   `GG1_prefix_of_condExp_lastReplica_ae` reduce them to a conditional-expectation identity.
 
-  **`SK_GG1_gibbsKernel` is false at finite volume** and names an asymptotic target only: at
-  `N = n = 1` it asserts `m = m ^ 3` for the magnetization `m`. The Ghirlanda–Guerra identities
-  hold exactly only for asymptotic Gibbs measures, or after a perturbation. The exact
-  finite-volume statement is the cavity identity below.
+  **The finite-volume Gibbs replica law does not satisfy them**: at `N = n = 1` `SK_GG1` asserts
+  `m = m ^ 3` for the magnetization `m`. No definition names that false proposition. The
+  Ghirlanda–Guerra identities hold exactly only for asymptotic Gibbs measures, or after a
+  perturbation; the exact finite-volume statement is the cavity identity and the defect identity
+  above.
 -/
 
 namespace SpinGlass

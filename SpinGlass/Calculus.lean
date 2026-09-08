@@ -94,8 +94,20 @@ lemma abs_free_energy_density_le
     (FiniteGibbs.abs_free_energy_density_le (α := Config N) (n := N) (H := H))
 
 /-! ### Integrability under Gaussian disorder -/
+
+/-- The free energy density of an integrable-norm Hamiltonian family is integrable: the growth
+bound `abs_free_energy_density_le` is linear in `‖H‖`. -/
+lemma integrable_free_energy_density_of_integrable_norm
+    {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsFiniteMeasure P]
+    {g : Ω → EnergySpace N} (hg_meas : Measurable g)
+    (hg_int : Integrable (fun x => ‖g x‖) P) :
+    Integrable (fun w : Ω => free_energy_density (N := N) (g w)) P := by
+  simpa [free_energy_density, Z, FiniteGibbs.free_energy_density, FiniteGibbs.Z] using
+    (FiniteGibbs.integrable_free_energy_density_of_integrable_norm (α := Config N) (P := P) (n := N)
+      (g := g) hg_meas hg_int)
+
 lemma integrable_free_energy_density_of_isGaussian
-    {Ω : Type*} [MeasureSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+    {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
     {g : Ω → EnergySpace N} (hg_meas : Measurable g)
     (hg_gauss : ProbabilityTheory.IsGaussian (P.map g)) :
     Integrable (fun w : Ω => free_energy_density (N := N) (g w)) P := by

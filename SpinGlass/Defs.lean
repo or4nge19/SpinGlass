@@ -233,7 +233,7 @@ lemma gibbs_pmf_eq_FiniteGibbs_gibbs_pmf (H : EnergySpace N) (σ : Config N) :
 
 /-- Gibbs average \(\langle f \rangle_H\) under the Gibbs weights `gibbs_pmf`. -/
 noncomputable def gibbs_average (H : EnergySpace N) (f : Config N → ℝ) : ℝ :=
-  ∑ σ, gibbs_pmf N H σ * f σ
+  FiniteGibbs.gibbs_average (α := Config N) H f
 
 /-! #### The two-replica bracket
 
@@ -303,6 +303,37 @@ lemma gibbs_average₂_const_mul (H : EnergySpace N) (c : ℝ) (f : Config N →
   exact Finset.sum_congr rfl fun τ _ => by ring
 
 /-- The two-replica bracket commutes with subtraction. -/
+lemma sum_gibbs_pmf_mul_sum_gibbs_pmf (H : EnergySpace N) :
+    (∑ σ : Config N, ∑ τ : Config N, gibbs_pmf N H σ * gibbs_pmf N H τ) = 1 := by
+  rw [← Finset.sum_mul_sum, sum_gibbs_pmf (N := N), mul_one]
+
+lemma gibbs_average₂_le_of_le (H : EnergySpace N) {f : Config N → Config N → ℝ} {C : ℝ}
+    (hf : ∀ σ τ, f σ τ ≤ C) : gibbs_average₂ (N := N) H f ≤ C := by
+  calc gibbs_average₂ (N := N) H f
+      ≤ ∑ σ : Config N, ∑ τ : Config N, gibbs_pmf N H σ * gibbs_pmf N H τ * C :=
+        Finset.sum_le_sum fun σ _ => Finset.sum_le_sum fun τ _ =>
+          mul_le_mul_of_nonneg_left (hf σ τ)
+            (mul_nonneg (gibbs_pmf_nonneg (N := N) H σ) (gibbs_pmf_nonneg (N := N) H τ))
+    _ = C := by
+        rw [show (∑ σ : Config N, ∑ τ : Config N, gibbs_pmf N H σ * gibbs_pmf N H τ * C)
+            = (∑ σ : Config N, ∑ τ : Config N, gibbs_pmf N H σ * gibbs_pmf N H τ) * C from by
+          rw [Finset.sum_mul]
+          exact Finset.sum_congr rfl fun σ _ => (Finset.sum_mul _ _ _).symm,
+          sum_gibbs_pmf_mul_sum_gibbs_pmf (N := N) H, one_mul]
+
+lemma abs_gibbs_average₂_le (H : EnergySpace N) {f : Config N → Config N → ℝ} {C : ℝ}
+    (hf : ∀ σ τ, |f σ τ| ≤ C) : |gibbs_average₂ (N := N) H f| ≤ C := by
+  refine abs_le.2 ⟨?_, gibbs_average₂_le_of_le (N := N) H fun σ τ =>
+    (le_abs_self _).trans (hf σ τ)⟩
+  have h := gibbs_average₂_le_of_le (N := N) H (f := fun σ τ => -f σ τ) (C := C)
+    fun σ τ => (neg_le_abs _).trans (hf σ τ)
+  have hneg : gibbs_average₂ (N := N) H (fun σ τ => -f σ τ)
+      = -gibbs_average₂ (N := N) H f := by
+    simp only [gibbs_average₂, ← Finset.sum_neg_distrib]
+    exact Finset.sum_congr rfl fun σ _ => Finset.sum_congr rfl fun τ _ => by ring
+  rw [hneg] at h
+  linarith
+
 lemma gibbs_average₂_sub (H : EnergySpace N) (f g : Config N → Config N → ℝ) :
     gibbs_average₂ (N := N) H (fun σ τ => f σ τ - g σ τ)
       = gibbs_average₂ (N := N) H f - gibbs_average₂ (N := N) H g := by
@@ -401,6 +432,29 @@ theorem trace_formula (H : EnergySpace N) (Cov : Config N → Config N → ℝ) 
   simpa [hessian_free_energy, FiniteGibbs.hessian_free_energy, std_basis, FiniteGibbs.std_basis,
     gibbs_pmf_eq_FiniteGibbs_gibbs_pmf] using
     (FiniteGibbs.trace_formula (α := Config N) (n := N) (H := H) (Cov := Cov))
+
+/-- **The overlap of two configurations lies in `[-1,1]`**: it is a normalised inner product of
+sign vectors. -/
+theorem abs_overlap_le_one (N : ℕ) (σ τ : Config N) : |overlap N σ τ| ≤ 1 := by
+  rcases Nat.eq_zero_or_pos N with rfl | hN
+  · simp [overlap, overlapOf]
+  · have hN' : (0 : ℝ) < (N : ℝ) := by exact_mod_cast hN
+    have hov : overlap N σ τ = (1 / (N : ℝ)) * ∑ i : Fin N, spin N σ i * spin N τ i := rfl
+    have hsum : |∑ i : Fin N, spin N σ i * spin N τ i| ≤ (N : ℝ) := by
+      calc |∑ i : Fin N, spin N σ i * spin N τ i|
+          ≤ ∑ i : Fin N, |spin N σ i * spin N τ i| :=
+            Finset.abs_sum_le_sum_abs _ _
+        _ = (N : ℝ) := by simp [abs_mul, abs_spin_eq_one]
+    rw [hov, abs_mul, abs_of_nonneg (by positivity : (0 : ℝ) ≤ 1 / (N : ℝ))]
+    calc (1 / (N : ℝ)) * |∑ i : Fin N, spin N σ i * spin N τ i|
+        ≤ (1 / (N : ℝ)) * (N : ℝ) := by gcongr
+      _ = 1 := by field_simp
+
+/-- The square of the overlap lies in `[0,1]`. -/
+theorem abs_overlap_sq_le_one (N : ℕ) (σ τ : Config N) : |overlap N σ τ ^ 2| ≤ 1 := by
+  rw [abs_pow, ← one_pow 2]
+  gcongr
+  exact abs_overlap_le_one N σ τ
 
 /-- Self-overlap is `1`. -/
 theorem overlap_self (hN : 0 < N) (σ : Config N) : overlap N σ σ = 1 := by

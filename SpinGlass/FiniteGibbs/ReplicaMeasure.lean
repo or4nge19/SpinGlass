@@ -125,6 +125,53 @@ lemma gibbs_average_n_det_comp_perm (n : ℕ) (H : EnergySpace α) (f : ReplicaF
   rw [integral_map h.measurable.aemeasurable
     (StronglyMeasurable.of_discrete).aestronglyMeasurable]
 
+omit [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α] in
+/-- The replica bracket is homogeneous. -/
+lemma gibbs_average_n_det_const_mul (n : ℕ) (H : EnergySpace α) (c : ℝ)
+    (f : ReplicaFun (α := α) n) :
+    gibbs_average_n_det (α := α) (n := n) H (fun σs => c * f σs)
+      = c * gibbs_average_n_det (α := α) (n := n) H f := by
+  simp only [gibbs_average_n_det, Finset.mul_sum]
+  exact Finset.sum_congr rfl fun σs _ => by ring
+
+/-! ## Adding a fresh replica -/
+
+omit [Nonempty α] [MeasurableSpace α] [MeasurableSingletonClass α] in
+/-- **The fresh-replica identity.** Averaging a two-configuration kernel against an independent
+extra draw from the Gibbs measure turns an `n`-replica bracket into an `(n+1)`-replica bracket:
+
+`⟨F(σ¹,…,σⁿ) · ∑_τ p(τ) c(σⁱ, τ)⟩ₙ = ⟨F(σ¹,…,σⁿ) · c(σⁱ, σⁿ⁺¹)⟩ₙ₊₁`,
+
+the fresh replica being the last one on the right. This is the combinatorial content of the
+Ghirlanda–Guerra identities: the term involving a *new* replica and the terms involving *old*
+replicas live in one and the same replica space, so that they can be compared at all.
+
+Talagrand, *Mean Field Models for Spin Glasses*, Vol. II, §12.2 and §15.3. -/
+theorem gibbs_average_n_det_mul_sum_gibbs_pmf (n : ℕ) (H : EnergySpace α)
+    (F : ReplicaFun (α := α) n) (c : α → α → ℝ) (i : Fin n) :
+    gibbs_average_n_det (α := α) (n := n) H
+        (fun σs => F σs * ∑ τ : α, gibbs_pmf (α := α) H τ * c (σs i) τ)
+      = gibbs_average_n_det (α := α) (n := n + 1) H
+          (fun ρs => F (fun l => ρs l.castSucc) * c (ρs i.castSucc) (ρs (Fin.last n))) := by
+  classical
+  rw [gibbs_average_n_det, gibbs_average_n_det,
+    ← Equiv.sum_comp (Fin.snocEquiv fun _ : Fin (n + 1) => α)
+      (fun ρs : ReplicaSpace (α := α) (n + 1) =>
+        (F (fun l => ρs l.castSucc) * c (ρs i.castSucc) (ρs (Fin.last n)))
+          * ∏ l, gibbs_pmf (α := α) H (ρs l)),
+    Fintype.sum_prod_type]
+  simp only [Fin.snocEquiv, Equiv.coe_fn_mk, Fin.snoc_castSucc, Fin.snoc_last,
+    Fin.prod_univ_castSucc]
+  have hL : ∀ σs : ReplicaSpace (α := α) n,
+      (F σs * ∑ τ : α, gibbs_pmf (α := α) H τ * c (σs i) τ)
+            * ∏ l, gibbs_pmf (α := α) H (σs l)
+        = ∑ τ : α, (F σs * c (σs i) τ)
+            * (gibbs_pmf (α := α) H τ * ∏ l, gibbs_pmf (α := α) H (σs l)) := fun σs => by
+    rw [Finset.mul_sum, Finset.sum_mul]
+    exact Finset.sum_congr rfl fun τ _ => by ring
+  rw [Finset.sum_congr rfl fun σs (_ : σs ∈ Finset.univ) => hL σs, Finset.sum_comm]
+  exact Finset.sum_congr rfl fun x _ => Finset.sum_congr rfl fun f _ => by ring
+
 end
 
 end FiniteGibbs

@@ -670,23 +670,25 @@ noncomputable def gibbsReplicaLaw (N n : ℕ)
     Measure (ReplicaSpace N n) :=
   (replicaGibbsKernel (N := N) (n := n)) ∘ₘ μH
 
-/-- Kernel-level GG₁ specialized to the Gibbs replica sampler and a disorder law `μH`.
+/-! ### The finite-volume Gibbs replica law does *not* satisfy GG₁
 
-**This proposition is false at finite volume**, and is recorded only to name the asymptotic
-target. The Ghirlanda–Guerra identities are exact for asymptotic Gibbs measures (or after a
-perturbation), never for a finite-volume Gibbs measure. Already at `N = n = 1` the sum over
+`SK_GG1 (gibbsReplicaLaw N (n+1) μH)` is **false**: already at `N = n = 1` the sum over
 `Finset.univ.erase 0` in `Fin 1` is empty, so `GG1` reduces to `⟨f R₁₂⟩ = ⟨f⟩⟨R₁₂⟩`; taking
-`f σ = spin σ 0` and writing `m = ⟨spin · 0⟩` this asserts `m = m ^ 3`, which fails for every
-Gibbs measure with `0 < |m| < 1`.
+`f σ = spin σ 0` and writing `m = ⟨spin · 0⟩` this asserts `m = m ^ 3`, which fails for every Gibbs
+measure with `0 < |m| < 1`. No definition names it here, because a `Prop`-valued definition that is
+false is a trap, not a target.
 
 What *is* exact at finite volume is the cavity identity
-`SpinGlass.FiniteGibbs.integral_apply_mul_gibbs_average_n_det`: Gaussian integration by parts
-applied to the Gibbs average as a functional of the Hamiltonian. The Ghirlanda–Guerra identities
-are what remains of it after replacing the Hamiltonian by its mean, which costs the fluctuation of
-`H` and is therefore legitimate only in the limit. -/
-def SK_GG1_gibbsKernel (N n : ℕ)
-    (μH : Measure (EnergySpace N)) [IsProbabilityMeasure μH] : Prop :=
-  SK_GG1 (N := N) (n := n) (μ := gibbsReplicaLaw (N := N) (n := n + 1) μH)
+`SpinGlass.FiniteGibbs.integral_apply_mul_gibbs_average_n_det`, and the resulting
+`SpinGlass.FiniteGibbs.ghirlandaGuerra_defect` — the failure of the identity is *exactly* the
+energy–observable covariance — together with its bound
+`SpinGlass.FiniteGibbs.ghirlandaGuerra_error_le`.
+
+The asymptotic target is `SpinGlass.SatisfiesGhirlandaGuerra`, a property of the *limiting* overlap
+array law `SpinGlass.overlapArrayLaw`; it is stable under weak limits
+(`SpinGlass.satisfiesGhirlandaGuerra_of_tendsto`) and, once it holds, it disintegrates into the
+conditional law of the new overlap
+(`SpinGlass.SatisfiesGhirlandaGuerra.map_prod_blockRestrict_eq_compProd`). -/
 
 end SpinGlass
 

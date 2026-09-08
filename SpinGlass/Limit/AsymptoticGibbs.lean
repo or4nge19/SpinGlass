@@ -31,11 +31,17 @@ about.
 - `SpinGlass.spinLaw`, `SpinGlass.replicaArrayLaw`: the one-replica and replica-array laws, read on
   the space of infinite spin configurations.
 - `SpinGlass.isExchangeable_replicaArrayLaw`: the replica array is exchangeable.
-- `SpinGlass.exists_asymptoticGibbsMeasure`: **the asymptotic Gibbs measure exists**, for an
-  arbitrary sequence of Hamiltonians and with no hypotheses whatsoever.
+- `SpinGlass.map_take_replicaArrayLaw`: the first `n` replicas are the finite `n`-replica Gibbs
+  measure — the bridge to `SpinGlass.FiniteGibbs.ReplicaMeasure`.
+- `SpinGlass.annealedReplicaArrayLaw`, `SpinGlass.isExchangeable_annealedReplicaArrayLaw`: the
+  disorder-averaged replica array of a *random* Hamiltonian, and its exchangeability.
+- `SpinGlass.exists_asymptoticGibbsMeasure` and
+  `SpinGlass.exists_asymptoticGibbsMeasure_random`: **the asymptotic Gibbs measure exists**, for an
+  arbitrary sequence of (random) Hamiltonians and with no hypotheses whatsoever.
 -/
 
 open Filter Topology MeasureTheory MeasureTheory.GibbsMeasure
+open scoped ProbabilityTheory
 
 namespace SpinGlass
 
@@ -54,6 +60,8 @@ def configExtend (N : ℕ) (σ : Config N) : SpinSpace :=
 lemma measurable_configExtend (N : ℕ) : Measurable (configExtend N) := Measurable.of_discrete
 
 /-! ### The replica array of a finite-volume Gibbs measure -/
+
+section Finite
 
 variable (N : ℕ) (H : EnergySpace N) (e : Config N → SpinSpace)
 
@@ -99,6 +107,77 @@ theorem map_take_replicaArrayLaw (n : ℕ) :
     Measure.pi_map_pi (f := fun _ : Fin n => e)
       (fun _ => (Measurable.of_discrete (f := e)).aemeasurable)]
   rfl
+
+end Finite
+
+/-! ### Random Hamiltonians: the annealed replica array
+
+For a *random* Hamiltonian the Gibbs measure is random, and the object Talagrand and Panchenko
+work with is the disorder-averaged replica-array law. Averaging preserves exchangeability
+(`isExchangeable_bind`), so de Finetti applies to its limit points as well — and there the mixing
+measure `m` is precisely the **law of the random asymptotic Gibbs measure**. -/
+
+section Random
+
+variable (N : ℕ) (e : Config N → SpinSpace)
+variable {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
+
+lemma measurable_spinLaw : Measurable fun K : EnergySpace N => spinLaw N K e :=
+  (Measure.measurable_map e (Measurable.of_discrete (f := e))).comp
+    (FiniteGibbs.measurable_gibbsMeasure (α := Config N))
+
+lemma measurable_replicaArrayLaw : Measurable fun K : EnergySpace N => replicaArrayLaw N K e :=
+  Measure.measurable_infinitePi fun _ => measurable_spinLaw N e
+
+/-- The **disorder-averaged (annealed) replica-array law** of a random Hamiltonian `U`. -/
+def annealedReplicaArrayLaw (U : Ω → EnergySpace N) : Measure (ℕ → SpinSpace) :=
+  (ℙ : Measure Ω).bind fun ω => replicaArrayLaw N (U ω) e
+
+lemma isProbabilityMeasure_annealedReplicaArrayLaw {U : Ω → EnergySpace N} (hU : Measurable U) :
+    IsProbabilityMeasure (annealedReplicaArrayLaw N e U) :=
+  isProbabilityMeasure_bind ((measurable_replicaArrayLaw N e).comp hU).aemeasurable
+    (Filter.Eventually.of_forall fun _ => inferInstance)
+
+omit [IsProbabilityMeasure (ℙ : Measure Ω)] in
+/-- **The annealed replica array is exchangeable.** Averaging over the disorder is a mixture, and a
+mixture of exchangeable laws is exchangeable. -/
+theorem isExchangeable_annealedReplicaArrayLaw {U : Ω → EnergySpace N} (hU : Measurable U) :
+    IsExchangeable (annealedReplicaArrayLaw N e U) :=
+  isExchangeable_bind ((measurable_replicaArrayLaw N e).comp hU)
+    fun ω => isExchangeable_replicaArrayLaw N (U ω) e
+
+/-- The annealed replica-array law as a `ProbabilityMeasure`. -/
+def annealedReplicaArray {U : Ω → EnergySpace N} (hU : Measurable U) :
+    ProbabilityMeasure (ℕ → SpinSpace) :=
+  ⟨annealedReplicaArrayLaw N e U, isProbabilityMeasure_annealedReplicaArrayLaw N e hU⟩
+
+@[simp] lemma annealedReplicaArray_toMeasure {U : Ω → EnergySpace N} (hU : Measurable U) :
+    (annealedReplicaArray N e hU : Measure (ℕ → SpinSpace)) = annealedReplicaArrayLaw N e U :=
+  rfl
+
+/-- **The asymptotic Gibbs measure of a random Hamiltonian exists.** For an arbitrary sequence of
+*random* Hamiltonians `U N : Ω → EnergySpace N` and an arbitrary family of embeddings, some
+subsequence of the disorder-averaged replica-array laws converges in distribution, and the limit is
+the mixture `∫ λ^{⊗ℕ} m(dλ)` over a **unique** probability measure `m` on the probability measures
+of the spin space.
+
+Here `m` is the **law of the random asymptotic Gibbs measure**: de Finetti's mixing measure of the
+annealed replica array is exactly the distribution of the limiting (random) Gibbs measure. This is
+the object of Talagrand Vol. II, Ch. 12–15 and of Panchenko's book. Unconditional. -/
+theorem exists_asymptoticGibbsMeasure_random
+    (U : ∀ N : ℕ, Ω → EnergySpace N) (hU : ∀ N, Measurable (U N))
+    (emb : ∀ N : ℕ, Config N → SpinSpace) :
+    ∃ (μ : ProbabilityMeasure (ℕ → SpinSpace)) (φ : ℕ → ℕ), StrictMono φ ∧
+      Tendsto (fun k => annealedReplicaArray (φ k) (emb (φ k)) (hU (φ k))) atTop (𝓝 μ) ∧
+      ∃! m : Measure (Measure SpinSpace), IsProbabilityMeasure m
+        ∧ m {lam : Measure SpinSpace | IsProbabilityMeasure lam}ᶜ = 0
+        ∧ m.bind (fun lam => Measure.infinitePi fun _ : ℕ => lam)
+            = (μ : Measure (ℕ → SpinSpace)) :=
+  exists_subseq_tendsto_mixing (E := SpinSpace)
+    (fun N => annealedReplicaArray N (emb N) (hU N))
+    fun N => isExchangeable_annealedReplicaArrayLaw N (emb N) (hU N)
+
+end Random
 
 /-! ### The asymptotic Gibbs measure -/
 

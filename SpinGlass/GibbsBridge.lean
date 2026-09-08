@@ -43,7 +43,7 @@ lemma gibbsMeasure_univ (H : EnergySpace N) : gibbsMeasure (N := N) H Set.univ =
 lemma integral_gibbsMeasure_eq_gibbs_average (H : EnergySpace N) (f : Config N → ℝ) :
     (∫ σ, f σ ∂gibbsMeasure (N := N) H) = gibbs_average (N := N) H f := by
   -- Delegate to the generic finite-volume Gibbs measure lemma.
-  simpa [gibbs_average, gibbsMeasure, FiniteGibbs.gibbsMeasure,
+  simpa [gibbs_average, FiniteGibbs.gibbs_average, gibbsMeasure, FiniteGibbs.gibbsMeasure,
     gibbs_pmf, FiniteGibbs.gibbs_pmf, Z, FiniteGibbs.Z] using
     (FiniteGibbs.integral_gibbsMeasure (α := Config N) (H := H) (f := f))
 
