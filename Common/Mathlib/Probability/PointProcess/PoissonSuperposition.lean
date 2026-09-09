@@ -108,6 +108,17 @@ lemma lintegral_superCounting (ω : SuperSample E) (φ : E → ℝ≥0∞) :
   rw [superCounting, lintegral_sum_measure]
 
 omit [Nonempty E] in
+/-- **For the counting measure of a superposition the product of the integrals dominates the
+integral of the product**: `∫ φψ dN ≤ (∫ φ dN)(∫ ψ dN)`. -/
+lemma lintegral_mul_le_mul_lintegral_superCounting (ω : SuperSample E) {φ ψ : E → ℝ≥0∞}
+    (hφ : Measurable φ) (hψ : Measurable ψ) :
+    (∫⁻ x, φ x * ψ x ∂superCounting ω)
+      ≤ (∫⁻ x, φ x ∂superCounting ω) * ∫⁻ x, ψ x ∂superCounting ω := by
+  unfold superCounting
+  exact lintegral_mul_le_mul_lintegral_sum _ fun n =>
+    lintegral_mul_le_mul_lintegral_countingMeasure (ω n) hφ hψ
+
+omit [Nonempty E] in
 lemma measurable_superCounting : Measurable (superCounting : SuperSample E → Measure E) := by
   refine Measure.measurable_of_measurable_coe superCounting fun s hs => ?_
   simp only [superCounting, Measure.sum_apply _ hs]

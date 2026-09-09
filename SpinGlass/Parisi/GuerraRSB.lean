@@ -152,10 +152,15 @@ def truncHam (t h : ℝ) (ω : EnergySpace N × MarksSpace N k) :
     + pullbackCLM Prod.fst (H_field N h)
 
 lemma measurable_truncHam (t h : ℝ) : Measurable (truncHam N k M t h) := by
-  unfold truncHam
-  refine (((pullbackCLM Prod.fst).continuous.measurable.comp measurable_fst).const_smul _).add
-    (((treeLin N k M).continuous.measurable.comp
-      ((measurable_treeCoords N k M).comp measurable_snd)).const_smul _) |>.add measurable_const
+  have h1 : Measurable fun ω : EnergySpace N × MarksSpace N k =>
+      Real.sqrt t • pullbackCLM (Prod.fst : Config N × TruncBranch k M → Config N) ω.1 :=
+    (Real.sqrt t • pullbackCLM (Prod.fst : Config N × TruncBranch k M → Config N)).continuous.measurable.comp
+      measurable_fst
+  have h2 : Measurable fun ω : EnergySpace N × MarksSpace N k =>
+      Real.sqrt (1 - t) • treeLin N k M (treeCoords N k M ω.2) :=
+    (Real.sqrt (1 - t) • treeLin N k M).continuous.measurable.comp
+      ((measurable_treeCoords N k M).comp measurable_snd)
+  exact (h1.add h2).add measurable_const
 
 /-- The bound (14.79) at time `t` for the weights `w`:
 `𝔼 [(1/2)(ξ(1) - ξ'(q_{k+1})) + (1/2) ⟨θ(q_{(α,γ)})⟩_t]`. -/
@@ -165,6 +170,39 @@ def guerraTruncBound (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (w 
       (fun x y => parisiTheta ξ (treeOverlap qs x.2 y.2)) (truncHam N k M t h ω)
     ∂(gaussField N (overlapCovMatrix N ξ)).prod
       (marksLaw N k (parisiVar ξ qs 0) fun p => parisiVar ξ qs (p.val + 1))
+
+/-- The bound of the truncated interpolation is continuous in `t`. -/
+lemma continuous_guerraTruncBound (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ)
+    (w : CascadeWeights k) (hne : ∃ α : TruncBranch k M, truncWt k M w α ≠ 0) :
+    Continuous (guerraTruncBound N k M ξ qs h w) := by
+  set wt : Config N × TruncBranch k M → ℝ := branchWt (N := N) (truncWt k M w) with hwtdef
+  have hwt : ∀ x, 0 ≤ wt x := fun x => truncWt_nonneg k M w x.2
+  have hne' : ∃ x, wt x ≠ 0 := by
+    obtain ⟨α, hα⟩ := hne
+    exact ⟨(fun _ => true, α), hα⟩
+  set c₀ := ξ 1 - deriv ξ (qs (Fin.last k)) with hc₀
+  set θq : Config N × TruncBranch k M → Config N × TruncBranch k M → ℝ :=
+    fun x y => parisiTheta ξ (treeOverlap qs x.2 y.2) with hθq
+  have hmeasP : ∀ t, AEStronglyMeasurable (fun ω : EnergySpace N × MarksSpace N k =>
+      treeBoundIntegrand wt c₀ θq (truncHam N k M t h ω))
+      ((gaussField N (overlapCovMatrix N ξ)).prod
+        (marksLaw N k (parisiVar ξ qs 0) fun p => parisiVar ξ qs (p.val + 1))) := fun t =>
+    ((continuous_treeBoundIntegrand wt hwt hne' c₀ θq).measurable.comp
+      (measurable_truncHam N k M t h)).aestronglyMeasurable
+  have hbound : ∀ t ω, ‖treeBoundIntegrand wt c₀ θq (truncHam N k M t h ω)‖
+      ≤ (1 / 2) * |c₀| + (1 / 2) * ∑ x, ∑ y, |θq x y| := fun t ω => by
+    rw [Real.norm_eq_abs]
+    exact abs_treeBoundIntegrand_le wt hwt hne' c₀ θq _
+  unfold guerraTruncBound
+  refine MeasureTheory.continuous_of_dominated (fun t => hmeasP t)
+    (bound := fun _ => (1 / 2) * |c₀| + (1 / 2) * ∑ x, ∑ y, |θq x y|)
+    (fun t => Filter.Eventually.of_forall fun ω => hbound t ω) (integrable_const _)
+    (Filter.Eventually.of_forall fun ω => ?_)
+  refine (continuous_treeBoundIntegrand wt hwt hne' c₀ θq).comp ?_
+  unfold truncHam
+  exact ((Real.continuous_sqrt.smul continuous_const).add
+    ((Real.continuous_sqrt.comp (continuous_const.sub continuous_id)).smul continuous_const)).add
+    continuous_const
 
 /-- **Guerra's interpolation for the tree truncated to indices `< M`, at fixed weights `w`**
 (Talagrand's Lemma 14.4.1 with (14.79) and (14.80), integrated over `t`):
@@ -207,45 +245,34 @@ theorem guerra_truncated (hN : 0 < N) (ξ : ℝ → ℝ) (hS : (overlapCovMatrix
   set c₀ := ξ 1 - deriv ξ (qs (Fin.last k)) with hc₀
   set θq : Config N × TruncBranch k M → Config N × TruncBranch k M → ℝ :=
     fun x y => parisiTheta ξ (treeOverlap qs x.2 y.2) with hθq
+  have hU₁ : ∀ ω : EnergySpace N × MarksSpace N k, G₁.U ω = pullbackCLM Prod.fst ω.1 :=
+    fun ω => rfl
+  have hU₂ : ∀ ω : EnergySpace N × MarksSpace N k,
+      G₂.U ω = treeLin N k M (treeCoords N k M ω.2) := fun ω => rfl
   have hpair : ∀ t ω, gaussianInterp t (pair G₁ G₂ ω) + c = truncHam N k M t h ω := by
     intro t ω
+    show gaussianInterp t (WithLp.toLp 2 (G₁.U ω, G₂.U ω)) + c = _
+    rw [gaussianInterp_apply, WithLp.ofLp_toLp, hU₁, hU₂]
     rfl
-  have hmeasP : ∀ t, AEStronglyMeasurable (fun ω : EnergySpace N × MarksSpace N k =>
-      treeBoundIntegrand wt c₀ θq (truncHam N k M t h ω)) (Pm.prod Pz) := fun t =>
-    ((continuous_treeBoundIntegrand wt hwt hne' c₀ θq).measurable.comp
-      (measurable_truncHam N k M t h)).aestronglyMeasurable
-  have hbound : ∀ t ω, ‖treeBoundIntegrand wt c₀ θq (truncHam N k M t h ω)‖
-      ≤ (1 / 2) * |c₀| + (1 / 2) * ∑ x, ∑ y, |θq x y| := fun t ω => by
-    rw [Real.norm_eq_abs]
-    exact abs_treeBoundIntegrand_le wt hwt hne' c₀ θq _
   -- the bound is continuous in `t`
-  have hcontb : Continuous (guerraTruncBound N k M ξ qs h w) := by
-    unfold guerraTruncBound
-    refine MeasureTheory.continuous_of_dominated (fun t => hmeasP t)
-      (bound := fun _ => (1 / 2) * |c₀| + (1 / 2) * ∑ x, ∑ y, |θq x y|)
-      (fun t => Filter.Eventually.of_forall fun ω => hbound t ω) (integrable_const _)
-      (Filter.Eventually.of_forall fun ω => ?_)
-    refine (continuous_treeBoundIntegrand wt hwt hne' c₀ θq).comp ?_
-    unfold truncHam
-    exact ((Real.continuous_sqrt.smul continuous_const).add
-      ((Real.continuous_sqrt.comp (continuous_const.sub continuous_id)).smul continuous_const)).add
-      continuous_const
+  have hcontb : Continuous (guerraTruncBound N k M ξ qs h w) :=
+    continuous_guerraTruncBound N k M ξ qs h w hne
   -- the trace bound
   have hb : ∀ t ∈ Set.Ioo (0 : ℝ) 1,
       (∫ p, wGuerraTrace wt (fun x y => overlapCovMatrix N ξ x.1 y.1) (treeFieldKernel N k M v₀ vs)
         N (gaussianInterp t p + c) ∂pairLaw G₁ G₂) ≤ guerraTruncBound N k M ξ qs h w t := by
     intro t _
     have hG := isGaussian_pairLaw G₁ G₂ hindep
-    rw [hK₁, hK₂]
-    have hcontT := continuous_wGuerraTrace wt hwt hne' (modelKernel N ξ)
-      (treeKernel N ξ (treeOverlap qs)) N
+    have hcontT := continuous_wGuerraTrace wt hwt hne'
+      (fun x y : Config N × TruncBranch k M => overlapCovMatrix N ξ x.1 y.1)
+      (treeFieldKernel N k M v₀ vs) N
     have hint1 : Integrable (fun p : PairSpace (Config N × TruncBranch k M) =>
-        wGuerraTrace wt (modelKernel N ξ) (treeKernel N ξ (treeOverlap qs)) N
-          (gaussianInterp t p + c)) (pairLaw G₁ G₂) := by
+        wGuerraTrace wt (fun x y : Config N × TruncBranch k M => overlapCovMatrix N ξ x.1 y.1)
+          (treeFieldKernel N k M v₀ vs) N (gaussianInterp t p + c)) (pairLaw G₁ G₂) := by
       refine Integrable.of_bound ((hcontT.comp
         ((gaussianInterp t).continuous.add continuous_const)).aestronglyMeasurable)
-        ((1 / (2 * (N : ℝ))) * ((∑ x, |modelKernel N ξ x x - treeKernel N ξ (treeOverlap qs) x x|)
-          + ∑ x, ∑ y, |modelKernel N ξ x y - treeKernel N ξ (treeOverlap qs) x y|))
+        ((1 / (2 * (N : ℝ))) * ((∑ x, |overlapCovMatrix N ξ x.1 x.1 - treeFieldKernel N k M v₀ vs x x|)
+          + ∑ x, ∑ y, |overlapCovMatrix N ξ x.1 y.1 - treeFieldKernel N k M v₀ vs x y|))
         (Filter.Eventually.of_forall fun p => ?_)
       rw [Real.norm_eq_abs]
       exact abs_wGuerraTrace_le wt hwt hne' _ _ N _
@@ -258,15 +285,20 @@ theorem guerra_truncated (hN : 0 < N) (ξ : ℝ → ℝ) (hS : (overlapCovMatrix
       rw [Real.norm_eq_abs]
       exact abs_treeBoundIntegrand_le wt hwt hne' c₀ θq _
     refine (integral_mono hint1 hint2 fun p => ?_).trans (le_of_eq ?_)
-    · exact wGuerraTrace_tree_le hN ξ (treeOverlap qs) (qs (Fin.last k)) (treeOverlap_self qs)
+    · show wGuerraTrace wt (modelKernel N ξ) (treeFieldKernel N k M v₀ vs) N _ ≤ _
+      rw [hK₂]
+      exact wGuerraTrace_tree_le hN ξ (treeOverlap qs) (qs (Fin.last k)) (treeOverlap_self qs)
         (fun α γ => hq01 _) htan wt hwt hne' _
     · unfold guerraTruncBound
       show ∫ p, treeBoundIntegrand wt c₀ θq (gaussianInterp t p + c) ∂(Pm.prod Pz).map (pair G₁ G₂)
         = _
-      rw [integral_map (measurable_pair G₁ G₂).aemeasurable
-        (((continuous_treeBoundIntegrand wt hwt hne' c₀ θq).comp
-          ((gaussianInterp t).continuous.add continuous_const)).aestronglyMeasurable)]
+      have hmeasF : AEStronglyMeasurable (fun p : PairSpace (Config N × TruncBranch k M) =>
+          treeBoundIntegrand wt c₀ θq (gaussianInterp t p + c)) ((Pm.prod Pz).map (pair G₁ G₂)) :=
+        ((continuous_treeBoundIntegrand wt hwt hne' c₀ θq).comp
+          ((gaussianInterp t).continuous.add continuous_const)).aestronglyMeasurable
+      rw [integral_map (measurable_pair G₁ G₂).aemeasurable hmeasF]
       simp_rw [hpair]
+      rfl
   have hbint : IntervalIntegrable (guerraTruncBound N k M ξ qs h w) volume 0 1 :=
     hcontb.intervalIntegrable 0 1
   -- the comparison bound
@@ -288,13 +320,16 @@ theorem guerra_truncated (hN : 0 < N) (ξ : ℝ → ℝ) (hS : (overlapCovMatrix
     rfl
   have hint_fe : Integrable (fun ω : EnergySpace N × MarksSpace N k =>
       free_energy_density (N := N) (ω.1 + H_field N h)) (Pm.prod Pz) := by
-    refine integrable_free_energy_density_of_isGaussian (Pm.prod Pz)
+    refine integrable_free_energy_density_of_isGaussian N (Pm.prod Pz)
       (g := fun ω : EnergySpace N × MarksSpace N k => ω.1 + H_field N h)
       (measurable_fst.add_const _) ?_
     have hmap : (Pm.prod Pz).map (fun ω : EnergySpace N × MarksSpace N k => ω.1 + H_field N h)
         = Pm.map (fun H => H + H_field N h) := by
-      rw [← Measure.map_map (measurable_id.add_const _) measurable_fst, Measure.map_fst_prod,
-        measure_univ, one_smul]
+      have hfst : Pm = (Pm.prod Pz).map Prod.fst := by
+        rw [Measure.map_fst_prod, measure_univ, one_smul]
+      have hadd : Measurable fun H : EnergySpace N => H + H_field N h := measurable_id.add_const _
+      conv_rhs => rw [hfst]
+      rw [Measure.map_map hadd measurable_fst]
       rfl
     rw [hmap, hPm, gaussField]
     infer_instance
@@ -304,10 +339,48 @@ theorem guerra_truncated (hN : 0 < N) (ξ : ℝ → ℝ) (hS : (overlapCovMatrix
     rw [integral_add (integrable_const _) hint_fe, integral_const, probReal_univ, one_smul]
     congr 1
     show _ = ∫ H, free_energy_density (N := N) (H + H_field N h) ∂Pm
-    rw [← Measure.map_fst_prod (μ := Pm) (ν := Pz), measure_univ, one_smul,
-      integral_map measurable_fst.aemeasurable]
-    exact ((continuous_free_energy_density_add? ).aestronglyMeasurable)
-  sorry
+    have hcont : Continuous fun H : EnergySpace N => free_energy_density (N := N) (H + H_field N h) :=
+      (contDiff_free_energy_density N).continuous.comp (continuous_id.add continuous_const)
+    have hmeasF : AEStronglyMeasurable
+        (fun H : EnergySpace N => free_energy_density (N := N) (H + H_field N h))
+        ((Pm.prod Pz).map Prod.fst) := hcont.aestronglyMeasurable
+    rw [← integral_map measurable_fst.aemeasurable hmeasF, Measure.map_fst_prod, measure_univ,
+      one_smul]
+  -- the second endpoint: the Ising site factorization (14.80)
+  have hE2 : ∀ ω : EnergySpace N × MarksSpace N k, wFreeEnergy wt N (G₂.U ω + c)
+      = (1 / (N : ℝ)) * Real.log (∑ α, truncWt k M w α
+          * ∏ i, (2 * Real.cosh (h + treeMark N k M ω.2 α i))) := by
+    intro ω
+    rw [wFreeEnergy, hU₂]
+    have hV : treeLin N k M (treeCoords N k M ω.2)
+        = WithLp.toLp 2 (fun x : Config N × TruncBranch k M =>
+            ∑ i, isingSpin (x.1 i) * treeMark N k M ω.2 x.2 i) := by
+      ext x
+      exact treeLin_treeCoords_apply N k M ω.2 x
+    rw [hV, hwtdef, hc, wZ_ising]
+  have hmeasE2 : Measurable fun z : MarksSpace N k => (1 / (N : ℝ)) * Real.log (∑ α, truncWt k M w α
+      * ∏ i, (2 * Real.cosh (h + treeMark N k M z α i))) := by
+    refine measurable_const.mul (Real.measurable_log.comp (Finset.measurable_sum _ fun α _ =>
+      measurable_const.mul (Finset.measurable_prod _ fun i _ => measurable_const.mul
+        (Real.continuous_cosh.measurable.comp (measurable_const.add ?_)))))
+    unfold treeMark
+    exact ((measurable_pi_apply i).comp measurable_fst).add (Finset.measurable_sum _ fun p _ =>
+      (measurable_pi_apply i).comp ((measurable_pi_apply (branchNode k M α p)).comp
+        ((measurable_truncMarks k M).comp measurable_snd)))
+  have hE2' : (∫ ω, wFreeEnergy wt N (G₂.U ω + c) ∂Pm.prod Pz)
+      = ∫ z, (1 / (N : ℝ)) * Real.log (∑ α, truncWt k M w α
+          * ∏ i, (2 * Real.cosh (h + treeMark N k M z α i))) ∂Pz := by
+    simp_rw [hE2]
+    have hmeasF : AEStronglyMeasurable (fun z : MarksSpace N k => (1 / (N : ℝ))
+        * Real.log (∑ α, truncWt k M w α * ∏ i, (2 * Real.cosh (h + treeMark N k M z α i))))
+        ((Pm.prod Pz).map Prod.snd) := hmeasE2.aestronglyMeasurable
+    rw [← integral_map measurable_snd.aemeasurable hmeasF, Measure.map_snd_prod, measure_univ,
+      one_smul]
+  have hmain' : (∫ ω, wFreeEnergy wt N (G₁.U ω + c) ∂Pm.prod Pz)
+      - (∫ ω, wFreeEnergy wt N (G₂.U ω + c) ∂Pm.prod Pz)
+      ≤ ∫ t in (0 : ℝ)..1, guerraTruncBound N k M ξ qs h w t := hmain
+  rw [hE1', hE2'] at hmain'
+  linarith
 
 end
 

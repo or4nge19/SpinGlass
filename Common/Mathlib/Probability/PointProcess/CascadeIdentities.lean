@@ -114,6 +114,62 @@ lemma measurable_cascadeSq_prod (k : ℕ) :
             (measurable_snd.comp measurable_snd)))
       exact measurable_lintegral_superCounting_prod hf
 
+/-! ### `Q_r ≤ S²` -/
+
+/-- **The prefix sums of squares are dominated by the square of the cascade sum**, pointwise on
+every sample: `Q_r ≤ S²`. Structurally this is `‖·‖₂ ≤ ‖·‖₁` for the counting measures of the
+Poisson–Dirichlet layers (`lintegral_mul_le_mul_lintegral_superCounting`). -/
+theorem cascadeSq_le_sq : ∀ (k r : ℕ) {G : (Fin k → T) → ℝ≥0∞}, Measurable G →
+    ∀ ω : CascadeSpace T k, cascadeSq k r G ω ≤ cascadeSum k G ω * cascadeSum k G ω := by
+  intro k
+  induction k with
+  | zero =>
+    intro r G _ ω
+    cases r with
+    | zero => rw [cascadeSq_zero]
+    | succ r => rw [cascadeSq_zero_succ]; exact bot_le
+  | succ k ih =>
+    intro r G hG ω
+    cases r with
+    | zero => rw [cascadeSq_zero]
+    | succ r =>
+      have hGc : Measurable fun q : T × (Fin k → T) => G (Fin.cons q.1 q.2) :=
+        hG.comp measurable_fin_cons
+      have hSm : Measurable fun q : T × CascadeSpace T k =>
+          cascadeSum k (fun zs => G (Fin.cons q.1 zs)) q.2 :=
+        measurable_cascadeSum_prod k (α := T) (G := fun z zs => G (Fin.cons z zs)) hGc
+      have hvm : Measurable fun p : ℝ × (T × CascadeSpace T k) =>
+          ENNReal.ofReal p.1 * cascadeSum k (fun zs => G (Fin.cons p.2.1 zs)) p.2.2 :=
+        (ENNReal.measurable_ofReal.comp measurable_fst).mul (hSm.comp measurable_snd)
+      rw [cascadeSq_succ, cascadeSum_succ, pdSum]
+      calc ∫⁻ p : ℝ × (T × CascadeSpace T k), ENNReal.ofReal p.1 * ENNReal.ofReal p.1
+              * cascadeSq k r (fun zs => G (Fin.cons p.2.1 zs)) p.2.2 ∂superCounting ω
+          ≤ ∫⁻ p : ℝ × (T × CascadeSpace T k),
+              (ENNReal.ofReal p.1 * cascadeSum k (fun zs => G (Fin.cons p.2.1 zs)) p.2.2)
+                * (ENNReal.ofReal p.1 * cascadeSum k (fun zs => G (Fin.cons p.2.1 zs)) p.2.2)
+              ∂superCounting ω := by
+            refine lintegral_mono fun p => ?_
+            calc ENNReal.ofReal p.1 * ENNReal.ofReal p.1
+                  * cascadeSq k r (fun zs => G (Fin.cons p.2.1 zs)) p.2.2
+                ≤ ENNReal.ofReal p.1 * ENNReal.ofReal p.1
+                  * (cascadeSum k (fun zs => G (Fin.cons p.2.1 zs)) p.2.2
+                    * cascadeSum k (fun zs => G (Fin.cons p.2.1 zs)) p.2.2) :=
+                  mul_le_mul' le_rfl (ih r (hGc.comp (measurable_const.prodMk measurable_id)) p.2.2)
+              _ = _ := by rw [mul_mul_mul_comm]
+        _ ≤ _ := lintegral_mul_le_mul_lintegral_superCounting ω hvm hvm
+
+/-- The cascade pair average `Q_r / S²` is at most one, pointwise on every sample. -/
+theorem cascadeSq_mul_inv_sq_le_one (k r : ℕ) {G : (Fin k → T) → ℝ≥0∞} (hG : Measurable G)
+    (ω : CascadeSpace T k) : cascadeSq k r G ω * (cascadeSum k G ω)⁻¹ ^ 2 ≤ 1 := by
+  calc cascadeSq k r G ω * (cascadeSum k G ω)⁻¹ ^ 2
+      ≤ cascadeSum k G ω * cascadeSum k G ω * ((cascadeSum k G ω)⁻¹ * (cascadeSum k G ω)⁻¹) := by
+        rw [sq]
+        exact mul_le_mul' (cascadeSq_le_sq k r hG ω) le_rfl
+    _ = (cascadeSum k G ω * (cascadeSum k G ω)⁻¹) * (cascadeSum k G ω * (cascadeSum k G ω)⁻¹) := by
+        rw [mul_mul_mul_comm]
+    _ ≤ 1 * 1 := mul_le_mul' (ENNReal.mul_inv_le_one _) (ENNReal.mul_inv_le_one _)
+    _ = 1 := one_mul 1
+
 /-! ### The extended sequence of parameters -/
 
 /-- The extended sequence `m₀ = 0, m₁, …, m_k, m_{k+1} = 1, 1, …` of Talagrand's convention

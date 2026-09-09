@@ -283,6 +283,26 @@ lemma prod_swap_left₃ :
     ← Measure.map_prod_map _ _ measurable_swap measurable_id, Measure.map_id, Measure.prod_swap,
     Measure.prodAssoc_prod]
 
+/-- `μ ⊗ (ν ⊗ (τ ⊗ ρ))` is the image of `(ν ⊗ τ) ⊗ (μ ⊗ ρ)` under
+`((b, c), (a, d)) ↦ (a, (b, (c, d)))`. -/
+lemma prod_swap_left₄ {δ : Type*} [MeasurableSpace δ] (ρ : Measure δ) [SFinite ρ] :
+    μ.prod (ν.prod (τ.prod ρ))
+      = ((ν.prod τ).prod (μ.prod ρ)).map
+          (fun p : (β × γ) × (α × δ) => (p.2.1, (p.1.1, (p.1.2, p.2.2)))) := by
+  have h1 : Measurable fun p : β × α × (γ × δ) => (p.2.1, (p.1, p.2.2)) :=
+    (measurable_fst.comp measurable_snd).prodMk
+      (measurable_fst.prodMk (measurable_snd.comp measurable_snd))
+  have h2 : Measurable fun p : γ × α × δ => (p.2.1, (p.1, p.2.2)) :=
+    (measurable_fst.comp measurable_snd).prodMk
+      (measurable_fst.prodMk (measurable_snd.comp measurable_snd))
+  rw [prod_swap_left₃ μ ν (τ.prod ρ), prod_swap_left₃ μ τ ρ, ← Measure.map_id (μ := ν),
+    Measure.map_prod_map _ _ measurable_id h2, Measure.map_id,
+    ← Measure.prodAssoc_prod (μ := ν) (ν := τ) (τ := μ.prod ρ),
+    Measure.map_map h1 (measurable_id.prodMap h2),
+    Measure.map_map (h1.comp (measurable_id.prodMap h2)) MeasurableEquiv.prodAssoc.measurable]
+  rfl
+
+
 end Measure
 
 end MeasureTheory

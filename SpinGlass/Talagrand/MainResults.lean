@@ -1513,6 +1513,19 @@ covariance telescopes to `ξ'(q_{(α,γ)}) - ξ'(q₀)` for the Parisi variances
 nondecreasing (`treeCov_eq_deriv`), and so **the kernel of the marks field is the tree kernel**
 `N R_{στ} ξ'(q_{(α,γ)})` of (14.63) when `ξ'(0) = 0` (`treeFieldKernel_eq_treeKernel`).
 
+`Parisi/GuerraRSB`: **Guerra's interpolation for the truncated tree at fixed weights**
+(Lemma 14.4.1 with (14.79) and (14.80), integrated in `t`): on the product of the model law
+`N(0, N ξ(R))` with the marks law, with the lifted model Hamiltonian and the marks field as the two
+independent fields and the branch weights `u*_α` as weights, `wFreeEnergy_sub_le` gives
+`p_N ≤ 𝔼 (1/N) log ∑_α u*_α ∏ᵢ 2cosh(h + z₀ᵢ + ∑ₚ z_{i,p,α}) − (1/N) log ∑_α u*_α + ∫₀¹ b(t) dt`
+with `b(t) = 𝔼[(1/2)(ξ(1) − ξ'(q_{k+1})) + (1/2)⟨θ(q_{(α,γ)})⟩_t]` (`guerra_truncated`). The two
+endpoints are the factorization of the weighted partition function of the lifted Hamiltonian off
+the total weight (`wZ_pullback_fst`) and the Ising site factorization
+`∑_σ e^{∑ᵢ σᵢ aᵢ} = ∏ᵢ 2cosh aᵢ` of the marks field (`wZ_ising`, from `treeLin_treeCoords_apply`),
+and the bound is continuous in `t`, hence interval integrable. The hypotheses on `ξ` are those of
+Talagrand: `ξ'(0) = 0`, `ξ'` nondecreasing along the `q`'s, `ξ` above its tangents on `[-1,1]`
+(convexity), and the kernel `N ξ(R)` positive semidefinite.
+
 `Common/Mathlib/Probability/Distributions/Gaussian/PiGaussian`: **a product of real Gaussians is
 a multivariate Gaussian with diagonal covariance**, `(⊗ᵢ N(mᵢ, vᵢ)).map toLp =
 multivariateGaussian m (diagonal v)` (`map_pi_gaussianReal_eq_multivariateGaussian`, by
@@ -1592,9 +1605,10 @@ Parisi functional, the marking representation and the unzipping of the cascade i
 marks, the product law of the node marks, and the weighted comparison bound for a finite family
 of branches, the convexity bound (14.79) on the weighted trace, and the Gaussian field of the
 marks on `Σ_N × branches` with its tree covariance, identified with the tree kernel
-`N R ξ'(q_{(α,γ)})` (what remains is the assembly: the interpolation on the product space for
-fixed weights and a truncation `M`, the integration over the weights with the limit `M → ∞`,
-Proposition 14.3.3 for the pair averages, and `φ(0)` via Theorem 14.2.1); the Parisi formula; Aizenman–Sims–Starr; the Gardner
+`N R ξ'(q_{(α,γ)})`, and the interpolation bound for the truncated tree at fixed weights
+(`guerra_truncated`); what remains is the integration over the cascade weights with the limit
+`M → ∞` (monotone convergence of the branch sums), Proposition 14.3.3 for the pair averages, and
+`φ(0)` via Theorem 14.2.1 with the site factorization and (14.84); the Parisi formula; Aizenman–Sims–Starr; the Gardner
 formula; the Hopfield localization theorems (Vol. I Thm. 4.3.2, Vol. II Thm. 10.3.1) and the
 Hopfield limits; the thermodynamic limit for non-convex profiles.
 -/

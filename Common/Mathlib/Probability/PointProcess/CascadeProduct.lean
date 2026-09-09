@@ -258,6 +258,60 @@ theorem cascadeRec_sum_le (k : ℕ) :
       _ ≤ (∏ p : Fin k, C p.succ) * (C 0 * G 0) := mul_le_mul' le_rfl (hC 0 0)
       _ = (∏ p, C p) * G 0 := by rw [Fin.prod_univ_succ]; ring
 
+/-! ### Monotonicity, positivity and additive constants -/
+
+/-- The recursion is monotone in `G`. -/
+theorem cascadeRec_mono (k : ℕ) :
+    ∀ (ms : Fin k → ℝ) (μs : Fin k → Measure T) [∀ i, IsProbabilityMeasure (μs i)]
+      {G G' : (Fin k → T) → ℝ≥0∞}, (∀ x, G x ≤ G' x) → (∀ i, 0 ≤ ms i) →
+      cascadeRec k ms μs G ≤ cascadeRec k ms μs G' := by
+  induction k with
+  | zero =>
+    intro ms μs _ G G' h _
+    simpa using h Fin.elim0
+  | succ k ih =>
+    intro ms μs _ G G' h hpos
+    simp only [cascadeRec_succ]
+    refine ENNReal.rpow_le_rpow (lintegral_mono fun z => ENNReal.rpow_le_rpow ?_ (hpos 0))
+      (by have := hpos 0; positivity)
+    exact ih (Fin.tail ms) (Fin.tail μs) (fun zs => h _) fun i => hpos i.succ
+
+/-- `F₁ ≥ 0` when `F_{k+1} ≥ 0`. -/
+theorem parisiRec_nonneg (k : ℕ) (ms : Fin k → ℝ) (μs : Fin k → Measure T)
+    [∀ i, IsProbabilityMeasure (μs i)] {F : (Fin k → T) → ℝ} (hF : ∀ zs, 0 ≤ F zs)
+    (hpos : ∀ i, 0 < ms i) : 0 ≤ parisiRec k ms μs F := by
+  unfold parisiRec
+  by_cases hfin : cascadeRec k ms μs (fun zs => ENNReal.ofReal (Real.exp (F zs))) = ∞
+  · rw [hfin]
+    simp
+  · refine Real.log_nonneg ?_
+    have h1 : cascadeRec k ms μs (fun _ => 1)
+        ≤ cascadeRec k ms μs (fun zs => ENNReal.ofReal (Real.exp (F zs))) :=
+      cascadeRec_mono k ms μs (fun zs => ENNReal.one_le_ofReal.2 (Real.one_le_exp (hF zs)))
+        fun i => (hpos i).le
+    rw [cascadeRec_one k ms μs hpos] at h1
+    have := ENNReal.toReal_mono hfin h1
+    rwa [ENNReal.toReal_one] at this
+
+/-- **Additive constants pass through the recursion**: `(C + F)₁ = C + F₁`. -/
+theorem parisiRec_const_add (k : ℕ) (ms : Fin k → ℝ) (μs : Fin k → Measure T)
+    [∀ i, IsProbabilityMeasure (μs i)] {F : (Fin k → T) → ℝ} (hF : Measurable F)
+    (hpos : ∀ i, 0 < ms i)
+    (hfin : cascadeRec k ms μs (fun zs => ENNReal.ofReal (Real.exp (F zs))) ≠ ∞) (C : ℝ) :
+    parisiRec k ms μs (fun zs => C + F zs) = C + parisiRec k ms μs F := by
+  unfold parisiRec
+  have h1 : (fun zs => ENNReal.ofReal (Real.exp (C + F zs)))
+      = fun zs => ENNReal.ofReal (Real.exp C) * ENNReal.ofReal (Real.exp (F zs)) := by
+    funext zs
+    rw [Real.exp_add, ENNReal.ofReal_mul (Real.exp_pos _).le]
+  have hG : Measurable fun zs : Fin k → T => ENNReal.ofReal (Real.exp (F zs)) :=
+    ENNReal.measurable_ofReal.comp (Real.measurable_exp.comp hF)
+  have hposR : 0 < cascadeRec k ms μs (fun zs => ENNReal.ofReal (Real.exp (F zs))) :=
+    cascadeRec_pos k ms μs hG (fun _ => ENNReal.ofReal_pos.2 (Real.exp_pos _)) hpos
+  rw [h1, cascadeRec_const_mul k ms μs hG hpos, ENNReal.toReal_mul,
+    ENNReal.toReal_ofReal (Real.exp_pos _).le,
+    Real.log_mul (Real.exp_pos _).ne' (ENNReal.toReal_pos hposR.ne' hfin).ne', Real.log_exp]
+
 end
 
 end ProbabilityTheory

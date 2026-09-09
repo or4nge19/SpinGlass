@@ -273,13 +273,15 @@ calculus), Gaussian fields pull back along maps of state spaces, and the bound h
 convexity bound (14.79) on the trace of the model kernel against a tree kernel
 (`Parisi/TreeTrace`), and a product of real Gaussians is identified with a diagonal multivariate
 Gaussian (`Gaussian/PiGaussian`); the marks of a truncated cascade with Gaussian levels form a
-Gaussian field on `Σ_N × branches` with the tree covariance of (14.74) (`Parisi/TreeField`).
+Gaussian field on `Σ_N × branches` with the tree covariance of (14.74) (`Parisi/TreeField`), and
+Guerra's interpolation bound holds for the truncated tree at fixed weights, with both endpoints
+computed — Lemma 14.4.1 with (14.79)–(14.80) (`Parisi/GuerraRSB`, `guerra_truncated`).
 
 Still to discharge (there is no statement layer of undischarged `Prop`s): Panchenko's
 ultrametricity theorem (Talagrand's Research Problem 15.3.7), the Dovbysh–Sudakov representation,
 the two-point identities (13.15)–(13.16) and the remaining identities of §14.3, Guerra's
-broken-RSB bound (§14.4) for `k ≥ 1` (the assembly over the cascade weights and the truncation
-limit remain), the Parisi equality, Gardner,
+broken-RSB bound (§14.4) for `k ≥ 1` (the integration over the cascade weights with the
+truncation limit, Proposition 14.3.3 for the pair averages and `φ(0)` remain), the Parisi equality, Gardner,
 and the Hopfield localization theorems and limits.
 
 ## Build

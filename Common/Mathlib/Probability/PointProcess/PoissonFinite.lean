@@ -7,6 +7,7 @@ import Mathlib.Probability.Distributions.Poisson.Basic
 import Mathlib.Probability.ProductMeasure
 import Mathlib.MeasureTheory.Measure.GiryMonad
 import Mathlib.MeasureTheory.Integral.Lebesgue.Countable
+import Common.Mathlib.MeasureTheory.Integral.LintegralCounting
 import Mathlib.MeasureTheory.Integral.Pi
 import Mathlib.MeasureTheory.Integral.Prod
 import Mathlib.Analysis.SpecialFunctions.Exponential
@@ -166,6 +167,15 @@ lemma lintegral_countingMeasure (p : PoissonSample E) {φ : E → ℝ≥0∞} (h
     ∫⁻ x, φ x ∂countingMeasure p = ∑ i ∈ Finset.range p.2, φ (p.1 i) := by
   rw [countingMeasure, lintegral_finsetSum_measure]
   exact Finset.sum_congr rfl fun i _ => lintegral_dirac' _ hφ
+
+/-- **For a counting measure the product of the integrals dominates the integral of the
+product**: `∫ φψ dN ≤ (∫ φ dN)(∫ ψ dN)`. -/
+lemma lintegral_mul_le_mul_lintegral_countingMeasure (p : PoissonSample E) {φ ψ : E → ℝ≥0∞}
+    (hφ : Measurable φ) (hψ : Measurable ψ) :
+    (∫⁻ x, φ x * ψ x ∂countingMeasure p)
+      ≤ (∫⁻ x, φ x ∂countingMeasure p) * ∫⁻ x, ψ x ∂countingMeasure p := by
+  unfold countingMeasure
+  exact lintegral_mul_le_mul_lintegral_finsetSum_dirac _ _ hφ hψ
 
 instance (p : PoissonSample E) : IsFiniteMeasure (countingMeasure p) := by
   unfold countingMeasure; infer_instance
