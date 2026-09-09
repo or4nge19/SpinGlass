@@ -1384,11 +1384,37 @@ the zero disorder in the first slot (`GaussianDisorder.zero`, `abs_ggDefect_mixe
 at every `β ≠ 0` where `𝒫` is differentiable, hence at almost every `β`, and every subsequential
 limit law satisfies the identity (15.40) for `ξ` (`ggDefect_eq_zero_of_tendsto_mixedPSpin`).
 
+## Proved: Poisson point processes and the Poisson–Dirichlet identities (Vol. II §13.1)
+
+Mathlib has no Poisson point process. `Common/Mathlib/Probability/PointProcess` builds the theory
+Mathlib-first. `PoissonFinite`: a finite-intensity process is a `Poisson (ν E)` number of i.i.d.
+positions, recorded as the `Measure`-valued random variable `countingMeasure`
+(`measurable_countingMeasure`); its **Laplace functional** `𝔼 e^{-∫φ dN} = e^{-∫(1-e^{-φ}) dν}`
+(`integral_negExp_countingMeasure`, with `ENNReal.negExp` handling `φ = ∞`) is Fubini on the
+sample space plus the Poisson series. `PoissonSuperposition`: countably many independent finite
+pieces on `Measure.infinitePi` give any σ-finite intensity (`superCounting`), with the Laplace
+functional by dominated convergence (`integral_negExp_superCounting`, `continuous_negExp`) and the
+**void probabilities** `P(N B = 0) = e^{-Λ B}` (`measureReal_superCounting_eq_zero`).
+`StableIntensity`: Talagrand's `μ_m` with density `u^{-m-1}` on `(0,∞)`, its dyadic pieces, the
+**scaling identity** `∫(1-e^{-au})u^{-m-1} du = a^m c_m` with `0 < c_m < ∞`
+(`integral_one_sub_exp_mul_rpow`, Lemma 13.1.1 in Laplace form), and `μ_m(c,∞) = c^{-m}/m`.
+`PoissonDirichlet`: the marked process `(u_α, g_α)` with intensity `μ_m ⊗ η` (`pdLaw`), the
+weighted sums `S_v = ∑ u_α v(g_α)` (`pdSum`), their **Laplace transform**
+`𝔼 e^{-sS_v} = exp(-s^m c_m ∫v^m dη)` (`integral_negExp_pdSum_eq_exp`), a.s. finiteness and
+positivity, the tails `P(S_v > t) ≤ C t^{-m}` and `P(S_v < t) ≤ e^{-C t^{-m}}`, hence
+`𝔼|log S_v| < ∞` (`integrable_log_pdSum`); and, through Frullani's integral
+(`Common/Mathlib/Analysis/SpecialFunctions/FrullaniExp`: `log x = ∫(e^{-s}-e^{-xs})/s ds` and
+`𝔼 log S = ∫(e^{-s} - 𝔼e^{-sS})/s ds`, `integral_log_toReal_eq_integral_Ioi`), **Talagrand's
+identity (13.10)** `𝔼 log ∑u_α v(g_α) = 𝔼 log ∑u_α + (1/m) log ∫v^m dη` (`integral_log_pdSum_eq`)
+and **Theorem 13.1.5** `𝔼 log ∑ v_α V_α = (1/m) log 𝔼V^m` for the Poisson–Dirichlet weights
+(`integral_log_pdSum_div_eq`).
+
 ## Outstanding
 
 Not yet formalized (and deliberately not recorded as `Prop`-valued definitions): the
 Dovbysh–Sudakov / Aldous–Hoover representation and Panchenko's ultrametricity theorem; the
-Poisson–Dirichlet cascades and Guerra's broken replica-symmetry bound; the Parisi formula;
+multi-level Ruelle cascades (Vol. II §14.2–14.3) and Guerra's broken replica-symmetry bound, now
+reachable from the one-level Poisson–Dirichlet identities; the Parisi formula;
 Aizenman–Sims–Starr; the Gardner formula; the Hopfield localization theorems (Vol. I Thm. 4.3.2,
 Vol. II Thm. 10.3.1) and the Hopfield limits; the thermodynamic limit for non-convex profiles.
 -/

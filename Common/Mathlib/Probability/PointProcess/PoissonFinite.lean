@@ -181,13 +181,13 @@ lemma measurable_countingMeasure : Measurable (countingMeasure : PoissonSample E
 
 /-- The law of a finite Poisson point process with intensity `ν`, as a measure on the space of
 measures. -/
-noncomputable def poissonPointProcess [Nonempty E] (ν : Measure E) [IsFiniteMeasure ν] :
+noncomputable def poissonPointProcessFinite [Nonempty E] (ν : Measure E) [IsFiniteMeasure ν] :
     Measure (Measure E) :=
   (poissonSampleLaw ν).map countingMeasure
 
 instance [Nonempty E] (ν : Measure E) [IsFiniteMeasure ν] :
-    IsProbabilityMeasure (poissonPointProcess ν) := by
-  unfold poissonPointProcess
+    IsProbabilityMeasure (poissonPointProcessFinite ν) := by
+  unfold poissonPointProcessFinite
   exact Measure.isProbabilityMeasure_map measurable_countingMeasure.aemeasurable
 
 /-! ### The Laplace functional -/

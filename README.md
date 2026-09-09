@@ -232,6 +232,13 @@ field, the Ghirlanda–Guerra defect of the model's own profile vanishes at ever
 limiting free energy is differentiable, hence at almost every `β`, with no perturbation and no
 window average.
 
+`Common/Mathlib/Probability/PointProcess` is a **Poisson point process theory** Mathlib lacks:
+finite-intensity processes as a Poisson number of i.i.d. positions, σ-finite intensities by
+superposition on `Measure.infinitePi`, the Laplace functional and void probabilities, Talagrand's
+stable intensity `u^{-m-1} du` with its scaling identity, and the marked **Poisson–Dirichlet**
+process with the Laplace transform of `∑ u_α v(g_α)`, its tails, `𝔼|log S| < ∞`, and Talagrand's
+identity (13.10) / Theorem 13.1.5 via Frullani's integral (Vol. II §13.1).
+
 Still to discharge (there is no statement layer of undischarged `Prop`s): Panchenko's
 ultrametricity theorem (Talagrand's Research Problem 15.3.7), the Dovbysh–Sudakov representation,
 the Poisson–Dirichlet cascades and broken-RSB Guerra, the Parisi equality, Gardner, and the

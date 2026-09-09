@@ -14,8 +14,8 @@ import Mathlib.Analysis.SpecialFunctions.Pow.Continuity
 
 Talagrand, *Mean Field Models for Spin Glasses*, Vol. II, (13.1): the measure `μ_m` on `(0, ∞)`
 with density `u^{-m-1}`, `0 < m < 1`, the Lévy measure of the `m`-stable subordinator. It has
-infinite mass near `0` and finite mass on `[ε, ∞)`, so we cut `(0, ∞)` into the dyadic pieces
-`(1, ∞)`, `(2^{-n-1}, 2^{-n}]`, each of finite mass, and represent `μ_m` as their sum.
+infinite mass near `0` and finite mass on `[ε, ∞)`; it is s-finite, which is all the Poisson point
+process construction needs.
 
 The analytic heart of the Poisson–Dirichlet computations is the scaling identity
 
@@ -27,8 +27,7 @@ which is Lemma 13.1.1 in Laplace-transform form: the image of `μ_m ⊗ ν` unde
 ## Main statements
 
 - `ProbabilityTheory.stableDensity`, `ProbabilityTheory.stableIntensity`,
-  `ProbabilityTheory.stablePiece`, `ProbabilityTheory.lintegral_sum_stablePiece`.
-- `ProbabilityTheory.isFiniteMeasure_stablePiece`.
+  `ProbabilityTheory.lintegral_stableIntensity`; the intensity is `SFinite`.
 - `ProbabilityTheory.stableConst`, `ProbabilityTheory.stableConst_pos`,
   `ProbabilityTheory.integrableOn_stableKernel`.
 - `ProbabilityTheory.integral_one_sub_exp_mul_rpow`: **the scaling identity**.
@@ -54,112 +53,15 @@ lemma measurable_stableDensity (m : ℝ) : Measurable (stableDensity m) :=
 def stableIntensity (m : ℝ) : Measure ℝ :=
   (volume.restrict (Ioi 0)).withDensity (stableDensity m)
 
-/-! ### Dyadic pieces of `(0, ∞)` -/
+/-! ### The intensity is s-finite, and integrates against `u^{-m-1} du` -/
 
-/-- `(1, ∞)`, then `(2^{-n-1}, 2^{-n}]`. -/
-def dyadicPiece : ℕ → Set ℝ
-  | 0 => Ioi 1
-  | n + 1 => Ioc ((1 / 2 : ℝ) ^ (n + 1)) ((1 / 2 : ℝ) ^ n)
+instance (m : ℝ) : SFinite (stableIntensity m) := by
+  unfold stableIntensity; infer_instance
 
-lemma measurableSet_dyadicPiece (n : ℕ) : MeasurableSet (dyadicPiece n) := by
-  cases n with
-  | zero => exact measurableSet_Ioi
-  | succ n => exact measurableSet_Ioc
-
-lemma half_pow_succ_lt (n : ℕ) : (1 / 2 : ℝ) ^ (n + 1) < (1 / 2 : ℝ) ^ n := by
-  rw [pow_succ]
-  exact mul_lt_of_lt_one_right (by positivity) (by norm_num)
-
-lemma half_pow_le_one (n : ℕ) : (1 / 2 : ℝ) ^ n ≤ 1 :=
-  pow_le_one₀ (by norm_num) (by norm_num)
-
-lemma dyadicPiece_subset_Ioi (n : ℕ) : dyadicPiece n ⊆ Ioi ((1 / 2 : ℝ) ^ (n + 1)) := by
-  cases n with
-  | zero =>
-    intro x hx
-    simp only [dyadicPiece, mem_Ioi] at hx ⊢
-    norm_num
-    linarith
-  | succ n =>
-    intro x hx
-    simp only [dyadicPiece, mem_Ioc, mem_Ioi] at hx ⊢
-    exact lt_trans (half_pow_succ_lt (n + 1)) hx.1
-
-lemma dyadicPiece_subset_Ioi_zero (n : ℕ) : dyadicPiece n ⊆ Ioi 0 :=
-  (dyadicPiece_subset_Ioi n).trans (Ioi_subset_Ioi (by positivity))
-
-lemma disjoint_dyadicPiece_of_lt {i j : ℕ} (hij : i < j) :
-    Disjoint (dyadicPiece i) (dyadicPiece j) := by
-  rw [Set.disjoint_left]
-  intro x hi hj
-  cases i with
-  | zero =>
-    obtain ⟨k, rfl⟩ : ∃ k, j = k + 1 := ⟨j - 1, by omega⟩
-    simp only [dyadicPiece, mem_Ioi, mem_Ioc] at hi hj
-    linarith [hj.2, half_pow_le_one k]
-  | succ a =>
-    obtain ⟨b, rfl⟩ : ∃ b, j = b + 1 := ⟨j - 1, by omega⟩
-    simp only [dyadicPiece, mem_Ioc] at hi hj
-    have hab : a + 1 ≤ b := by omega
-    have : (1 / 2 : ℝ) ^ b ≤ (1 / 2 : ℝ) ^ (a + 1) :=
-      pow_le_pow_of_le_one (by norm_num) (by norm_num) hab
-    linarith [hi.1, hj.2]
-
-lemma pairwise_disjoint_dyadicPiece : Pairwise (Disjoint on dyadicPiece) := by
-  intro i j hij
-  rcases lt_or_gt_of_ne hij with h | h
-  · exact disjoint_dyadicPiece_of_lt h
-  · exact (disjoint_dyadicPiece_of_lt h).symm
-
-lemma iUnion_dyadicPiece : ⋃ n, dyadicPiece n = Ioi 0 := by
-  refine subset_antisymm (iUnion_subset fun n => dyadicPiece_subset_Ioi_zero n) fun t ht => ?_
-  rw [mem_Ioi] at ht
-  rw [mem_iUnion]
-  rcases lt_or_ge 1 t with h1 | h1
-  · exact ⟨0, h1⟩
-  · have hinv : (1 : ℝ) ≤ 1 / t := by rw [le_one_div (by norm_num) ht]; simpa using h1
-    obtain ⟨n, hn1, hn2⟩ := exists_nat_pow_near hinv (by norm_num : (1 : ℝ) < 2)
-    refine ⟨n + 1, ?_⟩
-    simp only [dyadicPiece, mem_Ioc, one_div_pow]
-    constructor
-    · rw [one_div_lt (by positivity) ht]
-      simpa using hn2
-    · rw [le_one_div ht (by positivity)]
-      exact hn1
-
-/-! ### The pieces of the intensity -/
-
-/-- The intensity restricted to the `n`-th dyadic piece. -/
-def stablePiece (m : ℝ) (n : ℕ) : Measure ℝ :=
-  (volume.restrict (dyadicPiece n)).withDensity (stableDensity m)
-
-lemma lintegral_stablePiece (m : ℝ) (n : ℕ) {F : ℝ → ℝ≥0∞} (hF : Measurable F) :
-    ∫⁻ u, F u ∂stablePiece m n = ∫⁻ u in dyadicPiece n, stableDensity m u * F u := by
-  rw [stablePiece, lintegral_withDensity_eq_lintegral_mul _ (measurable_stableDensity m) hF]
+lemma lintegral_stableIntensity (m : ℝ) {F : ℝ → ℝ≥0∞} (hF : Measurable F) :
+    ∫⁻ u, F u ∂stableIntensity m = ∫⁻ u in Ioi 0, stableDensity m u * F u := by
+  rw [stableIntensity, lintegral_withDensity_eq_lintegral_mul _ (measurable_stableDensity m) hF]
   rfl
-
-/-- The pieces sum to the intensity, in integrated form. -/
-lemma lintegral_sum_stablePiece (m : ℝ) {F : ℝ → ℝ≥0∞} (hF : Measurable F) :
-    ∫⁻ u, F u ∂Measure.sum (stablePiece m) = ∫⁻ u in Ioi 0, stableDensity m u * F u := by
-  rw [lintegral_sum_measure]
-  simp_rw [lintegral_stablePiece m _ hF]
-  rw [← lintegral_iUnion measurableSet_dyadicPiece pairwise_disjoint_dyadicPiece,
-    iUnion_dyadicPiece]
-
-lemma integrableOn_rpow_dyadicPiece {m : ℝ} (hm : 0 < m) (n : ℕ) :
-    IntegrableOn (fun u : ℝ => u ^ (-m - 1)) (dyadicPiece n) :=
-  (integrableOn_Ioi_rpow_of_lt (by linarith) (by positivity : (0 : ℝ) < (1 / 2) ^ (n + 1))).mono_set
-    (dyadicPiece_subset_Ioi n)
-
-lemma isFiniteMeasure_stablePiece {m : ℝ} (hm : 0 < m) (n : ℕ) :
-    IsFiniteMeasure (stablePiece m n) := by
-  refine ⟨?_⟩
-  rw [stablePiece, withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ]
-  have hnn : 0 ≤ᵐ[volume.restrict (dyadicPiece n)] fun u : ℝ => u ^ (-m - 1) := by
-    rw [Filter.EventuallyLE, ae_restrict_iff' (measurableSet_dyadicPiece n)]
-    exact Filter.Eventually.of_forall fun u hu =>
-      Real.rpow_nonneg (le_of_lt (dyadicPiece_subset_Ioi_zero n hu)) _
-  exact (hasFiniteIntegral_iff_ofReal hnn).1 (integrableOn_rpow_dyadicPiece hm n).hasFiniteIntegral
 
 /-! ### The scaling identity -/
 
@@ -250,37 +152,120 @@ theorem integral_one_sub_exp_mul_rpow {m : ℝ} (hm0 : 0 < m) {a : ℝ} (ha : 0 
   rw [stableConst]
   ring_nf
 
+/-- Integrability of `(1 - e^{-au}) u^{-m-1}` on `(0, ∞)`. -/
+theorem integrableOn_one_sub_exp_mul_rpow {m : ℝ} (hm0 : 0 < m) (hm1 : m < 1) {a : ℝ}
+    (ha : 0 ≤ a) :
+    IntegrableOn (fun u : ℝ => (1 - Real.exp (-(a * u))) * u ^ (-m - 1)) (Ioi 0) := by
+  rcases eq_or_lt_of_le ha with rfl | ha
+  · simp
+  have h1 : IntegrableOn (fun u : ℝ => stableKernel m (a * u)) (Ioi 0) := by
+    rw [integrableOn_Ioi_comp_mul_left_iff _ 0 ha, mul_zero]
+    exact integrableOn_stableKernel hm0 hm1
+  refine IntegrableOn.congr_fun
+    (show IntegrableOn (fun u : ℝ => a ^ (m + 1) * stableKernel m (a * u)) (Ioi 0) volume from
+      h1.const_mul _) ?_ measurableSet_Ioi
+  intro u hu
+  rw [mem_Ioi] at hu
+  beta_reduce
+  rw [stableKernel, Real.mul_rpow ha.le hu.le]
+  have : a ^ (m + 1) * a ^ (-m - 1) = 1 := by
+    rw [← Real.rpow_add ha]; norm_num
+  calc a ^ (m + 1) * ((1 - Real.exp (-(a * u))) * (a ^ (-m - 1) * u ^ (-m - 1)))
+      = (a ^ (m + 1) * a ^ (-m - 1)) * ((1 - Real.exp (-(a * u))) * u ^ (-m - 1)) := by ring
+    _ = (1 - Real.exp (-(a * u))) * u ^ (-m - 1) := by rw [this, one_mul]
+
+lemma one_sub_exp_mul_rpow_nonneg {m a u : ℝ} (ha : 0 ≤ a) (hu : 0 < u) :
+    0 ≤ (1 - Real.exp (-(a * u))) * u ^ (-m - 1) :=
+  mul_nonneg (by linarith [Real.exp_le_one_iff.2 (by nlinarith : -(a * u) ≤ 0)])
+    (Real.rpow_nonneg hu.le _)
+
 /-- The scaling identity in `ℝ≥0∞`-integral form. -/
 theorem lintegral_stableDensity_one_sub_exp {m : ℝ} (hm0 : 0 < m) (hm1 : m < 1) {a : ℝ}
     (ha : 0 ≤ a) :
     ∫⁻ u in Ioi 0, stableDensity m u * ENNReal.ofReal (1 - Real.exp (-(a * u)))
       = ENNReal.ofReal (a ^ m * stableConst m) := by
   rw [← integral_one_sub_exp_mul_rpow hm0 ha]
-  have hint : IntegrableOn (fun u : ℝ => (1 - Real.exp (-(a * u))) * u ^ (-m - 1)) (Ioi 0) := by
-    rcases eq_or_lt_of_le ha with rfl | ha
-    · simp
-    have h1 : IntegrableOn (fun u : ℝ => stableKernel m (a * u)) (Ioi 0) := by
-      rw [integrableOn_Ioi_comp_mul_left_iff _ 0 ha, mul_zero]
-      exact integrableOn_stableKernel hm0 hm1
-    refine IntegrableOn.congr_fun
-      (show IntegrableOn (fun u : ℝ => a ^ (m + 1) * stableKernel m (a * u)) (Ioi 0) volume from
-        h1.const_mul _) ?_ measurableSet_Ioi
-    intro u hu
-    rw [mem_Ioi] at hu
-    beta_reduce
-    rw [stableKernel, Real.mul_rpow ha.le hu.le]
-    have : a ^ (m + 1) * a ^ (-m - 1) = 1 := by
-      rw [← Real.rpow_add ha]; norm_num
-    calc a ^ (m + 1) * ((1 - Real.exp (-(a * u))) * (a ^ (-m - 1) * u ^ (-m - 1)))
-        = (a ^ (m + 1) * a ^ (-m - 1)) * ((1 - Real.exp (-(a * u))) * u ^ (-m - 1)) := by ring
-      _ = (1 - Real.exp (-(a * u))) * u ^ (-m - 1) := by rw [this, one_mul]
   have hnn : 0 ≤ᵐ[volume.restrict (Ioi 0)]
       fun u : ℝ => (1 - Real.exp (-(a * u))) * u ^ (-m - 1) := by
     rw [Filter.EventuallyLE, ae_restrict_iff' measurableSet_Ioi]
-    exact Filter.Eventually.of_forall fun u hu =>
-      mul_nonneg (by linarith [Real.exp_le_one_iff.2 (by nlinarith [mem_Ioi.1 hu] : -(a * u) ≤ 0)])
-        (Real.rpow_nonneg (le_of_lt hu) _)
-  rw [ofReal_integral_eq_lintegral_ofReal hint hnn]
+    exact Filter.Eventually.of_forall fun u hu => one_sub_exp_mul_rpow_nonneg ha hu
+  rw [ofReal_integral_eq_lintegral_ofReal (integrableOn_one_sub_exp_mul_rpow hm0 hm1 ha) hnn]
+  refine setLIntegral_congr_fun measurableSet_Ioi fun u hu => ?_
+  rw [stableDensity, ← ENNReal.ofReal_mul (Real.rpow_nonneg (le_of_lt hu) _), mul_comm]
+
+/-! ### The moment integral `∫ (1 - e^{-a u^m}) u^{-m'-1} du` -/
+
+/-- The substitution `u = w^{1/m}` in the scaling identity: for `0 < m' < m`,
+`∫₀^∞ (1 - e^{-a u^m}) u^{-m'-1} du = a^{m'/m} c_{m'/m} / m`. This is the integral behind the
+moments of order `m' < m` of a stable sum. -/
+theorem integral_one_sub_exp_mul_rpow_rpow {m m' : ℝ} (hm0 : 0 < m) (hm'0 : 0 < m') {a : ℝ}
+    (ha : 0 ≤ a) :
+    ∫ u in Ioi 0, (1 - Real.exp (-(a * u ^ m))) * u ^ (-m' - 1)
+      = a ^ (m' / m) * stableConst (m' / m) / m := by
+  have hq : 0 < m' / m := div_pos hm'0 hm0
+  have hsub := integral_comp_rpow_Ioi
+    (fun w : ℝ => (1 - Real.exp (-(a * w))) * w ^ (-(m' / m) - 1)) hm0.ne'
+  rw [integral_one_sub_exp_mul_rpow hq ha] at hsub
+  have hpt : ∀ u ∈ Ioi (0 : ℝ), (|m| * u ^ (m - 1)) •
+      ((fun w : ℝ => (1 - Real.exp (-(a * w))) * w ^ (-(m' / m) - 1)) (u ^ m))
+      = m * ((1 - Real.exp (-(a * u ^ m))) * u ^ (-m' - 1)) := by
+    intro u hu
+    rw [mem_Ioi] at hu
+    simp only [smul_eq_mul, abs_of_pos hm0]
+    rw [← Real.rpow_mul hu.le]
+    have h1 : m * (-(m' / m) - 1) = -m' - m := by field_simp
+    rw [h1]
+    have h2 : u ^ (m - 1) * u ^ (-m' - m) = u ^ (-m' - 1) := by
+      rw [← Real.rpow_add hu]; ring_nf
+    calc m * u ^ (m - 1) * ((1 - Real.exp (-(a * u ^ m))) * u ^ (-m' - m))
+        = m * ((1 - Real.exp (-(a * u ^ m))) * (u ^ (m - 1) * u ^ (-m' - m))) := by ring
+      _ = m * ((1 - Real.exp (-(a * u ^ m))) * u ^ (-m' - 1)) := by rw [h2]
+  rw [setIntegral_congr_fun measurableSet_Ioi hpt, integral_const_mul] at hsub
+  rw [eq_div_iff hm0.ne', mul_comm, hsub]
+
+theorem integrableOn_one_sub_exp_mul_rpow_rpow {m m' : ℝ} (hm0 : 0 < m) (hm'0 : 0 < m')
+    (hm'm : m' < m) {a : ℝ} (ha : 0 ≤ a) :
+    IntegrableOn (fun u : ℝ => (1 - Real.exp (-(a * u ^ m))) * u ^ (-m' - 1)) (Ioi 0) := by
+  have hq : 0 < m' / m := div_pos hm'0 hm0
+  have hq1 : m' / m < 1 := (div_lt_one hm0).2 hm'm
+  have h := (integrableOn_Ioi_comp_rpow_iff
+    (fun w : ℝ => (1 - Real.exp (-(a * w))) * w ^ (-(m' / m) - 1)) hm0.ne').2
+    (integrableOn_one_sub_exp_mul_rpow hq hq1 ha)
+  have hpt : ∀ u ∈ Ioi (0 : ℝ), (|m| * u ^ (m - 1)) •
+      ((fun w : ℝ => (1 - Real.exp (-(a * w))) * w ^ (-(m' / m) - 1)) (u ^ m))
+      = m * ((1 - Real.exp (-(a * u ^ m))) * u ^ (-m' - 1)) := by
+    intro u hu
+    rw [mem_Ioi] at hu
+    simp only [smul_eq_mul, abs_of_pos hm0]
+    rw [← Real.rpow_mul hu.le]
+    have h1 : m * (-(m' / m) - 1) = -m' - m := by field_simp
+    rw [h1]
+    have h2 : u ^ (m - 1) * u ^ (-m' - m) = u ^ (-m' - 1) := by
+      rw [← Real.rpow_add hu]; ring_nf
+    calc m * u ^ (m - 1) * ((1 - Real.exp (-(a * u ^ m))) * u ^ (-m' - m))
+        = m * ((1 - Real.exp (-(a * u ^ m))) * (u ^ (m - 1) * u ^ (-m' - m))) := by ring
+      _ = m * ((1 - Real.exp (-(a * u ^ m))) * u ^ (-m' - 1)) := by rw [h2]
+  have h' : IntegrableOn (fun u : ℝ => m⁻¹ * (m * ((1 - Real.exp (-(a * u ^ m)))
+      * u ^ (-m' - 1)))) (Ioi 0) := (h.congr_fun hpt measurableSet_Ioi).const_mul m⁻¹
+  refine h'.congr_fun (fun u _ => ?_) measurableSet_Ioi
+  simp only
+  rw [← mul_assoc, inv_mul_cancel₀ hm0.ne', one_mul]
+
+/-- The moment integral in `ℝ≥0∞`-integral form. -/
+theorem lintegral_stableDensity_one_sub_exp_rpow {m m' : ℝ} (hm0 : 0 < m) (hm'0 : 0 < m')
+    (hm'm : m' < m) {a : ℝ} (ha : 0 ≤ a) :
+    ∫⁻ u in Ioi 0, stableDensity m' u * ENNReal.ofReal (1 - Real.exp (-(a * u ^ m)))
+      = ENNReal.ofReal (a ^ (m' / m) * stableConst (m' / m) / m) := by
+  rw [← integral_one_sub_exp_mul_rpow_rpow hm0 hm'0 ha]
+  have hnn : 0 ≤ᵐ[volume.restrict (Ioi 0)]
+      fun u : ℝ => (1 - Real.exp (-(a * u ^ m))) * u ^ (-m' - 1) := by
+    rw [Filter.EventuallyLE, ae_restrict_iff' measurableSet_Ioi]
+    refine Filter.Eventually.of_forall fun u hu => ?_
+    have hum : 0 ≤ u ^ m := Real.rpow_nonneg (le_of_lt hu) m
+    exact mul_nonneg (by linarith [Real.exp_le_one_iff.2 (by nlinarith : -(a * u ^ m) ≤ 0)])
+      (Real.rpow_nonneg (le_of_lt hu) _)
+  rw [ofReal_integral_eq_lintegral_ofReal
+    (integrableOn_one_sub_exp_mul_rpow_rpow hm0 hm'0 hm'm ha) hnn]
   refine setLIntegral_congr_fun measurableSet_Ioi fun u hu => ?_
   rw [stableDensity, ← ENNReal.ofReal_mul (Real.rpow_nonneg (le_of_lt hu) _), mul_comm]
 
@@ -301,6 +286,35 @@ theorem lintegral_stableDensity_Ioi {m : ℝ} (hm : 0 < m) {c : ℝ} (hc : 0 < c
   have : -m - 1 + 1 = -m := by ring
   rw [this]
   field_simp
+
+/-- `μ_m ((c, ∞)) = c^{-m}/m` for `c > 0`, as a value of the intensity. -/
+theorem stableIntensity_Ioi {m : ℝ} (hm : 0 < m) {c : ℝ} (hc : 0 < c) :
+    stableIntensity m (Ioi c) = ENNReal.ofReal (c ^ (-m) / m) := by
+  rw [stableIntensity, withDensity_apply _ measurableSet_Ioi, Measure.restrict_restrict
+    measurableSet_Ioi, Set.Ioi_inter_Ioi, max_eq_left hc.le, lintegral_stableDensity_Ioi hm hc]
+
+/-- `μ_m` has infinite total mass: `∫₀^∞ u^{-m-1} du = ∞`. -/
+theorem lintegral_stableDensity_Ioi_zero {m : ℝ} (hm : 0 < m) :
+    ∫⁻ u in Ioi 0, stableDensity m u = ∞ := by
+  by_contra hne
+  set L := (∫⁻ u in Ioi 0, stableDensity m u).toReal with hL
+  have hLnn : 0 ≤ L := ENNReal.toReal_nonneg
+  -- the mass of `(c, ∞)` with `c^{-m} = m L + 1` exceeds `L`
+  set c : ℝ := (m * L + 1) ^ (-(1 / m)) with hc
+  have hcpos : 0 < c := Real.rpow_pos_of_pos (by positivity) _
+  have hcm : c ^ (-m) = m * L + 1 := by
+    rw [hc, ← Real.rpow_mul (by positivity)]
+    have : -(1 / m) * -m = 1 := by field_simp
+    rw [this, Real.rpow_one]
+  have hle : ∫⁻ u in Ioi c, stableDensity m u ≤ ∫⁻ u in Ioi 0, stableDensity m u :=
+    lintegral_mono_set (Set.Ioi_subset_Ioi hcpos.le)
+  rw [lintegral_stableDensity_Ioi hm hcpos, hcm] at hle
+  have hle' := ENNReal.toReal_mono hne hle
+  rw [ENNReal.toReal_ofReal (by positivity), ← hL] at hle'
+  have : (m * L + 1) / m = L + 1 / m := by field_simp
+  rw [this] at hle'
+  have : 0 < 1 / m := by positivity
+  linarith
 
 end
 
