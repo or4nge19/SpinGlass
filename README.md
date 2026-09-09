@@ -203,10 +203,39 @@ exponential moment `integral_exp_mul_apply_gaussField`), and
 `abs_gaussFreeEnergy_perturbedProfile_sub_le`: the perturbation producing the Ghirlanda–Guerra
 identities moves the free energy by at most `(∑ₛ wₛ²)/2 → 0`.
 
-Cascades, `Parisi.T`, and the finite-volume GG defect/error are scaffolding toward the Vol. II
-capstones. Still to discharge:
-Panchenko's ultrametricity theorem (Talagrand's Research Problem 15.3.7), the Dovbysh–Sudakov
-representation, the Parisi equality, broken-RSB Guerra, Gardner and the Hopfield limits.
+`Limit.PositivityPrinciple`, `Limit.PositivityGG` and `MixedPSpinPositivity` are **Talagrand's
+positivity principle** (Vol. II, Theorem 12.3.1): `TendstoGGDefectUniform` is Definition 15.4.1 (the
+extended identities asymptotically, uniformly over observables; monomials suffice by
+`tendstoGGDefectUniform_of_monomial`); Proposition 12.3.2 is proved for the annealed overlap-array
+law of any random Hamiltonian from Gram positivity of weighted configurations
+(`bind_overlapArrayLaw_real_negSet_le`); Proposition 12.3.4 is the recursion
+`I_{j+1} ≥ ((j+a)/(j+1)) I_j − |defect|` for the ramp observables `negObs`, iterated and compared
+with `P_k(a) ≥ e⁻² k^{a-1}`; `tendsto_negMassLaw` is the theorem, `tendsto_real_negLevel_bind`
+its Gibbs form at every level, `measure_negOverlap_eq_zero_of_tendsto` the passage to a
+distributional limit. The Ghirlanda–Guerra capstone now also delivers the uniform identities along
+the perturbed sequence, and `exists_subseq_tendsto_satisfiesGhirlandaGuerra_nonnegOverlap_mixedPSpin`
+adds **nonnegative overlaps almost surely** to the limit law's properties.
+
+`MixedPSpinThermodynamicLimit` is **Guerra–Toninelli for every convex mixed `p`-spin model**
+(Vol. I Theorem 1.3.9, Vol. II §12.1): superadditivity is proved for an arbitrary pair of kernels
+dominated by the non-interacting split kernel, Jensen's inequality supplies the domination for a
+profile convex on `[-1,1]`, and Fekete's lemma gives the limit `mixedPSpinFreeEnergyLimit` (the SK
+model is the corollary `ξ(r) = β² r²/2`). Lemma 12.2.1 then shows the Ghirlanda–Guerra perturbation
+of the capstone has the same free-energy limit.
+
+`FiniteGibbs/PointwiseFluctuation` and `MixedPSpinDifferentiability` are **Panchenko's Theorem
+12.1.3 and the second half of Theorem 12.1.10**: energy self-averaging at a *fixed* temperature,
+proved from Lemmas 12.1.7–12.1.9 (the monotone sandwich `ψ ∓ 4p'`, a point of the window with
+small `p''`, Griffiths in mean, and the convex-analysis lemma
+`ConvexOn.exists_eventually_deriv_sub_deriv_le`). For every even mixed `p`-spin model with external
+field, the Ghirlanda–Guerra defect of the model's own profile vanishes at every `β ≠ 0` where the
+limiting free energy is differentiable, hence at almost every `β`, with no perturbation and no
+window average.
+
+Still to discharge (there is no statement layer of undischarged `Prop`s): Panchenko's
+ultrametricity theorem (Talagrand's Research Problem 15.3.7), the Dovbysh–Sudakov representation,
+the Poisson–Dirichlet cascades and broken-RSB Guerra, the Parisi equality, Gardner, and the
+Hopfield localization theorems and limits.
 
 ## Build
 

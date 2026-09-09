@@ -1,6 +1,5 @@
 import SpinGlass.Algebra
 import SpinGlass.Calculus
-import SpinGlass.Cascades
 import SpinGlass.CovariancePosSemidef
 import SpinGlass.Defs
 import SpinGlass.FiniteGibbs
@@ -16,6 +15,7 @@ import SpinGlass.FiniteGibbs.GGError
 import SpinGlass.FiniteGibbs.FluctuationIntegral
 import SpinGlass.FiniteGibbs.Marginal
 import SpinGlass.FiniteGibbs.ParameterDerivative
+import SpinGlass.FiniteGibbs.PointwiseFluctuation
 import SpinGlass.FreeEnergyConvexity
 import SpinGlass.GaussFieldFluctuation
 import SpinGlass.GaussianPerturbation
@@ -28,11 +28,9 @@ import SpinGlass.GuerraInterpolation
 import SpinGlass.GuerraPipeline
 import SpinGlass.GuerraToninelli
 import SpinGlass.Hopfield
-import SpinGlass.HopfieldCascades
 import SpinGlass.Hopfield.Psi
 import SpinGlass.HopfieldConvolution
 import SpinGlass.HopfieldFixedPoint
-import SpinGlass.HopfieldLocalization
 import SpinGlass.HopfieldPsiDeriv
 import SpinGlass.HopfieldPsiMeasurable
 import SpinGlass.Limit.AsymptoticArrayLaws
@@ -42,10 +40,11 @@ import SpinGlass.Limit.Exchangeability
 import SpinGlass.Limit.GhirlandaGuerraCondDistrib
 import SpinGlass.Limit.GhirlandaGuerraFinite
 import SpinGlass.Limit.GhirlandaGuerraLimit
+import SpinGlass.Limit.PositivityPrinciple
+import SpinGlass.Limit.PositivityGG
 import SpinGlass.Limit.OverlapArrayBracket
 import SpinGlass.Limit.OverlapArray
 import SpinGlass.LogCosh
-import SpinGlass.MeanFieldLimit
 import SpinGlass.MixedPSpin
 import SpinGlass.MixedPSpinComponent
 import SpinGlass.MixedPSpinComponentGG
@@ -53,6 +52,9 @@ import SpinGlass.MixedPSpinGhirlandaGuerra
 import SpinGlass.MultiComponent
 import SpinGlass.MixedPSpinPerturbation
 import SpinGlass.MixedPSpinLimit
+import SpinGlass.MixedPSpinPositivity
+import SpinGlass.MixedPSpinThermodynamicLimit
+import SpinGlass.MixedPSpinDifferentiability
 import SpinGlass.ParisiOperator
 import SpinGlass.Poincare
 import SpinGlass.ReplicaKernel
@@ -89,5 +91,6 @@ import Common.Mathlib.Probability.Distributions.Gaussian_IBP_HilbertAPI
 # SpinGlass
 
 Talagrand, *Mean Field Models for Spin Glasses*, Vol. I–II: finite-volume Gibbs calculus,
-Guerra interpolation, Hopfield, replica laws, and Poisson–Dirichlet cascades.
+Guerra interpolation and the thermodynamic limit, Hopfield, replica laws, the Ghirlanda–Guerra
+identities and the positivity principle.
 -/
