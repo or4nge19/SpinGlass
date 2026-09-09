@@ -303,4 +303,100 @@ theorem tendsto_deriv_of_tendsto {ι : Type*} {L : Filter ι} {θ : ι → ℝ �
   rw [key p hpd] at h
   exact h.congr fun i => key (θ i) (hθd i)
 
+/-! ### The window increment of the derivatives
+
+Talagrand, *Mean Field Models for Spin Glasses*, Vol. II, Lemma 12.1.9: if convex functions `θ i`
+converge pointwise to `p` and `p` is differentiable at `x`, then
+`lim_{b → 0} limsup_i ((θ i)'(x + b) - (θ i)'(x - b)) = 0`. The derivative of a convex function at
+`x ± b` is trapped between slopes over `[x + b, x + 2b]` and `[x - 2b, x - b]`, the slopes converge
+with the functions, and the limiting slopes both tend to `p'(x)`. -/
+
+/-- The slopes of `p` over `[x + b, x + 2b]` and `[x - 2b, x - b]` differ by less than `ε` for
+some `b > 0`, when `p` is differentiable at `x`. -/
+theorem exists_slope_window_sub_lt {p : ℝ → ℝ} {x : ℝ} (hpd : DifferentiableAt ℝ p x) {ε : ℝ}
+    (hε : 0 < ε) :
+    ∃ b > 0, (p (x + 2 * b) - p (x + b)) / b - (p (x - b) - p (x - 2 * b)) / b < ε := by
+  have hslope := hpd.hasDerivAt
+  rw [hasDerivAt_iff_tendsto_slope_zero] at hslope
+  obtain ⟨δ, hδ, hδ'⟩ := Metric.tendsto_nhdsWithin_nhds.1 hslope (ε / 8) (by positivity)
+  have key : ∀ t : ℝ, t ≠ 0 → |t| < δ →
+      |(p (x + t) - p x) / t - deriv p x| < ε / 8 := by
+    intro t ht hlt
+    have := hδ' (Set.mem_compl_singleton_iff.2 ht) (by simpa [Real.dist_eq] using hlt)
+    simpa [Real.dist_eq, smul_eq_mul, div_eq_inv_mul] using this
+  refine ⟨δ / 4, by positivity, ?_⟩
+  set b := δ / 4 with hb
+  have hb0 : 0 < b := by positivity
+  have hb' : b ≠ 0 := hb0.ne'
+  have h2b : (2 * b) ≠ 0 := by positivity
+  have h1 := key (2 * b) h2b (by rw [abs_of_pos (by positivity)]; linarith)
+  have h2 := key b hb' (by rw [abs_of_pos hb0]; linarith)
+  have h3 := key (-b) (neg_ne_zero.2 hb') (by rw [abs_neg, abs_of_pos hb0]; linarith)
+  have h4 := key (-(2 * b)) (neg_ne_zero.2 h2b)
+    (by rw [abs_neg, abs_of_pos (by positivity)]; linarith)
+  rw [show x + -b = x - b by ring] at h3
+  rw [show x + -(2 * b) = x - 2 * b by ring] at h4
+  have e1 : (p (x + 2 * b) - p (x + b)) / b
+      = 2 * ((p (x + 2 * b) - p x) / (2 * b)) - (p (x + b) - p x) / b := by
+    field_simp
+    ring
+  have e2 : (p (x - b) - p (x - 2 * b)) / b
+      = 2 * ((p (x - 2 * b) - p x) / -(2 * b)) - (p (x - b) - p x) / -b := by
+    field_simp
+    ring
+  rw [e1, e2]
+  rw [abs_lt] at h1 h2 h3 h4
+  linarith [h1.1, h1.2, h2.1, h2.2, h3.1, h3.2, h4.1, h4.2]
+
+/-- **Talagrand Vol. II, Lemma 12.1.9.** If convex differentiable functions `θ i` converge
+pointwise to `p`, and `p` is differentiable at `x`, then for every `ε > 0` there is a window
+half-width `b > 0` with `(θ i)'(x + b) - (θ i)'(x - b) ≤ ε` for all `i` large enough. -/
+theorem exists_eventually_deriv_sub_deriv_le {ι : Type*} {L : Filter ι} {θ : ι → ℝ → ℝ}
+    {p : ℝ → ℝ} {x : ℝ}
+    (hθ : ∀ i, ConvexOn ℝ (univ : Set ℝ) (θ i))
+    (hconv : ∀ y, Tendsto (fun i => θ i y) L (𝓝 (p y)))
+    (hθd : ∀ i y, DifferentiableAt ℝ (θ i) y) (hpd : DifferentiableAt ℝ p x)
+    {ε : ℝ} (hε : 0 < ε) :
+    ∃ b > 0, ∀ᶠ i in L, deriv (θ i) (x + b) - deriv (θ i) (x - b) ≤ ε := by
+  obtain ⟨b, hb, hslope⟩ := exists_slope_window_sub_lt hpd (ε := ε / 2) (by positivity)
+  refine ⟨b, hb, ?_⟩
+  have hεb : 0 < ε / 8 * b := by positivity
+  have h1 := Metric.tendsto_nhds.1 (hconv (x + 2 * b)) _ hεb
+  have h2 := Metric.tendsto_nhds.1 (hconv (x + b)) _ hεb
+  have h3 := Metric.tendsto_nhds.1 (hconv (x - b)) _ hεb
+  have h4 := Metric.tendsto_nhds.1 (hconv (x - 2 * b)) _ hεb
+  filter_upwards [h1, h2, h3, h4] with i h1 h2 h3 h4
+  simp only [Real.dist_eq, abs_lt] at h1 h2 h3 h4
+  obtain ⟨h1a, h1b⟩ := h1
+  obtain ⟨h2a, h2b⟩ := h2
+  obtain ⟨h3a, h3b⟩ := h3
+  obtain ⟨h4a, h4b⟩ := h4
+  have hup : deriv (θ i) (x + b) ≤ (θ i (x + 2 * b) - θ i (x + b)) / b := by
+    have hd : derivWithin (θ i) (Ioi (x + b)) (x + b) = deriv (θ i) (x + b) :=
+      (hθd i (x + b)).hasDerivAt.hasDerivWithinAt.derivWithin (uniqueDiffWithinAt_Ioi _)
+    rw [← hd]
+    have := (hθ i).rightDeriv_le_slope (mem_univ _) (mem_univ _)
+      (by linarith : x + b < x + 2 * b) (hθd i (x + b)).differentiableWithinAt
+    have hden : x + 2 * b - (x + b) = b := by ring
+    rw [slope_def_field, hden] at this
+    exact this
+  have hlo : (θ i (x - b) - θ i (x - 2 * b)) / b ≤ deriv (θ i) (x - b) := by
+    have hd : derivWithin (θ i) (Iio (x - b)) (x - b) = deriv (θ i) (x - b) :=
+      (hθd i (x - b)).hasDerivAt.hasDerivWithinAt.derivWithin (uniqueDiffWithinAt_Iio _)
+    rw [← hd]
+    have := (hθ i).slope_le_leftDeriv (mem_univ _) (mem_univ _)
+      (by linarith : x - 2 * b < x - b) (hθd i (x - b)).differentiableWithinAt
+    have hden : x - b - (x - 2 * b) = b := by ring
+    rw [slope_def_field, hden] at this
+    exact this
+  have hb' : b ≠ 0 := hb.ne'
+  have hu' : (θ i (x + 2 * b) - θ i (x + b)) / b ≤ (p (x + 2 * b) - p (x + b)) / b + ε / 4 := by
+    rw [div_add' _ _ _ hb', div_le_div_iff_of_pos_right hb]
+    linarith
+  have hl' : (p (x - b) - p (x - 2 * b)) / b - ε / 4 ≤ (θ i (x - b) - θ i (x - 2 * b)) / b := by
+    rw [div_sub' hb', div_le_div_iff_of_pos_right hb]
+    linarith
+  linarith
+
+
 end ConvexOn

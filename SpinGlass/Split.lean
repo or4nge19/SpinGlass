@@ -5,7 +5,7 @@ Authors: Matteo Cipollina
 -/
 import SpinGlass.SKModel
 import SpinGlass.FiniteGibbs.Product
-import Common.Mathlib.Analysis.MeanInequalities.Sedrakyan
+import Mathlib.Analysis.Convex.Mul
 
 /-!
 # Splitting a system into two blocks
@@ -83,16 +83,23 @@ lemma splitCovKernel_comm {N₁ N₂ : ℕ} {K₁ : Config N₁ → Config N₁ 
     splitCovKernel N₁ N₂ K₁ K₂ σ τ = splitCovKernel N₁ N₂ K₁ K₂ τ σ := by
   simp [splitCovKernel, h₁, h₂]
 
-/-- **The SK kernel is dominated by the split kernel.** This is Sedrakyan's inequality applied to
-the overlap decomposition `N R = N₁ R₁ + N₂ R₂`: the whole-system covariance `(N β²/2) R²` is at
-most the sum `(N₁ β²/2) R₁² + (N₂ β²/2) R₂²` of the two subsystem covariances.
-Talagrand Vol. I, Theorem 1.3.9. -/
-theorem sk_cov_kernel_le_splitCovKernel {N₁ N₂ : ℕ} (hN₁ : 0 < N₁) (hN₂ : 0 < N₂) (β : ℝ)
-    (σ τ : Config (N₁ + N₂)) :
-    sk_cov_kernel (N₁ + N₂) β σ τ
-      ≤ splitCovKernel N₁ N₂ (sk_cov_kernel N₁ β) (sk_cov_kernel N₂ β) σ τ := by
+/-! ### Overlap-driven kernels with a convex profile -/
+
+/-- **An overlap-driven kernel with a convex profile is dominated by the split kernel.** The
+overlap of the whole system is the convex combination `R = (N₁/N) R₁ + (N₂/N) R₂` of the two block
+overlaps, so Jensen's inequality for a profile `ξ` convex on `[-1,1]` gives
+`N ξ(R) ≤ N₁ ξ(R₁) + N₂ ξ(R₂)`. This is the only model-dependent input of Guerra–Toninelli
+superadditivity. Talagrand Vol. I, Theorem 1.3.9; Vol. II, §12.1. -/
+theorem overlapCovKernel_le_splitCovKernel {N₁ N₂ : ℕ} (hN₁ : 0 < N₁) (hN₂ : 0 < N₂)
+    {ξ : ℝ → ℝ} (hξ : ConvexOn ℝ (Set.Icc (-1 : ℝ) 1) ξ) (σ τ : Config (N₁ + N₂)) :
+    overlapCovKernel (N := N₁ + N₂) ξ σ τ
+      ≤ splitCovKernel N₁ N₂ (overlapCovKernel (N := N₁) ξ) (overlapCovKernel (N := N₂) ξ) σ τ := by
   have hx : (0 : ℝ) < (N₁ : ℝ) := by exact_mod_cast hN₁
   have hy : (0 : ℝ) < (N₂ : ℝ) := by exact_mod_cast hN₂
+  have hM : (0 : ℝ) < (N₁ : ℝ) + (N₂ : ℝ) := by positivity
+  have hM' : (N₁ : ℝ) + (N₂ : ℝ) ≠ 0 := hM.ne'
+  simp only [splitCovKernel, overlapCovKernel_apply]
+  push_cast
   set R := overlap (N₁ + N₂) σ τ with hR
   set R₁ := overlap N₁ (configSplit N₁ N₂ σ).1 (configSplit N₁ N₂ τ).1 with hR₁
   set R₂ := overlap N₂ (configSplit N₁ N₂ σ).2 (configSplit N₁ N₂ τ).2 with hR₂
@@ -100,33 +107,62 @@ theorem sk_cov_kernel_le_splitCovKernel {N₁ N₂ : ℕ} (hN₁ : 0 < N₁) (hN
     have := cast_mul_overlap_split N₁ N₂ σ τ
     push_cast at this
     simpa [hR, hR₁, hR₂] using this
-  -- Sedrakyan: `(a + b)² / (x + y) ≤ a²/x + b²/y` with `a = N₁R₁`, `b = N₂R₂`.
-  have hsed := Real.sq_add_div_add_le (a := (N₁ : ℝ) * R₁) (b := (N₂ : ℝ) * R₂) hx hy
-  have hkey : ((N₁ : ℝ) + (N₂ : ℝ)) * R ^ 2 ≤ (N₁ : ℝ) * R₁ ^ 2 + (N₂ : ℝ) * R₂ ^ 2 := by
-    have hlhs : (((N₁ : ℝ) * R₁ + (N₂ : ℝ) * R₂) ^ 2) / ((N₁ : ℝ) + (N₂ : ℝ))
-        = ((N₁ : ℝ) + (N₂ : ℝ)) * R ^ 2 := by
-      rw [← hsum]; field_simp
-    have hrhs : ((N₁ : ℝ) * R₁) ^ 2 / (N₁ : ℝ) + ((N₂ : ℝ) * R₂) ^ 2 / (N₂ : ℝ)
-        = (N₁ : ℝ) * R₁ ^ 2 + (N₂ : ℝ) * R₂ ^ 2 := by
-      field_simp
-    rw [hlhs, hrhs] at hsed
-    exact hsed
-  have hβ : (0 : ℝ) ≤ β ^ 2 / 2 := by positivity
-  simp only [splitCovKernel, sk_cov_kernel_eq, ← hR, ← hR₁, ← hR₂]
-  push_cast
-  nlinarith [hkey, hβ]
+  have hRab : R = ((N₁ : ℝ) / ((N₁ : ℝ) + N₂)) * R₁ + ((N₂ : ℝ) / ((N₁ : ℝ) + N₂)) * R₂ := by
+    field_simp
+    linear_combination hsum
+  have hmem₁ : R₁ ∈ Set.Icc (-1 : ℝ) 1 := by
+    have := abs_le.mp (abs_overlap_le_one N₁ (configSplit N₁ N₂ σ).1 (configSplit N₁ N₂ τ).1)
+    exact ⟨this.1, this.2⟩
+  have hmem₂ : R₂ ∈ Set.Icc (-1 : ℝ) 1 := by
+    have := abs_le.mp (abs_overlap_le_one N₂ (configSplit N₁ N₂ σ).2 (configSplit N₁ N₂ τ).2)
+    exact ⟨this.1, this.2⟩
+  have hconv := hξ.2 hmem₁ hmem₂ (by positivity : (0 : ℝ) ≤ (N₁ : ℝ) / ((N₁ : ℝ) + N₂))
+    (by positivity : (0 : ℝ) ≤ (N₂ : ℝ) / ((N₁ : ℝ) + N₂)) (by field_simp)
+  simp only [smul_eq_mul] at hconv
+  rw [← hRab] at hconv
+  have hmul := mul_le_mul_of_nonneg_left hconv hM.le
+  have hrhs : ((N₁ : ℝ) + (N₂ : ℝ)) * ((N₁ : ℝ) / ((N₁ : ℝ) + N₂) * ξ R₁
+      + (N₂ : ℝ) / ((N₁ : ℝ) + N₂) * ξ R₂) = (N₁ : ℝ) * ξ R₁ + (N₂ : ℝ) * ξ R₂ := by
+    field_simp
+  linarith
 
-/-- **The SK kernel agrees with the split kernel on the diagonal.** Both are `(N₁+N₂)β²/2`, since
-every configuration has self-overlap `1`. Talagrand Vol. I, Theorem 1.3.9. -/
+/-- **An overlap-driven kernel agrees with the split kernel on the diagonal**: both are
+`N ξ(1)`, since every configuration has self-overlap `1`. -/
+theorem overlapCovKernel_diag_eq_splitCovKernel {N₁ N₂ : ℕ} (hN₁ : 0 < N₁) (hN₂ : 0 < N₂)
+    (ξ : ℝ → ℝ) (σ : Config (N₁ + N₂)) :
+    overlapCovKernel (N := N₁ + N₂) ξ σ σ
+      = splitCovKernel N₁ N₂ (overlapCovKernel (N := N₁) ξ) (overlapCovKernel (N := N₂) ξ) σ σ := by
+  have hN : 0 < N₁ + N₂ := Nat.add_pos_left hN₁ N₂
+  simp only [splitCovKernel, overlapCovKernel_apply, overlap_self (N := N₁ + N₂) hN,
+    overlap_self (N := N₁) hN₁, overlap_self (N := N₂) hN₂]
+  push_cast
+  ring
+
+/-! ### The SK model as a corollary -/
+
+/-- The SK profile `β² r²/2` is convex. -/
+lemma convexOn_skCovXi (β : ℝ) : ConvexOn ℝ (Set.Icc (-1 : ℝ) 1) (skCovXi β) := by
+  have h : skCovXi β = fun x : ℝ => (β ^ 2 / 2) • x ^ 2 := by
+    funext x; simp only [skCovXi, smul_eq_mul]; ring
+  rw [h]
+  exact ((Even.convexOn_pow (𝕜 := ℝ) even_two).smul (by positivity)).subset (Set.subset_univ _)
+    (convex_Icc _ _)
+
+/-- **The SK kernel is dominated by the split kernel**: the case `ξ(r) = β² r²/2` of
+`overlapCovKernel_le_splitCovKernel`. Talagrand Vol. I, Theorem 1.3.9. -/
+theorem sk_cov_kernel_le_splitCovKernel {N₁ N₂ : ℕ} (hN₁ : 0 < N₁) (hN₂ : 0 < N₂) (β : ℝ)
+    (σ τ : Config (N₁ + N₂)) :
+    sk_cov_kernel (N₁ + N₂) β σ τ
+      ≤ splitCovKernel N₁ N₂ (sk_cov_kernel N₁ β) (sk_cov_kernel N₂ β) σ τ :=
+  overlapCovKernel_le_splitCovKernel hN₁ hN₂ (convexOn_skCovXi β) σ τ
+
+/-- **The SK kernel agrees with the split kernel on the diagonal.** Both are `(N₁+N₂)β²/2`.
+Talagrand Vol. I, Theorem 1.3.9. -/
 theorem sk_cov_kernel_diag_eq_splitCovKernel {N₁ N₂ : ℕ} (hN₁ : 0 < N₁) (hN₂ : 0 < N₂) (β : ℝ)
     (σ : Config (N₁ + N₂)) :
     sk_cov_kernel (N₁ + N₂) β σ σ
-      = splitCovKernel N₁ N₂ (sk_cov_kernel N₁ β) (sk_cov_kernel N₂ β) σ σ := by
-  have hN : 0 < N₁ + N₂ := Nat.add_pos_left hN₁ N₂
-  simp only [splitCovKernel, sk_cov_kernel_eq,
-    overlap_self (N := N₁ + N₂) hN, overlap_self (N := N₁) hN₁, overlap_self (N := N₂) hN₂]
-  push_cast
-  ring
+      = splitCovKernel N₁ N₂ (sk_cov_kernel N₁ β) (sk_cov_kernel N₂ β) σ σ :=
+  overlapCovKernel_diag_eq_splitCovKernel hN₁ hN₂ (skCovXi β) σ
 
 /-! ### The disorder of the non-interacting composite -/
 

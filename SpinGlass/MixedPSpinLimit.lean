@@ -256,6 +256,8 @@ theorem exists_subseq_tendsto_satisfiesGhirlandaGuerra_mixedPSpin {P : Polynomia
     (hmc : Tendsto (fun N => ((m N : ℝ) + 1) * (c N) ^ 2) atTop (𝓝 0))
     (hrate : Tendsto (fun N => ((m N : ℝ) + 1) / ((c N) ^ 2 * δ N * Real.sqrt N)) atTop (𝓝 0)) :
     ∃ β : ∀ N : ℕ, Fin (m N + 1) → ℝ, (∀ N s, β N s ∈ Set.Icc a b) ∧
+      TendstoGGDefectUniform (fun k => mixedPSpinArrayLaw (k + 1)
+        (perturbedProfile (fun r => P.eval r) fun s => β (k + 1) s * c (k + 1)) h) ∧
       ∃ (μ : ProbabilityMeasure (ℕ → ℕ → OverlapValue)) (φ : ℕ → ℕ), StrictMono φ ∧
         Tendsto (fun k => mixedPSpinArray (φ k + 1)
           (perturbedProfile (fun r => P.eval r) fun s => β (φ k + 1) s * c (φ k + 1)) h)
@@ -283,33 +285,34 @@ theorem exists_subseq_tendsto_satisfiesGhirlandaGuerra_mixedPSpin {P : Polynomia
         (hδ N (Nat.pos_of_ne_zero hN)) hab ha
       exact ⟨β, hβ, fun _ s k hk g => hb s hk g⟩
   choose β hβmem hβbound using hex
-  refine ⟨β, hβmem, ?_⟩
   -- the sequence of perturbed array laws, indexed so that the volume is `k + 1 ≥ 1`
   set μs : ℕ → ProbabilityMeasure (ℕ → ℕ → OverlapValue) := fun k =>
     mixedPSpinArray (k + 1)
       (perturbedProfile (fun r => P.eval r) fun s => β (k + 1) s * c (k + 1)) h with hμs
-  -- the defects vanish
-  have hdef : ∀ n, 0 < n → ∀ (p : ℕ) (g : C(Fin n → Fin n → OverlapValue, ℝ)),
-      Tendsto (fun k => ggDefect (μs k : Measure (ℕ → ℕ → OverlapValue)) n
-        (overlapMonomialCM p) g) atTop (𝓝 0) := by
-    intro n hn p g
+  -- the defects at every monomial vanish, uniformly over the observables
+  have hunif : ∀ n, 0 < n → ∀ p : ℕ, ∀ η > 0, ∀ᶠ k in atTop,
+      ∀ g : C(Fin n → Fin n → OverlapValue, ℝ),
+        |ggDefect (μs k : Measure (ℕ → ℕ → OverlapValue)) n (overlapMonomialCM p) g| ≤ η * ‖g‖ := by
+    intro n hn p η hη
     rcases p with _ | q
-    · refine tendsto_const_nhds.congr fun k => ?_
-      exact (ggDefect_monomial_zero _ n hn g).symm
+    · exact Eventually.of_forall fun k g => by
+        rw [ggDefect_monomial_zero _ n hn g, abs_zero]
+        positivity
     · have hev : ∀ᶠ k in atTop, q < m (k + 1) + 1 :=
         ((hm.comp (tendsto_add_atTop_nat 1)).eventually_gt_atTop q).mono fun k hk =>
           Nat.lt_succ_of_lt hk
       have hrate' := tendsto_perturbation_rate ha hab
         (Polynomial.eval_one_nonneg_of_nonneg_coeff hP) m c δ hc hδ hc0 hδ0 hmδ hmc hrate
-      have hlim' : Tendsto (fun k : ℕ => (‖g‖ / ((b - a) * n * a)) *
+      have hC : Tendsto (fun k : ℕ => (1 / ((b - a) * n * a)) *
           (((m (k + 1) : ℝ) + 1) * energyFluctuationBound (k + 1) (δ (k + 1)) a b
             (((k + 1 : ℕ) : ℝ) * P.eval 1
               + b ^ 2 * ∑ _q : Fin (m (k + 1) + 1), (c (k + 1)) ^ 2 * ((k + 1 : ℕ) : ℝ))
             ((c (k + 1)) ^ 2 * ((k + 1 : ℕ) : ℝ)) / (c (k + 1)) ^ 2)) atTop (𝓝 0) := by
-        have := (hrate'.comp (tendsto_add_atTop_nat 1)).const_mul (‖g‖ / ((b - a) * n * a))
+        have := (hrate'.comp (tendsto_add_atTop_nat 1)).const_mul (1 / ((b - a) * n * a))
         rw [mul_zero] at this
         exact this
-      refine squeeze_zero_norm' (hev.mono fun k hk => ?_) hlim'
+      have hev2 := (hC.eventually (gt_mem_nhds hη)).mono fun k hk => hk.le
+      filter_upwards [hev, hev2] with k hk hCk g
       set N := k + 1 with hNdef
       have hN0 : N ≠ 0 := Nat.succ_ne_zero k
       have hNR : (0 : ℝ) < (N : ℝ) := Nat.cast_pos.mpr (Nat.succ_pos k)
@@ -328,7 +331,7 @@ theorem exists_subseq_tendsto_satisfiesGhirlandaGuerra_mixedPSpin {P : Polynomia
       have hba : 0 < b - a := sub_pos.2 hab
       have hnR : (0 : ℝ) < n := Nat.cast_pos.mpr hn
       have hcN := hc N (Nat.succ_pos k)
-      rw [Real.norm_eq_abs]
+      have hg0 : 0 ≤ ‖g‖ := norm_nonneg g
       refine hb.trans ?_
       rw [hsum, abs_of_pos (by positivity : 0 < β N ⟨q, hk⟩ * ((c N) ^ 2 * (N : ℝ)))]
       have hnum : 0 ≤ ‖g‖ * ((N : ℝ) * (((m N : ℝ) + 1) * E / (b - a))) :=
@@ -339,8 +342,26 @@ theorem exists_subseq_tendsto_satisfiesGhirlandaGuerra_mixedPSpin {P : Polynomia
           ≤ (‖g‖ * ((N : ℝ) * (((m N : ℝ) + 1) * E / (b - a))))
             / ((n : ℝ) * (a * ((c N) ^ 2 * (N : ℝ)))) :=
             div_le_div_of_nonneg_left hnum (by positivity) (by gcongr)
-        _ = (‖g‖ / ((b - a) * n * a)) * (((m N : ℝ) + 1) * E / (c N) ^ 2) := by
+        _ = ((1 / ((b - a) * n * a)) * (((m N : ℝ) + 1) * E / (c N) ^ 2)) * ‖g‖ := by
             field_simp
+        _ ≤ η * ‖g‖ := mul_le_mul_of_nonneg_right hCk hg0
+  have hunif' : TendstoGGDefectUniform fun k => (μs k : Measure (ℕ → ℕ → OverlapValue)) :=
+    tendstoGGDefectUniform_of_monomial _ hunif
+  refine ⟨β, hβmem, hunif', ?_⟩
+  -- the defects vanish pointwise
+  have hdef : ∀ n, 0 < n → ∀ (p : ℕ) (g : C(Fin n → Fin n → OverlapValue, ℝ)),
+      Tendsto (fun k => ggDefect (μs k : Measure (ℕ → ℕ → OverlapValue)) n
+        (overlapMonomialCM p) g) atTop (𝓝 0) := by
+    intro n hn p g
+    refine Metric.tendsto_nhds.2 fun ε hε => ?_
+    have hη : 0 < ε / (‖g‖ + 1) := by positivity
+    filter_upwards [hunif n hn p (ε / (‖g‖ + 1)) hη] with k hk
+    rw [Real.dist_eq, sub_zero]
+    calc |ggDefect (μs k : Measure (ℕ → ℕ → OverlapValue)) n (overlapMonomialCM p) g|
+        ≤ ε / (‖g‖ + 1) * ‖g‖ := hk g
+      _ < ε := by
+          rw [div_mul_eq_mul_div, div_lt_iff₀ (by positivity)]
+          nlinarith [norm_nonneg g]
   obtain ⟨μ, φ, hφ, hlim, hexμ, hgram, hgg⟩ := exists_subseq_tendsto_satisfiesGhirlandaGuerra μs
     (fun k => isJointlyExchangeable_mixedPSpinArrayLaw _ _ _)
     (fun k => mixedPSpinArrayLaw_gramArray _ (Nat.succ_pos k) _ _) hdef
@@ -412,6 +433,9 @@ Ghirlanda–Guerra identities. Fully explicit and unconditional. -/
 theorem exists_subseq_tendsto_satisfiesGhirlandaGuerra_mixedPSpin_explicit {P : Polynomial ℝ}
     (hP : ∀ k, 0 ≤ P.coeff k) (h : ℝ) {a b : ℝ} (ha : 0 < a) (hab : a < b) :
     ∃ β : ∀ N : ℕ, Fin (⌊(N : ℝ) ^ ((1 : ℝ) / 16)⌋₊ + 1) → ℝ, (∀ N s, β N s ∈ Set.Icc a b) ∧
+      TendstoGGDefectUniform (fun k => mixedPSpinArrayLaw (k + 1)
+        (perturbedProfile (fun r => P.eval r)
+          fun s => β (k + 1) s * ((k + 1 : ℕ) : ℝ) ^ (-((1 : ℝ) / 16))) h) ∧
       ∃ (μ : ProbabilityMeasure (ℕ → ℕ → OverlapValue)) (φ : ℕ → ℕ), StrictMono φ ∧
         Tendsto (fun k => mixedPSpinArray (φ k + 1)
           (perturbedProfile (fun r => P.eval r)

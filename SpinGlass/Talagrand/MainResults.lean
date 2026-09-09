@@ -1,6 +1,5 @@
 import SpinGlass.HopfieldConvolution
-import SpinGlass.HopfieldLocalization
-import SpinGlass.Cascades.GhirlandaGuerra
+import SpinGlass.MixedPSpinThermodynamicLimit
 import SpinGlass.GuerraInequality
 import SpinGlass.SKDisorderExists
 import SpinGlass.GaussianTrace
@@ -9,7 +8,8 @@ import SpinGlass.GuerraDerivativeTrace
 /-!
 # Talagrand Vol. I–II: main results index
 
-Proved theorems, and the statement-layer `Prop`s that remain to be discharged.
+Proved theorems, and the outstanding capstones. There is no statement layer: every named
+object in the library is either a definition of a mathematical object or a proved theorem.
 Plans: `Notes/Vol1##.md`, `Notes/Vol2##.md`.
 
 ## Proved: Guerra interpolation and bound (Vol. I, §1.3)
@@ -1025,6 +1025,43 @@ passage is formal and the capstone is fully explicit.
   the couplings of the Ghirlanda–Guerra capstone this is `≤ b²(m_N+1)c_N²/2 → 0`: the perturbation
   that produces the identities is invisible to the free energy in the limit.
 
+## Proved: Talagrand's positivity principle (Vol. II, §12.3)
+
+"If a system satisfies the extended Ghirlanda–Guerra identities, the overlap `R_{1,2}` is 
+  essentially
+nonnegative" — Theorem 12.3.1, with both halves of Talagrand's proof.
+
+- `SpinGlass.ggDefect_sub`, `ggDefect_smul`, `ggDefect_finsetSum`, `abs_ggDefect_le` — the defect
+  is linear in the test function and bounded by `2‖φ‖‖g‖`.
+- `SpinGlass.TendstoGGDefectUniform` — **Talagrand's Definition 15.4.1**: the extended identities
+  hold asymptotically, uniformly over the observables of the first `n` replicas.
+- `SpinGlass.tendstoGGDefectUniform_of_monomial` — monomial test functions suffice, uniformly
+  (Stone–Weierstrass plus linearity of the defect).
+- `SpinGlass.sum_sum_mul_mul_overlap_nonneg` — Gram positivity for weighted configurations,
+  `∑ p σ p τ R(σ,τ) = (1/N) ∑ᵢ (∑ p σ σᵢ)² ≥ 0`.
+- `SpinGlass.sum_filter_le_of_overlap` (Lemma 12.3.3), `sum_mul_negMass_pow_le` (**Proposition
+  12.3.2** for a probability vector: `∑ p σ (negMass p ε σ)^m ≤ (4 log(m+1) + 1)/(ε(m+1))`).
+- `SpinGlass.negSet`, `overlapArrayLaw_negSet_eq`, `bind_overlapArrayLaw_real_negSet_le` —
+  Proposition 12.3.2 for the annealed overlap-array law of any random Hamiltonian, through the exact
+  product formula for the mass of Talagrand's `D_n` under the finite-volume replica measure.
+- `SpinGlass.rampCM`, `negRamp`, `negObs` — the continuous ramps and the observables
+  `G_j = ∏ ψ_l(R_{0,l})`; `negObs_le_indicator_negSet`, `negRamp_mul_negObs` (absorption).
+- `SpinGlass.negObsInt_succ_ge` (the recursion `I_{j+1} ≥ ((j+a)/(j+1)) I_j − |defect|`, from the
+  identity, exchangeability and absorption), `negMassLaw_mul_negProd_sub_le` (its iteration),
+  `negObsInt_le_real_negSet` — **Proposition 12.3.4**.
+- `SpinGlass.exp_neg_sub_le_one_sub`, `sum_Ico_inv_succ_le_log`, `sum_Ico_inv_succ_sq_le`,
+  `negProd_ge` (`P_k(a) ≥ e⁻² k^{a-1}`), `exists_good_k` — the elementary estimates.
+- `SpinGlass.tendsto_negMassLaw` — **Theorem 12.3.1**: for jointly exchangeable array laws with the
+  extended identities asymptotically and the bound of Proposition 12.3.2, `μ_N{R_{0,1} ≤ −2ε} → 0`.
+- `SpinGlass.tendsto_real_negLevel_bind` — Theorem 12.3.1 for the annealed overlap-array laws of
+  Gibbs measures, at every level `−ε'`; `measure_negOverlap_eq_zero_of_tendsto` — any
+  distributional limit gives no mass to `{R_{0,1} < 0}` (Portmanteau, open sets).
+- `SpinGlass.exists_subseq_tendsto_satisfiesGhirlandaGuerra_mixedPSpin` now also delivers the
+  **uniform** extended identities (`TendstoGGDefectUniform`) along the perturbed sequence, and
+  `exists_subseq_tendsto_satisfiesGhirlandaGuerra_nonnegOverlap_mixedPSpin` — **the capstone with
+  positivity**: the limit law is jointly exchangeable, Gram, satisfies the Ghirlanda–Guerra
+  identities, and has nonnegative overlaps almost surely.
+
 ## Proved: single monomials are components of the disorder (Vol. II, §12.2 → §15.3)
 
 Douglas' lemma turns the algebra into an actual construction, and the Ghirlanda–Guerra identities
@@ -1299,21 +1336,61 @@ Guerra's bound made quantitative in the thermodynamic limit. The chain:
 
 - §4.2 / Lemma 4.2.1: `hopfieldConvolution_overlapImage_talagrandGaussian_eq_withDensity_psi`.
 
-## Statement layer (not yet discharged)
+## Proved: the thermodynamic limit of convex mixed `p`-spin models (Vol. I Thm. 1.3.9)
 
-These are `Prop`-valued definitions recording Talagrand's statements; each still needs a proof.
+`MixedPSpinThermodynamicLimit`. Guerra–Toninelli superadditivity is proved for an arbitrary pair of
+kernels, `mul_integral_free_energy_density_add_le_of_kernel_le`: whenever the kernel of the whole
+system is dominated by the non-interacting split kernel and agrees with it on the diagonal, the
+Guerra trace of the splitting interpolation is nonpositive
+(`guerraTrace_splitCovKernel_nonpos_of_le`) and `N₁ p_{N₁} + N₂ p_{N₂} ≤ (N₁+N₂) p_{N₁+N₂}`. For an
+overlap-driven kernel `N ξ(R)` the domination is Jensen's inequality for a profile `ξ` convex on
+`[-1,1]` (`overlapCovKernel_le_splitCovKernel`);
+the SK model is the corollary `ξ(r) = β² r²/2` (`convexOn_skCovXi`), replacing the earlier ad hoc
+Sedrakyan argument.
 
-- `SpinGlass.Cascades.HopfieldLocalizationLumps` — Vol. I, Thm. 4.3.2 (Bovier–Gayrard).
-- `SpinGlass.Cascades.HopfieldLocalizationCenter` — Vol. II, Thm. 10.3.1.
-- `GG1`, `GG1_prefix`, `SK_GG1`, `Hopfield_SK_GG1`, `HopfieldOverlap_GG1Kernel` — Vol. II Ch. 12
-  Ghirlanda–Guerra identities. `GG1_of_GG1_prefix` and
-  `GG1_prefix_of_condExp_lastReplica_ae` reduce them to a conditional-expectation identity.
+- `mixedPSpinFreeEnergy N ξ h = gaussFreeEnergy N (overlapCovMatrix N ξ) h`, with
+  `skFreeEnergy_eq_mixedPSpinFreeEnergy` by `rfl`.
+- `mul_mixedPSpinFreeEnergy_add_le` — Guerra–Toninelli for every convex profile whose kernel is a
+  covariance; `mixedPSpinFreeEnergy_le` — the annealed bound `p_N ≤ log 2 + |h| + ξ(1)/2`.
+- `mixedPSpinFreeEnergyLimit`, `tendsto_mixedPSpinFreeEnergy`, `mixedPSpinFreeEnergy_le_limit` —
+  Fekete: the limit exists and is the supremum.
+- `convexOn_eval_of_even_coeff`, `tendsto_mixedPSpinFreeEnergy_of_polynomial` — every even mixed
+  `p`-spin model (nonnegative coefficients on even powers) has a thermodynamic limit.
+- `tendsto_mixedPSpinFreeEnergy_perturbedProfile`,
+  `tendsto_mixedPSpinFreeEnergy_perturbedProfile_explicit` — Lemma 12.2.1 in the limit: the
+  Ghirlanda–Guerra perturbation of the capstone does not change the free energy limit.
 
-  **The finite-volume Gibbs replica law does not satisfy them**: at `N = n = 1` `SK_GG1` asserts
-  `m = m ^ 3` for the magnetization `m`. No definition names that false proposition. The
-  Ghirlanda–Guerra identities hold exactly only for asymptotic Gibbs measures, or after a
-  perturbation; the exact finite-volume statement is the cavity identity and the defect identity
-  above.
+## Proved: Ghirlanda–Guerra at almost every temperature (Vol. II Thm. 12.1.3, 12.1.10)
+
+`FiniteGibbs/PointwiseFluctuation` is Panchenko's Theorem 12.1.3 in the general finite-Gibbs
+setting `U + x • V`. The two-replica fluctuation `ψ(x) = 𝔼⟨|V(σ¹) - V(σ²)|⟩/n` (`pairAverage`,
+`pairDeriv`) is differentiable with `|ψ'| ≤ 4p''` (`hasDerivAt_pairFluct`,
+`abs_integral_pairDeriv_le`, Lemma 12.1.7); `ψ ∓ 4p'` are therefore monotone
+(`pairFluct_le_pairFluct_add`), a point of the window has `p'' ≤ D(x,b)/2b`
+(`exists_integral_hessian_le_window`), and Lemma 12.1.8 follows (`pairFluct_le_window`). Griffiths'
+lemma in mean bounds the disorder part at the fixed parameter
+(`integral_abs_gibbs_average_sub_le_window`), and `integral_totalFluct_le_window` is the
+finite-volume form of Theorem 12.1.3; `tendsto_zero_of_le_window` is the passage "first `N → ∞`,
+then `b → 0`".
+`ConvexOn.exists_eventually_deriv_sub_deriv_le` (Common, GriffithsLemma) is Lemma 12.1.9.
+
+`MixedPSpinDifferentiability` instantiates it for every even mixed `p`-spin model with external
+field along the temperature path `β ↦ H_field + β H`: `mixedPSpinPathFreeEnergy`, its convex limit
+`mixedPSpinPathLimit` (Guerra–Toninelli), `tendsto_mixedPSpinTotalFluct_of_differentiableAt`
+(**Theorem 12.1.3**) and `ae_tendsto_mixedPSpinTotalFluct`; then, via the disorder-pair route with
+the zero disorder in the first slot (`GaussianDisorder.zero`, `abs_ggDefect_mixedPSpin_le`),
+`tendsto_ggDefect_mixedPSpin_of_differentiableAt` and `ae_tendsto_ggDefect_mixedPSpin`
+(**Theorem 12.1.10, second half**): the Ghirlanda–Guerra defect of the model's own profile vanishes
+at every `β ≠ 0` where `𝒫` is differentiable, hence at almost every `β`, and every subsequential
+limit law satisfies the identity (15.40) for `ξ` (`ggDefect_eq_zero_of_tendsto_mixedPSpin`).
+
+## Outstanding
+
+Not yet formalized (and deliberately not recorded as `Prop`-valued definitions): the
+Dovbysh–Sudakov / Aldous–Hoover representation and Panchenko's ultrametricity theorem; the
+Poisson–Dirichlet cascades and Guerra's broken replica-symmetry bound; the Parisi formula;
+Aizenman–Sims–Starr; the Gardner formula; the Hopfield localization theorems (Vol. I Thm. 4.3.2,
+Vol. II Thm. 10.3.1) and the Hopfield limits; the thermodynamic limit for non-convex profiles.
 -/
 
 namespace SpinGlass
