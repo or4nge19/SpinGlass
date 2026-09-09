@@ -1384,7 +1384,7 @@ the zero disorder in the first slot (`GaussianDisorder.zero`, `abs_ggDefect_mixe
 at every `β ≠ 0` where `𝒫` is differentiable, hence at almost every `β`, and every subsequential
 limit law satisfies the identity (15.40) for `ξ` (`ggDefect_eq_zero_of_tendsto_mixedPSpin`).
 
-## Proved: Poisson point processes and the Poisson–Dirichlet identities (Vol. II §13.1)
+## Proved: Poisson point processes, Poisson–Dirichlet identities, cascades (Vol. II §13.1, §14.2)
 
 Mathlib has no Poisson point process. `Common/Mathlib/Probability/PointProcess` builds the theory
 Mathlib-first. `PoissonFinite`: a finite-intensity process is a `Poisson (ν E)` number of i.i.d.
@@ -1392,31 +1392,211 @@ positions, recorded as the `Measure`-valued random variable `countingMeasure`
 (`measurable_countingMeasure`); its **Laplace functional** `𝔼 e^{-∫φ dN} = e^{-∫(1-e^{-φ}) dν}`
 (`integral_negExp_countingMeasure`, with `ENNReal.negExp` handling `φ = ∞`) is Fubini on the
 sample space plus the Poisson series. `PoissonSuperposition`: countably many independent finite
-pieces on `Measure.infinitePi` give any σ-finite intensity (`superCounting`), with the Laplace
-functional by dominated convergence (`integral_negExp_superCounting`, `continuous_negExp`) and the
-**void probabilities** `P(N B = 0) = e^{-Λ B}` (`measureReal_superCounting_eq_zero`).
-`StableIntensity`: Talagrand's `μ_m` with density `u^{-m-1}` on `(0,∞)`, its dyadic pieces, the
+pieces on `Measure.infinitePi` give the process of **any s-finite intensity**, through Mathlib's
+canonical decomposition `sfiniteSeq`: `poissonPointProcess (Λ) [SFinite Λ]` is a probability
+measure on `Measure E`, with the Laplace functional (`integral_negExp_lintegral_poissonPointProcess`,
+by dominated convergence) and the **void probabilities** `P(N B = 0) = e^{-Λ B}`
+(`measureReal_poissonPointProcess_eq_zero`), both transported to any random measure with this law
+(`HasLaw.integral_negExp_lintegral`, `HasLaw.measureReal_eq_zero`), and all of it stated as well
+for the superposition of *any* decomposition into finite pieces (`…poissonPointProcessSum`,
+`HasLaw.integral_negExp_lintegral_sum`, `HasLaw.lintegral_lintegral_sum`), since Mathlib's
+`sfiniteSeq` is opaque and a construction that needs the structure of the pieces must choose them
+itself. `StableIntensity`:
+Talagrand's `μ_m` with density `u^{-m-1}` on `(0,∞)` (s-finite, of infinite mass), the
 **scaling identity** `∫(1-e^{-au})u^{-m-1} du = a^m c_m` with `0 < c_m < ∞`
-(`integral_one_sub_exp_mul_rpow`, Lemma 13.1.1 in Laplace form), and `μ_m(c,∞) = c^{-m}/m`.
-`PoissonDirichlet`: the marked process `(u_α, g_α)` with intensity `μ_m ⊗ η` (`pdLaw`), the
-weighted sums `S_v = ∑ u_α v(g_α)` (`pdSum`), their **Laplace transform**
-`𝔼 e^{-sS_v} = exp(-s^m c_m ∫v^m dη)` (`integral_negExp_pdSum_eq_exp`), a.s. finiteness and
-positivity, the tails `P(S_v > t) ≤ C t^{-m}` and `P(S_v < t) ≤ e^{-C t^{-m}}`, hence
-`𝔼|log S_v| < ∞` (`integrable_log_pdSum`); and, through Frullani's integral
-(`Common/Mathlib/Analysis/SpecialFunctions/FrullaniExp`: `log x = ∫(e^{-s}-e^{-xs})/s ds` and
-`𝔼 log S = ∫(e^{-s} - 𝔼e^{-sS})/s ds`, `integral_log_toReal_eq_integral_Ioi`), **Talagrand's
-identity (13.10)** `𝔼 log ∑u_α v(g_α) = 𝔼 log ∑u_α + (1/m) log ∫v^m dη` (`integral_log_pdSum_eq`)
-and **Theorem 13.1.5** `𝔼 log ∑ v_α V_α = (1/m) log 𝔼V^m` for the Poisson–Dirichlet weights
-(`integral_log_pdSum_div_eq`).
+(`integral_one_sub_exp_mul_rpow`, Lemma 13.1.1 in Laplace form), the moment integral
+`∫(1-e^{-a u^m})u^{-m'-1} du = a^{m'/m} c_{m'/m}/m` (`integral_one_sub_exp_mul_rpow_rpow`), and
+`μ_m(c,∞) = c^{-m}/m`, and the **explicit decomposition** `μ_m = ∑ₙ μ_m|_{(1/(n+2),1/(n+1)] ∪ (n+1,n+2]}`
+into nonzero finite pieces for every `m` (`stableSeq`, `sum_stableSeq`). `PoissonDirichlet`: the
+marked process `(u_α, g_α)` with intensity `μ_m ⊗ η` (`pdProcess`, a measure on
+`Measure (ℝ × M)`), built as the superposition of the **product** pieces `(stableSeq m n) ⊗ η`
+(`pdSeq`) so that the marks are i.i.d. and independent of the weights by construction, the weighted sums
+`S_v = ∑ u_α v(g_α)` for `ℝ≥0∞`-valued weights (`pdSum`), their **Laplace transform**
+`𝔼 e^{-sS_v} = exp(-s^m c_m ∫v^m dη)` (`integral_negExp_pdSum`, unconditional in `ℝ≥0∞`), the
+**moments** `𝔼 S_v^{m'} = (c_m ∫v^m dη)^{m'/m} c_{m'/m}/(m c_{m'})` for `0 < m' < m`
+(`lintegral_pdSum_rpow`, which contains (13.8) and (13.9)), a.s. finiteness and positivity, the
+tails `P(S_v > t) ≤ C t^{-m}` and `P(S_v < t) ≤ e^{-C t^{-m}}`, hence `𝔼|log S_v| < ∞`
+(`integrable_log_pdSum`, from the general `integrable_log_toReal_of_tails`); and, through
+Frullani's integral (`Common/Mathlib/Analysis/SpecialFunctions/FrullaniExp`:
+`log x = ∫(e^{-s}-e^{-xs})/s ds` and `𝔼 log S = ∫(e^{-s} - 𝔼e^{-sS})/s ds`),
+**Talagrand's identity (13.10)** `𝔼 log ∑u_α v(g_α) = 𝔼 log ∑u_α + (1/m) log ∫v^m dη`
+(`integral_log_pdSum_eq`) and **Theorem 13.1.5** `𝔼 log ∑ v_α V_α = (1/m) log 𝔼V^m` for the
+Poisson–Dirichlet weights (`integral_log_pdSum_div_eq`), all in `HasLaw` form as well.
+
+`Cascade`: the **Poisson–Dirichlet cascades** of Vol. II §14.2, by recursion on the number of
+levels — a `(k+1)`-level cascade is the Poisson–Dirichlet process of parameter `m₁` whose marks are
+`(z₁, k-level cascade)` (`CascadeSpace`, `cascadeLaw`, `hasLaw_superCounting_cascadeLaw`). The
+cascade sums `∑_α u*_α G(z_{1,α}, …, z_{k,α})` (`cascadeSum`, jointly measurable) and Talagrand's
+recursion (14.5) in `ℝ≥0∞` (`cascadeRec`) and in his real form `F_p = (1/m_p) log 𝔼_p exp(m_p
+F_{p+1})` (`parisiRec`, `parisiRec_succ`). **Proposition 14.2.2** (`lintegral_cascadeSum_rpow`):
+for `0 < m₀ < m₁ < ⋯ < m_k < 1`, `𝔼 (∑_α u*_α G(α))^{m₀} = cascadeRec^{m₀} · C(m₀, …, m_k)` with
+an explicit constant, unconditionally in `ℝ≥0∞`. **Theorem 14.2.1**
+(`integral_log_cascadeSum_div_eq`, `integral_log_cascadeSum_exp_div_eq`): `𝔼 log ∑_α v_α exp
+F(α) = F₁` for the cascade weights `v_α = u*_α/∑ u*_γ`, from (13.10) at the top level and the
+moments of the sub-cascade, under the single hypothesis `cascadeRec < ∞` — implied by Talagrand's
+(14.4) `𝔼 exp F < ∞` through Jensen (`cascadeRec_le_lintegral_pi`), with no need for
+`𝔼|F| < ∞` nor for the limit `m₀ → 0` of Lemma 14.2.3.
+
+`Mecke`: **the Mecke formula** `𝔼 ∑_{x ∈ N} f(x, N) = ∫ 𝔼 f(x, N + δ_x) dΛ(x)` for the Poisson
+process of any s-finite intensity (`lintegral_lintegral_poissonPointProcess`, `HasLaw` form
+`HasLaw.lintegral_lintegral`, Campbell's formula as the special case), proved from the structure
+of the sample space: resampling one coordinate of an infinite product leaves it invariant
+(`Measure.infinitePi_prod_map_update`, `lintegral_infinitePi_update`, new for Mathlib), an i.i.d.
+product is exchangeable (`lintegral_infinitePi_comp_equiv`), and `(n+1) P(n+1) = Λ(E) P(n)` for
+the Poisson weights. `PoissonDirichletIdentities`: **Theorem 13.1.6** — the identities (13.13)
+`𝔼 (∑ u_α U_α)/(∑ u_α V_α) = 𝔼[U V^{m-1}]/𝔼 V^m` (`lintegral_pdSum_mul_inv_pdSum`, real form
+`integral_pdSum_div_pdSum`), (13.14) `𝔼 (∑ u_α² U_α W_α)/(∑ u_α V_α)² = (1-m) 𝔼[U W V^{m-2}]/𝔼 V^m`
+(`lintegral_pdSumSq_mul_inv_pdSum_sq`) and (13.17) `𝔼 ∑ v_α² = 1 - m`
+(`lintegral_pdSumSq_mul_inv_pdSum_one_sq`). Talagrand differentiates Theorem 13.1.5 and calls the
+justification "tedious"; here they are direct consequences of the Mecke formula, the Laplace
+representations `x⁻¹ = ∫₀^∞ e^{-sx} ds`, `x⁻² = ∫₀^∞ s e^{-sx} ds` valid in all of `ℝ≥0∞`
+(`ENNReal.inv_eq_lintegral_negExp`), the Gamma integrals, and `m c_m = Γ(1 - m)`
+(`mul_stableConst_eq_Gamma`, by integration by parts on `(0, ∞)`). The same route gives (13.14)
+with a general exponent, `𝔼 (∑ u_α² A_α)(∑ u_α V_α)^{a-2} = K₂(a) ∫ A V^{m-2} dη` for `a < m`
+(`lintegral_pdSumSq_mul_rpow_pdSum`), with `K₂(a) κ = (1-m)/(1-a) · 𝔼 S_V^a`.
+
+`CascadeIdentities`: **Proposition 14.3.3** (Vol. II (14.38)), the fundamental identity of the
+cascade Gibbs average `𝔼⟨1_{(α,γ)=r}⟩ = m_r - m_{r-1}` for every weight `exp F`
+(`lintegral_cascadePairIndicator`), in the equivalent cumulative form `𝔼⟨1_{α|r = γ|r}⟩ = 1 - m_r`
+(`lintegral_cascadeSq_mul_inv_sq`). Talagrand differentiates Theorem 14.2.1 twice and skips the
+justification; here `⟨1_{α|r=γ|r}⟩ = Q_r/S²` with `Q_r` the sum over the prefixes of length `r` of
+the squared partial sums (`cascadeSq`, built by the cascade recursion), and the mixed moments
+`𝔼 Q_r S^{a-2} = (1-m_r)/(1-a) · 𝔼 S^a` (`lintegral_cascadeSq_mul_rpow`) follow by induction on
+the levels from the general-exponent (13.14) and Proposition 14.2.2, with no differentiation.
+
+`FiniteGibbs/GaussianInterpolation`: **Guerra's interpolation on an arbitrary finite state
+space** — for independent centered Gaussian fields `U, V` with kernels `K₁, K₂` and any fixed
+vector `c`, `φ(t) = 𝔼 F_n(√t U + √(1-t) V + c)` is continuous on `[0,1]`, differentiable on
+`(0,1)` with derivative the averaged **Guerra trace** `(1/2)∑(K₁-K₂)(x,y) D²F_n(H_t)(e_y,e_x)`
+in Gibbs form (`hasDerivAt_guerraPhi`, `guerraTrace_eq`), and `φ(1) ≤ φ(0) + C` from
+`φ' ≤ C` (`integral_free_energy_density_le`). This is the form of Lemma 14.4.1 that the broken
+replica-symmetry bound needs (state space `Σ_N × branches`, `c` carrying the field and the cascade
+weights); it is a direct instance of the Hilbert-space interpolation identity in
+`Common/Mathlib/Probability/Distributions/Gaussian_Interpolation`. The comparison bound also holds
+with a `t`-dependent bound on the derivative, `φ(1) - φ(0) ≤ ∫₀¹ b(t) dt` for `b` interval
+integrable (`guerraPhi_one_sub_zero_le`, by the fundamental theorem of calculus: the averaged
+trace is continuous in `t`, `continuous_integral_guerraTrace`). `FiniteGibbs/GaussianFieldPullback`:
+a Gaussian field pulls back along any map `f` of finite state spaces to a field with kernel
+`K (f x) (f y)` (`GaussianField.comp`, through the adjoint of the pullback of Hamiltonians) — the
+lift of the model's Hamiltonian to `Σ_N × branches`, and the restriction of a field to a subset.
+`FiniteGibbs/WeightedInterpolation`: **Guerra's comparison bound for a weighted free energy**
+`(1/n) log ∑_x w_x e^{-H x}`, `w ≥ 0` not all zero, with the derivative controlled by the
+**weighted Guerra trace** in Gibbs form (`wFreeEnergy_sub_le`) — the weighted free energy is the
+free energy of `H - log w` on the support of `w`, to which the fields are restricted. This is
+Lemma 14.4.1 for the weights `w_α` of a finite family of branches, zero weights allowed: the form
+needed for a truncated Poisson–Dirichlet cascade, some of whose branches do not exist.
+
+`Parisi/TreeTrace`: on `Σ_N × A`, the weighted Guerra trace of the model kernel `N ξ(R_{στ})`
+against a **tree kernel** `N R_{στ} ξ'(q_{α,γ})` with `q_{α,α} = q̄` (Talagrand's (14.63)) is
+exactly `(1/2)(ξ(1) - ξ'(q̄)) - (1/2)⟨ξ(R) - R ξ'(q_{α,γ})⟩` (`wGuerraTrace_tree_eq`, (14.68)),
+and when `ξ` lies above its tangents — convexity, (14.61) — at most
+`(1/2)(ξ(1) - ξ'(q̄)) + (1/2)⟨θ(q_{α,γ})⟩` (`wGuerraTrace_tree_le`, (14.79)).
+
+`FiniteGibbs/GaussianFieldProd`: a Gaussian field transports along any map of probability spaces
+(`GaussianField.compMeasurable`), two fields on `P` and `Q` live on `P ⊗ Q` through the
+projections and are independent there (`prodLeft`, `prodRight`, `prodLeft_indepFun_prodRight`),
+and every positive semidefinite matrix is the kernel of the canonical field `id` under `N(0, S)`
+(`GaussianField.ofMultivariateGaussian`) — the model field of a mixed `p`-spin Hamiltonian.
+
+`Parisi/TreeFieldLaw`, `Parisi/TreeField`: **the Gaussian field of the marks** of a truncated
+cascade, Talagrand's `H(σ, α) = ∑ᵢ σᵢ ∑_{0 ≤ p ≤ k} z_{i,p,α}` of (14.73). The coordinates the
+truncated tree sees — the level-`0` vector and the marks of the truncated nodes, site by site — are
+independent real Gaussians (`treeCoords_law`, from `cascadeMarksLaw_map_truncMarks`, the
+flattening `infinitePi_map_curry` and `measurePreserving_sumPiEquivProdPi`), the field is their
+linear image `treeLin` with adjoint `L† e_x = A x` on Dirac vectors, and `treeField` is a
+`GaussianField` on `Σ_N × A` with kernel `(∑ᵢ σᵢ τᵢ) · treeCov α γ`,
+`treeCov α γ = v₀ + ∑_{p : α|_{p+1} = γ|_{p+1}} v_p` (`sum_coordVar_treeCoeff`) — Talagrand's
+(14.74), `R_{1,2} ∑_{p < (α,γ)} 𝔼 z_p²`, which telescopes to `R_{1,2} ξ'(q_{(α,γ)})` for the
+variances (14.72): `Parisi/TreeCov` — the agreeing levels of two branches form an initial segment
+(`branchNode_eq_iff_lt_branchLevel`, of length `branchLevel α γ = (α,γ) - 1`), the tree
+covariance telescopes to `ξ'(q_{(α,γ)}) - ξ'(q₀)` for the Parisi variances when `ξ'` is
+nondecreasing (`treeCov_eq_deriv`), and so **the kernel of the marks field is the tree kernel**
+`N R_{στ} ξ'(q_{(α,γ)})` of (14.63) when `ξ'(0) = 0` (`treeFieldKernel_eq_treeKernel`).
+
+`Common/Mathlib/Probability/Distributions/Gaussian/PiGaussian`: **a product of real Gaussians is
+a multivariate Gaussian with diagonal covariance**, `(⊗ᵢ N(mᵢ, vᵢ)).map toLp =
+multivariateGaussian m (diagonal v)` (`map_pi_gaussianReal_eq_multivariateGaussian`, by
+characteristic functions), hence a Gaussian measure with covariance operator `diagonal v`
+(`inner_covarianceOperator_map_pi_gaussianReal`) — the law of the marks of a finite set of nodes
+of a cascade with Gaussian levels.
+
+`Common/Mathlib/Probability/ProductMeasureProd` and `Marking`: **zipping independent families** —
+a family of independent pairs `(xᵢ, yᵢ) ∼ μᵢ ⊗ νᵢ` is a pair of independent families,
+`⊗ᵢ (μᵢ ⊗ νᵢ) = ((⊗ᵢ μᵢ) ⊗ (⊗ᵢ νᵢ)).map zip` (`Measure.infinitePi_prod_eq_map`, for
+`Measure.infinitePi` and `Measure.pi`, new for Mathlib), proved on cylinders from the `ℝ≥0∞` Fubini
+`lintegral_fintype_prod_eq_prod`; hence **the marking representation**: the position law of a
+product piece is a product (`positionLaw_prod`), the sample of a finite Poisson process with
+intensity `ν ⊗ η` is the sample with intensity `ν` zipped with i.i.d. marks
+(`poissonSampleLaw_prod`), the same for the superposition (`superSampleLaw_prod`), and so
+`pdSampleLaw m η = ((pdWeightsLaw m) ⊗ (i.i.d. marks)).map superZip` (`pdSampleLaw_eq_map`):
+the weights and the marks of the Poisson–Dirichlet process are independent, as an identity between
+measures on the sample space. This is the conditioning on the weights that Guerra's broken
+replica-symmetry bound requires.
+
+`CascadeUnzip`: **a cascade is its weights zipped with its marks, and they are independent** —
+`cascadeLaw k ms μs = ((cascadeWeightsLaw k ms) ⊗ (cascadeMarksLaw k μs)).map (cascadeZip k)`
+(`cascadeLaw_eq_map_cascadeZip`), where the weights `CascadeWeights k` are the unmarked
+Poisson–Dirichlet samples of every node of the tree and the marks `CascadeMarks T k` an i.i.d.
+array of marks of every node; proved by unzipping every level with the marking representation and
+the two-level zip `Measure.infinitePi_infinitePi_prod_eq_map`. `CascadeBranches`: in these
+coordinates a **branch** is an address `α : Fin k → ℕ × ℕ`, Talagrand's `u*_α` and
+`(z_{1,α}, …, z_{k,α})` are the explicit `branchWeight` (zero for a non-existing branch) and
+`branchMarks`, and the cascade sums are genuine sums over branches: `∑_α u*_α G(z_α)` as a `tsum`
+(`cascadeSum_cascadeZip`) and the prefix-squares `Q_r = ∑_{α|r = γ|r} u*_α u*_γ G(z_α) G(z_γ)`
+(`cascadeSq_cascadeZip`, with the indicator `prefixEq`). This is the form of the cascade Gibbs
+averages that a finite truncation of the tree approximates. `CascadeNodeMarks`: **the marks of
+the nodes of a cascade form an infinite product** — under `cascadeMarksLaw k μs` the family of all
+node marks `(z_{p+1,u})_{⟨p,u⟩}` has law `⊗_{⟨p,u⟩} μs p` (`cascadeMarksLaw_map_nodeMarks`), so
+the marks of any finite set of nodes are independent with the laws of their levels; proved by
+flattening the nested products with Mathlib's `infinitePi_map_curry`, the new
+`Measure.infinitePi_sum_eq_map` (an infinite product over a sum type is a product of infinite
+products) and a reindexing of the nodes. The marks along a branch are the node marks at its
+prefixes (`branchMarks_eq_nodeMark`): for Gaussian levels this is Talagrand's family
+`(z_{i,p,α})` of (14.72)–(14.74). `CascadeTrunc`: the tree truncated to indices `< M` has finitely
+many nodes (`TruncNode`), and their marks are independent with the laws of their levels — a finite
+`Measure.pi` (`cascadeMarksLaw_map_truncMarks`), by restriction of the infinite product.
+
+`CascadeProduct`: the structure of the recursion that computes `φ(0)` in §14.4 — **homogeneity**
+`cascadeRec (C·G) = C · cascadeRec G` (`cascadeRec_const_mul`), **site factorization** (Talagrand's
+(14.82)): over product marks and a product function the recursion is the product of the one-site
+recursions, `F₁ = ∑_i F_{1,i}` (`cascadeRec_pi`, `parisiRec_sum`, from the `ℝ≥0∞` Fubini
+`MeasureTheory.lintegral_fintype_prod_eq_prod`, the companion of Mathlib's Bochner
+`integral_fintype_prod_eq_prod`), **absorption of a final level with `m = 1`** (Talagrand's
+"incorporation" (14.84)): if the last mark averages `G` by a constant factor, that level
+contributes exactly the factor (`cascadeRec_snoc_one`), and the sub-multiplicative bound
+`cascadeRec (G ∘ sum) ≤ (∏ C_p) G(0)` by Jensen at every level (`cascadeRec_sum_le`).
+
+`ParisiFunctional`: **the Parisi functional** (Vol. II (14.88)),
+`𝒫(m,q) = log 2 + X₀ - (1/2)∑_{p ≤ k+1} m_p (θ(q_{p+1}) - θ(q_p))`, `θ(x) = xξ'(x) - ξ(x)`, with
+`X₀ = 𝔼 X₁` computed by the recursion (14.83) `X_p = (1/m_p) log 𝔼_p exp(m_p X_{p+1})` from
+`X_{k+2} = log cosh(h + z₀ + ⋯ + z_{k+1})`, `𝔼 z_p² = ξ'(q_{p+1}) - ξ'(q_p)`: the recursion is
+`parisiRec` — the cascade recursion of Theorem 14.2.1 — on Gaussian marks
+(`parisiRecGauss`, `parisiX₀`, `parisiFunctional`), so the functional is a specialization of the
+cascade theory rather than a new object. `𝔼 cosh(a + z) = cosh a · e^{v/2}`
+(`integral_cosh_add_gaussianReal`) turns `cascadeRec_snoc_one` into **(14.84)**,
+`X₁ = (ξ'(1) - ξ'(q_{k+1}))/2 + X'₁` (`parisiRecGauss_logCosh`), which is what relates the
+functional (whose last level has `m_{k+1} = 1`) to the cascades (which need `m_p < 1`). At `k = 0`
+the functional is explicit (`parisiFunctional_zero`), and **for the SK profile `ξ = β²x²/2` it is
+exactly the replica-symmetric expression** `𝔼 log(2cosh(β√q z + h)) + (β²/4)(1-q)²`
+(`parisiFunctional_skCovXi_zero`, `0 ≤ q ≤ 1`): Guerra's replica-symmetric bound of Vol. I,
+Theorem 1.3.7, is the case `k = 0` of the Parisi bound (`skFreeEnergyLimit_le_parisiFunctional_zero`).
 
 ## Outstanding
 
 Not yet formalized (and deliberately not recorded as `Prop`-valued definitions): the
 Dovbysh–Sudakov / Aldous–Hoover representation and Panchenko's ultrametricity theorem; the
-multi-level Ruelle cascades (Vol. II §14.2–14.3) and Guerra's broken replica-symmetry bound, now
-reachable from the one-level Poisson–Dirichlet identities; the Parisi formula;
-Aizenman–Sims–Starr; the Gardner formula; the Hopfield localization theorems (Vol. I Thm. 4.3.2,
-Vol. II Thm. 10.3.1) and the Hopfield limits; the thermodynamic limit for non-convex profiles.
+two-point identities (13.15)–(13.16) and the remaining identities of Vol. II §14.3 ((14.27),
+(14.37), (14.47) with general `U`); Guerra's broken replica-symmetry bound (§14.4) for `k ≥ 1`,
+now reachable from Proposition 14.3.3, the Gaussian interpolation, the site factorization, the
+Parisi functional, the marking representation and the unzipping of the cascade into weights and
+marks, the product law of the node marks, and the weighted comparison bound for a finite family
+of branches, the convexity bound (14.79) on the weighted trace, and the Gaussian field of the
+marks on `Σ_N × branches` with its tree covariance, identified with the tree kernel
+`N R ξ'(q_{(α,γ)})` (what remains is the assembly: the interpolation on the product space for
+fixed weights and a truncation `M`, the integration over the weights with the limit `M → ∞`,
+Proposition 14.3.3 for the pair averages, and `φ(0)` via Theorem 14.2.1); the Parisi formula; Aizenman–Sims–Starr; the Gardner
+formula; the Hopfield localization theorems (Vol. I Thm. 4.3.2, Vol. II Thm. 10.3.1) and the
+Hopfield limits; the thermodynamic limit for non-convex profiles.
 -/
 
 namespace SpinGlass

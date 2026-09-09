@@ -233,16 +233,54 @@ limiting free energy is differentiable, hence at almost every `β`, with no pert
 window average.
 
 `Common/Mathlib/Probability/PointProcess` is a **Poisson point process theory** Mathlib lacks:
-finite-intensity processes as a Poisson number of i.i.d. positions, σ-finite intensities by
-superposition on `Measure.infinitePi`, the Laplace functional and void probabilities, Talagrand's
-stable intensity `u^{-m-1} du` with its scaling identity, and the marked **Poisson–Dirichlet**
-process with the Laplace transform of `∑ u_α v(g_α)`, its tails, `𝔼|log S| < ∞`, and Talagrand's
-identity (13.10) / Theorem 13.1.5 via Frullani's integral (Vol. II §13.1).
+finite-intensity processes as a Poisson number of i.i.d. positions, **any s-finite intensity** by
+superposition of Mathlib's `sfiniteSeq` on `Measure.infinitePi` (`poissonPointProcess`, a measure on
+`Measure E`), the Laplace functional and void probabilities in `HasLaw` form, Talagrand's stable
+intensity `u^{-m-1} du` with its scaling and moment integrals, and the marked **Poisson–Dirichlet**
+process with the Laplace transform of `∑ u_α v(g_α)`, its explicit moments of order `m' < m`
+((13.8)–(13.9)), its tails, `𝔼|log S| < ∞`, and Talagrand's identity (13.10) / Theorem 13.1.5 via
+Frullani's integral (Vol. II §13.1). On top of it, the **Poisson–Dirichlet cascades** of Vol. II
+§14.2 by recursion on the number of levels: Proposition 14.2.2 (the moments of a cascade sum, with
+an explicit constant, unconditionally in `ℝ≥0∞`) and **Theorem 14.2.1**
+`𝔼 log ∑_α v_α exp F(α) = F₁` with Talagrand's recursion (14.5), under the single hypothesis
+`𝔼 exp F < ∞`. The **Mecke formula** `𝔼 ∑_{x∈N} f(x,N) = ∫ 𝔼 f(x, N+δ_x) dΛ(x)` for any s-finite
+intensity (from the invariance of infinite products under resampling one coordinate, new for
+Mathlib), and through it **Theorem 13.1.6**: the identities (13.13), (13.14) and
+`𝔼 ∑ v_α² = 1 - m`, with the Gamma-function constant `m c_m = Γ(1-m)`; and for the cascades
+**Proposition 14.3.3**, `𝔼⟨1_{(α,γ)=r}⟩ = m_r − m_{r−1}`, by induction on the levels from a
+general-exponent (13.14), with no differentiation in Talagrand's parameter. Guerra's
+interpolation derivative and comparison bound now hold on an arbitrary finite state space with an
+arbitrary fixed vector (`FiniteGibbs/GaussianInterpolation`), the form Lemma 14.4.1 needs. The
+cascade recursion factorizes over independent sites (Talagrand's (14.82)) and absorbs a final
+level with `m = 1` as a constant (his (14.84)) (`CascadeProduct`, with the `ℝ≥0∞` Fubini
+`lintegral_fintype_prod_eq_prod`), and the **Parisi functional** (14.88) is defined as that
+recursion on Gaussian marks (`ParisiFunctional`): at `k = 0` it is explicit, and for the SK
+profile it is exactly the replica-symmetric expression of Guerra's bound — Vol. I, Theorem 1.3.7
+is the case `k = 0` of the Parisi bound (`skFreeEnergyLimit_le_parisiFunctional_zero`). The
+Poisson–Dirichlet process is now built from an explicit product decomposition of its intensity
+(`stableSeq`, `pdSeq`), and **zipping independent families** (`⊗ᵢ (μᵢ ⊗ νᵢ)` is the image of
+`(⊗ᵢ μᵢ) ⊗ (⊗ᵢ νᵢ)`, `Common/Mathlib/Probability/ProductMeasureProd`, new for Mathlib) gives the
+**marking representation** (`Marking`): the marked sample is the weights sample zipped with an
+independent i.i.d. array of marks, an identity between measures on the sample space; unzipping
+every level, **a cascade is its weights zipped with its marks, independent of each other**
+(`CascadeUnzip`), and the cascade sums and prefix-squares of §14.3 are explicit sums over branch
+addresses (`CascadeBranches`), while the marks of all nodes of the tree form an infinite product
+`⊗ μ_p` (`CascadeNodeMarks`, via a new `infinitePi`-over-a-sum-type lemma). Guerra's comparison
+bound now also comes with a `t`-dependent bound on the derivative (by the fundamental theorem of
+calculus), Gaussian fields pull back along maps of state spaces, and the bound holds for
+**weighted free energies** `(1/n) log ∑_x w_x e^{-H x}` with nonnegative weights
+(`FiniteGibbs/WeightedInterpolation`) — Lemma 14.4.1 for a finite family of branches, with the
+convexity bound (14.79) on the trace of the model kernel against a tree kernel
+(`Parisi/TreeTrace`), and a product of real Gaussians is identified with a diagonal multivariate
+Gaussian (`Gaussian/PiGaussian`); the marks of a truncated cascade with Gaussian levels form a
+Gaussian field on `Σ_N × branches` with the tree covariance of (14.74) (`Parisi/TreeField`).
 
 Still to discharge (there is no statement layer of undischarged `Prop`s): Panchenko's
 ultrametricity theorem (Talagrand's Research Problem 15.3.7), the Dovbysh–Sudakov representation,
-the Poisson–Dirichlet cascades and broken-RSB Guerra, the Parisi equality, Gardner, and the
-Hopfield localization theorems and limits.
+the two-point identities (13.15)–(13.16) and the remaining identities of §14.3, Guerra's
+broken-RSB bound (§14.4) for `k ≥ 1` (the assembly over the cascade weights and the truncation
+limit remain), the Parisi equality, Gardner,
+and the Hopfield localization theorems and limits.
 
 ## Build
 

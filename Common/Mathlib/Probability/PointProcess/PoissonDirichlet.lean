@@ -332,13 +332,40 @@ omit [Nonempty M] in
 instance (m : ℝ) (η : Measure M) [SFinite η] : SFinite (pdIntensity m η) := by
   unfold pdIntensity; infer_instance
 
-/-- **The marked Poisson–Dirichlet point process**: the Poisson point process with intensity
-`μ_m ⊗ η`, a probability measure on the measures on `ℝ × M`. Talagrand Vol. II, §13.1. -/
-def pdProcess (m : ℝ) (η : Measure M) [SFinite η] : Measure (Measure (ℝ × M)) :=
-  poissonPointProcess (pdIntensity m η)
+/-- The decomposition of `μ_m ⊗ η` into finite pieces `(stableSeq m n) ⊗ η`: each piece is a
+**product** of a nonzero finite piece of `μ_m` (`stableSeq`, an explicit decomposition into
+bounded intervals) with `η`, so that in the sample space of the superposition the marks of the
+points are i.i.d. with law `η` and independent of their weights, by construction. -/
+def pdSeq (m : ℝ) (η : Measure M) [SFinite η] (n : ℕ) : Measure (ℝ × M) :=
+  (stableSeq m n).prod η
 
-instance (m : ℝ) (η : Measure M) [SFinite η] : IsProbabilityMeasure (pdProcess m η) := by
+instance (m : ℝ) (η : Measure M) [IsFiniteMeasure η] (n : ℕ) : IsFiniteMeasure (pdSeq m η n) := by
+  unfold pdSeq; infer_instance
+
+lemma sum_pdSeq (m : ℝ) (η : Measure M) [SFinite η] : Measure.sum (pdSeq m η) = pdIntensity m η := by
+  rw [pdIntensity, ← sum_stableSeq m, Measure.prod_sum_left]
+  rfl
+
+/-- **The marked Poisson–Dirichlet point process**: the Poisson point process with intensity
+`μ_m ⊗ η`, a probability measure on the measures on `ℝ × M`, built as the superposition of the
+product pieces `pdSeq m η`. Talagrand Vol. II, §13.1. -/
+def pdProcess (m : ℝ) (η : Measure M) [IsFiniteMeasure η] : Measure (Measure (ℝ × M)) :=
+  poissonPointProcessSum (pdSeq m η)
+
+/-- The sample space law of the marked process: independent finite Poisson pieces whose
+positions are i.i.d. from the **product** `positionLaw (sfiniteSeq μ_m n) ⊗ η`. -/
+def pdSampleLaw (m : ℝ) (η : Measure M) [IsFiniteMeasure η] : Measure (SuperSample (ℝ × M)) :=
+  superSampleLaw (pdSeq m η)
+
+lemma hasLaw_superCounting_pdProcess (m : ℝ) (η : Measure M) [IsFiniteMeasure η] :
+    HasLaw superCounting (pdProcess m η) (pdSampleLaw m η) :=
+  hasLaw_superCounting _
+
+instance (m : ℝ) (η : Measure M) [IsFiniteMeasure η] : IsProbabilityMeasure (pdProcess m η) := by
   unfold pdProcess; infer_instance
+
+instance (m : ℝ) (η : Measure M) [IsFiniteMeasure η] : IsProbabilityMeasure (pdSampleLaw m η) := by
+  unfold pdSampleLaw; infer_instance
 
 /-- **The weighted sum** `S_v = ∑_α u_α v(g_α)`, as an `ℝ≥0∞`-valued function of the counting
 measure, for `ℝ≥0∞`-valued weights on the marks. -/
@@ -388,7 +415,7 @@ theorem integral_negExp_pdSum {m : ℝ} (hm0 : 0 < m) (hm1 : m < 1) (η : Measur
       = ∫⁻ p, ENNReal.ofReal s * (ENNReal.ofReal p.1 * v p.2) ∂N := fun N => by
     rw [pdSum, ← lintegral_const_mul _ (measurable_ofReal_mul hv)]
   simp_rw [h1]
-  rw [pdProcess, integral_negExp_lintegral_poissonPointProcess _ hφm]
+  rw [pdProcess, integral_negExp_lintegral_poissonPointProcessSum _ hφm, sum_pdSeq]
   congr 1
   have hFm : Measurable fun p : ℝ × M =>
       1 - ENNReal.ofReal (negExp (ENNReal.ofReal s * (ENNReal.ofReal p.1 * v p.2))) :=
@@ -542,23 +569,23 @@ theorem measureReal_pdSum_lt_le {m : ℝ} (hm0 : 0 < m) (η : Measure M)
       ≤ Real.exp (-((t / δ) ^ (-m) / m * (η {g | ENNReal.ofReal δ ≤ v g}).toReal)) := by
   have hB : MeasurableSet (Ioi (t / δ) ×ˢ {g | ENNReal.ofReal δ ≤ v g}) :=
     measurableSet_Ioi.prod (measurableSet_le measurable_const hv)
-  have hlaw := hasLaw_superCounting_poissonPointProcess (pdIntensity m η)
+  have hlaw := hasLaw_superCounting_pdProcess m η
   have hset : MeasurableSet {N : Measure (ℝ × M) | pdSum v N < ENNReal.ofReal t} :=
     measurableSet_lt (measurable_pdSum hv) measurable_const
-  rw [pdProcess, ← hlaw.measureReal_eq (p := fun N => pdSum v N < ENNReal.ofReal t) hset]
+  rw [← hlaw.measureReal_eq (p := fun N => pdSum v N < ENNReal.ofReal t) hset]
   have hsub : {ω : SuperSample (ℝ × M) | pdSum v (superCounting ω) < ENNReal.ofReal t}
       ⊆ {ω | superCounting ω (Ioi (t / δ) ×ˢ {g | ENNReal.ofReal δ ≤ v g}) = 0} := by
     intro ω hω
     by_contra hne
     exact absurd (ofReal_le_pdSum_of_superCounting_ne_zero hv hδ ht.le hne) (not_le.2 hω)
-  have hvoid := measureReal_superCounting_eq_zero (sfiniteSeq (pdIntensity m η)) hB
-  rw [sum_sfiniteSeq] at hvoid
+  have hvoid := measureReal_superCounting_eq_zero (pdSeq m η) hB
+  rw [sum_pdSeq] at hvoid
   have hmass : pdIntensity m η (Ioi (t / δ) ×ˢ {g | ENNReal.ofReal δ ≤ v g})
       = ENNReal.ofReal ((t / δ) ^ (-m) / m) * η {g | ENNReal.ofReal δ ≤ v g} := by
     rw [pdIntensity, Measure.prod_prod, stableIntensity_Ioi hm0 (div_pos ht hδ)]
-  calc (superSampleLaw (sfiniteSeq (pdIntensity m η))).real
+  calc (pdSampleLaw m η).real
         {ω | pdSum v (superCounting ω) < ENNReal.ofReal t}
-      ≤ (superSampleLaw (sfiniteSeq (pdIntensity m η))).real
+      ≤ (pdSampleLaw m η).real
         {ω | superCounting ω (Ioi (t / δ) ×ˢ {g | ENNReal.ofReal δ ≤ v g}) = 0} :=
         measureReal_mono hsub
     _ = negExp (pdIntensity m η (Ioi (t / δ) ×ˢ {g | ENNReal.ofReal δ ≤ v g})) := hvoid
