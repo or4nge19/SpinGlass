@@ -4,6 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Matteo Cipollina
 -/
 import Common.Mathlib.Probability.PointProcess.PoissonFinite
+import Mathlib.MeasureTheory.Constructions.Polish.Basic
+import Mathlib.Probability.HasLaw
 
 /-!
 # Poisson point processes with σ-finite intensity
@@ -48,7 +50,7 @@ lemma tendsto_negExp_nhds_top : Tendsto negExp (𝓝 ∞) (𝓝 0) := by
   refine Filter.mem_iInf_of_mem r ?_
   rw [Filter.mem_principal]
   intro x hx
-  rw [Set.mem_setOf_eq, Real.dist_eq, sub_zero, abs_of_nonneg (negExp_nonneg x)]
+  rw [Set.mem_ofPred_eq, Real.dist_eq, sub_zero, abs_of_nonneg (negExp_nonneg x)]
   rcases eq_or_ne x ∞ with hx' | hx'
   · rw [hx', negExp_top]; exact hε
   · rw [negExp_of_ne_top hx']
@@ -106,10 +108,21 @@ lemma lintegral_superCounting (ω : SuperSample E) (φ : E → ℝ≥0∞) :
   rw [superCounting, lintegral_sum_measure]
 
 omit [Nonempty E] in
+/-- **For the counting measure of a superposition the product of the integrals dominates the
+integral of the product**: `∫ φψ dN ≤ (∫ φ dN)(∫ ψ dN)`. -/
+lemma lintegral_mul_le_mul_lintegral_superCounting (ω : SuperSample E) {φ ψ : E → ℝ≥0∞}
+    (hφ : Measurable φ) (hψ : Measurable ψ) :
+    (∫⁻ x, φ x * ψ x ∂superCounting ω)
+      ≤ (∫⁻ x, φ x ∂superCounting ω) * ∫⁻ x, ψ x ∂superCounting ω := by
+  unfold superCounting
+  exact lintegral_mul_le_mul_lintegral_sum _ fun n =>
+    lintegral_mul_le_mul_lintegral_countingMeasure (ω n) hφ hψ
+
+omit [Nonempty E] in
 lemma measurable_superCounting : Measurable (superCounting : SuperSample E → Measure E) := by
   refine Measure.measurable_of_measurable_coe superCounting fun s hs => ?_
   simp only [superCounting, Measure.sum_apply _ hs]
-  exact Measurable.ennreal_tsum fun n =>
+  exact Measurable.tsum fun n =>
     (Measure.measurable_coe hs).comp (measurable_countingMeasure.comp (measurable_pi_apply n))
 
 /-- The law of the Poisson point process with intensity `∑ₙ νₙ`, as a measure on the space of
@@ -165,5 +178,130 @@ theorem integral_negExp_superCounting (ν : ℕ → Measure E) [∀ n, IsFiniteM
     rw [lintegral_sum_measure]
     exact tendsto_prod_negExp_tsum _
   exact tendsto_nhds_unique hdom hR
+
+/-! ### Void probabilities -/
+
+/-- **Void probabilities**: `P (N B = 0) = exp (-(∑ₙ νₙ) B)`. The Laplace functional at
+`φ = ∞ · 1_B`. -/
+theorem measureReal_superCounting_eq_zero (ν : ℕ → Measure E) [∀ n, IsFiniteMeasure (ν n)]
+    {B : Set E} (hB : MeasurableSet B) :
+    (superSampleLaw ν).real {ω | superCounting ω B = 0} = negExp (Measure.sum ν B) := by
+  have hind : Measurable (B.indicator (1 : E → ℝ≥0∞)) := measurable_one.indicator hB
+  have hφ : Measurable fun x => (∞ : ℝ≥0∞) * B.indicator 1 x := measurable_const.mul hind
+  have h := integral_negExp_superCounting ν hφ
+  have h1 : ∀ ω : SuperSample E, negExp (∫⁻ x, ∞ * B.indicator 1 x ∂superCounting ω)
+      = {ω : SuperSample E | superCounting ω B = 0}.indicator 1 ω := by
+    intro ω
+    rw [lintegral_const_mul _ hind, lintegral_indicator_one hB, negExp_top_mul]
+    by_cases h0 : superCounting ω B = 0 <;> simp [h0]
+  have h2 : ∀ x, (1 - ENNReal.ofReal (negExp (∞ * B.indicator 1 x))) = B.indicator 1 x := by
+    intro x
+    by_cases hx : x ∈ B <;> simp [hx]
+  simp_rw [h1, h2] at h
+  have hset : MeasurableSet {ω : SuperSample E | superCounting ω B = 0} :=
+    measurableSet_eq_fun ((Measure.measurable_coe hB).comp measurable_superCounting)
+      measurable_const
+  rw [integral_indicator_one hset, lintegral_indicator_one hB] at h
+  exact h
+
+/-! ### The Poisson point process with an s-finite intensity -/
+
+/-- The counting measure has law `poissonPointProcessSum ν` under the sample law. -/
+lemma hasLaw_superCounting (ν : ℕ → Measure E) [∀ n, IsFiniteMeasure (ν n)] :
+    HasLaw superCounting (poissonPointProcessSum ν) (superSampleLaw ν) :=
+  ⟨measurable_superCounting.aemeasurable, rfl⟩
+
+omit [Nonempty E] in
+lemma measurable_negExp_lintegral {φ : E → ℝ≥0∞} (hφ : Measurable φ) :
+    Measurable fun N : Measure E => negExp (∫⁻ x, φ x ∂N) :=
+  measurable_negExp.comp (Measure.measurable_lintegral hφ)
+
+/-- **The Laplace functional of the superposition**, at the level of its law: for any
+decomposition `ν` into finite pieces, `𝔼 exp (-∫ φ dN) = exp (-∫ (1 - e^{-φ}) d(∑ₙ νₙ))`. -/
+theorem integral_negExp_lintegral_poissonPointProcessSum (ν : ℕ → Measure E)
+    [∀ n, IsFiniteMeasure (ν n)] {φ : E → ℝ≥0∞} (hφ : Measurable φ) :
+    ∫ N, negExp (∫⁻ x, φ x ∂N) ∂poissonPointProcessSum ν
+      = negExp (∫⁻ x, (1 - ENNReal.ofReal (negExp (φ x))) ∂Measure.sum ν) := by
+  rw [← (hasLaw_superCounting ν).integral_comp
+      (measurable_negExp_lintegral hφ).aestronglyMeasurable]
+  simp only [Function.comp_def]
+  exact integral_negExp_superCounting _ hφ
+
+/-- The Laplace functional, for any random measure with the law of a superposition. -/
+theorem HasLaw.integral_negExp_lintegral_sum {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω}
+    {N : Ω → Measure E} {ν : ℕ → Measure E} [∀ n, IsFiniteMeasure (ν n)]
+    (hN : HasLaw N (poissonPointProcessSum ν) P) {φ : E → ℝ≥0∞} (hφ : Measurable φ) :
+    ∫ ω, negExp (∫⁻ x, φ x ∂N ω) ∂P
+      = negExp (∫⁻ x, (1 - ENNReal.ofReal (negExp (φ x))) ∂Measure.sum ν) := by
+  rw [← integral_negExp_lintegral_poissonPointProcessSum ν hφ,
+    ← hN.integral_comp (measurable_negExp_lintegral hφ).aestronglyMeasurable]
+  rfl
+
+/-- **Void probabilities** of the superposition, at the level of its law. -/
+theorem measureReal_poissonPointProcessSum_eq_zero (ν : ℕ → Measure E)
+    [∀ n, IsFiniteMeasure (ν n)] {B : Set E} (hB : MeasurableSet B) :
+    (poissonPointProcessSum ν).real {N | N B = 0} = negExp (Measure.sum ν B) := by
+  have h := (hasLaw_superCounting ν).measureReal_eq (p := fun N : Measure E => N B = 0)
+    (measurableSet_eq_fun (Measure.measurable_coe hB) measurable_const)
+  rw [← h, measureReal_superCounting_eq_zero _ hB]
+
+theorem HasLaw.measureReal_eq_zero_sum {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω}
+    {N : Ω → Measure E} {ν : ℕ → Measure E} [∀ n, IsFiniteMeasure (ν n)]
+    (hN : HasLaw N (poissonPointProcessSum ν) P) {B : Set E} (hB : MeasurableSet B) :
+    P.real {ω | N ω B = 0} = negExp (Measure.sum ν B) := by
+  rw [← measureReal_poissonPointProcessSum_eq_zero ν hB]
+  exact hN.measureReal_eq (p := fun N : Measure E => N B = 0)
+    (measurableSet_eq_fun (Measure.measurable_coe hB) measurable_const)
+
+/-- **The Poisson point process with intensity `Λ`**, for every s-finite measure `Λ`: the
+superposition of the finite pieces of Mathlib's canonical decomposition `sfiniteSeq Λ`,
+as a probability measure on the space of measures. -/
+noncomputable def poissonPointProcess (Λ : Measure E) [SFinite Λ] : Measure (Measure E) :=
+  poissonPointProcessSum (sfiniteSeq Λ)
+
+instance (Λ : Measure E) [SFinite Λ] : IsProbabilityMeasure (poissonPointProcess Λ) := by
+  unfold poissonPointProcess; infer_instance
+
+lemma hasLaw_superCounting_poissonPointProcess (Λ : Measure E) [SFinite Λ] :
+    HasLaw superCounting (poissonPointProcess Λ) (superSampleLaw (sfiniteSeq Λ)) :=
+  hasLaw_superCounting _
+
+/-- **The Laplace functional of the Poisson point process with intensity `Λ`**:
+`𝔼 exp (-∫ φ dN) = exp (-∫ (1 - e^{-φ}) dΛ)`. -/
+theorem integral_negExp_lintegral_poissonPointProcess (Λ : Measure E) [SFinite Λ]
+    {φ : E → ℝ≥0∞} (hφ : Measurable φ) :
+    ∫ N, negExp (∫⁻ x, φ x ∂N) ∂poissonPointProcess Λ
+      = negExp (∫⁻ x, (1 - ENNReal.ofReal (negExp (φ x))) ∂Λ) := by
+  rw [← (hasLaw_superCounting_poissonPointProcess Λ).integral_comp
+      (measurable_negExp_lintegral hφ).aestronglyMeasurable]
+  simp only [Function.comp_def]
+  rw [integral_negExp_superCounting _ hφ, sum_sfiniteSeq]
+
+/-- The Laplace functional, for any random measure with the Poisson law. -/
+theorem HasLaw.integral_negExp_lintegral {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω}
+    {N : Ω → Measure E} {Λ : Measure E} [SFinite Λ] (hN : HasLaw N (poissonPointProcess Λ) P)
+    {φ : E → ℝ≥0∞} (hφ : Measurable φ) :
+    ∫ ω, negExp (∫⁻ x, φ x ∂N ω) ∂P
+      = negExp (∫⁻ x, (1 - ENNReal.ofReal (negExp (φ x))) ∂Λ) := by
+  rw [← integral_negExp_lintegral_poissonPointProcess Λ hφ,
+    ← hN.integral_comp (measurable_negExp_lintegral hφ).aestronglyMeasurable]
+  rfl
+
+/-- **Void probabilities** of the Poisson point process with intensity `Λ`. -/
+theorem measureReal_poissonPointProcess_eq_zero (Λ : Measure E) [SFinite Λ] {B : Set E}
+    (hB : MeasurableSet B) :
+    (poissonPointProcess Λ).real {N | N B = 0} = negExp (Λ B) := by
+  have h := (hasLaw_superCounting_poissonPointProcess Λ).measureReal_eq
+    (p := fun N : Measure E => N B = 0)
+    (measurableSet_eq_fun (Measure.measurable_coe hB) measurable_const)
+  rw [← h, measureReal_superCounting_eq_zero _ hB, sum_sfiniteSeq]
+
+theorem HasLaw.measureReal_eq_zero {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω}
+    {N : Ω → Measure E} {Λ : Measure E} [SFinite Λ] (hN : HasLaw N (poissonPointProcess Λ) P)
+    {B : Set E} (hB : MeasurableSet B) :
+    P.real {ω | N ω B = 0} = negExp (Λ B) := by
+  rw [← measureReal_poissonPointProcess_eq_zero Λ hB]
+  exact hN.measureReal_eq (p := fun N : Measure E => N B = 0)
+    (measurableSet_eq_fun (Measure.measurable_coe hB) measurable_const)
 
 end ProbabilityTheory

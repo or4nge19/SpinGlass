@@ -7,6 +7,7 @@ import Mathlib.Probability.Distributions.Poisson.Basic
 import Mathlib.Probability.ProductMeasure
 import Mathlib.MeasureTheory.Measure.GiryMonad
 import Mathlib.MeasureTheory.Integral.Lebesgue.Countable
+import Common.Mathlib.MeasureTheory.Integral.LintegralCounting
 import Mathlib.MeasureTheory.Integral.Pi
 import Mathlib.MeasureTheory.Integral.Prod
 import Mathlib.Analysis.SpecialFunctions.Exponential
@@ -167,6 +168,15 @@ lemma lintegral_countingMeasure (p : PoissonSample E) {φ : E → ℝ≥0∞} (h
   rw [countingMeasure, lintegral_finsetSum_measure]
   exact Finset.sum_congr rfl fun i _ => lintegral_dirac' _ hφ
 
+/-- **For a counting measure the product of the integrals dominates the integral of the
+product**: `∫ φψ dN ≤ (∫ φ dN)(∫ ψ dN)`. -/
+lemma lintegral_mul_le_mul_lintegral_countingMeasure (p : PoissonSample E) {φ ψ : E → ℝ≥0∞}
+    (hφ : Measurable φ) (hψ : Measurable ψ) :
+    (∫⁻ x, φ x * ψ x ∂countingMeasure p)
+      ≤ (∫⁻ x, φ x ∂countingMeasure p) * ∫⁻ x, ψ x ∂countingMeasure p := by
+  unfold countingMeasure
+  exact lintegral_mul_le_mul_lintegral_finsetSum_dirac _ _ hφ hψ
+
 instance (p : PoissonSample E) : IsFiniteMeasure (countingMeasure p) := by
   unfold countingMeasure; infer_instance
 
@@ -181,13 +191,13 @@ lemma measurable_countingMeasure : Measurable (countingMeasure : PoissonSample E
 
 /-- The law of a finite Poisson point process with intensity `ν`, as a measure on the space of
 measures. -/
-noncomputable def poissonPointProcess [Nonempty E] (ν : Measure E) [IsFiniteMeasure ν] :
+noncomputable def poissonPointProcessFinite [Nonempty E] (ν : Measure E) [IsFiniteMeasure ν] :
     Measure (Measure E) :=
   (poissonSampleLaw ν).map countingMeasure
 
 instance [Nonempty E] (ν : Measure E) [IsFiniteMeasure ν] :
-    IsProbabilityMeasure (poissonPointProcess ν) := by
-  unfold poissonPointProcess
+    IsProbabilityMeasure (poissonPointProcessFinite ν) := by
+  unfold poissonPointProcessFinite
   exact Measure.isProbabilityMeasure_map measurable_countingMeasure.aemeasurable
 
 /-! ### The Laplace functional -/
