@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Matteo Cipollina
 -/
 import SpinGlass.Parisi.GuerraFixedWeights
+import Common.Mathlib.Analysis.Convex.TangentLine
 
 /-!
 # Guerra's broken replica-symmetry bound (Talagrand Vol. II, Theorem 14.4.3)
@@ -137,7 +138,7 @@ lemma logCoshRec_le (ms : Fin k → ℝ) (vs : Fin k → ℝ≥0) (hpos : ∀ i,
     _ = Real.log (Real.cosh a) + ∑ p, (vs p : ℝ) / 2 := by
         rw [ENNReal.toReal_ofReal (by positivity),
           Real.log_mul (Real.cosh_pos _).ne' (Real.exp_pos _).ne', Real.log_exp]
-    _ ≤ |a| + ∑ p, (vs p : ℝ) / 2 := add_le_add_right (log_cosh_le_abs a) _
+    _ ≤ |a| + ∑ p, (vs p : ℝ) / 2 := add_le_add (log_cosh_le_abs a) le_rfl
 
 omit N in
 lemma integrable_logCoshRec_add (ms : Fin k → ℝ) (vs : Fin k → ℝ≥0) (hpos : ∀ i, 0 < ms i)
@@ -182,11 +183,17 @@ lemma integral_sum_logCoshRec (ms : Fin k → ℝ) (vs : Fin k → ℝ≥0) (hpo
       ∂Measure.pi (fun _ : Fin N => gaussianReal 0 v₀)
       = ∫ a, logCoshRec k ms vs (h + a) ∂gaussianReal 0 v₀ := by
     intro i
-    have := integral_map (hmp i).measurable.aemeasurable
-      (f := fun a => logCoshRec k ms vs (h + a)) hmeas.aestronglyMeasurable
-    rw [(hmp i).map_eq] at this
-    exact this.symm
-  rw [integral_finset_sum _ fun i _ => ((hmp i).integrable_comp hmeas.aestronglyMeasurable).2 hint]
+    have hmap : ∫ a, logCoshRec k ms vs (h + a)
+          ∂(Measure.pi (fun _ : Fin N => gaussianReal 0 v₀)).map (Function.eval i)
+        = ∫ z₀, logCoshRec k ms vs (h + z₀ i)
+          ∂Measure.pi (fun _ : Fin N => gaussianReal 0 v₀) :=
+      integral_map (hmp i).measurable.aemeasurable hmeas.aestronglyMeasurable
+    rw [(hmp i).map_eq] at hmap
+    exact hmap.symm
+  have hint_i : ∀ i : Fin N, Integrable (fun z₀ : Fin N → ℝ => logCoshRec k ms vs (h + z₀ i))
+      (Measure.pi (fun _ : Fin N => gaussianReal 0 v₀)) := fun i =>
+    ((hmp i).integrable_comp hmeas.aestronglyMeasurable).2 hint
+  rw [integral_finsetSum _ fun i _ => hint_i i]
   simp_rw [hi]
   rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
 
@@ -219,13 +226,18 @@ theorem parisiRec_coshF (ms : Fin k → ℝ) (vs : Fin k → ℝ≥0) (hpos : �
       (fun y => Real.log (2 * Real.cosh (h + z₀ i + ∑ p, y p)))
       = Real.log 2 + logCoshRec k ms vs (h + z₀ i) := by
     intro i
-    unfold logCoshRec
-    rw [← parisiRec_const_add k ms _ (Real.measurable_log.comp (Real.continuous_cosh.measurable.comp
-      (measurable_const.add (Finset.measurable_sum _ fun p _ => measurable_pi_apply p)))) hpos
-      (cascadeRec_cosh_ne_top k ms vs hpos hle _)]
-    congr 1
-    funext y
-    rw [Real.log_mul two_ne_zero (Real.cosh_pos _).ne']
+    have hmi : Measurable fun y : Fin k → ℝ => Real.log (Real.cosh (h + z₀ i + ∑ p, y p)) :=
+      Real.measurable_log.comp (Real.continuous_cosh.measurable.comp
+        (measurable_const.add (Finset.measurable_sum _ fun p _ => measurable_pi_apply p)))
+    have h3 := parisiRec_const_add k ms (fun p => gaussianReal 0 (vs p))
+      (F := fun y : Fin k → ℝ => Real.log (Real.cosh (h + z₀ i + ∑ p, y p))) hmi hpos
+      (cascadeRec_cosh_ne_top k ms vs hpos hle (h + z₀ i)) (Real.log 2)
+    have hfun : (fun y : Fin k → ℝ => Real.log (2 * Real.cosh (h + z₀ i + ∑ p, y p)))
+        = fun y => Real.log 2 + Real.log (Real.cosh (h + z₀ i + ∑ p, y p)) := by
+      funext y
+      rw [Real.log_mul two_ne_zero (Real.cosh_pos _).ne']
+    rw [hfun, h3]
+    rfl
   unfold coshF
   refine h1.trans ?_
   rw [Finset.sum_congr rfl fun i _ => h2 i, Finset.sum_add_distrib, Finset.sum_const,
@@ -296,9 +308,12 @@ theorem integrable_logRatio (ms : Fin k → ℝ) (hsm : StrictMono ms) (hpos : �
     rw [hPm, lintegral_cascadeSum_coshG]
     exact ENNReal.mul_ne_top hw.2 (coshConst_ne_top N k v₀ vs h)
   -- the dominating function `∑_α v_α exp F(z_α)` has finite integral `𝔼 exp F_{k+1}`
+  have hdiv : Measurable fun q : CascadeWeights k × MarksSpace N k =>
+      cascadeSum k (coshG N k h q.2.1) (cascadeZip k (q.1, q.2.2)) / weightSum k q.1 :=
+    hmS.div hmW
   have hfin : ∫⁻ q, cascadeSum k (coshG N k h q.2.1) (cascadeZip k (q.1, q.2.2)) / weightSum k q.1
       ∂Pw.prod Pm ≠ ∞ := by
-    rw [lintegral_prod _ (hmS.div hmW).aemeasurable]
+    rw [lintegral_prod _ hdiv.aemeasurable]
     have hinner : ∀ᵐ w ∂Pw, ∫⁻ z, cascadeSum k (coshG N k h z.1) (cascadeZip k (w, z.2))
         / weightSum k w ∂Pm = coshConst N k v₀ vs h := by
       filter_upwards [ae_weightSum_ne_zero_ne_top k ms hsm hpos hlt] with w hw
@@ -307,7 +322,7 @@ theorem integrable_logRatio (ms : Fin k → ℝ) (hsm : StrictMono ms) (hpos : �
         lintegral_cascadeSum_coshG, mul_right_comm, ENNReal.mul_inv_cancel hw.1 hw.2, one_mul]
     rw [lintegral_congr_ae hinner, lintegral_const, measure_univ, mul_one]
     exact coshConst_ne_top N k v₀ vs h
-  refine Integrable.mono' (integrable_toReal_of_lintegral_ne_top (hmS.div hmW).aemeasurable hfin)
+  refine Integrable.mono' (integrable_toReal_of_lintegral_ne_top hdiv.aemeasurable hfin)
     (measurable_logRatio N k h).aestronglyMeasurable ?_
   filter_upwards [haeW, haeS] with q hq hqS
   unfold logRatio
@@ -369,7 +384,7 @@ theorem integral_logRatio_eq (ξ : ℝ → ℝ) (ms : Fin k → ℝ) (hsm : Stri
     rfl
   simp_rw [hinner, parisiRec_coshF N k ms vs hpos hle h]
   have hint : Integrable (fun z₀ : Fin N → ℝ => ∑ i, logCoshRec k ms vs (h + z₀ i)) P₀ := by
-    refine integrable_finset_sum _ fun i _ => ?_
+    refine integrable_finsetSum _ fun i _ => ?_
     have hmp : MeasurePreserving (Function.eval i) P₀ (gaussianReal 0 v₀) :=
       measurePreserving_eval (μ := fun _ : Fin N => gaussianReal 0 v₀) i
     exact (hmp.integrable_comp ((measurable_logCoshRec k ms vs).comp
@@ -482,22 +497,318 @@ theorem integral_pairAvg (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ)
   have hinner : ∀ a : EnergySpace N × (Fin N → ℝ),
       ∫ q', gibbsPair N k r (hamG N k t h a.1 a.2) q'.1 q'.2 ∂Pw.prod Pmk = 1 - mExt ms r := by
     intro a
-    have hG := measurable_hamG' N k t h a.1 a.2
-    have hmeasF : Measurable fun ω : CascadeSpace (Fin N → ℝ) k =>
-        (cascadeSq k r (hamG N k t h a.1 a.2) ω * (cascadeSum k (hamG N k t h a.1 a.2) ω)⁻¹ ^ 2).toReal :=
-      ENNReal.measurable_toReal.comp ((measurable_cascadeSq k r hG).mul
-        ((measurable_cascadeSum k hG).inv.pow_const 2))
-    have e1 : (∫ q', gibbsPair N k r (hamG N k t h a.1 a.2) q'.1 q'.2 ∂Pw.prod Pmk)
-        = ∫ ω, (cascadeSq k r (hamG N k t h a.1 a.2) ω
+    have hG : Measurable (hamG N k t h a.1 a.2) := measurable_hamG' N k t h a.1 a.2
+    have hQm : Measurable fun ω : CascadeSpace (Fin N → ℝ) k =>
+        cascadeSq k r (hamG N k t h a.1 a.2) ω
+          * (cascadeSum k (hamG N k t h a.1 a.2) ω)⁻¹ ^ 2 :=
+      (measurable_cascadeSq k r hG).mul ((measurable_cascadeSum k hG).inv.pow_const 2)
+    have hae : ∀ᵐ ω ∂cascadeLaw k ms (gaussianMarks N k vs),
+        cascadeSq k r (hamG N k t h a.1 a.2) ω
+          * (cascadeSum k (hamG N k t h a.1 a.2) ω)⁻¹ ^ 2 < ∞ :=
+      Filter.Eventually.of_forall fun ω =>
+        lt_of_le_of_lt (cascadeSq_mul_inv_sq_le_one k r hG ω) ENNReal.one_lt_top
+    have e1 : (∫ ω, (cascadeSq k r (hamG N k t h a.1 a.2) ω
             * (cascadeSum k (hamG N k t h a.1 a.2) ω)⁻¹ ^ 2).toReal
-          ∂cascadeLaw k ms (gaussianMarks N k vs) := by
-      rw [cascadeLaw_eq_map_cascadeZip, integral_map (measurable_cascadeZip k).aemeasurable
-        hmeasF.aestronglyMeasurable]
-      rfl
-    rw [e1, integral_toReal hmeasF.aemeasurable.fst]
-    sorry
+          ∂cascadeLaw k ms (gaussianMarks N k vs))
+        = ∫ q', gibbsPair N k r (hamG N k t h a.1 a.2) q'.1 q'.2 ∂Pw.prod Pmk := by
+      have hmap : (∫ ω, (cascadeSq k r (hamG N k t h a.1 a.2) ω
+              * (cascadeSum k (hamG N k t h a.1 a.2) ω)⁻¹ ^ 2).toReal
+            ∂(Pw.prod Pmk).map (cascadeZip k))
+          = ∫ q', (cascadeSq k r (hamG N k t h a.1 a.2) (cascadeZip k q')
+              * (cascadeSum k (hamG N k t h a.1 a.2) (cascadeZip k q'))⁻¹ ^ 2).toReal
+            ∂Pw.prod Pmk :=
+        integral_map (measurable_cascadeZip k).aemeasurable
+          (ENNReal.measurable_toReal.comp hQm).aestronglyMeasurable
+      rw [cascadeLaw_eq_map_cascadeZip]
+      exact hmap
+    have hnn : (0 : ℝ) ≤ 1 - mExt ms r := by
+      have := mExt_le_one (ms := ms) (fun i => (hlt i).le) r
+      linarith
+    rw [← e1, integral_toReal hQm.aemeasurable hae,
+      lintegral_cascadeSq_mul_inv_sq k ms (gaussianMarks N k vs) hG
+        (fun zs => hamG_pos N k t h a.1 a.2 zs) hsm hpos hlt
+        (cascadeRec_hamG_ne_top N k ms vs hpos hle t h a.1 a.2) r,
+      ENNReal.toReal_ofReal hnn]
   simp_rw [hinner]
   rw [integral_const, probReal_univ, one_smul]
+
+/-! ### The bound integrated over the weights -/
+
+/-- Joint measurability of `𝔼⟨1_{(α,γ) ≥ r}⟩_t` in the weights and the time. -/
+lemma measurable_pairAvg (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (r : ℕ) :
+    Measurable fun q : CascadeWeights k × ℝ => pairAvg N k ξ qs h r q.1 q.2 := by
+  unfold pairAvg
+  exact ((measurable_gibbsPair_hamG_wt N k r h).stronglyMeasurable.integral_prod_right').measurable
+
+lemma abs_pairAvg_le_one (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (r : ℕ)
+    (w : CascadeWeights k) (t : ℝ) : |pairAvg N k ξ qs h r w t| ≤ 1 := by
+  unfold pairAvg
+  have := norm_integral_le_of_norm_le_const (C := 1)
+    (μ := (gaussField N (overlapCovMatrix N ξ)).prod
+      (marksLaw N k (parisiVar ξ qs 0) fun p => parisiVar ξ qs (p.val + 1)))
+    (f := fun ω : EnergySpace N × MarksSpace N k =>
+      gibbsPair N k r (hamG N k t h ω.1 ω.2.1) w ω.2.2)
+    (Filter.Eventually.of_forall fun ω => by
+      rw [Real.norm_eq_abs, abs_of_nonneg (gibbsPair_nonneg N k r _ _ _)]
+      exact gibbsPair_le_one N k r (measurable_hamG' N k t h ω.1 ω.2.1) _ _)
+  rwa [Real.norm_eq_abs, probReal_univ, mul_one] at this
+
+lemma pairAvg_nonneg (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (r : ℕ)
+    (w : CascadeWeights k) (t : ℝ) : 0 ≤ pairAvg N k ξ qs h r w t :=
+  integral_nonneg fun _ => gibbsPair_nonneg N k r _ _ _
+
+/-- The pair fraction is integrable in the disorder and the marks. -/
+lemma integrable_gibbsPair (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (r : ℕ)
+    (w : CascadeWeights k) (t : ℝ) :
+    Integrable (fun ω : EnergySpace N × MarksSpace N k =>
+        gibbsPair N k r (hamG N k t h ω.1 ω.2.1) w ω.2.2)
+      ((gaussField N (overlapCovMatrix N ξ)).prod
+        (marksLaw N k (parisiVar ξ qs 0) fun p => parisiVar ξ qs (p.val + 1))) :=
+  Integrable.of_bound (measurable_gibbsPair_hamG' N k r t h w).aestronglyMeasurable 1
+    (Filter.Eventually.of_forall fun ω => by
+      rw [Real.norm_eq_abs, abs_of_nonneg (gibbsPair_nonneg N k r _ _ _)]
+      exact gibbsPair_le_one N k r (measurable_hamG' N k t h ω.1 ω.2.1) _ _)
+
+lemma pairAvg_le_one (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (r : ℕ)
+    (w : CascadeWeights k) (t : ℝ) : pairAvg N k ξ qs h r w t ≤ 1 := by
+  have := integral_mono (integrable_gibbsPair N k ξ qs h r w t) (integrable_const (1 : ℝ))
+    fun ω => gibbsPair_le_one N k r (measurable_hamG' N k t h ω.1 ω.2.1) _ _
+  rwa [integral_const, probReal_univ, one_smul] at this
+
+/-- **The bound of the interpolation in terms of the pair averages** (Talagrand's (14.75)). -/
+lemma guerraBound_eq (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (w : CascadeWeights k) (t : ℝ) :
+    guerraBound N k ξ qs h w t
+      = (1 / 2) * (ξ 1 - deriv ξ (qs (Fin.last k)))
+        + (1 / 2) * ∑ r ∈ Finset.range (k + 1), parisiTheta ξ (qExt qs (r + 1))
+            * (pairAvg N k ξ qs h r w t - pairAvg N k ξ qs h (r + 1) w t) := by
+  have hint : ∀ r : ℕ, Integrable (fun ω : EnergySpace N × MarksSpace N k =>
+      gibbsPair N k r (hamG N k t h ω.1 ω.2.1) w ω.2.2)
+      ((gaussField N (overlapCovMatrix N ξ)).prod
+        (marksLaw N k (parisiVar ξ qs 0) fun p => parisiVar ξ qs (p.val + 1))) := fun r =>
+    integrable_gibbsPair N k ξ qs h r w t
+  have hsum : Integrable (fun ω : EnergySpace N × MarksSpace N k =>
+      ∑ r ∈ Finset.range (k + 1), parisiTheta ξ (qExt qs (r + 1))
+        * (gibbsPair N k r (hamG N k t h ω.1 ω.2.1) w ω.2.2
+          - gibbsPair N k (r + 1) (hamG N k t h ω.1 ω.2.1) w ω.2.2))
+      ((gaussField N (overlapCovMatrix N ξ)).prod
+        (marksLaw N k (parisiVar ξ qs 0) fun p => parisiVar ξ qs (p.val + 1))) :=
+    integrable_finsetSum _ fun r _ => ((hint r).sub (hint (r + 1))).const_mul _
+  have hterm : ∀ r : ℕ, Integrable (fun ω : EnergySpace N × MarksSpace N k =>
+      parisiTheta ξ (qExt qs (r + 1))
+        * (gibbsPair N k r (hamG N k t h ω.1 ω.2.1) w ω.2.2
+          - gibbsPair N k (r + 1) (hamG N k t h ω.1 ω.2.1) w ω.2.2))
+      ((gaussField N (overlapCovMatrix N ξ)).prod
+        (marksLaw N k (parisiVar ξ qs 0) fun p => parisiVar ξ qs (p.val + 1))) := fun r =>
+    ((hint r).sub (hint (r + 1))).const_mul _
+  unfold guerraBound levelBound pairAvg
+  rw [integral_add (integrable_const _) (hsum.const_mul _), integral_const, probReal_univ,
+    one_smul, integral_const_mul, integral_finsetSum _ fun r _ => hterm r]
+  congr 2
+  exact Finset.sum_congr rfl fun r _ => by
+    rw [integral_const_mul, integral_sub (hint r) (hint (r + 1))]
+
+/-- **The bound of the interpolation, averaged over the cascade weights** (Talagrand's (14.79)):
+`(1/2)(ξ(1) − ξ'(q_{k+1})) + (1/2) ∑_{r ≤ k} θ(q_{r+1}) (m_{r+1} − m_r)`, independently of `t`. -/
+theorem integral_guerraBound (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (ms : Fin k → ℝ)
+    (hsm : StrictMono ms) (hpos : ∀ i, 0 < ms i) (hlt : ∀ i, ms i < 1) (t : ℝ) :
+    ∫ w, guerraBound N k ξ qs h w t ∂cascadeWeightsLaw k ms
+      = (1 / 2) * (ξ 1 - deriv ξ (qs (Fin.last k)))
+        + (1 / 2) * ∑ r ∈ Finset.range (k + 1), parisiTheta ξ (qExt qs (r + 1))
+            * (mExt ms (r + 1) - mExt ms r) := by
+  have hintP : ∀ r : ℕ, Integrable (fun w => pairAvg N k ξ qs h r w t) (cascadeWeightsLaw k ms) :=
+    fun r => Integrable.of_bound
+      (((measurable_pairAvg N k ξ qs h r).comp
+        (measurable_id.prodMk measurable_const)).aestronglyMeasurable) 1
+      (Filter.Eventually.of_forall fun w => by
+        rw [Real.norm_eq_abs]; exact abs_pairAvg_le_one N k ξ qs h r w t)
+  have hterm : ∀ r : ℕ, Integrable (fun w : CascadeWeights k =>
+      parisiTheta ξ (qExt qs (r + 1))
+        * (pairAvg N k ξ qs h r w t - pairAvg N k ξ qs h (r + 1) w t))
+      (cascadeWeightsLaw k ms) := fun r => ((hintP r).sub (hintP (r + 1))).const_mul _
+  have hsum : Integrable (fun w : CascadeWeights k =>
+      ∑ r ∈ Finset.range (k + 1), parisiTheta ξ (qExt qs (r + 1))
+        * (pairAvg N k ξ qs h r w t - pairAvg N k ξ qs h (r + 1) w t))
+      (cascadeWeightsLaw k ms) := integrable_finsetSum _ fun r _ => hterm r
+  simp_rw [guerraBound_eq N k ξ qs h _ t]
+  rw [integral_add (integrable_const _) (hsum.const_mul _),
+    integral_const, probReal_univ, one_smul, integral_const_mul,
+    integral_finsetSum _ fun r _ => hterm r]
+  congr 2
+  refine Finset.sum_congr rfl fun r _ => ?_
+  rw [integral_const_mul, integral_sub (hintP r) (hintP (r + 1)),
+    integral_pairAvg N k ξ qs h ms hsm hpos hlt r t,
+    integral_pairAvg N k ξ qs h ms hsm hpos hlt (r + 1) t]
+  ring
+
+/-- The bound is jointly measurable in the weights and the time. -/
+lemma measurable_guerraBound (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) :
+    Measurable fun q : CascadeWeights k × ℝ => guerraBound N k ξ qs h q.1 q.2 := by
+  simp_rw [guerraBound_eq N k ξ qs h]
+  exact measurable_const.add (measurable_const.mul (Finset.measurable_sum _ fun r _ =>
+    measurable_const.mul ((measurable_pairAvg N k ξ qs h r).sub
+      (measurable_pairAvg N k ξ qs h (r + 1)))))
+
+lemma abs_guerraBound_le (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (w : CascadeWeights k)
+    (t : ℝ) : |guerraBound N k ξ qs h w t|
+      ≤ (1 / 2) * |ξ 1 - deriv ξ (qs (Fin.last k))|
+        + (1 / 2) * ∑ r ∈ Finset.range (k + 1), |parisiTheta ξ (qExt qs (r + 1))| := by
+  rw [guerraBound_eq N k ξ qs h w t]
+  refine (abs_add_le _ _).trans (add_le_add ?_ ?_)
+  · rw [abs_mul, abs_of_nonneg (by norm_num : (0 : ℝ) ≤ 1 / 2)]
+  · rw [abs_mul, abs_of_nonneg (by norm_num : (0 : ℝ) ≤ 1 / 2)]
+    refine mul_le_mul_of_nonneg_left ((Finset.abs_sum_le_sum_abs _ _).trans
+      (Finset.sum_le_sum fun r _ => ?_)) (by norm_num)
+    rw [abs_mul]
+    refine mul_le_of_le_one_right (abs_nonneg _) ?_
+    rw [abs_sub_le_iff]
+    exact ⟨by linarith [pairAvg_nonneg N k ξ qs h (r + 1) w t, pairAvg_le_one N k ξ qs h r w t],
+      by linarith [pairAvg_nonneg N k ξ qs h r w t, pairAvg_le_one N k ξ qs h (r + 1) w t]⟩
+
+/-- **The time-integrated bound, averaged over the cascade weights.** -/
+theorem integral_intervalIntegral_guerraBound (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ)
+    (ms : Fin k → ℝ) (hsm : StrictMono ms) (hpos : ∀ i, 0 < ms i) (hlt : ∀ i, ms i < 1) :
+    ∫ w, (∫ t in (0 : ℝ)..1, guerraBound N k ξ qs h w t) ∂cascadeWeightsLaw k ms
+      = (1 / 2) * (ξ 1 - deriv ξ (qs (Fin.last k)))
+        + (1 / 2) * ∑ r ∈ Finset.range (k + 1), parisiTheta ξ (qExt qs (r + 1))
+            * (mExt ms (r + 1) - mExt ms r) := by
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) 1)) :=
+    ⟨by rw [Measure.restrict_apply_univ]; exact measure_Ioc_lt_top⟩
+  have hswap : Integrable (Function.uncurry fun (w : CascadeWeights k) (t : ℝ) =>
+      guerraBound N k ξ qs h w t)
+      ((cascadeWeightsLaw k ms).prod (volume.restrict (Set.Ioc (0 : ℝ) 1))) :=
+    Integrable.of_bound (measurable_guerraBound N k ξ qs h).aestronglyMeasurable
+      ((1 / 2) * |ξ 1 - deriv ξ (qs (Fin.last k))|
+        + (1 / 2) * ∑ r ∈ Finset.range (k + 1), |parisiTheta ξ (qExt qs (r + 1))|)
+      (Filter.Eventually.of_forall fun q => by
+        rw [Real.norm_eq_abs]; exact abs_guerraBound_le N k ξ qs h q.1 q.2)
+  simp_rw [intervalIntegral.integral_of_le (zero_le_one' ℝ)]
+  rw [integral_integral_swap hswap]
+  simp_rw [integral_guerraBound N k ξ qs h ms hsm hpos hlt]
+  rw [setIntegral_const, Measure.real, Real.volume_Ioc]
+  norm_num
+
+/-! ### Abel summation and Guerra's bound -/
+
+/-- **Guerra's broken replica-symmetry bound** (Talagrand Vol. II, Theorem 14.4.3, (14.90)):
+for a convex `ξ` with `ξ'(0) = 0`, a nondecreasing `0 = q₀ ≤ q₁ ≤ ⋯ ≤ q_{k+1} ≤ q_{k+2} = 1`
+along which `ξ'` is nondecreasing, and `0 < m₁ < ⋯ < m_k < 1`,
+
+`p_N ≤ 𝒫_k(m, q) = log 2 + X₀ − (1/2) ∑_{1 ≤ p ≤ k+1} m_p (θ(q_{p+1}) − θ(q_p))`. -/
+theorem mixedPSpinFreeEnergy_le_parisiFunctional (hN : 0 < N) (ξ : ℝ → ℝ)
+    (hS : (overlapCovMatrix N ξ).PosSemidef) (qs : Fin (k + 1) → ℝ) (ms : Fin k → ℝ)
+    (h0 : deriv ξ 0 = 0)
+    (hmono : ∀ r, r ≤ k + 1 → deriv ξ (qExt qs r) ≤ deriv ξ (qExt qs (r + 1)))
+    (hq01 : ∀ r, qExt qs r ∈ Set.Icc (0 : ℝ) 1)
+    (htan : ∀ x ∈ Set.Icc (-1 : ℝ) 1, ∀ q ∈ Set.Icc (0 : ℝ) 1, ξ q + (x - q) * deriv ξ q ≤ ξ x)
+    (hsm : StrictMono ms) (hpos : ∀ i, 0 < ms i) (hlt : ∀ i, ms i < 1) (h : ℝ) :
+    mixedPSpinFreeEnergy N ξ h ≤ parisiFunctional ξ h ms qs := by
+  set v₀ : ℝ≥0 := parisiVar ξ qs 0 with hv₀
+  set vs : Fin k → ℝ≥0 := fun p => parisiVar ξ qs (p.val + 1) with hvs
+  set Pw := cascadeWeightsLaw k ms with hPw
+  set Pm := marksLaw N k v₀ vs with hPm
+  set Φ : CascadeWeights k → ℝ := fun w =>
+    (1 / (N : ℝ)) * ∫ z, logRatio N k h (w, z) ∂Pm with hΦ
+  set Ψ : CascadeWeights k → ℝ := fun w => ∫ t in (0 : ℝ)..1, guerraBound N k ξ qs h w t with hΨ
+  -- integrability of the two terms
+  have hF := integrable_logRatio N k ms hsm hpos hlt v₀ vs h
+  have hintΦ : Integrable Φ Pw := (hF.integral_prod_left).const_mul _
+  have hintΨ : Integrable Ψ Pw := by
+    have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) 1)) :=
+      ⟨by rw [Measure.restrict_apply_univ]; exact measure_Ioc_lt_top⟩
+    have hswap : Integrable (Function.uncurry fun (w : CascadeWeights k) (t : ℝ) =>
+        guerraBound N k ξ qs h w t) (Pw.prod (volume.restrict (Set.Ioc (0 : ℝ) 1))) :=
+      Integrable.of_bound (measurable_guerraBound N k ξ qs h).aestronglyMeasurable
+        ((1 / 2) * |ξ 1 - deriv ξ (qs (Fin.last k))|
+          + (1 / 2) * ∑ r ∈ Finset.range (k + 1), |parisiTheta ξ (qExt qs (r + 1))|)
+        (Filter.Eventually.of_forall fun q => by
+          rw [Real.norm_eq_abs]; exact abs_guerraBound_le N k ξ qs h q.1 q.2)
+    have hIP := hswap.integral_prod_left
+    refine hIP.congr (Filter.Eventually.of_forall fun w => ?_)
+    show (∫ y in Set.Ioc (0 : ℝ) 1, guerraBound N k ξ qs h w y)
+      = ∫ t in (0 : ℝ)..1, guerraBound N k ξ qs h w t
+    exact (intervalIntegral.integral_of_le (zero_le_one' ℝ)).symm
+  -- the fixed-weights bound, almost surely in the weights
+  have hae : ∀ᵐ w ∂Pw, mixedPSpinFreeEnergy N ξ h ≤ Φ w + Ψ w := by
+    filter_upwards [ae_weightSum_ne_zero_ne_top k ms hsm hpos hlt] with w hw
+    exact guerra_fixed_weights N k hN ξ hS qs h0 hmono hq01 htan h w hw.1 hw.2
+  have hle : mixedPSpinFreeEnergy N ξ h ≤ (∫ w, Φ w ∂Pw) + ∫ w, Ψ w ∂Pw := by
+    have h1 := integral_mono_ae (integrable_const (mixedPSpinFreeEnergy N ξ h))
+      (hintΦ.add hintΨ) hae
+    rw [integral_const, probReal_univ, one_smul] at h1
+    calc mixedPSpinFreeEnergy N ξ h ≤ ∫ w, (Φ + Ψ) w ∂Pw := h1
+      _ = (∫ w, Φ w ∂Pw) + ∫ w, Ψ w ∂Pw := integral_add hintΦ hintΨ
+  -- the first term: `φ(0)`
+  have hΦint : (∫ w, Φ w ∂Pw)
+      = Real.log 2 + parisiX₀ ξ ms qs (fun x => Real.log (Real.cosh (h + x)))
+        - (parisiVar ξ qs (k + 1) : ℝ) / 2 := by
+    rw [hΦ, integral_const_mul, integral_prod _ hF |>.symm,
+      integral_logRatio_eq N k ξ ms hsm hpos hlt qs h, ← mul_assoc, one_div,
+      inv_mul_cancel₀ (by exact_mod_cast hN.ne' : (N : ℝ) ≠ 0), one_mul]
+  -- the second term: the averaged bound
+  have hΨint : (∫ w, Ψ w ∂Pw)
+      = (1 / 2) * (ξ 1 - deriv ξ (qs (Fin.last k)))
+        + (1 / 2) * ∑ r ∈ Finset.range (k + 1), parisiTheta ξ (qExt qs (r + 1))
+            * (mExt ms (r + 1) - mExt ms r) :=
+    integral_intervalIntegral_guerraBound N k ξ qs h ms hsm hpos hlt
+  rw [hΦint, hΨint] at hle
+  refine hle.trans (le_of_eq ?_)
+  -- Talagrand's second form (14.403) of the functional
+  have hqlast : qExt qs (k + 1) = qs (Fin.last k) := qExt_succ_of_lt qs (Nat.lt_succ_self k)
+  have hqtop : qExt qs (k + 1 + 1) = 1 := qExt_of_le qs (by omega)
+  have hv : (parisiVar ξ qs (k + 1) : ℝ) = deriv ξ 1 - deriv ξ (qs (Fin.last k)) := by
+    have hnn : (0 : ℝ) ≤ deriv ξ (qExt qs (k + 1 + 1)) - deriv ξ (qExt qs (k + 1)) := by
+      have := hmono (k + 1) (le_refl (k + 1))
+      linarith
+    rw [parisiVar, Real.coe_toNNReal _ hnn, hqtop, hqlast]
+  rw [parisiFunctional_eq_theta_sum ξ h ms qs, hv, parisiTheta]
+  ring
+
+/-- **Guerra's broken replica-symmetry bound under Talagrand's own hypotheses**
+(Vol. II, Theorem 14.4.3): for a convex differentiable `ξ` with `ξ'(0) = 0`, a nondecreasing
+`q₁ ≤ ⋯ ≤ q_{k+1}` in `[0, 1]` and `0 < m₁ < ⋯ < m_k < 1`, `p_N ≤ 𝒫_k(m, q)`. -/
+theorem mixedPSpinFreeEnergy_le_parisiFunctional_of_convexOn (hN : 0 < N) (ξ : ℝ → ℝ)
+    (hS : (overlapCovMatrix N ξ).PosSemidef) (hconv : ConvexOn ℝ Set.univ ξ)
+    (hdiff : Differentiable ℝ ξ) (h0 : deriv ξ 0 = 0) (qs : Fin (k + 1) → ℝ)
+    (hqmono : Monotone qs) (hq0 : 0 ≤ qs 0) (hq1 : qs (Fin.last k) ≤ 1) (ms : Fin k → ℝ)
+    (hsm : StrictMono ms) (hpos : ∀ i, 0 < ms i) (hlt : ∀ i, ms i < 1) (h : ℝ) :
+    mixedPSpinFreeEnergy N ξ h ≤ parisiFunctional ξ h ms qs := by
+  have hderiv : Monotone (deriv ξ) :=
+    monotoneOn_univ.1 (hconv.monotoneOn_deriv fun x _ => hdiff x)
+  refine mixedPSpinFreeEnergy_le_parisiFunctional N k hN ξ hS qs ms h0
+    (fun r hr => hderiv (qExt_le_succ hqmono hq0 hq1 hr))
+    (fun r => qExt_mem_Icc hqmono hq0 hq1 r) (fun x _ q _ => ?_) hsm hpos hlt h
+  rw [mul_comm (x - q) (deriv ξ q)]
+  exact hconv.add_deriv_mul_sub_le_univ hdiff q x
+
+/-- **Guerra's bound for the Sherrington–Kirkpatrick model at every level `k`**: for
+`0 ≤ q₁ ≤ ⋯ ≤ q_{k+1} ≤ 1` and `0 < m₁ < ⋯ < m_k < 1`,
+`p_N(β, h) ≤ 𝒫_k(m, q)` for the profile `ξ(x) = β²x²/2`. At `k = 0` this is the
+replica-symmetric bound of Vol. I, Theorem 1.3.7. -/
+theorem skFreeEnergy_le_parisiFunctional (hN : 0 < N) (β h : ℝ) (qs : Fin (k + 1) → ℝ)
+    (hqmono : Monotone qs) (hq0 : 0 ≤ qs 0) (hq1 : qs (Fin.last k) ≤ 1) (ms : Fin k → ℝ)
+    (hsm : StrictMono ms) (hpos : ∀ i, 0 < ms i) (hlt : ∀ i, ms i < 1) :
+    skFreeEnergy N β h ≤ parisiFunctional (skCovXi β) h ms qs := by
+  show mixedPSpinFreeEnergy N (skCovXi β) h ≤ _
+  exact mixedPSpinFreeEnergy_le_parisiFunctional_of_convexOn N k hN (skCovXi β)
+    (posSemidef_skCovMatrix N β) (convexOn_univ_skCovXi β) (differentiable_skCovXi β)
+    (deriv_skCovXi_zero β) qs hqmono hq0 hq1 ms hsm hpos hlt h
+
+/-- **The replica-symmetric bound at finite `N` is the case `k = 0`** of Guerra's bound: for
+`0 ≤ q ≤ 1`, `p_N(β, h) ≤ 𝔼 log (2 cosh (β √q z + h)) + β²(1-q)²/4`. This is Vol. I,
+Theorem 1.3.7 (there stated in the limit). -/
+theorem skFreeEnergy_le_rs_bound (hN : 0 < N) (β h q : ℝ) (hq0 : 0 ≤ q) (hq1 : q ≤ 1) :
+    skFreeEnergy N β h
+      ≤ (∫ z : ℝ, Real.log (2 * Real.cosh (β * Real.sqrt q * z + h)) ∂gaussianReal 0 1)
+        + β ^ 2 / 4 * (1 - q) ^ 2 := by
+  have hmono1 : Monotone (![q] : Fin (0 + 1) → ℝ) := by
+    intro a b _
+    fin_cases a
+    fin_cases b
+    simp
+  have hsm0 : StrictMono (![] : Fin 0 → ℝ) := fun a _ _ => a.elim0
+  have hmain := skFreeEnergy_le_parisiFunctional N 0 hN β h ![q] hmono1
+    (by simpa using hq0) (by simpa using hq1) ![] hsm0 (fun i => i.elim0) (fun i => i.elim0)
+  rwa [parisiFunctional_skCovXi_zero β h q hq0 hq1] at hmain
 
 end
 

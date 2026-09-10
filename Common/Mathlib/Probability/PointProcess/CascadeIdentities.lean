@@ -114,6 +114,12 @@ lemma measurable_cascadeSq_prod (k : ℕ) :
             (measurable_snd.comp measurable_snd)))
       exact measurable_lintegral_superCounting_prod hf
 
+lemma measurable_cascadeSq (k r : ℕ) {G : (Fin k → T) → ℝ≥0∞} (hG : Measurable G) :
+    Measurable (cascadeSq k r G) := by
+  have h := measurable_cascadeSq_prod k r (α := PUnit) (G := fun _ => G) (hG.comp measurable_snd)
+  exact h.comp (measurable_const.prodMk measurable_id :
+    Measurable fun ω : CascadeSpace T k => (PUnit.unit, ω))
+
 /-! ### `Q_r ≤ S²` -/
 
 /-- **The prefix sums of squares are dominated by the square of the cascade sum**, pointwise on
@@ -208,6 +214,11 @@ lemma mExt'_succ {k : ℕ} (ms : Fin (k + 1) → ℝ) (a : ℝ) (r : ℕ) :
 
 lemma mExt_of_zero_lt {ms : Fin 0 → ℝ} {r : ℕ} (hr : r ≠ 0) : mExt ms r = 1 := by
   simp [mExt, hr]
+
+/-- `m_r = 1` for `r ≥ k + 1`: the extended sequence ends at `1`. -/
+lemma mExt_eq_one_of_le {k : ℕ} (ms : Fin k → ℝ) {r : ℕ} (hr : k + 1 ≤ r) : mExt ms r = 1 := by
+  unfold mExt
+  rw [if_neg (by omega), dif_neg (by omega)]
 
 lemma mExt_le_one {k : ℕ} {ms : Fin k → ℝ} (hlt : ∀ i, ms i ≤ 1) (r : ℕ) : mExt ms r ≤ 1 := by
   unfold mExt

@@ -277,12 +277,54 @@ Gaussian field on `Σ_N × branches` with the tree covariance of (14.74) (`Paris
 Guerra's interpolation bound holds for the truncated tree at fixed weights, with both endpoints
 computed — Lemma 14.4.1 with (14.79)–(14.80) (`Parisi/GuerraRSB`, `guerra_truncated`).
 
-Still to discharge (there is no statement layer of undischarged `Prop`s): Panchenko's
-ultrametricity theorem (Talagrand's Research Problem 15.3.7), the Dovbysh–Sudakov representation,
-the two-point identities (13.15)–(13.16) and the remaining identities of §14.3, Guerra's
-broken-RSB bound (§14.4) for `k ≥ 1` (the integration over the cascade weights with the
-truncation limit, Proposition 14.3.3 for the pair averages and `φ(0)` remain), the Parisi equality, Gardner,
-and the Hopfield localization theorems and limits.
+The tree is then untruncated and the weights integrated out, giving **Guerra's broken
+replica-symmetry bound**, Vol. II Theorem 14.4.3: `p_N ≤ 𝒫_k(m, q)`
+(`Parisi/GuerraParisi`, `mixedPSpinFreeEnergy_le_parisiFunctional`), for every `N`, every number
+of levels `k`, every `0 = q₀ ≤ ⋯ ≤ q_{k+2} = 1` and every `0 < m₁ < ⋯ < m_k < 1`. Along the way:
+the marks along a fixed branch are the product `μ₁ ⊗ ⋯ ⊗ μ_k` (`CascadeBranchLaw`, from a new
+marginal-of-an-infinite-product lemma), the prefix-squares satisfy `Q_r ≤ S²` on every sample
+(from a new general fact — for a counting measure `∫ fg dN ≤ (∫ f dN)(∫ g dN)`, i.e. `‖·‖₂ ≤ ‖·‖₁`,
+`MeasureTheory/Integral/LintegralCounting`), the truncated pair fractions converge to the cascade
+ones, `φ(0)` is computed by Theorem 14.2.1 with the site factorization and the absorption (14.84),
+the bound is computed by Proposition 14.3.3, and Abel summation collapses the two into the Parisi
+functional. The hypotheses are weaker than the reference — only the supporting-line inequality
+for `ξ` on the range used (a new Mathlib-level lemma, `Analysis/Convex/TangentLine`) and the
+monotonicity of `ξ'` along `q` — with the textbook form as a corollary
+(`mixedPSpinFreeEnergy_le_parisiFunctional_of_convexOn`); for the SK model it reads
+`p_N(β, h) ≤ 𝒫_k(m, q)` at every level `k` (`skFreeEnergy_le_parisiFunctional`), and at `k = 0`
+it is Guerra's replica-symmetric bound of Vol. I, Theorem 1.3.7, now at finite `N`.
+
+Optimizing over the parameters gives the **upper half of the Parisi formula** (14.93):
+`inf 𝒫_k(m, q)` is defined as the infimum of the values of the functional at admissible
+parameters (`Parisi/ParisiInf`, `parisiInf`), `p_N ≤ inf 𝒫` at every `N`, and — composing with
+Guerra–Toninelli superadditivity, since the bound does not depend on `N` — `lim_N p_N ≤ inf 𝒫`,
+for the SK model included (`skFreeEnergyLimit_le_parisiInf`). Talagrand's second form of the
+functional (14.403) is also available (`parisiFunctional_eq_theta_sum`), from a new general
+telescoped **summation by parts** valid in any ring.
+
+The weights `W_p = (R_{p+1}/R_p)^{m_p}` of (14.22) through which all of §14.3 is expressed, their
+defining property `𝔼_p W_p = 1`, and the tilted averages `𝔼(W₁ ⋯ W_k A)` of (14.24)–(14.26) are in
+place (`CascadeTilt`), an average against a probability measure that reduces to the plain product
+average when the recursion is run on a constant. On top of them, **Talagrand's identity
+(14.26)–(14.27)** `𝔼⟨A/G⟩ = 𝔼(W₁ ⋯ W_k (A/G))` (`CascadeGibbs`), proved not by differentiating the
+recursion but through a new **one-insertion moment of a cascade**, itself an induction from a new
+one-level Poisson–Dirichlet identity that generalizes both the `a = 0` identity and the moment
+formula of §13.1. Throughout, the hypothesis on `G = exp F` is exactly Talagrand's (14.4),
+`𝔼 exp F < ∞`, and not boundedness — which matters, since the interpolating free energies to which
+§14.5 applies these identities are unbounded.
+
+Still to discharge (there is no statement layer of undischarged `Prop`s): the **lower half** of
+the Parisi formula. Talagrand's route to it stays inside Chapter 14 — Theorem 14.3.5 and
+Corollary 14.3.7 (the §14.3 identity with a general function of the coupled marks, of which the
+formalized Proposition 14.3.3 is the case `U ≡ 1`), the splitting `J_p = F_p¹ + F_p²` of
+Lemma 14.3.6, then §14.5–§14.10; with (14.27) in place the next steps there are the random-sign
+trick (14.33), giving Proposition 14.3.2, and the coupled construction giving Theorem 14.3.5. The
+route does *not* need Chapter 15; Panchenko's ultrametricity
+(§15.6) and the Dovbysh–Sudakov representation (§15.9) are needed for the structure theory of
+Chapter 15 and give an alternative route via Aizenman–Sims–Starr (§15.8). Also open: Theorem
+14.4.4 (`ξ` convex on `ℝ⁺` only), the extension of (14.90) to `0 ≤ m₁ ≤ ⋯ ≤ m_k ≤ 1`, the Parisi
+measures of §14.11, the two-point identities (13.15)–(13.16), Gardner, and the Hopfield
+localization theorems and limits.
 
 ## Build
 

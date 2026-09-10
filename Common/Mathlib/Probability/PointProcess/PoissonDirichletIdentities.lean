@@ -1144,6 +1144,260 @@ theorem ofReal_pdSqConst_mul_lintegral {m : ℝ} (hm0 : 0 < m) (hm1 : m < 1) (η
       Real.rpow_sub_one (by positivity : stableConst m * κr ≠ 0)]
     field_simp
 
+/-! ### Identity (14.27): one insertion, general exponent -/
+
+/-- The constant of the one-insertion identity with exponent `a - 1`:
+`K₁(a) = Γ(1-m) Γ(1-a/m) (c_m κ)^{a/m-1} / (m Γ(1-a))`. At `a = 0` it is `1/κ`, which is the
+constant of `lintegral_pdSum_mul_inv_pdSum`. -/
+def pdOneConst (m a c κ : ℝ) : ℝ :=
+  Real.Gamma (1 - m) * Real.Gamma (1 - a / m) * (c * κ) ^ (a / m - 1) / (m * Real.Gamma (1 - a))
+
+omit [Nonempty M] in
+lemma pdOneConst_nonneg {m a c κ : ℝ} (hm0 : 0 < m) (hm1 : m < 1) (ham : a < m) (hc : 0 < c)
+    (hκ : 0 < κ) : 0 ≤ pdOneConst m a c κ := by
+  unfold pdOneConst
+  exact div_nonneg (mul_nonneg (mul_nonneg (Real.Gamma_nonneg_of_nonneg (by linarith))
+    (Real.Gamma_nonneg_of_nonneg (by rw [sub_nonneg]; exact (div_le_one hm0).2 ham.le)))
+    (Real.rpow_nonneg (by positivity) _))
+    (mul_nonneg hm0.le (Real.Gamma_nonneg_of_nonneg (by linarith)))
+
+/-- The mark-wise computation behind (14.27) with one insertion and exponent `a - 1`: for a weight
+`x ∈ (0, ∞]`, `∫₀^∞ u^{-m-1} u 𝔼 (S_V + u x)^{a-1} du = K₁(a) x^{m-1}`. -/
+lemma lintegral_stableDensity_rpow_add_pdSum_one {m : ℝ} (hm0 : 0 < m) (hm1 : m < 1)
+    (η : Measure M) [IsProbabilityMeasure η] {V : M → ℝ≥0∞} (hV : Measurable V)
+    (hVpos : ∀ᵐ g ∂η, 0 < V g) (hκ : ∫⁻ g, V g ^ m ∂η ≠ ∞) {a : ℝ} (ham : a < m)
+    {x : ℝ≥0∞} (hx0 : x ≠ 0) :
+    ∫⁻ u in Ioi 0, stableDensity m u * (ENNReal.ofReal u
+        * ∫⁻ N, (pdSum V N + ENNReal.ofReal u * x) ^ (a - 1) ∂pdProcess m η)
+      = ENNReal.ofReal (pdOneConst m a (stableConst m) (∫⁻ g, V g ^ m ∂η).toReal)
+        * x ^ (m - 1) := by
+  have hc : 0 < stableConst m := stableConst_pos hm0 hm1
+  have hκpos : 0 < (∫⁻ g, V g ^ m ∂η).toReal :=
+    ENNReal.toReal_pos (lintegral_rpow_pos_of_ae_pos hm0 η hV hVpos).ne' hκ
+  obtain ⟨κr, hκr0, hκr⟩ : ∃ κr : ℝ, 0 < κr ∧ (∫⁻ g, V g ^ m ∂η).toReal = κr := ⟨_, hκpos, rfl⟩
+  rw [hκr]
+  have hb : 0 < 1 - a := by linarith
+  have hΓb : 0 < Real.Gamma (1 - a) := Real.Gamma_pos_of_pos hb
+  have hexp : ∀ u : ℝ, 0 < u → ∀ N : Measure (ℝ × M),
+      (pdSum V N + ENNReal.ofReal u * x) ^ (a - 1)
+        = (pdSum V N + ENNReal.ofReal u * x) ^ (-(1 - a)) := by
+    intro u _ N
+    rw [neg_sub]
+  have hinner : ∀ u ∈ Ioi (0 : ℝ),
+      ∫⁻ N, (pdSum V N + ENNReal.ofReal u * x) ^ (a - 1) ∂pdProcess m η
+        = (ENNReal.ofReal (Real.Gamma (1 - a)))⁻¹
+          * ∫⁻ s in Ioi 0, ENNReal.ofReal (s ^ (1 - a - 1))
+            * ENNReal.ofReal (negExp (ENNReal.ofReal s * (ENNReal.ofReal u * x)))
+            * ENNReal.ofReal (Real.exp (-(s ^ m * stableConst m * κr))) := by
+    intro u hu
+    rw [mem_Ioi] at hu
+    simp_rw [hexp u hu]
+    rw [lintegral_rpow_neg_add_pdSum hm0 hm1 η hV hκ hb
+      (mul_ne_zero (ENNReal.ofReal_pos.2 hu).ne' hx0), hκr]
+  rw [setLIntegral_congr_fun measurableSet_Ioi fun u hu => by rw [hinner u hu]]
+  rcases eq_or_ne x ∞ with rfl | hx
+  · -- an infinite weight contributes nothing
+    rw [ENNReal.top_rpow_of_neg (by linarith), mul_zero]
+    refine (setLIntegral_congr_fun (g := fun _ => (0 : ℝ≥0∞)) measurableSet_Ioi
+      fun u hu => ?_).trans lintegral_zero
+    rw [mem_Ioi] at hu
+    have : ∫⁻ s in Ioi 0, ENNReal.ofReal (s ^ (1 - a - 1))
+        * ENNReal.ofReal (negExp (ENNReal.ofReal s * (ENNReal.ofReal u * ∞)))
+        * ENNReal.ofReal (Real.exp (-(s ^ m * stableConst m * κr))) = 0 := by
+      refine (setLIntegral_congr_fun (g := fun _ => (0 : ℝ≥0∞)) measurableSet_Ioi
+        fun s hs => ?_).trans lintegral_zero
+      rw [mem_Ioi] at hs
+      rw [ENNReal.mul_top (ENNReal.ofReal_pos.2 hu).ne',
+        ENNReal.mul_top (ENNReal.ofReal_pos.2 hs).ne', negExp_top, ENNReal.ofReal_zero, mul_zero,
+        zero_mul]
+    rw [this, mul_zero, mul_zero, mul_zero]
+  obtain ⟨v, hv, rfl⟩ : ∃ v : ℝ, 0 < v ∧ x = ENNReal.ofReal v :=
+    ⟨x.toReal, ENNReal.toReal_pos hx0 hx, (ENNReal.ofReal_toReal hx).symm⟩
+  -- pull the constant out and Tonelli in `(u, s)`
+  have hjoint : Measurable fun q : ℝ × ℝ => stableDensity m q.1 * (ENNReal.ofReal q.1
+      * (ENNReal.ofReal (q.2 ^ (1 - a - 1))
+        * ENNReal.ofReal (negExp (ENNReal.ofReal q.2 * (ENNReal.ofReal q.1 * ENNReal.ofReal v)))
+        * ENNReal.ofReal (Real.exp (-(q.2 ^ m * stableConst m * κr))))) := by
+    refine ((measurable_stableDensity m).comp measurable_fst).mul
+      ((ENNReal.measurable_ofReal.comp measurable_fst).mul
+        (((ENNReal.measurable_ofReal.comp (measurable_snd.pow_const _)).mul
+          (ENNReal.measurable_ofReal.comp (measurable_negExp.comp
+            ((ENNReal.measurable_ofReal.comp measurable_snd).mul
+              ((ENNReal.measurable_ofReal.comp measurable_fst).mul measurable_const))))).mul
+          (ENNReal.measurable_ofReal.comp (Real.measurable_exp.comp ?_))))
+    exact ((measurable_snd.pow_const m).mul_const _).mul_const _ |>.neg
+  have hpull : ∀ u ∈ Ioi (0 : ℝ), stableDensity m u * (ENNReal.ofReal u
+      * ((ENNReal.ofReal (Real.Gamma (1 - a)))⁻¹
+        * ∫⁻ s in Ioi 0, ENNReal.ofReal (s ^ (1 - a - 1))
+          * ENNReal.ofReal (negExp (ENNReal.ofReal s * (ENNReal.ofReal u * ENNReal.ofReal v)))
+          * ENNReal.ofReal (Real.exp (-(s ^ m * stableConst m * κr)))))
+      = (ENNReal.ofReal (Real.Gamma (1 - a)))⁻¹
+        * ∫⁻ s in Ioi 0, stableDensity m u * (ENNReal.ofReal u
+          * (ENNReal.ofReal (s ^ (1 - a - 1))
+            * ENNReal.ofReal (negExp (ENNReal.ofReal s * (ENNReal.ofReal u * ENNReal.ofReal v)))
+            * ENNReal.ofReal (Real.exp (-(s ^ m * stableConst m * κr))))) := by
+    intro u _
+    have hmeas_u : Measurable fun s : ℝ => ENNReal.ofReal (s ^ (1 - a - 1))
+        * ENNReal.ofReal (negExp (ENNReal.ofReal s * (ENNReal.ofReal u * ENNReal.ofReal v)))
+          * ENNReal.ofReal (Real.exp (-(s ^ m * stableConst m * κr))) :=
+      ((ENNReal.measurable_ofReal.comp (measurable_id.pow_const _)).mul
+        (ENNReal.measurable_ofReal.comp (measurable_negExp.comp
+          (ENNReal.measurable_ofReal.mul_const _)))).mul (ENNReal.measurable_ofReal.comp
+            (Real.measurable_exp.comp
+              ((((measurable_id.pow_const m).mul_const _).mul_const _).neg)))
+    have hR : Measurable fun s : ℝ => stableDensity m u * (ENNReal.ofReal u
+        * (ENNReal.ofReal (s ^ (1 - a - 1))
+          * ENNReal.ofReal (negExp (ENNReal.ofReal s * (ENNReal.ofReal u * ENNReal.ofReal v)))
+          * ENNReal.ofReal (Real.exp (-(s ^ m * stableConst m * κr))))) :=
+      (hmeas_u.const_mul _).const_mul _
+    rw [← lintegral_const_mul _ hR, ← lintegral_const_mul _ hmeas_u,
+      ← lintegral_const_mul _ (hmeas_u.const_mul _),
+      ← lintegral_const_mul _ ((hmeas_u.const_mul _).const_mul _)]
+    refine lintegral_congr fun s => ?_
+    ring
+  rw [setLIntegral_congr_fun measurableSet_Ioi hpull, lintegral_const_mul _
+    (Measurable.lintegral_prod_right' hjoint),
+    lintegral_lintegral_swap (f := fun u s => stableDensity m u * (ENNReal.ofReal u
+      * (ENNReal.ofReal (s ^ (1 - a - 1))
+        * ENNReal.ofReal (negExp (ENNReal.ofReal s * (ENNReal.ofReal u * ENNReal.ofReal v)))
+        * ENNReal.ofReal (Real.exp (-(s ^ m * stableConst m * κr)))))) hjoint.aemeasurable]
+  -- the `u`-integral is a Gamma integral
+  have hu_int : ∀ s ∈ Ioi (0 : ℝ), ∫⁻ u in Ioi 0, stableDensity m u * (ENNReal.ofReal u
+      * (ENNReal.ofReal (s ^ (1 - a - 1))
+        * ENNReal.ofReal (negExp (ENNReal.ofReal s * (ENNReal.ofReal u * ENNReal.ofReal v)))
+        * ENNReal.ofReal (Real.exp (-(s ^ m * stableConst m * κr)))))
+      = ENNReal.ofReal (v ^ (m - 1) * Real.Gamma (1 - m))
+        * ENNReal.ofReal (s ^ (m - a - 1) * Real.exp (-((stableConst m * κr) * s ^ m))) := by
+    intro s hs
+    rw [mem_Ioi] at hs
+    have hmeas : Measurable fun u : ℝ => stableDensity m u * (ENNReal.ofReal u
+        * ENNReal.ofReal (negExp (ENNReal.ofReal s
+          * (ENNReal.ofReal u * ENNReal.ofReal v)))) :=
+      (measurable_stableDensity m).mul (ENNReal.measurable_ofReal.mul
+        (ENNReal.measurable_ofReal.comp (measurable_negExp.comp
+          (measurable_const.mul (ENNReal.measurable_ofReal.mul measurable_const)))))
+    have hpt : ∀ u, stableDensity m u * (ENNReal.ofReal u
+        * (ENNReal.ofReal (s ^ (1 - a - 1))
+          * ENNReal.ofReal (negExp (ENNReal.ofReal s * (ENNReal.ofReal u * ENNReal.ofReal v)))
+          * ENNReal.ofReal (Real.exp (-(s ^ m * stableConst m * κr)))))
+        = (ENNReal.ofReal (s ^ (1 - a - 1))
+            * ENNReal.ofReal (Real.exp (-(s ^ m * stableConst m * κr))))
+          * (stableDensity m u * (ENNReal.ofReal u
+            * ENNReal.ofReal (negExp (ENNReal.ofReal s
+              * (ENNReal.ofReal u * ENNReal.ofReal v))))) := fun u => by ring
+    simp_rw [hpt]
+    rw [lintegral_const_mul _ hmeas, lintegral_stableDensity_mul_negExp hm1 hs hv,
+      Real.mul_rpow hs.le hv.le, ← ENNReal.ofReal_mul (Real.rpow_nonneg hs.le _),
+      ← ENNReal.ofReal_mul (mul_nonneg (Real.rpow_nonneg hs.le _) (Real.exp_pos _).le),
+      ← ENNReal.ofReal_mul (mul_nonneg (Real.rpow_nonneg hv.le _) (Real.Gamma_nonneg_of_nonneg
+        (by linarith)))]
+    congr 1
+    have : s ^ (m - a - 1) = s ^ (1 - a - 1) * s ^ (m - 1) := by
+      rw [← Real.rpow_add hs]; ring_nf
+    rw [this]
+    ring_nf
+  have hmeas_s : Measurable fun s : ℝ =>
+      ENNReal.ofReal (s ^ (m - a - 1) * Real.exp (-((stableConst m * κr) * s ^ m))) :=
+    ENNReal.measurable_ofReal.comp ((measurable_id.pow_const _).mul
+      (Real.measurable_exp.comp (((measurable_id.pow_const m).const_mul _).neg)))
+  rw [setLIntegral_congr_fun measurableSet_Ioi hu_int, lintegral_const_mul _ hmeas_s,
+    lintegral_rpow_mul_exp_neg_mul_rpow_Ioi' hm0 (by linarith : 0 < m - a) (mul_pos hc hκr0),
+    ENNReal.ofReal_rpow_of_pos hv, ← ENNReal.ofReal_inv_of_pos hΓb,
+    ← ENNReal.ofReal_mul (mul_nonneg (Real.rpow_nonneg hv.le _)
+      (Real.Gamma_nonneg_of_nonneg (by linarith))),
+    ← ENNReal.ofReal_mul (inv_nonneg.2 hΓb.le)]
+  rw [← ENNReal.ofReal_mul (pdOneConst_nonneg hm0 hm1 ham hc hκr0)]
+  congr 1
+  have h1 : (m - a) / m = 1 - a / m := by field_simp
+  have h2 : (1 / (stableConst m * κr)) ^ (1 - a / m)
+      = (stableConst m * κr) ^ (a / m - 1) := by
+    rw [one_div, Real.inv_rpow (by positivity), ← Real.rpow_neg (by positivity), neg_sub]
+  rw [pdOneConst, h1, h2]
+  ring
+
+/-- **Identity (14.27) at one level**, `a < m`:
+`𝔼 (∑_α u_α A(g_α)) (∑_α u_α V(g_α))^{a-1} = K₁(a) ∫ A V^{m-1} dη`.
+At `a = 0` this is `lintegral_pdSum_mul_inv_pdSum`; at `A = V` it is the moment formula
+`lintegral_pdSum_rpow_eq_Gamma`. -/
+theorem lintegral_pdSum_mul_rpow_pdSum {m : ℝ} (hm0 : 0 < m) (hm1 : m < 1) (η : Measure M)
+    [IsProbabilityMeasure η] {A V : M → ℝ≥0∞} (hA : Measurable A) (hV : Measurable V)
+    (hVpos : ∀ᵐ g ∂η, 0 < V g) (hκ : ∫⁻ g, V g ^ m ∂η ≠ ∞) {a : ℝ} (ham : a < m) :
+    ∫⁻ N, pdSum A N * (pdSum V N) ^ (a - 1) ∂pdProcess m η
+      = ENNReal.ofReal (pdOneConst m a (stableConst m) (∫⁻ g, V g ^ m ∂η).toReal)
+        * ∫⁻ g, A g * V g ^ (m - 1) ∂η := by
+  have hS := measurable_pdSum (v := V) hV
+  have hUW : Measurable fun p : ℝ × M => ENNReal.ofReal p.1 * A p.2 := measurable_ofReal_mul hA
+  -- the Mecke formula
+  have hf : Measurable fun q : (ℝ × M) × Measure (ℝ × M) =>
+      ENNReal.ofReal q.1.1 * A q.1.2 * (pdSum V q.2) ^ (a - 1) :=
+    (hUW.comp measurable_fst).mul ((hS.comp measurable_snd).pow_const _)
+  have hF : ∀ N : Measure (ℝ × M),
+      ∫⁻ p, ENNReal.ofReal p.1 * A p.2 * (pdSum V N) ^ (a - 1) ∂N
+        = pdSum A N * (pdSum V N) ^ (a - 1) :=
+    fun N => lintegral_mul_const _ hUW
+  have hFm : Measurable fun N : Measure (ℝ × M) =>
+      ∫⁻ p, ENNReal.ofReal p.1 * A p.2 * (pdSum V N) ^ (a - 1) ∂N := by
+    simp_rw [hF]
+    exact (measurable_pdSum hA).mul (hS.pow_const _)
+  have hM : ∫⁻ N, ∫⁻ p, ENNReal.ofReal p.1 * A p.2 * (pdSum V N) ^ (a - 1) ∂N ∂pdProcess m η
+      = ∫⁻ N, ∫⁻ p, ENNReal.ofReal p.1 * A p.2
+          * (pdSum V (N + Measure.dirac p)) ^ (a - 1) ∂pdIntensity m η ∂pdProcess m η :=
+    lintegral_lintegral_pdProcess m η hf hFm
+  simp_rw [hF] at hM
+  rw [hM]
+  simp_rw [pdSum_add_dirac hV]
+  -- Tonelli in `(N, p)`
+  have hjoint : Measurable fun q : Measure (ℝ × M) × (ℝ × M) =>
+      ENNReal.ofReal q.2.1 * A q.2.2
+        * (pdSum V q.1 + ENNReal.ofReal q.2.1 * V q.2.2) ^ (a - 1) := by
+    have h1 : Measurable fun q : Measure (ℝ × M) × (ℝ × M) =>
+        pdSum V q.1 + ENNReal.ofReal q.2.1 * V q.2.2 :=
+      (hS.comp measurable_fst).add ((ENNReal.measurable_ofReal.comp
+        (measurable_fst.comp measurable_snd)).mul (hV.comp (measurable_snd.comp measurable_snd)))
+    exact (hUW.comp measurable_snd).mul (h1.pow_const _)
+  have hswap := lintegral_lintegral_swap (μ := pdProcess m η) (ν := pdIntensity m η)
+    (f := fun N p => ENNReal.ofReal p.1 * A p.2
+      * (pdSum V N + ENNReal.ofReal p.1 * V p.2) ^ (a - 1)) hjoint.aemeasurable
+  rw [hswap]
+  have hinner : ∀ p : ℝ × M, ∫⁻ N, ENNReal.ofReal p.1 * A p.2
+        * (pdSum V N + ENNReal.ofReal p.1 * V p.2) ^ (a - 1) ∂pdProcess m η
+      = ENNReal.ofReal p.1 * A p.2
+        * ∫⁻ N, (pdSum V N + ENNReal.ofReal p.1 * V p.2) ^ (a - 1) ∂pdProcess m η := fun p =>
+    lintegral_const_mul _ ((hS.add measurable_const).pow_const _)
+  simp_rw [hinner]
+  have hG : Measurable fun p : ℝ × M => ENNReal.ofReal p.1 * A p.2
+      * ∫⁻ N, (pdSum V N + ENNReal.ofReal p.1 * V p.2) ^ (a - 1) ∂pdProcess m η := by
+    refine hUW.mul ?_
+    have h1 : Measurable fun q : (ℝ × M) × Measure (ℝ × M) =>
+        pdSum V q.2 + ENNReal.ofReal q.1.1 * V q.1.2 :=
+      (hS.comp measurable_snd).add ((ENNReal.measurable_ofReal.comp
+        (measurable_fst.comp measurable_fst)).mul (hV.comp (measurable_snd.comp measurable_fst)))
+    exact Measurable.lintegral_prod_right' (f := fun q : (ℝ × M) × Measure (ℝ × M) =>
+      (pdSum V q.2 + ENNReal.ofReal q.1.1 * V q.1.2) ^ (a - 1)) (h1.pow_const _)
+  rw [lintegral_pdIntensity m η hG]
+  have hg : ∀ᵐ g ∂η, ∫⁻ u in Ioi 0, stableDensity m u
+        * (ENNReal.ofReal u * A g
+          * ∫⁻ N, (pdSum V N + ENNReal.ofReal u * V g) ^ (a - 1) ∂pdProcess m η)
+      = ENNReal.ofReal (pdOneConst m a (stableConst m) (∫⁻ g, V g ^ m ∂η).toReal)
+        * (A g * V g ^ (m - 1)) := by
+    filter_upwards [hVpos] with g hg
+    rw [mul_left_comm, ← lintegral_stableDensity_rpow_add_pdSum_one hm0 hm1 η hV hVpos hκ ham
+      hg.ne']
+    have h1 : Measurable fun q : ℝ × Measure (ℝ × M) =>
+        pdSum V q.2 + ENNReal.ofReal q.1 * V g :=
+      (hS.comp measurable_snd).add ((ENNReal.measurable_ofReal.comp measurable_fst).mul
+        measurable_const)
+    have hmeas : Measurable fun u : ℝ => stableDensity m u * (ENNReal.ofReal u
+        * ∫⁻ N, (pdSum V N + ENNReal.ofReal u * V g) ^ (a - 1) ∂pdProcess m η) := by
+      refine (measurable_stableDensity m).mul (ENNReal.measurable_ofReal.mul ?_)
+      exact Measurable.lintegral_prod_right' (f := fun q : ℝ × Measure (ℝ × M) =>
+        (pdSum V q.2 + ENNReal.ofReal q.1 * V g) ^ (a - 1)) (h1.pow_const _)
+    rw [← lintegral_const_mul _ hmeas]
+    refine setLIntegral_congr_fun measurableSet_Ioi fun u _ => ?_
+    ring
+  rw [lintegral_congr_ae hg]
+  exact lintegral_const_mul _ (hA.mul (hV.pow_const _))
+
 end ProbabilityTheory
 
 end

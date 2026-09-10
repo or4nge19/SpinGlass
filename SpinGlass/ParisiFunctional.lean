@@ -6,6 +6,7 @@ Authors: Matteo Cipollina
 import SpinGlass.ReplicaSymmetricBound
 import Common.Mathlib.Probability.PointProcess.CascadeIdentities
 import Common.Mathlib.Probability.PointProcess.CascadeProduct
+import Common.Mathlib.Algebra.BigOperators.SummationByParts
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.DerivHyp
 
 /-!
@@ -75,6 +76,31 @@ lemma qExt_of_le {k : ℕ} (qs : Fin (k + 1) → ℝ) {r : ℕ} (h : k + 2 ≤ r
   have h1 : ¬ r - 1 < k + 1 := by omega
   simp [qExt, h0, h1]
 
+/-- **The extended sequence is nondecreasing** on `0 ≤ r ≤ k + 2` when `q` is nondecreasing
+in `[0, 1]`: this is Talagrand's (14.70). -/
+lemma qExt_le_succ {k : ℕ} {qs : Fin (k + 1) → ℝ} (hmono : Monotone qs) (hq0 : 0 ≤ qs 0)
+    (hq1 : qs (Fin.last k) ≤ 1) {r : ℕ} (hr : r ≤ k + 1) : qExt qs r ≤ qExt qs (r + 1) := by
+  rcases r with _ | j
+  · rw [qExt_zero, qExt_succ_of_lt qs (Nat.succ_pos k)]
+    exact hq0
+  · rw [qExt_succ_of_lt qs (by omega : j < k + 1)]
+    rcases Nat.lt_or_ge (j + 1) (k + 1) with hj | hj
+    · rw [qExt_succ_of_lt qs hj]
+      exact hmono (Fin.mk_le_mk.2 (by omega))
+    · rw [qExt_of_le qs (by omega : k + 2 ≤ j + 1 + 1)]
+      exact (hmono (Fin.le_last _)).trans hq1
+
+/-- The extended sequence takes its values in `[0, 1]`. -/
+lemma qExt_mem_Icc {k : ℕ} {qs : Fin (k + 1) → ℝ} (hmono : Monotone qs) (hq0 : 0 ≤ qs 0)
+    (hq1 : qs (Fin.last k) ≤ 1) (r : ℕ) : qExt qs r ∈ Set.Icc (0 : ℝ) 1 := by
+  rcases r with _ | j
+  · simp
+  · rcases Nat.lt_or_ge j (k + 1) with hj | hj
+    · rw [qExt_succ_of_lt qs hj]
+      exact ⟨hq0.trans (hmono (Fin.zero_le _)), (hmono (Fin.le_last _)).trans hq1⟩
+    · rw [qExt_of_le qs (by omega : k + 2 ≤ j + 1)]
+      exact ⟨zero_le_one, le_refl 1⟩
+
 /-- The variance `𝔼 z_p² = ξ'(q_{p+1}) - ξ'(q_p)` of the Gaussian `z_p`, `0 ≤ p ≤ k + 1`,
 (14.72) and (14.83), clamped at `0` so that it is a variance for every profile (it is exact when
 `ξ'` is nondecreasing on `[0, 1]`, e.g. for every mixed `p`-spin profile). -/
@@ -120,6 +146,43 @@ def parisiFunctional (ξ : ℝ → ℝ) (h : ℝ) {k : ℕ} (ms : Fin k → ℝ)
   Real.log 2 + parisiX₀ ξ ms qs (fun x => Real.log (Real.cosh (h + x)))
     - (1 / 2) * ∑ p ∈ Finset.range (k + 1),
         mExt ms (p + 1) * (parisiTheta ξ (qExt qs (p + 2)) - parisiTheta ξ (qExt qs (p + 1)))
+
+/-! ### Talagrand's second form (14.403) -/
+
+/-- **The Parisi functional in Talagrand's form (14.403)**:
+`𝒫_k(m, q) = log 2 + X₀ + (1/2) ∑_{1 ≤ p ≤ k+1} θ(q_p)(m_p − m_{p−1}) − θ(1)/2`.
+This is the form in which `𝒫_k` visibly depends only on the measure
+`μ = ∑_{1 ≤ p ≤ k+1} (m_p − m_{p−1}) δ_{q_p}` of §14.11; it is equivalent to the definition
+(14.89) by summation by parts, using `m₀ = 0`, `m_{k+1} = 1` and `q_{k+2} = 1`. -/
+theorem parisiFunctional_eq_theta_sum (ξ : ℝ → ℝ) (h : ℝ) {k : ℕ} (ms : Fin k → ℝ)
+    (qs : Fin (k + 1) → ℝ) :
+    parisiFunctional ξ h ms qs
+      = Real.log 2 + parisiX₀ ξ ms qs (fun x => Real.log (Real.cosh (h + x)))
+        + (1 / 2) * ∑ p ∈ Finset.range (k + 1),
+            parisiTheta ξ (qExt qs (p + 1)) * (mExt ms (p + 1) - mExt ms p)
+        - (1 / 2) * parisiTheta ξ 1 := by
+  set A : ℕ → ℝ := fun j => parisiTheta ξ (qExt qs j) with hA
+  set B : ℕ → ℝ := fun j => mExt ms j with hB
+  have hleib := Finset.sum_range_mul_sub_add_sub_mul B (fun j => A (j + 1)) (k + 1)
+  have hB0 : B 0 = 0 := mExt_zero ms
+  have hBk : B (k + 1) = 1 := mExt_eq_one_of_le ms (le_refl (k + 1))
+  have hAk : A (k + 1 + 1) = parisiTheta ξ 1 := by
+    rw [hA]
+    simp only
+    rw [qExt_of_le qs (by omega : k + 2 ≤ k + 1 + 1)]
+  rw [hBk, hAk, hB0, one_mul, zero_mul, sub_zero, Finset.sum_add_distrib] at hleib
+  have h1 : ∑ p ∈ Finset.range (k + 1), mExt ms (p + 1)
+      * (parisiTheta ξ (qExt qs (p + 2)) - parisiTheta ξ (qExt qs (p + 1)))
+      = ∑ i ∈ Finset.range (k + 1), B (i + 1) * (A (i + 1 + 1) - A (i + 1)) := rfl
+  have h2 : ∑ p ∈ Finset.range (k + 1), parisiTheta ξ (qExt qs (p + 1))
+      * (mExt ms (p + 1) - mExt ms p)
+      = ∑ i ∈ Finset.range (k + 1), (B (i + 1) - B i) * A (i + 1) := by
+    refine Finset.sum_congr rfl fun i _ => ?_
+    rw [hA, hB]
+    ring
+  unfold parisiFunctional
+  rw [h1, h2]
+  linarith
 
 /-! ### Gaussian averages of `cosh` and `log cosh` -/
 
@@ -281,6 +344,20 @@ lemma deriv_skCovXi (β x : ℝ) : deriv (skCovXi β) x = β ^ 2 * x := by
     exact ((hasDerivAt_pow 2 x).const_mul _).div_const 2
   rw [this.deriv]
   norm_num
+  ring
+
+lemma differentiable_skCovXi (β : ℝ) : Differentiable ℝ (skCovXi β) := by
+  unfold skCovXi
+  fun_prop
+
+/-- The SK profile is convex on all of `ℝ`. -/
+lemma convexOn_univ_skCovXi (β : ℝ) : ConvexOn ℝ Set.univ (skCovXi β) := by
+  refine Monotone.convexOn_univ_of_deriv (differentiable_skCovXi β) ?_
+  rw [funext (deriv_skCovXi β)]
+  exact fun a b hab => by nlinarith [sq_nonneg β]
+
+@[simp] lemma deriv_skCovXi_zero (β : ℝ) : deriv (skCovXi β) 0 = 0 := by
+  rw [deriv_skCovXi]
   ring
 
 lemma parisiTheta_skCovXi (β x : ℝ) : parisiTheta (skCovXi β) x = β ^ 2 * x ^ 2 / 2 := by
