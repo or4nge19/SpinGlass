@@ -189,6 +189,121 @@ lemma measurable_countingMeasure : Measurable (countingMeasure : PoissonSample E
   exact Finset.measurable_sum _ fun i _ =>
     ((measurable_one : Measurable (1 : E → ℝ≥0∞)).indicator hs).comp (measurable_pi_apply i)
 
+/-! ### Deleting one point of a sample -/
+
+/-- **The counting measure of the points of a finite sample other than the `i`-th.** This is the
+*reduced* configuration that the Palm calculus of a point process is about: the Mecke equation in
+its reduced form (`lintegral_sum_countingMeasureErase`) states that averaging a function of a point
+together with the configuration of the *remaining* points is the same as averaging it against the
+intensity and an independent copy of the whole process. -/
+noncomputable def countingMeasureErase (p : PoissonSample E) (i : ℕ) : Measure E :=
+  ∑ j ∈ (Finset.range p.2).erase i, Measure.dirac (p.1 j)
+
+lemma countingMeasureErase_apply (p : PoissonSample E) (i : ℕ) {s : Set E}
+    (hs : MeasurableSet s) :
+    countingMeasureErase p i s = ∑ j ∈ (Finset.range p.2).erase i, s.indicator 1 (p.1 j) := by
+  rw [countingMeasureErase, Measure.coe_finsetSum, Finset.sum_apply]
+  exact Finset.sum_congr rfl fun j _ => Measure.dirac_apply' _ hs
+
+lemma lintegral_countingMeasureErase (p : PoissonSample E) (i : ℕ) {φ : E → ℝ≥0∞}
+    (hφ : Measurable φ) :
+    ∫⁻ x, φ x ∂countingMeasureErase p i
+      = ∑ j ∈ (Finset.range p.2).erase i, φ (p.1 j) := by
+  rw [countingMeasureErase, lintegral_finsetSum_measure]
+  exact Finset.sum_congr rfl fun j _ => lintegral_dirac' _ hφ
+
+instance (p : PoissonSample E) (i : ℕ) : IsFiniteMeasure (countingMeasureErase p i) := by
+  unfold countingMeasureErase; infer_instance
+
+/-- **Putting the deleted point back**: for an index of an actual point, the reduced configuration
+together with a Dirac mass at that point is the whole configuration. -/
+lemma countingMeasureErase_add_dirac (p : PoissonSample E) {i : ℕ} (hi : i < p.2) :
+    countingMeasureErase p i + Measure.dirac (p.1 i) = countingMeasure p := by
+  classical
+  rw [countingMeasureErase, countingMeasure]
+  exact Finset.sum_erase_add _ _ (Finset.mem_range.2 hi)
+
+/-- Deleting an index which is not that of a point changes nothing. -/
+lemma countingMeasureErase_of_le (p : PoissonSample E) {i : ℕ} (hi : p.2 ≤ i) :
+    countingMeasureErase p i = countingMeasure p := by
+  classical
+  rw [countingMeasureErase, countingMeasure,
+    Finset.erase_eq_of_notMem (by simpa using hi)]
+
+/-- Deleting the **last** point of a sample of size `k + 1` leaves the sample of size `k`. -/
+lemma countingMeasureErase_last (x : ℕ → E) (k : ℕ) :
+    countingMeasureErase (x, k + 1) k = countingMeasure (x, k) := by
+  classical
+  have hset : (Finset.range (k + 1)).erase k = Finset.range k := by
+    ext j
+    simp only [Finset.mem_erase, Finset.mem_range]
+    omega
+  rw [countingMeasureErase, countingMeasure]
+  exact Finset.sum_congr hset fun j _ => rfl
+
+/-- The reduced counting measure is a measurable function of the sample. -/
+lemma measurable_countingMeasureErase (i : ℕ) :
+    Measurable fun p : PoissonSample E => countingMeasureErase p i := by
+  classical
+  refine Measure.measurable_of_measurable_coe _ fun s hs => ?_
+  simp only [countingMeasureErase_apply _ _ hs]
+  refine measurable_from_prod_countable_left fun n => ?_
+  change Measurable fun x : ℕ → E => ∑ j ∈ (Finset.range n).erase i, s.indicator 1 (x j)
+  exact Finset.measurable_sum _ fun j _ =>
+    ((measurable_one : Measurable (1 : E → ℝ≥0∞)).indicator hs).comp (measurable_pi_apply j)
+
+/-- **The sample obtained by deleting the `i`-th point**: the last point is moved into the freed
+slot and the count drops by one.  Deleting a point of a configuration therefore produces again a
+*configuration* (`countingMeasure_sampleErase`), which is what lets the reduced Palm calculus run
+with exactly the same measurability hypotheses as the ordinary one. -/
+def sampleErase (p : PoissonSample E) (i : ℕ) : PoissonSample E :=
+  (Function.update p.1 i (p.1 (p.2 - 1)), p.2 - 1)
+
+omit [MeasurableSpace E] in
+@[simp] lemma sampleErase_last (x : ℕ → E) (k : ℕ) : sampleErase (x, k + 1) k = (x, k) := by
+  simp [sampleErase]
+
+/-- **The reduced configuration is again a configuration.** -/
+lemma countingMeasure_sampleErase (p : PoissonSample E) {i : ℕ} (hi : i < p.2) :
+    countingMeasure (sampleErase p i) = countingMeasureErase p i := by
+  classical
+  obtain ⟨x, k⟩ := p
+  simp only at hi
+  cases k with
+  | zero => exact absurd hi (by omega)
+  | succ m =>
+    rcases eq_or_lt_of_le (Nat.lt_succ_iff.1 hi) with rfl | him
+    · have hset : (Finset.range (i + 1)).erase i = Finset.range i := by
+        ext j
+        simp only [Finset.mem_erase, Finset.mem_range]
+        omega
+      simp only [countingMeasure, countingMeasureErase, sampleErase, Nat.add_sub_cancel,
+        Function.update_eq_self]
+      exact (Finset.sum_congr hset fun j _ => rfl).symm
+    · have h1 : (Finset.range (m + 1)).erase i = insert m ((Finset.range m).erase i) := by
+        ext j
+        simp only [Finset.mem_erase, Finset.mem_range, Finset.mem_insert]
+        omega
+      have h3 : Finset.range m = insert i ((Finset.range m).erase i) :=
+        (Finset.insert_erase (Finset.mem_range.2 him)).symm
+      have hmn : m ∉ (Finset.range m).erase i := by simp
+      have hin : i ∉ (Finset.range m).erase i := by simp
+      simp only [countingMeasure, countingMeasureErase, sampleErase, Nat.add_sub_cancel]
+      rw [h3, Finset.sum_insert hin, Function.update_self, h1, Finset.sum_insert hmn]
+      congr 1
+      exact Finset.sum_congr rfl fun j hj => by
+        rw [Function.update_of_ne (Finset.mem_erase.1 hj).1]
+
+/-- Deleting a point is a measurable operation on samples. -/
+lemma measurable_sampleErase (i : ℕ) :
+    Measurable fun p : PoissonSample E => sampleErase p i := by
+  classical
+  refine Measurable.prodMk ?_ ((measurable_from_nat : Measurable fun n : ℕ => n - 1).comp
+    measurable_snd)
+  refine measurable_from_prod_countable_left fun k => ?_
+  have hu : Measurable fun q : (ℕ → E) × E => Function.update q.1 i q.2 := measurable_update'
+  exact hu.comp (measurable_id.prodMk (measurable_pi_apply (k - 1)))
+
 /-- The law of a finite Poisson point process with intensity `ν`, as a measure on the space of
 measures. -/
 noncomputable def poissonPointProcessFinite [Nonempty E] (ν : Measure E) [IsFiniteMeasure ν] :

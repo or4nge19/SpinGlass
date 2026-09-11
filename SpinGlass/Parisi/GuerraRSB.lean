@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Matteo Cipollina
 -/
 import SpinGlass.Parisi.TreeCov
+import SpinGlass.Parisi.GuerraBound
 import SpinGlass.FiniteGibbs.GaussianFieldProd
 import SpinGlass.MixedPSpinThermodynamicLimit
 import SpinGlass.Hopfield
@@ -41,6 +42,12 @@ variable {N : ℕ} {A : Type*} [Fintype A]
 /-- Weights depending only on the branch. -/
 def branchWt (w : A → ℝ) : Config N × A → ℝ := fun x => w x.2
 
+/-- The branch weights as weights `u_α · c_σ` on `Σ_N × A` with the trivial constraint `c = 1`. -/
+lemma branchWt_eq (w : A → ℝ) :
+    branchWt (N := N) w = fun p : Config N × A => w p.2 * (fun _ : Config N => (1 : ℝ)) p.1 := by
+  funext p
+  simp [branchWt]
+
 /-- The weighted partition function of a Hamiltonian that does not depend on the branch
 factorizes: `∑_{σ,α} w_α e^{-H σ} = (∑_α w_α) · Z(H)`. -/
 lemma wZ_pullback_fst (w : A → ℝ) (H : EnergySpace N) :
@@ -69,65 +76,13 @@ lemma wZ_ising (w : A → ℝ) (a : A → Fin N → ℝ) (h : ℝ) :
         FiniteGibbs.EnergySpace (Config N × A))) (σ, α))
       = ∑ i, (-(h + a α i)) * spin N σ i := by
     intro σ
-    show -((∑ i, isingSpin (σ i) * a α i) + h * ∑ i, isingSpin (σ i)) = _
+    change -((∑ i, isingSpin (σ i) * a α i) + h * ∑ i, isingSpin (σ i)) = _
     rw [Finset.mul_sum, ← Finset.sum_add_distrib, ← Finset.sum_neg_distrib]
     exact Finset.sum_congr rfl fun i _ => by simp only [spin, spinOf]; ring
   simp_rw [hval]
   rw [sum_exp_sum_spin N (fun i => -(h + a α i))]
   refine Finset.prod_congr rfl fun i _ => ?_
   rw [neg_neg, add_comm, exp_add_exp_neg_eq_two_cosh]
-
-/-! ### Continuity of the weighted Gibbs weights -/
-
-lemma continuous_wZ (wt : A → ℝ) : Continuous fun H : FiniteGibbs.EnergySpace A => wZ wt H := by
-  unfold wZ
-  refine continuous_finsetSum _ fun x _ => continuous_const.mul (Real.continuous_exp.comp ?_)
-  exact ((continuous_apply x).comp (PiLp.continuous_ofLp 2 (fun _ : A => ℝ))).neg
-
-lemma continuous_wGibbs (wt : A → ℝ) (hwt : ∀ x, 0 ≤ wt x) (hne : ∃ x, wt x ≠ 0) (x : A) :
-    Continuous fun H : FiniteGibbs.EnergySpace A => wGibbs wt H x := by
-  unfold wGibbs
-  refine (continuous_const.mul (Real.continuous_exp.comp ?_)).div (continuous_wZ wt)
-    fun H => (wZ_pos wt hwt hne H).ne'
-  exact ((continuous_apply x).comp (PiLp.continuous_ofLp 2 (fun _ : A => ℝ))).neg
-
-lemma continuous_wGuerraTrace (wt : A → ℝ) (hwt : ∀ x, 0 ≤ wt x) (hne : ∃ x, wt x ≠ 0)
-    (K₁ K₂ : A → A → ℝ) (n : ℕ) :
-    Continuous fun H : FiniteGibbs.EnergySpace A => wGuerraTrace wt K₁ K₂ n H := by
-  unfold wGuerraTrace
-  refine continuous_const.mul ((continuous_finsetSum _ fun x _ =>
-    continuous_const.mul (continuous_wGibbs wt hwt hne x)).sub
-    (continuous_finsetSum _ fun x _ => continuous_finsetSum _ fun y _ =>
-      continuous_const.mul ((continuous_wGibbs wt hwt hne x).mul (continuous_wGibbs wt hwt hne y))))
-
-/-- The integrand of the bound (14.79): `(1/2)(ξ(1) - ξ'(q̄)) + (1/2) ∑_{x,y} g_x g_y θ(q_{x,y})`. -/
-def treeBoundIntegrand (wt : A → ℝ) (c₀ : ℝ) (θq : A → A → ℝ) (H : FiniteGibbs.EnergySpace A) :
-    ℝ :=
-  (1 / 2) * c₀ + (1 / 2) * ∑ x, ∑ y, wGibbs wt H x * wGibbs wt H y * θq x y
-
-lemma continuous_treeBoundIntegrand (wt : A → ℝ) (hwt : ∀ x, 0 ≤ wt x) (hne : ∃ x, wt x ≠ 0)
-    (c₀ : ℝ) (θq : A → A → ℝ) :
-    Continuous fun H : FiniteGibbs.EnergySpace A => treeBoundIntegrand wt c₀ θq H := by
-  unfold treeBoundIntegrand
-  refine continuous_const.add (continuous_const.mul (continuous_finsetSum _ fun x _ =>
-    continuous_finsetSum _ fun y _ =>
-      ((continuous_wGibbs wt hwt hne x).mul (continuous_wGibbs wt hwt hne y)).mul continuous_const))
-
-lemma abs_treeBoundIntegrand_le (wt : A → ℝ) (hwt : ∀ x, 0 ≤ wt x) (hne : ∃ x, wt x ≠ 0)
-    (c₀ : ℝ) (θq : A → A → ℝ) (H : FiniteGibbs.EnergySpace A) :
-    |treeBoundIntegrand wt c₀ θq H| ≤ (1 / 2) * |c₀| + (1 / 2) * ∑ x, ∑ y, |θq x y| := by
-  unfold treeBoundIntegrand
-  refine (abs_add_le _ _).trans (add_le_add ?_ ?_)
-  · rw [abs_mul, abs_of_nonneg (by norm_num : (0 : ℝ) ≤ 1 / 2)]
-  · rw [abs_mul, abs_of_nonneg (by norm_num : (0 : ℝ) ≤ 1 / 2)]
-    refine mul_le_mul_of_nonneg_left ?_ (by norm_num)
-    refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun x _ => ?_)
-    refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun y _ => ?_)
-    rw [abs_mul]
-    refine (mul_le_mul_of_nonneg_right ?_ (abs_nonneg _)).trans (one_mul _).le
-    rw [abs_of_nonneg (mul_nonneg (wGibbs_nonneg wt hwt hne H x) (wGibbs_nonneg wt hwt hne H y))]
-    exact mul_le_one₀ (wGibbs_le_one wt hwt hne H x) (wGibbs_nonneg wt hwt hne H y)
-      (wGibbs_le_one wt hwt hne H y)
 
 /-! ### The interpolation for a truncated tree at fixed weights -/
 
@@ -154,7 +109,8 @@ def truncHam (t h : ℝ) (ω : EnergySpace N × MarksSpace N k) :
 lemma measurable_truncHam (t h : ℝ) : Measurable (truncHam N k M t h) := by
   have h1 : Measurable fun ω : EnergySpace N × MarksSpace N k =>
       Real.sqrt t • pullbackCLM (Prod.fst : Config N × TruncBranch k M → Config N) ω.1 :=
-    (Real.sqrt t • pullbackCLM (Prod.fst : Config N × TruncBranch k M → Config N)).continuous.measurable.comp
+    (Real.sqrt t • pullbackCLM
+      (Prod.fst : Config N × TruncBranch k M → Config N)).continuous.measurable.comp
       measurable_fst
   have h2 : Measurable fun ω : EnergySpace N × MarksSpace N k =>
       Real.sqrt (1 - t) • treeLin N k M (treeCoords N k M ω.2) :=
@@ -251,7 +207,7 @@ theorem guerra_truncated (hN : 0 < N) (ξ : ℝ → ℝ) (hS : (overlapCovMatrix
       G₂.U ω = treeLin N k M (treeCoords N k M ω.2) := fun ω => rfl
   have hpair : ∀ t ω, gaussianInterp t (pair G₁ G₂ ω) + c = truncHam N k M t h ω := by
     intro t ω
-    show gaussianInterp t (WithLp.toLp 2 (G₁.U ω, G₂.U ω)) + c = _
+    change gaussianInterp t (WithLp.toLp 2 (G₁.U ω, G₂.U ω)) + c = _
     rw [gaussianInterp_apply, WithLp.ofLp_toLp, hU₁, hU₂]
     rfl
   -- the bound is continuous in `t`
@@ -271,7 +227,8 @@ theorem guerra_truncated (hN : 0 < N) (ξ : ℝ → ℝ) (hS : (overlapCovMatrix
           (treeFieldKernel N k M v₀ vs) N (gaussianInterp t p + c)) (pairLaw G₁ G₂) := by
       refine Integrable.of_bound ((hcontT.comp
         ((gaussianInterp t).continuous.add continuous_const)).aestronglyMeasurable)
-        ((1 / (2 * (N : ℝ))) * ((∑ x, |overlapCovMatrix N ξ x.1 x.1 - treeFieldKernel N k M v₀ vs x x|)
+        ((1 / (2 * (N : ℝ)))
+          * ((∑ x, |overlapCovMatrix N ξ x.1 x.1 - treeFieldKernel N k M v₀ vs x x|)
           + ∑ x, ∑ y, |overlapCovMatrix N ξ x.1 y.1 - treeFieldKernel N k M v₀ vs x y|))
         (Filter.Eventually.of_forall fun p => ?_)
       rw [Real.norm_eq_abs]
@@ -285,12 +242,13 @@ theorem guerra_truncated (hN : 0 < N) (ξ : ℝ → ℝ) (hS : (overlapCovMatrix
       rw [Real.norm_eq_abs]
       exact abs_treeBoundIntegrand_le wt hwt hne' c₀ θq _
     refine (integral_mono hint1 hint2 fun p => ?_).trans (le_of_eq ?_)
-    · show wGuerraTrace wt (modelKernel N ξ) (treeFieldKernel N k M v₀ vs) N _ ≤ _
+    · change wGuerraTrace wt (modelKernel N ξ) (treeFieldKernel N k M v₀ vs) N _ ≤ _
       rw [hK₂]
       exact wGuerraTrace_tree_le hN ξ (treeOverlap qs) (qs (Fin.last k)) (treeOverlap_self qs)
         (fun α γ => hq01 _) htan wt hwt hne' _
     · unfold guerraTruncBound
-      show ∫ p, treeBoundIntegrand wt c₀ θq (gaussianInterp t p + c) ∂(Pm.prod Pz).map (pair G₁ G₂)
+      change ∫ p, treeBoundIntegrand wt c₀ θq (gaussianInterp t p + c)
+        ∂(Pm.prod Pz).map (pair G₁ G₂)
         = _
       have hmeasF : AEStronglyMeasurable (fun p : PairSpace (Config N × TruncBranch k M) =>
           treeBoundIntegrand wt c₀ θq (gaussianInterp t p + c)) ((Pm.prod Pz).map (pair G₁ G₂)) :=
@@ -338,8 +296,9 @@ theorem guerra_truncated (hN : 0 < N) (ξ : ℝ → ℝ) (hS : (overlapCovMatrix
     simp_rw [hE1]
     rw [integral_add (integrable_const _) hint_fe, integral_const, probReal_univ, one_smul]
     congr 1
-    show _ = ∫ H, free_energy_density (N := N) (H + H_field N h) ∂Pm
-    have hcont : Continuous fun H : EnergySpace N => free_energy_density (N := N) (H + H_field N h) :=
+    change _ = ∫ H, free_energy_density (N := N) (H + H_field N h) ∂Pm
+    have hcont : Continuous fun H : EnergySpace N =>
+        free_energy_density (N := N) (H + H_field N h) :=
       (contDiff_free_energy_density N).continuous.comp (continuous_id.add continuous_const)
     have hmeasF : AEStronglyMeasurable
         (fun H : EnergySpace N => free_energy_density (N := N) (H + H_field N h))

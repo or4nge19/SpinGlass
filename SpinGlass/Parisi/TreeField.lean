@@ -5,7 +5,7 @@ Authors: Matteo Cipollina
 -/
 import SpinGlass.Parisi.TreeFieldLaw
 import SpinGlass.Parisi.TreeTrace
-import SpinGlass.FiniteGibbs.GaussianFieldPullback
+import SpinGlass.FiniteGibbs.GaussianFieldCoords
 
 /-!
 # The Gaussian field of the marks of a truncated cascade
@@ -52,24 +52,10 @@ def treeCoeff (x : Config N × TruncBranch k M) : TreeCoord N k M → ℝ :=
   Sum.elim (fun i => isingSpin (x.1 i))
     fun c => if c.1 = branchNode k M x.2 c.1.1 then isingSpin (x.1 c.2) else 0
 
-/-- The field as a linear map of the coordinates: `(L w)(σ, α) = ∑_c A (σ,α) c · w c`. -/
-def treeLinMap : EuclideanSpace ℝ (TreeCoord N k M) →ₗ[ℝ]
-    FiniteGibbs.EnergySpace (Config N × TruncBranch k M) where
-  toFun w := WithLp.toLp 2 fun x => ∑ c, treeCoeff N k M x c * w c
-  map_add' w w' := by
-    ext x
-    simp [mul_add, Finset.sum_add_distrib]
-  map_smul' r w := by
-    ext x
-    simp only [PiLp.smul_apply, smul_eq_mul, RingHom.id_apply]
-    show ∑ c, treeCoeff N k M x c * (r * w c) = r * ∑ c, treeCoeff N k M x c * w c
-    rw [Finset.mul_sum]
-    exact Finset.sum_congr rfl fun c _ => mul_left_comm _ _ _
-
-/-- The field as a continuous linear map. -/
-def treeLin : EuclideanSpace ℝ (TreeCoord N k M) →L[ℝ]
+/-- The field as a continuous linear map of the coordinates: `(L w)(σ, α) = ∑_c A (σ,α) c · w c`. -/
+abbrev treeLin : EuclideanSpace ℝ (TreeCoord N k M) →L[ℝ]
     FiniteGibbs.EnergySpace (Config N × TruncBranch k M) :=
-  LinearMap.toContinuousLinearMap (treeLinMap N k M)
+  coordLin (treeCoeff N k M)
 
 lemma treeLin_apply (w : EuclideanSpace ℝ (TreeCoord N k M)) (x : Config N × TruncBranch k M) :
     treeLin N k M w x = ∑ c, treeCoeff N k M x c * w c := rfl
@@ -77,11 +63,8 @@ lemma treeLin_apply (w : EuclideanSpace ℝ (TreeCoord N k M)) (x : Config N × 
 /-- The adjoint on Dirac vectors: `L† e_x = A x`. -/
 lemma adjoint_treeLin_std_basis (x : Config N × TruncBranch k M) :
     (treeLin N k M).adjoint (FiniteGibbs.std_basis (α := Config N × TruncBranch k M) x)
-      = WithLp.toLp 2 (treeCoeff N k M x) := by
-  refine ext_inner_right ℝ fun w => ?_
-  rw [ContinuousLinearMap.adjoint_inner_left, FiniteGibbs.inner_std_basis_apply, treeLin_apply,
-    EuclideanSpace.real_inner_eq_dotProduct]
-  rfl
+      = WithLp.toLp 2 (treeCoeff N k M x) :=
+  adjoint_coordLin_std_basis _ x
 
 omit N in
 /-- Summing over the truncated nodes an indicator "`v` is a node of `α`" collapses to a sum over
@@ -94,9 +77,9 @@ lemma sum_truncNode_branchNode (α : TruncBranch k M) (g : TruncNode k M → ℝ
   refine Finset.sum_congr rfl fun p _ => ?_
   simp only [branchNode, Sigma.mk.injEq, heq_iff_eq, true_and]
   rw [Finset.sum_eq_single (fun i : Fin (p.val + 1) => α ⟨i.val, by omega⟩)]
-  · rw [if_pos rfl]
+  · rw [ite_eq_left rfl]
   · intro u _ hu
-    rw [if_neg hu]
+    rw [ite_eq_right hu]
   · intro h
     exact absurd (Finset.mem_univ _) h
 
@@ -112,7 +95,7 @@ theorem treeLin_treeCoords_apply (ω : MarksSpace N k) (x : Config N × TruncBra
     * treeCoords N k M ω c)]
   rw [Fintype.sum_prod_type (f := fun c : TruncNode k M × Fin N =>
     treeCoeff N k M x (Sum.inr c) * treeCoords N k M ω (Sum.inr c))]
-  simp only [treeCoeff, treeCoords, Sum.elim_inl, Sum.elim_inr, treeMark, mul_add,
+  simp only [treeCoeff, treeCoords, siteTreeCoords, Sum.elim_inl, Sum.elim_inr, treeMark, mul_add,
     Finset.sum_add_distrib, Finset.mul_sum]
   congr 1
   rw [Finset.sum_comm]
@@ -123,8 +106,8 @@ theorem treeLin_treeCoords_apply (ω : MarksSpace N k) (x : Config N × TruncBra
           then isingSpin (x.1 i) * truncMarks k M ω.2 v i else 0) := by
     refine Finset.sum_congr rfl fun v _ => ?_
     by_cases hv : v = branchNode k M x.2 v.1
-    · rw [if_pos hv, if_pos hv]
-    · rw [if_neg hv, if_neg hv, zero_mul]
+    · rw [ite_eq_left hv, ite_eq_left hv]
+    · rw [ite_eq_right hv, ite_eq_right hv, zero_mul]
   rw [hsum, sum_truncNode_branchNode]
 
 /-! ### The tree covariance -/
@@ -147,7 +130,7 @@ lemma sum_truncNode_ite (α γ : TruncBranch k M) (f : Fin k → ℝ) :
   simp only [branchNode, Sigma.mk.injEq, heq_iff_eq, true_and]
   by_cases h : (fun i : Fin (p.val + 1) => α ⟨i.val, by omega⟩)
       = fun i : Fin (p.val + 1) => γ ⟨i.val, by omega⟩
-  · simp only [h, true_and, if_true]
+  · simp only [h, true_and, ite_true]
     rw [Finset.sum_ite_eq']
     simp
   · simp [h]
@@ -162,7 +145,7 @@ theorem sum_coordVar_treeCoeff (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (x y : 
   rw [Fintype.sum_prod_type (f := fun c : TruncNode k M × Fin N =>
     (coordVar N k M v₀ vs (Sum.inr c) : ℝ) * treeCoeff N k M x (Sum.inr c)
       * treeCoeff N k M y (Sum.inr c))]
-  simp only [coordVar, treeCoeff, Sum.elim_inl, Sum.elim_inr]
+  simp only [coordVar, siteCoordVar, treeCoeff, Sum.elim_inl, Sum.elim_inr]
   have hinner : ∀ v : TruncNode k M, (∑ i, (vs v.1 : ℝ)
       * (if v = branchNode k M x.2 v.1 then isingSpin (x.1 i) else 0)
       * (if v = branchNode k M y.2 v.1 then isingSpin (y.1 i) else 0))
@@ -172,14 +155,16 @@ theorem sum_coordVar_treeCoeff (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (x y : 
     by_cases hx : v = branchNode k M x.2 v.1
     · by_cases hy : v = branchNode k M y.2 v.1
       · have hxy : branchNode k M x.2 v.1 = branchNode k M y.2 v.1 := hx.symm.trans hy
-        simp only [if_pos hx, if_pos hy, if_pos (And.intro hxy hx), Finset.mul_sum]
+        simp only [ite_eq_left hx, ite_eq_left hy, ite_eq_left (And.intro hxy hx), Finset.mul_sum]
         exact Finset.sum_congr rfl fun i _ => by ring
-      · have hxy : ¬ (branchNode k M x.2 v.1 = branchNode k M y.2 v.1 ∧ v = branchNode k M x.2 v.1) :=
+      · have hxy : ¬ (branchNode k M x.2 v.1 = branchNode k M y.2 v.1
+            ∧ v = branchNode k M x.2 v.1) :=
           fun h => hy (hx.trans h.1)
-        simp only [if_pos hx, if_neg hy, if_neg hxy, mul_zero, Finset.sum_const_zero, zero_mul]
+        simp only [ite_eq_left hx, ite_eq_right hy, ite_eq_right hxy, mul_zero,
+          Finset.sum_const_zero, zero_mul]
     · have hxy : ¬ (branchNode k M x.2 v.1 = branchNode k M y.2 v.1 ∧ v = branchNode k M x.2 v.1) :=
         fun h => hx h.2
-      simp only [if_neg hx, if_neg hxy, mul_zero, zero_mul, Finset.sum_const_zero]
+      simp only [ite_eq_right hx, ite_eq_right hxy, mul_zero, zero_mul, Finset.sum_const_zero]
   simp_rw [hinner]
   rw [← Finset.sum_mul, sum_truncNode_ite k M x.2 y.2 (fun p => (vs p : ℝ))]
   unfold treeCov
@@ -201,60 +186,18 @@ lemma isGaussian_marksLaw_map_treeCoords (v₀ : ℝ≥0) (vs : Fin k → ℝ≥
   rw [treeCoords_law]
   infer_instance
 
-lemma integral_treeCoords (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) :
-    (∫ z, z ∂(marksLaw N k v₀ vs).map (treeCoords N k M)) = 0 := by
-  rw [treeCoords_law, map_pi_gaussianReal_eq_multivariateGaussian, integral_id_multivariateGaussian]
-  rfl
-
 /-- **The marks field of the truncated cascade**, Talagrand's `H(σ, α)` of (14.73), as a centered
-Gaussian field on `Σ_N × A` with kernel `(∑ᵢ σᵢ τᵢ) · treeCov α γ`. -/
+Gaussian field on `Σ_N × A` with kernel `(∑ᵢ σᵢ τᵢ) · treeCov α γ`: the linear image
+(`GaussianField.ofCoords`) of the independent coordinates `treeCoords`. -/
 def treeField (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) :
     GaussianField (α := Config N × TruncBranch k M) (marksLaw N k v₀ vs)
-      (treeFieldKernel N k M v₀ vs) where
-  U := fun ω => treeLin N k M (treeCoords N k M ω)
-  measU := (treeLin N k M).continuous.measurable.comp (measurable_treeCoords N k M)
-  hU := by
-    have := isGaussian_marksLaw_map_treeCoords N k M v₀ vs
-    exact (IsGaussian.hasGaussianLaw (X := treeCoords N k M)).map_fun (treeLin N k M)
-  mean0 := by
-    have hG := isGaussian_marksLaw_map_treeCoords N k M v₀ vs
-    have hmem : MemLp (id : EuclideanSpace ℝ (TreeCoord N k M) → EuclideanSpace ℝ (TreeCoord N k M))
-        2 ((marksLaw N k v₀ vs).map (treeCoords N k M)) := IsGaussian.memLp_two_id
-    have hmap : (marksLaw N k v₀ vs).map (fun ω => treeLin N k M (treeCoords N k M ω))
-        = ((marksLaw N k v₀ vs).map (treeCoords N k M)).map (treeLin N k M) := by
-      rw [Measure.map_map (treeLin N k M).continuous.measurable (measurable_treeCoords N k M)]
-      rfl
-    rw [hmap, integral_map (f := fun x : FiniteGibbs.EnergySpace (Config N × TruncBranch k M) => x)
-      (treeLin N k M).continuous.measurable.aemeasurable measurable_id.aestronglyMeasurable,
-      ContinuousLinearMap.integral_comp_comm (treeLin N k M)
-        (φ := fun x : EuclideanSpace ℝ (TreeCoord N k M) => x) (hmem.integrable (by norm_num)),
-      integral_treeCoords, map_zero]
-  cov_eq := fun x y => by
-    have hG := isGaussian_marksLaw_map_treeCoords N k M v₀ vs
-    have hmem : MemLp (id : EuclideanSpace ℝ (TreeCoord N k M) → EuclideanSpace ℝ (TreeCoord N k M))
-        2 ((marksLaw N k v₀ vs).map (treeCoords N k M)) := IsGaussian.memLp_two_id
-    have hmap : (marksLaw N k v₀ vs).map (fun ω => treeLin N k M (treeCoords N k M ω))
-        = ((marksLaw N k v₀ vs).map (treeCoords N k M)).map (treeLin N k M) := by
-      rw [Measure.map_map (treeLin N k M).continuous.measurable (measurable_treeCoords N k M)]
-      rfl
-    have hG' : IsGaussian ((marksLaw N k v₀ vs).map (fun ω => treeLin N k M (treeCoords N k M ω))) := by
-      rw [hmap]; infer_instance
-    have hmem' : MemLp (id : FiniteGibbs.EnergySpace (Config N × TruncBranch k M) →
-        FiniteGibbs.EnergySpace (Config N × TruncBranch k M)) 2
-        ((marksLaw N k v₀ vs).map (fun ω => treeLin N k M (treeCoords N k M ω))) :=
-      IsGaussian.memLp_two_id
-    have hmean' : (∫ z, z ∂(marksLaw N k v₀ vs).map (fun ω => treeLin N k M (treeCoords N k M ω)))
-        = 0 := by
-      rw [hmap, integral_map (f := fun x : FiniteGibbs.EnergySpace (Config N × TruncBranch k M) => x)
-        (treeLin N k M).continuous.measurable.aemeasurable measurable_id.aestronglyMeasurable,
-        ContinuousLinearMap.integral_comp_comm (treeLin N k M)
-          (φ := fun x : EuclideanSpace ℝ (TreeCoord N k M) => x) (hmem.integrable (by norm_num)),
-        integral_treeCoords, map_zero]
-    rw [← covarianceBilin_eq_inner_covarianceOperator hmem' hmean', hmap,
-      covarianceBilin_map hmem, adjoint_treeLin_std_basis, adjoint_treeLin_std_basis,
-      covarianceBilin_eq_inner_covarianceOperator hmem (integral_treeCoords N k M v₀ vs),
-      treeCoords_law, inner_covarianceOperator_map_pi_gaussianReal]
-    exact sum_coordVar_treeCoeff N k M v₀ vs x y
+      (treeFieldKernel N k M v₀ vs) :=
+  (GaussianField.ofCoords (treeCoeff N k M) (coordVar N k M v₀ vs) (treeCoords N k M)
+    (measurable_treeCoords N k M) (treeCoords_law N k M v₀ vs)).copy _
+    fun x y => (sum_coordVar_treeCoeff N k M v₀ vs x y).symm
+
+@[simp] lemma treeField_U (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (ω : MarksSpace N k) :
+    (treeField N k M v₀ vs).U ω = treeLin N k M (treeCoords N k M ω) := rfl
 
 end
 

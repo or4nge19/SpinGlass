@@ -73,10 +73,17 @@ import SpinGlass.Split
 import SpinGlass.Talagrand.MainResults
 import SpinGlass.ReplicaSymmetricBound
 import SpinGlass.ParisiFunctional
+import SpinGlass.FiniteGibbs.GaussianFieldCoords
+import SpinGlass.Parisi.GuerraBound
 import SpinGlass.Parisi.TreeTrace
+import SpinGlass.Parisi.CoupledTrace
+import SpinGlass.Parisi.SiteTreeFieldLaw
 import SpinGlass.Parisi.TreeFieldLaw
 import SpinGlass.Parisi.TreeField
 import SpinGlass.Parisi.TreeCov
+import SpinGlass.Parisi.PairTreeField
+import SpinGlass.Parisi.CoupledScheme
+import SpinGlass.Parisi.CoupledEndpoint
 import SpinGlass.Parisi.GuerraRSB
 import SpinGlass.Parisi.BranchLimit
 import SpinGlass.Parisi.BranchAverages
@@ -88,6 +95,7 @@ import SpinGlass.ThermodynamicLimit
 import Common.Mathlib.Algebra.BigOperators.SummationByParts
 import Common.Mathlib.Algebra.Polynomial.EvalBound
 import Common.Mathlib.Analysis.Convex.GriffithsLemma
+import Common.Mathlib.Analysis.SpecialFunctions.ExpPiSum
 import Common.Mathlib.Analysis.Convex.TangentLine
 import Common.Mathlib.Data.Fin.InsertNthUpdate
 import Common.Mathlib.Analysis.InnerProductSpace.PositiveRange
@@ -123,6 +131,8 @@ import Common.Mathlib.Probability.PointProcess.CascadeNodeMarks
 import Common.Mathlib.Probability.PointProcess.CascadeTrunc
 import Common.Mathlib.Probability.PointProcess.CascadeTilt
 import Common.Mathlib.Probability.PointProcess.CascadeGibbs
+import Common.Mathlib.Probability.PointProcess.CascadeSecondMoment
+import Common.Mathlib.Probability.PointProcess.CascadePair
 import Common.Mathlib.Probability.PointProcess.CascadeBranchLaw
 import Common.Mathlib.Probability.ProductMeasureProd
 

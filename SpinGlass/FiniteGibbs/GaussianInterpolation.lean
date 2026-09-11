@@ -262,6 +262,57 @@ lemma guerraTrace_eq (K₁ K₂ : α → α → ℝ) (n : ℕ) (H : EnergySpace 
   simp_rw [hdiag]
   ring
 
+/-- **The Guerra trace from a diagonal upper bound and an off-diagonal lower bound.** If the
+difference of the two kernels is at most `D` on the diagonal and at least `L x y` everywhere, then
+
+`guerraTrace K₁ K₂ n H ≤ (1/(2n)) (D - ⟨L⟩)`,
+
+where `⟨L⟩ = ∑_{x,y} L x y g_x g_y` is the Gibbs average of `L` over a pair of replicas.
+
+This is the shared skeleton of Guerra's Lemma 14.4.1 and of its two-dimensional version
+Lemma 14.6.1 (Talagrand Vol. II): there the difference of the kernels is
+`U(x, y) = ∑_{ℓ,ℓ'} (ξ(R^{ℓ,ℓ'}) - R^{ℓ,ℓ'} ξ'(q^{ℓ,ℓ'}))`, whose diagonal is the *constant*
+`-2θ(1) - 2θ(u)` once the sum is restricted to the pairs with `R_{1,2} = u`, and whose
+off-diagonal lower bound `-∑_{ℓ,ℓ'} θ(q^{ℓ,ℓ'})` is the tangent-line inequality for the convex
+`ξ`; the replica average `⟨L⟩` is then what the fundamental identities of §14.3 evaluate. -/
+lemma guerraTrace_le_of_diag_le (K₁ K₂ : α → α → ℝ) (n : ℕ) (H : EnergySpace α) {D : ℝ}
+    {L : α → α → ℝ} (hdiag : ∀ x : α, K₁ x x - K₂ x x ≤ D)
+    (hoff : ∀ x y : α, L x y ≤ K₁ x y - K₂ x y) :
+    guerraTrace K₁ K₂ n H
+      ≤ (1 / (2 * (n : ℝ))) * (D - ∑ x : α, ∑ y : α, L x y
+          * (gibbs_pmf (α := α) H x * gibbs_pmf (α := α) H y)) := by
+  rw [guerraTrace_eq]
+  refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+  have h1 : ∑ x : α, (K₁ x x - K₂ x x) * gibbs_pmf (α := α) H x ≤ D := by
+    calc ∑ x : α, (K₁ x x - K₂ x x) * gibbs_pmf (α := α) H x
+        ≤ ∑ x : α, D * gibbs_pmf (α := α) H x :=
+          Finset.sum_le_sum fun x _ => mul_le_mul_of_nonneg_right (hdiag x)
+            (gibbs_pmf_nonneg (α := α) (H := H) x)
+      _ = D := by rw [← Finset.mul_sum, sum_gibbs_pmf (α := α) H, mul_one]
+  have h2 : ∑ x : α, ∑ y : α, L x y * (gibbs_pmf (α := α) H x * gibbs_pmf (α := α) H y)
+      ≤ ∑ x : α, ∑ y : α, (K₁ x y - K₂ x y)
+          * (gibbs_pmf (α := α) H x * gibbs_pmf (α := α) H y) :=
+    Finset.sum_le_sum fun x _ => Finset.sum_le_sum fun y _ =>
+      mul_le_mul_of_nonneg_right (hoff x y)
+        (mul_nonneg (gibbs_pmf_nonneg (α := α) (H := H) x)
+          (gibbs_pmf_nonneg (α := α) (H := H) y))
+  linarith
+
+/-- The Guerra trace when the off-diagonal lower bound is a constant:
+`guerraTrace K₁ K₂ n H ≤ (D - L)/(2n)`. -/
+lemma guerraTrace_le_of_diag_le_of_const_le (K₁ K₂ : α → α → ℝ) (n : ℕ) (H : EnergySpace α)
+    {D L : ℝ} (hdiag : ∀ x : α, K₁ x x - K₂ x x ≤ D)
+    (hoff : ∀ x y : α, L ≤ K₁ x y - K₂ x y) :
+    guerraTrace K₁ K₂ n H ≤ (1 / (2 * (n : ℝ))) * (D - L) := by
+  refine (guerraTrace_le_of_diag_le K₁ K₂ n H hdiag (L := fun _ _ => L) fun x y => hoff x y).trans
+    (le_of_eq ?_)
+  congr 1
+  rw [show (∑ x : α, ∑ y : α, L * (gibbs_pmf (α := α) H x * gibbs_pmf (α := α) H y))
+      = L * ∑ x : α, ∑ y : α, gibbs_pmf (α := α) H x * gibbs_pmf (α := α) H y by
+    rw [Finset.mul_sum]
+    exact Finset.sum_congr rfl fun x _ => (Finset.mul_sum _ _ _).symm]
+  rw [← Finset.sum_mul_sum, sum_gibbs_pmf (α := α) H, mul_one, mul_one]
+
 /-- The Hessian entries along the path are bounded, hence integrable. -/
 lemma integrable_fderiv_fderiv_pairLaw (hindep : G₁.U ⟂ᵢ[P] G₂.U) (c : EnergySpace α) (n : ℕ)
     (t : ℝ) (u v : EnergySpace α) :

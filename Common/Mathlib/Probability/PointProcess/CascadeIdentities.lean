@@ -240,6 +240,22 @@ lemma mExt'_le_one {k : ℕ} {ms : Fin k → ℝ} (hlt : ∀ i, ms i ≤ 1) {a :
   · simpa using ha
   · rw [mExt'_succ_eq]; exact mExt_le_one hlt _
 
+/-- **The increments of the extended sequence telescope**: `∑_{r ≤ j ≤ k} (m_{j+1} - m_j)
+= 1 - m_r`, for `r ≤ k + 1`, since `m_{k+1} = 1`. -/
+lemma sum_Ico_mExt'_sub {k : ℕ} (ms : Fin k → ℝ) (a : ℝ) {r : ℕ} (hr : r ≤ k + 1) :
+    ∑ j ∈ Finset.Ico r (k + 1), (mExt' ms a (j + 1) - mExt' ms a j) = 1 - mExt' ms a r := by
+  rw [Finset.sum_Ico_eq_sum_range]
+  have h : ∀ i ∈ Finset.range (k + 1 - r), mExt' ms a (r + i + 1) - mExt' ms a (r + i)
+      = (fun n => mExt' ms a (r + n)) (i + 1) - (fun n => mExt' ms a (r + n)) i := by
+    intro i _
+    simp only
+    rw [show r + (i + 1) = r + i + 1 by omega]
+  rw [Finset.sum_congr rfl h, Finset.sum_range_sub (fun n => mExt' ms a (r + n))]
+  simp only [add_zero, show r + (k + 1 - r) = k + 1 by omega]
+  congr 1
+  rw [mExt'_succ_eq]
+  exact mExt_eq_one_of_le ms le_rfl
+
 /-! ### The mixed moments -/
 
 variable [Nonempty T]

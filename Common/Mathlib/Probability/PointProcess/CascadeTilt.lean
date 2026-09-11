@@ -262,6 +262,130 @@ theorem cascadeTilt_const (k : ℕ) : ∀ (ms : Fin k → ℝ) (μs : Fin k → 
     simp_rw [hinner]
     exact (lintegral_pi_fin_succ μs hA).symm
 
+/-! ### The tilted squares `𝔼(W₁ ⋯ W_r (𝔼_{r+1} W_{r+1} ⋯ W_k A)²)` -/
+
+/-- **The object of Talagrand's (14.32)**: `𝔼(W₁ ⋯ W_r (𝔼_{r+1} W_{r+1} ⋯ W_k A)²)`, the tilted
+average over the first `r` levels of the square of the tilted average over the remaining ones.
+The sum over `r` of these, weighted by `m_{r+1} - m_r`, is `𝔼⟨A⟩²`; the term `r = 0` is
+`(𝔼(W₁ ⋯ W_k A))²` and the terms `r ≥ k` are `𝔼(W₁ ⋯ W_k A²)`. -/
+noncomputable def cascadeTiltSq : (k : ℕ) → ℕ → (ms : Fin k → ℝ) → (μs : Fin k → Measure T) →
+    [∀ i, IsProbabilityMeasure (μs i)] → ((Fin k → T) → ℝ≥0∞) → ((Fin k → T) → ℝ≥0∞) → ℝ≥0∞
+  | k, 0, ms, μs, _, G, A => cascadeTilt k ms μs G A ^ 2
+  | 0, _ + 1, _, _, _, _, A => A Fin.elim0 ^ 2
+  | k + 1, r + 1, ms, μs, _, G, A =>
+      ∫⁻ z, cascadeW k ms μs G z
+        * cascadeTiltSq k r (Fin.tail ms) (Fin.tail μs) (fun zs => G (Fin.cons z zs))
+            (fun zs => A (Fin.cons z zs)) ∂μs 0
+
+@[simp] lemma cascadeTiltSq_zero (k : ℕ) (ms : Fin k → ℝ) (μs : Fin k → Measure T)
+    [∀ i, IsProbabilityMeasure (μs i)] (G A : (Fin k → T) → ℝ≥0∞) :
+    cascadeTiltSq k 0 ms μs G A = cascadeTilt k ms μs G A ^ 2 := by
+  cases k <;> rfl
+
+lemma cascadeTiltSq_zero_levels (r : ℕ) (ms : Fin 0 → ℝ) (μs : Fin 0 → Measure T)
+    [∀ i, IsProbabilityMeasure (μs i)] (G A : (Fin 0 → T) → ℝ≥0∞) :
+    cascadeTiltSq 0 r ms μs G A = A Fin.elim0 ^ 2 := by
+  cases r <;> rfl
+
+lemma cascadeTiltSq_succ (k r : ℕ) (ms : Fin (k + 1) → ℝ) (μs : Fin (k + 1) → Measure T)
+    [∀ i, IsProbabilityMeasure (μs i)] (G A : (Fin (k + 1) → T) → ℝ≥0∞) :
+    cascadeTiltSq (k + 1) (r + 1) ms μs G A
+      = ∫⁻ z, cascadeW k ms μs G z
+          * cascadeTiltSq k r (Fin.tail ms) (Fin.tail μs) (fun zs => G (Fin.cons z zs))
+              (fun zs => A (Fin.cons z zs)) ∂μs 0 := rfl
+
+/-- **Beyond the last level the tilted square is the tilted average of the square**: for `k ≤ r`,
+`𝔼(W₁ ⋯ W_k (𝔼_{k+1} A)²) = 𝔼(W₁ ⋯ W_k A²)`. This is the term `p = k+1` of (14.32). -/
+theorem cascadeTiltSq_of_le : ∀ (k r : ℕ), k ≤ r → ∀ (ms : Fin k → ℝ) (μs : Fin k → Measure T)
+    [∀ i, IsProbabilityMeasure (μs i)] (G A : (Fin k → T) → ℝ≥0∞),
+    cascadeTiltSq k r ms μs G A = cascadeTilt k ms μs G (fun zs => A zs ^ 2) := by
+  intro k
+  induction k with
+  | zero =>
+    intro r _ ms μs _ G A
+    rw [cascadeTiltSq_zero_levels]
+    rfl
+  | succ k ih =>
+    intro r hr ms μs _ G A
+    obtain ⟨r', rfl⟩ : ∃ r', r = r' + 1 := ⟨r - 1, by omega⟩
+    rw [cascadeTiltSq_succ, cascadeTilt_succ]
+    exact lintegral_congr fun z => by
+      rw [ih r' (by omega) (Fin.tail ms) (Fin.tail μs) _ _]
+
+/-- **The tilted squares of the constant `1` are `1`**, under Talagrand's (14.4). -/
+theorem cascadeTiltSq_one : ∀ (k r : ℕ) (ms : Fin k → ℝ) (μs : Fin k → Measure T)
+    [∀ i, IsProbabilityMeasure (μs i)] {G : (Fin k → T) → ℝ≥0∞}, Measurable G →
+    (∀ zs, 0 < G zs) → (∀ i, 0 < ms i) → (∀ i, ms i ≤ 1) →
+    ∫⁻ zs, G zs ∂Measure.pi μs ≠ ∞ → cascadeTiltSq k r ms μs G (fun _ => 1) = 1 := by
+  intro k
+  induction k with
+  | zero =>
+    intro r ms μs _ G _ _ _ _ _
+    rw [cascadeTiltSq_zero_levels, one_pow]
+  | succ k ih =>
+    intro r ms μs _ G hG hGpos hpos hle hfin
+    rcases r with _ | r
+    · rw [cascadeTiltSq_zero, cascadeTilt_one (k + 1) ms μs hG hGpos hpos hle hfin, one_pow]
+    · rw [cascadeTiltSq_succ]
+      have hinner : ∀ᵐ z ∂μs 0, cascadeW k ms μs G z
+          * cascadeTiltSq k r (Fin.tail ms) (Fin.tail μs) (fun zs => G (Fin.cons z zs))
+              (fun _ => 1) = cascadeW k ms μs G z := by
+        filter_upwards [ae_lintegral_pi_cons_ne_top k μs hG hfin] with z hz
+        rw [ih r (Fin.tail ms) (Fin.tail μs) (G := fun zs => G (Fin.cons z zs))
+          (hG.comp (measurable_fin_cons.comp (measurable_const.prodMk measurable_id)))
+          (fun zs => hGpos _) (fun i => hpos i.succ) (fun i => hle i.succ) hz, mul_one]
+      rw [lintegral_congr_ae hinner]
+      exact lintegral_cascadeW k ms μs hG hGpos hpos hle hfin
+
+/-- The tilted squares are monotone in the averaged function. -/
+theorem cascadeTiltSq_mono : ∀ (k r : ℕ) (ms : Fin k → ℝ) (μs : Fin k → Measure T)
+    [∀ i, IsProbabilityMeasure (μs i)] (G : (Fin k → T) → ℝ≥0∞) {A A' : (Fin k → T) → ℝ≥0∞},
+    (∀ zs, A zs ≤ A' zs) →
+    cascadeTiltSq k r ms μs G A ≤ cascadeTiltSq k r ms μs G A' := by
+  intro k
+  induction k with
+  | zero =>
+    intro r ms μs _ G A A' h
+    rw [cascadeTiltSq_zero_levels, cascadeTiltSq_zero_levels]
+    exact pow_le_pow_left' (h _) 2
+  | succ k ih =>
+    intro r ms μs _ G A A' h
+    rcases r with _ | r
+    · rw [cascadeTiltSq_zero, cascadeTiltSq_zero]
+      exact pow_le_pow_left' (cascadeTilt_mono (k + 1) ms μs G h) 2
+    · rw [cascadeTiltSq_succ, cascadeTiltSq_succ]
+      exact lintegral_mono fun z => mul_le_mul' le_rfl
+        (ih r (Fin.tail ms) (Fin.tail μs) _ fun zs => h _)
+
+/-- **Joint measurability of the tilted squares** in a parameter of both `G` and `A`. -/
+theorem measurable_cascadeTiltSq_prod : ∀ (k r : ℕ) (ms : Fin k → ℝ) (μs : Fin k → Measure T)
+    [∀ i, IsProbabilityMeasure (μs i)] {α : Type u} [MeasurableSpace α]
+    {Gs As : α → (Fin k → T) → ℝ≥0∞}, Measurable (uncurry Gs) → Measurable (uncurry As) →
+    Measurable fun a => cascadeTiltSq k r ms μs (Gs a) (As a) := by
+  intro k
+  induction k with
+  | zero =>
+    intro r ms μs _ α _ Gs As _ hAs
+    simp_rw [cascadeTiltSq_zero_levels]
+    exact (hAs.comp (measurable_id.prodMk measurable_const)).pow_const 2
+  | succ k ih =>
+    intro r ms μs _ α _ Gs As hGs hAs
+    have hconsG : Measurable (uncurry fun q : α × T => fun zs : Fin k → T =>
+        Gs q.1 (Fin.cons q.2 zs)) :=
+      hGs.comp ((measurable_fst.comp measurable_fst).prodMk
+        (measurable_fin_cons.comp ((measurable_snd.comp measurable_fst).prodMk measurable_snd)))
+    have hconsA : Measurable (uncurry fun q : α × T => fun zs : Fin k → T =>
+        As q.1 (Fin.cons q.2 zs)) :=
+      hAs.comp ((measurable_fst.comp measurable_fst).prodMk
+        (measurable_fin_cons.comp ((measurable_snd.comp measurable_fst).prodMk measurable_snd)))
+    rcases r with _ | r
+    · simp_rw [cascadeTiltSq_zero]
+      exact (measurable_cascadeTilt_prod (k + 1) ms μs hGs hAs).pow_const 2
+    · simp_rw [cascadeTiltSq_succ]
+      exact Measurable.lintegral_prod_right' (ν := μs 0)
+        ((measurable_cascadeW_prod k ms μs hGs).mul
+          (ih r (Fin.tail ms) (Fin.tail μs) hconsG hconsA))
+
 /-! ### The frontier
 
 Talagrand's (14.26)–(14.27) states that the tilted average computes the cascade Gibbs average,

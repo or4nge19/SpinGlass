@@ -110,7 +110,7 @@ theorem mixedPSpinFreeEnergyLimit_le_parisiInf {ξ : ℝ → ℝ}
 /-- Guerra's bound for the SK model, optimized over the Parisi parameters. -/
 theorem skFreeEnergy_le_parisiInf (N : ℕ) (hN : 0 < N) (β h : ℝ) :
     skFreeEnergy N β h ≤ parisiInf (skCovXi β) h := by
-  show mixedPSpinFreeEnergy N (skCovXi β) h ≤ _
+  change mixedPSpinFreeEnergy N (skCovXi β) h ≤ _
   exact mixedPSpinFreeEnergy_le_parisiInf N hN (skCovXi β) (posSemidef_skCovMatrix N β)
     (convexOn_univ_skCovXi β) (differentiable_skCovXi β) (deriv_skCovXi_zero β) h
 

@@ -20,7 +20,7 @@ whose branches do not exist.
 -/
 
 open MeasureTheory ProbabilityTheory Real
-open scoped ENNReal NNReal BigOperators InnerProductSpace Classical
+open scoped ENNReal NNReal BigOperators InnerProductSpace
 
 namespace SpinGlass
 
@@ -46,6 +46,95 @@ def wGibbs (wt : α → ℝ) (H : EnergySpace α) (x : α) : ℝ := wt x * Real.
 def wGuerraTrace (wt : α → ℝ) (K₁ K₂ : α → α → ℝ) (n : ℕ) (H : EnergySpace α) : ℝ :=
   (1 / (2 * (n : ℝ))) * ((∑ x : α, (K₁ x x - K₂ x x) * wGibbs wt H x)
     - ∑ x : α, ∑ y : α, (K₁ x y - K₂ x y) * (wGibbs wt H x * wGibbs wt H y))
+
+/-! ### Constrained weights -/
+
+omit [Fintype α] in
+/-- Restricting the weights by a `[0, 1]`-valued factor can only decrease the partition function. -/
+lemma wZ_mul_le [Fintype α] (wt c : α → ℝ) (hwt : ∀ x, 0 ≤ wt x)
+    (hc1 : ∀ x, c x ≤ 1) (H : EnergySpace α) :
+    wZ (fun x => wt x * c x) H ≤ wZ wt H :=
+  Finset.sum_le_sum fun x _ => by
+    change wt x * c x * Real.exp (-H x) ≤ wt x * Real.exp (-H x)
+    exact mul_le_mul_of_nonneg_right (mul_le_of_le_one_right (hwt x) (hc1 x))
+      (Real.exp_pos _).le
+
+omit [Fintype α] in
+/-- **Tilting a constrained partition function**: if the weights vanish off `{R = u}`, adding
+`-λ R` to the Hamiltonian multiplies the partition function by `exp (λ u)`. -/
+lemma wZ_mul_sub_smul [Fintype α] (wt c : α → ℝ) (R : α → ℝ) {u : ℝ} (lam : ℝ)
+    (hR : ∀ x, c x ≠ 0 → R x = u) (H : EnergySpace α) :
+    wZ (fun x => wt x * c x) (H - lam • WithLp.toLp 2 R)
+      = Real.exp (lam * u) * wZ (fun x => wt x * c x) H := by
+  unfold wZ
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl fun x _ => ?_
+  by_cases hc : c x = 0
+  · simp [hc]
+  · have hsub : (H - lam • WithLp.toLp 2 R) x = H x - lam * R x := rfl
+    rw [hsub, hR x hc, show -(H x - lam * u) = lam * u + -H x by ring, Real.exp_add]
+    ring
+
+omit [Fintype α] in
+/-- **The `λ`-trick** (Talagrand Vol. II, (14.140)): a sum restricted to `{R = u}` is at most
+`exp (-λ u)` times the unrestricted sum with `-λ R` added to the Hamiltonian, for every `λ`. -/
+lemma wZ_mul_le_exp_mul_wZ_sub [Fintype α] (wt c : α → ℝ) (hwt : ∀ x, 0 ≤ wt x)
+    (hc1 : ∀ x, c x ≤ 1) (R : α → ℝ) {u : ℝ} (lam : ℝ)
+    (hR : ∀ x, c x ≠ 0 → R x = u) (H : EnergySpace α) :
+    wZ (fun x => wt x * c x) H
+      ≤ Real.exp (-(lam * u)) * wZ wt (H - lam • WithLp.toLp 2 R) := by
+  have h := wZ_mul_sub_smul wt c R lam hR H
+  have hpos : 0 < Real.exp (lam * u) := Real.exp_pos _
+  have hle := wZ_mul_le wt c hwt hc1 (H - lam • WithLp.toLp 2 R)
+  rw [h] at hle
+  rw [Real.exp_neg]
+  exact (le_inv_mul_iff₀ hpos).2 hle
+
+/-! ### Product state spaces: weights `u_α · c_x` -/
+
+section Prod
+
+variable {X A : Type*} [Fintype X] [Fintype A]
+
+/-- The partial partition function `Z_α(c) = ∑_x c_x e^{-H(x, α)}` of the block `α`. -/
+def wCondZ (c : X → ℝ) (H : EnergySpace (X × A)) (α : A) : ℝ :=
+  ∑ x, c x * Real.exp (-H (x, α))
+
+/-- The weighted partition function on `X × A` with weights `u_α c_x` is `∑_α u_α Z_α(c)`. -/
+lemma wZ_prod_eq (u : A → ℝ) (c : X → ℝ) (H : EnergySpace (X × A)) :
+    wZ (fun p => u p.2 * c p.1) H = ∑ α, u α * wCondZ c H α := by
+  unfold wZ wCondZ
+  rw [Fintype.sum_prod_type, Finset.sum_comm]
+  refine Finset.sum_congr rfl fun α _ => ?_
+  rw [Finset.mul_sum]
+  exact Finset.sum_congr rfl fun x _ => by ring
+
+/-- **Marginalizing a pair average to the blocks**: the Gibbs pair average on `X × A` of a function
+of the `A`-components is the pair average over `A` with the weights `u_α Z_α(c)`. -/
+theorem sum_wGibbs_prod_pair (u : A → ℝ) (c : X → ℝ) (H : EnergySpace (X × A))
+    (φ : A → A → ℝ) :
+    (∑ p, ∑ q, wGibbs (fun p : X × A => u p.2 * c p.1) H p
+        * wGibbs (fun p : X × A => u p.2 * c p.1) H q * φ p.2 q.2)
+      = (∑ α, ∑ γ, u α * wCondZ c H α * (u γ * wCondZ c H γ) * φ α γ)
+        / (∑ α, u α * wCondZ c H α) ^ 2 := by
+  have hZ : ∀ p : X × A, wGibbs (fun p : X × A => u p.2 * c p.1) H p
+      = u p.2 * c p.1 * Real.exp (-H p) / ∑ α, u α * wCondZ c H α := by
+    intro p
+    rw [wGibbs, wZ_prod_eq]
+  have hsplit : ∀ g : X × A → ℝ, ∑ p, g p = ∑ α, ∑ x, g (x, α) := by
+    intro g
+    rw [Fintype.sum_prod_type (f := g), Finset.sum_comm]
+  simp_rw [hZ, hsplit]
+  rw [Finset.sum_div]
+  refine Finset.sum_congr rfl fun α _ => ?_
+  rw [Finset.sum_comm, Finset.sum_div]
+  refine Finset.sum_congr rfl fun γ _ => ?_
+  simp only [wCondZ, Finset.sum_mul, Finset.mul_sum, Finset.sum_div]
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl fun x _ => Finset.sum_congr rfl fun y _ => ?_
+  ring
+
+end Prod
 
 /-! ### Transport to the support -/
 
@@ -182,7 +271,8 @@ variable {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω} {K₁ K₂ : α → 
 
 /-- The pullback of a pair of Hamiltonians to the support. -/
 def pairPullback (wt : α → ℝ) : PairSpace α → PairSpace (Support wt) := fun p =>
-  WithLp.toLp 2 (pullbackCLM Subtype.val (WithLp.ofLp p).1, pullbackCLM Subtype.val (WithLp.ofLp p).2)
+  WithLp.toLp 2 (pullbackCLM Subtype.val (WithLp.ofLp p).1,
+    pullbackCLM Subtype.val (WithLp.ofLp p).2)
 
 lemma measurable_pairPullback (wt : α → ℝ) : Measurable (pairPullback (α := α) wt) :=
   measurable_toLp_prodMk
@@ -196,7 +286,7 @@ lemma measurable_pairPullback (wt : α → ℝ) : Measurable (pairPullback (α :
 lemma pairLaw_comp (wt : α → ℝ) :
     pairLaw (G₁.comp (Subtype.val : Support wt → α)) (G₂.comp Subtype.val)
       = (pairLaw G₁ G₂).map (pairPullback wt) := by
-  show P.map (pair (G₁.comp _) (G₂.comp _)) = (P.map (pair G₁ G₂)).map (pairPullback wt)
+  change P.map (pair (G₁.comp _) (G₂.comp _)) = (P.map (pair G₁ G₂)).map (pairPullback wt)
   rw [Measure.map_map (measurable_pairPullback wt) (measurable_pair G₁ G₂)]
   rfl
 
@@ -234,7 +324,7 @@ theorem wFreeEnergy_sub_le (hindep : G₁.U ⟂ᵢ[P] G₂.U) (wt : α → ℝ) 
     rw [pairLaw_comp, integral_map (measurable_pairPullback wt).aemeasurable hmeasF]
     refine le_trans (le_of_eq ?_) (hb t ht)
     refine integral_congr_ae (Filter.Eventually.of_forall fun p => ?_)
-    show guerraTrace (α := Support wt) (fun x y => K₁ x.val y.val) (fun x y => K₂ x.val y.val) n
+    change guerraTrace (α := Support wt) (fun x y => K₁ x.val y.val) (fun x y => K₂ x.val y.val) n
         (gaussianInterp t (pairPullback wt p) + shiftHam wt c)
       = wGuerraTrace wt K₁ K₂ n (gaussianInterp t p + c)
     rw [gaussianInterp_pairPullback, wGuerraTrace_eq wt hwt, shiftHam_add]
@@ -244,12 +334,12 @@ theorem wFreeEnergy_sub_le (hindep : G₁.U ⟂ᵢ[P] G₂.U) (wt : α → ℝ) 
   refine le_trans (le_of_eq ?_) h
   congr 1
   · refine integral_congr_ae (Filter.Eventually.of_forall fun ω => ?_)
-    show wFreeEnergy wt n (G₁.U ω + c)
+    change wFreeEnergy wt n (G₁.U ω + c)
       = free_energy_density (α := Support wt) n ((G₁.comp Subtype.val).U ω + shiftHam wt c)
     rw [wFreeEnergy_eq wt hwt, shiftHam_add]
     rfl
   · refine integral_congr_ae (Filter.Eventually.of_forall fun ω => ?_)
-    show wFreeEnergy wt n (G₂.U ω + c)
+    change wFreeEnergy wt n (G₂.U ω + c)
       = free_energy_density (α := Support wt) n ((G₂.comp Subtype.val).U ω + shiftHam wt c)
     rw [wFreeEnergy_eq wt hwt, shiftHam_add]
     rfl

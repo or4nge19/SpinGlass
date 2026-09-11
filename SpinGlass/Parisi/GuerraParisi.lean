@@ -418,14 +418,14 @@ theorem integral_logRatio_eq (ξ : ℝ → ℝ) (ms : Fin k → ℝ) (hsm : Stri
 
 /-- `𝔼_{H,z} ⟨1_{(α,γ) ≥ r}⟩_t` at fixed weights `w`. -/
 def pairAvg (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (r : ℕ) (w : CascadeWeights k) (t : ℝ) : ℝ :=
-  ∫ ω, gibbsPair N k r (hamG N k t h ω.1 ω.2.1) w ω.2.2
+  ∫ ω, gibbsPair k r (hamG N k t h ω.1 ω.2.1) w ω.2.2
     ∂(gaussField N (overlapCovMatrix N ξ)).prod
       (marksLaw N k (parisiVar ξ qs 0) fun p => parisiVar ξ qs (p.val + 1))
 
 /-- Joint measurability of the pair fraction in `(w, t)` and the disorder and marks. -/
 lemma measurable_gibbsPair_hamG_wt (r : ℕ) (h : ℝ) :
     Measurable fun q : (CascadeWeights k × ℝ) × (EnergySpace N × MarksSpace N k) =>
-      gibbsPair N k r (hamG N k q.1.2 h q.2.1 q.2.2.1) q.1.1 q.2.2.2 := by
+      gibbsPair k r (hamG N k q.1.2 h q.2.1 q.2.2.1) q.1.1 q.2.2.2 := by
   have hm : Measurable fun q : (CascadeWeights k × ℝ) × (EnergySpace N × MarksSpace N k) =>
       ((q.1.2, q.2.1, q.2.2.1), (q.1.1, q.2.2.2)) :=
     ((measurable_snd.comp measurable_fst).prodMk ((measurable_fst.comp measurable_snd).prodMk
@@ -438,7 +438,7 @@ lemma measurable_gibbsPair_hamG_wt (r : ℕ) (h : ℝ) :
 /-- Joint measurability of the pair fraction in the weights and the disorder and marks. -/
 lemma measurable_gibbsPair_hamG_w (r : ℕ) (t h : ℝ) :
     Measurable fun q : CascadeWeights k × (EnergySpace N × MarksSpace N k) =>
-      gibbsPair N k r (hamG N k t h q.2.1 q.2.2.1) q.1 q.2.2.2 := by
+      gibbsPair k r (hamG N k t h q.2.1 q.2.2.1) q.1 q.2.2.2 := by
   have hm : Measurable fun q : CascadeWeights k × (EnergySpace N × MarksSpace N k) =>
       ((t, q.2.1, q.2.2.1), (q.1, q.2.2.2)) :=
     (measurable_const.prodMk ((measurable_fst.comp measurable_snd).prodMk
@@ -451,7 +451,7 @@ lemma measurable_gibbsPair_hamG_w (r : ℕ) (t h : ℝ) :
 /-- The pair fraction in the disorder and the marks, at fixed `(t, H, z₀)` and the weights. -/
 lemma measurable_gibbsPair_hamG_wz (r : ℕ) (t h : ℝ) (H : EnergySpace N) (z₀ : Fin N → ℝ) :
     Measurable fun q' : CascadeWeights k × CascadeMarks (Fin N → ℝ) k =>
-      gibbsPair N k r (hamG N k t h H z₀) q'.1 q'.2 := by
+      gibbsPair k r (hamG N k t h H z₀) q'.1 q'.2 := by
   have := (measurable_gibbsPair_hamG N k r h).comp
     (measurable_const.prodMk measurable_id :
       Measurable fun q' : CascadeWeights k × CascadeMarks (Fin N → ℝ) k => ((t, H, z₀), q'))
@@ -471,10 +471,10 @@ theorem integral_pairAvg (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ)
   have hle : ∀ i, ms i ≤ 1 := fun i => (hlt i).le
   have hmeas := measurable_gibbsPair_hamG_w N k r t h
   have hg : Integrable (fun q : CascadeWeights k × (EnergySpace N × MarksSpace N k) =>
-      gibbsPair N k r (hamG N k t h q.2.1 q.2.2.1) q.1 q.2.2.2) (Pw.prod (Pz.prod (marksLaw N k v₀ vs))) :=
+      gibbsPair k r (hamG N k t h q.2.1 q.2.2.1) q.1 q.2.2.2) (Pw.prod (Pz.prod (marksLaw N k v₀ vs))) :=
     Integrable.of_bound hmeas.aestronglyMeasurable 1 (Filter.Eventually.of_forall fun q => by
-      rw [Real.norm_eq_abs, abs_of_nonneg (gibbsPair_nonneg N k r _ _ _)]
-      exact gibbsPair_le_one N k r (measurable_hamG' N k t h _ _) _ _)
+      rw [Real.norm_eq_abs, abs_of_nonneg (gibbsPair_nonneg k r _ _ _)]
+      exact gibbsPair_le_one k r (measurable_hamG' N k t h _ _) _ _)
   unfold pairAvg
   rw [← integral_prod _ hg]
   -- swap `w` with `(H, z₀)`
@@ -488,47 +488,18 @@ theorem integral_pairAvg (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ)
             ((p.2.1, (p.1.1, (p.1.2, p.2.2))) : CascadeWeights k × (EnergySpace N × MarksSpace N k))) := by
     unfold marksLaw
     exact Measure.prod_swap_left₄ Pw Pz P₀ Pmk
-  have hg' : Integrable (fun p : (EnergySpace N × (Fin N → ℝ)) × (CascadeWeights k × CascadeMarks (Fin N → ℝ) k) =>
-      gibbsPair N k r (hamG N k t h p.1.1 p.1.2) p.2.1 p.2.2) ((Pz.prod P₀).prod (Pw.prod Pmk)) := by
+  have hg' : Integrable (fun p : (EnergySpace N × (Fin N → ℝ))
+        × (CascadeWeights k × CascadeMarks (Fin N → ℝ) k) =>
+      gibbsPair k r (hamG N k t h p.1.1 p.1.2) p.2.1 p.2.2) ((Pz.prod P₀).prod (Pw.prod Pmk)) := by
     have := (integrable_map_measure hmeas.aestronglyMeasurable hφ.aemeasurable).1 (hswap ▸ hg)
     exact this
   rw [hswap, integral_map hφ.aemeasurable hmeas.aestronglyMeasurable, integral_prod _ hg']
   -- Proposition 14.3.3 at fixed `(H, z₀)`
   have hinner : ∀ a : EnergySpace N × (Fin N → ℝ),
-      ∫ q', gibbsPair N k r (hamG N k t h a.1 a.2) q'.1 q'.2 ∂Pw.prod Pmk = 1 - mExt ms r := by
-    intro a
-    have hG : Measurable (hamG N k t h a.1 a.2) := measurable_hamG' N k t h a.1 a.2
-    have hQm : Measurable fun ω : CascadeSpace (Fin N → ℝ) k =>
-        cascadeSq k r (hamG N k t h a.1 a.2) ω
-          * (cascadeSum k (hamG N k t h a.1 a.2) ω)⁻¹ ^ 2 :=
-      (measurable_cascadeSq k r hG).mul ((measurable_cascadeSum k hG).inv.pow_const 2)
-    have hae : ∀ᵐ ω ∂cascadeLaw k ms (gaussianMarks N k vs),
-        cascadeSq k r (hamG N k t h a.1 a.2) ω
-          * (cascadeSum k (hamG N k t h a.1 a.2) ω)⁻¹ ^ 2 < ∞ :=
-      Filter.Eventually.of_forall fun ω =>
-        lt_of_le_of_lt (cascadeSq_mul_inv_sq_le_one k r hG ω) ENNReal.one_lt_top
-    have e1 : (∫ ω, (cascadeSq k r (hamG N k t h a.1 a.2) ω
-            * (cascadeSum k (hamG N k t h a.1 a.2) ω)⁻¹ ^ 2).toReal
-          ∂cascadeLaw k ms (gaussianMarks N k vs))
-        = ∫ q', gibbsPair N k r (hamG N k t h a.1 a.2) q'.1 q'.2 ∂Pw.prod Pmk := by
-      have hmap : (∫ ω, (cascadeSq k r (hamG N k t h a.1 a.2) ω
-              * (cascadeSum k (hamG N k t h a.1 a.2) ω)⁻¹ ^ 2).toReal
-            ∂(Pw.prod Pmk).map (cascadeZip k))
-          = ∫ q', (cascadeSq k r (hamG N k t h a.1 a.2) (cascadeZip k q')
-              * (cascadeSum k (hamG N k t h a.1 a.2) (cascadeZip k q'))⁻¹ ^ 2).toReal
-            ∂Pw.prod Pmk :=
-        integral_map (measurable_cascadeZip k).aemeasurable
-          (ENNReal.measurable_toReal.comp hQm).aestronglyMeasurable
-      rw [cascadeLaw_eq_map_cascadeZip]
-      exact hmap
-    have hnn : (0 : ℝ) ≤ 1 - mExt ms r := by
-      have := mExt_le_one (ms := ms) (fun i => (hlt i).le) r
-      linarith
-    rw [← e1, integral_toReal hQm.aemeasurable hae,
-      lintegral_cascadeSq_mul_inv_sq k ms (gaussianMarks N k vs) hG
-        (fun zs => hamG_pos N k t h a.1 a.2 zs) hsm hpos hlt
-        (cascadeRec_hamG_ne_top N k ms vs hpos hle t h a.1 a.2) r,
-      ENNReal.toReal_ofReal hnn]
+      ∫ q', gibbsPair k r (hamG N k t h a.1 a.2) q'.1 q'.2 ∂Pw.prod Pmk = 1 - mExt ms r := fun a =>
+    integral_gibbsPair_eq k ms (gaussianMarks N k vs) (measurable_hamG' N k t h a.1 a.2)
+      (fun zs => hamG_pos N k t h a.1 a.2 zs) hsm hpos hlt
+      (cascadeRec_hamG_ne_top N k ms vs hpos hle t h a.1 a.2) r
   simp_rw [hinner]
   rw [integral_const, probReal_univ, one_smul]
 
@@ -547,32 +518,32 @@ lemma abs_pairAvg_le_one (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ)
     (μ := (gaussField N (overlapCovMatrix N ξ)).prod
       (marksLaw N k (parisiVar ξ qs 0) fun p => parisiVar ξ qs (p.val + 1)))
     (f := fun ω : EnergySpace N × MarksSpace N k =>
-      gibbsPair N k r (hamG N k t h ω.1 ω.2.1) w ω.2.2)
+      gibbsPair k r (hamG N k t h ω.1 ω.2.1) w ω.2.2)
     (Filter.Eventually.of_forall fun ω => by
-      rw [Real.norm_eq_abs, abs_of_nonneg (gibbsPair_nonneg N k r _ _ _)]
-      exact gibbsPair_le_one N k r (measurable_hamG' N k t h ω.1 ω.2.1) _ _)
+      rw [Real.norm_eq_abs, abs_of_nonneg (gibbsPair_nonneg k r _ _ _)]
+      exact gibbsPair_le_one k r (measurable_hamG' N k t h ω.1 ω.2.1) _ _)
   rwa [Real.norm_eq_abs, probReal_univ, mul_one] at this
 
 lemma pairAvg_nonneg (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (r : ℕ)
     (w : CascadeWeights k) (t : ℝ) : 0 ≤ pairAvg N k ξ qs h r w t :=
-  integral_nonneg fun _ => gibbsPair_nonneg N k r _ _ _
+  integral_nonneg fun _ => gibbsPair_nonneg k r _ _ _
 
 /-- The pair fraction is integrable in the disorder and the marks. -/
 lemma integrable_gibbsPair (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (r : ℕ)
     (w : CascadeWeights k) (t : ℝ) :
     Integrable (fun ω : EnergySpace N × MarksSpace N k =>
-        gibbsPair N k r (hamG N k t h ω.1 ω.2.1) w ω.2.2)
+        gibbsPair k r (hamG N k t h ω.1 ω.2.1) w ω.2.2)
       ((gaussField N (overlapCovMatrix N ξ)).prod
         (marksLaw N k (parisiVar ξ qs 0) fun p => parisiVar ξ qs (p.val + 1))) :=
   Integrable.of_bound (measurable_gibbsPair_hamG' N k r t h w).aestronglyMeasurable 1
     (Filter.Eventually.of_forall fun ω => by
-      rw [Real.norm_eq_abs, abs_of_nonneg (gibbsPair_nonneg N k r _ _ _)]
-      exact gibbsPair_le_one N k r (measurable_hamG' N k t h ω.1 ω.2.1) _ _)
+      rw [Real.norm_eq_abs, abs_of_nonneg (gibbsPair_nonneg k r _ _ _)]
+      exact gibbsPair_le_one k r (measurable_hamG' N k t h ω.1 ω.2.1) _ _)
 
 lemma pairAvg_le_one (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (r : ℕ)
     (w : CascadeWeights k) (t : ℝ) : pairAvg N k ξ qs h r w t ≤ 1 := by
   have := integral_mono (integrable_gibbsPair N k ξ qs h r w t) (integrable_const (1 : ℝ))
-    fun ω => gibbsPair_le_one N k r (measurable_hamG' N k t h ω.1 ω.2.1) _ _
+    fun ω => gibbsPair_le_one k r (measurable_hamG' N k t h ω.1 ω.2.1) _ _
   rwa [integral_const, probReal_univ, one_smul] at this
 
 /-- **The bound of the interpolation in terms of the pair averages** (Talagrand's (14.75)). -/
@@ -582,21 +553,21 @@ lemma guerraBound_eq (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (w 
         + (1 / 2) * ∑ r ∈ Finset.range (k + 1), parisiTheta ξ (qExt qs (r + 1))
             * (pairAvg N k ξ qs h r w t - pairAvg N k ξ qs h (r + 1) w t) := by
   have hint : ∀ r : ℕ, Integrable (fun ω : EnergySpace N × MarksSpace N k =>
-      gibbsPair N k r (hamG N k t h ω.1 ω.2.1) w ω.2.2)
+      gibbsPair k r (hamG N k t h ω.1 ω.2.1) w ω.2.2)
       ((gaussField N (overlapCovMatrix N ξ)).prod
         (marksLaw N k (parisiVar ξ qs 0) fun p => parisiVar ξ qs (p.val + 1))) := fun r =>
     integrable_gibbsPair N k ξ qs h r w t
   have hsum : Integrable (fun ω : EnergySpace N × MarksSpace N k =>
       ∑ r ∈ Finset.range (k + 1), parisiTheta ξ (qExt qs (r + 1))
-        * (gibbsPair N k r (hamG N k t h ω.1 ω.2.1) w ω.2.2
-          - gibbsPair N k (r + 1) (hamG N k t h ω.1 ω.2.1) w ω.2.2))
+        * (gibbsPair k r (hamG N k t h ω.1 ω.2.1) w ω.2.2
+          - gibbsPair k (r + 1) (hamG N k t h ω.1 ω.2.1) w ω.2.2))
       ((gaussField N (overlapCovMatrix N ξ)).prod
         (marksLaw N k (parisiVar ξ qs 0) fun p => parisiVar ξ qs (p.val + 1))) :=
     integrable_finsetSum _ fun r _ => ((hint r).sub (hint (r + 1))).const_mul _
   have hterm : ∀ r : ℕ, Integrable (fun ω : EnergySpace N × MarksSpace N k =>
       parisiTheta ξ (qExt qs (r + 1))
-        * (gibbsPair N k r (hamG N k t h ω.1 ω.2.1) w ω.2.2
-          - gibbsPair N k (r + 1) (hamG N k t h ω.1 ω.2.1) w ω.2.2))
+        * (gibbsPair k r (hamG N k t h ω.1 ω.2.1) w ω.2.2
+          - gibbsPair k (r + 1) (hamG N k t h ω.1 ω.2.1) w ω.2.2))
       ((gaussField N (overlapCovMatrix N ξ)).prod
         (marksLaw N k (parisiVar ξ qs 0) fun p => parisiVar ξ qs (p.val + 1))) := fun r =>
     ((hint r).sub (hint (r + 1))).const_mul _
@@ -724,7 +695,7 @@ theorem mixedPSpinFreeEnergy_le_parisiFunctional (hN : 0 < N) (ξ : ℝ → ℝ)
           rw [Real.norm_eq_abs]; exact abs_guerraBound_le N k ξ qs h q.1 q.2)
     have hIP := hswap.integral_prod_left
     refine hIP.congr (Filter.Eventually.of_forall fun w => ?_)
-    show (∫ y in Set.Ioc (0 : ℝ) 1, guerraBound N k ξ qs h w y)
+    change (∫ y in Set.Ioc (0 : ℝ) 1, guerraBound N k ξ qs h w y)
       = ∫ t in (0 : ℝ)..1, guerraBound N k ξ qs h w t
     exact (intervalIntegral.integral_of_le (zero_le_one' ℝ)).symm
   -- the fixed-weights bound, almost surely in the weights
@@ -788,7 +759,7 @@ theorem skFreeEnergy_le_parisiFunctional (hN : 0 < N) (β h : ℝ) (qs : Fin (k 
     (hqmono : Monotone qs) (hq0 : 0 ≤ qs 0) (hq1 : qs (Fin.last k) ≤ 1) (ms : Fin k → ℝ)
     (hsm : StrictMono ms) (hpos : ∀ i, 0 < ms i) (hlt : ∀ i, ms i < 1) :
     skFreeEnergy N β h ≤ parisiFunctional (skCovXi β) h ms qs := by
-  show mixedPSpinFreeEnergy N (skCovXi β) h ≤ _
+  change mixedPSpinFreeEnergy N (skCovXi β) h ≤ _
   exact mixedPSpinFreeEnergy_le_parisiFunctional_of_convexOn N k hN (skCovXi β)
     (posSemidef_skCovMatrix N β) (convexOn_univ_skCovXi β) (differentiable_skCovXi β)
     (deriv_skCovXi_zero β) qs hqmono hq0 hq1 ms hsm hpos hlt h

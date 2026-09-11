@@ -243,10 +243,13 @@ Frullani's integral (Vol. II §13.1). On top of it, the **Poisson–Dirichlet ca
 §14.2 by recursion on the number of levels: Proposition 14.2.2 (the moments of a cascade sum, with
 an explicit constant, unconditionally in `ℝ≥0∞`) and **Theorem 14.2.1**
 `𝔼 log ∑_α v_α exp F(α) = F₁` with Talagrand's recursion (14.5), under the single hypothesis
-`𝔼 exp F < ∞`. The **Mecke formula** `𝔼 ∑_{x∈N} f(x,N) = ∫ 𝔼 f(x, N+δ_x) dΛ(x)` for any s-finite
-intensity (from the invariance of infinite products under resampling one coordinate, new for
-Mathlib), and through it **Theorem 13.1.6**: the identities (13.13), (13.14) and
-`𝔼 ∑ v_α² = 1 - m`, with the Gamma-function constant `m c_m = Γ(1-m)`; and for the cascades
+`𝔼 exp F < ∞`. The **Mecke equation** `𝔼 ∑_{x∈N} f(x,N) = ∫ 𝔼 f(x, N+δ_x) dΛ(x)` for any s-finite
+intensity, in its fundamental **reduced** (Palm) form `𝔼 ∑_{x∈N} g(x, N∖x) = ∫ 𝔼 g(x,N) dΛ(x)`
+(deleting a point of a sample is again a sample), its off-diagonal bivariate iterate
+`𝔼 ∑_{x≠y∈N} f(x,y,N) = ∫∫ 𝔼 f(x,y,N+δ_x+δ_y)`, and `𝔼 N^{(2)} = Λ ⊗ Λ` for the second factorial
+measure (all new for Mathlib); through them **Theorem 13.1.6** in full, (13.13)–(13.17), with
+(13.15) `𝔼 (∑_{α≠γ} v_α v_γ U_α W_γ)/(∑ v_α V_α)² = m 𝔼[U V^{m-1}] 𝔼[W V^{m-1}]/(𝔼 V^m)²` needing
+no finiteness of `U, W`, and the constant `m c_m = Γ(1-m)`; and for the cascades
 **Proposition 14.3.3**, `𝔼⟨1_{(α,γ)=r}⟩ = m_r − m_{r−1}`, by induction on the levels from a
 general-exponent (13.14), with no differentiation in Talagrand's parameter. Guerra's
 interpolation derivative and comparison bound now hold on an arbitrary finite state space with an
@@ -313,18 +316,64 @@ formula of §13.1. Throughout, the hypothesis on `G = exp F` is exactly Talagran
 `𝔼 exp F < ∞`, and not boundedness — which matters, since the interpolating free energies to which
 §14.5 applies these identities are unbounded.
 
+The **second-order identities of §14.3** — (14.32), (14.33), Proposition 14.3.2 (14.37) and
+**Theorem 14.3.5** (14.47) — are now proved (`CascadeSecondMoment`, `CascadePair`), all as the
+case `a = 0` of statements with a free exponent. Theorem 14.3.5 is the version for a general
+function of the *pair* of mark sequences along two branches, against the coupled tilted average
+over two copies of the marks that agree below level `r` and are independent above it; Talagrand
+polarizes from the product case and then approximates, whereas here the induction runs directly
+for a general function, so no approximation argument is needed, and his (14.42) — the square of a
+conditional expectation as an expectation over two independent copies — becomes a consequence of
+the definitions.
+
+**Lemma 14.3.6 and Corollary 14.3.7** close the section. The coupled construction of two copies
+of the marks turns out to be an *ordinary* cascade on the pair mark space, whose mark law is the
+diagonal below level `r` and the product above it, and whose parameters are the halved sequence
+(14.48). Lemma 14.3.6 then says that the recursion of `F̂ = F¹ + F²` is the square of the
+recursion of `F`, and the coupled tilting weights are the single weight below level `r` and the
+product of the two weights above it. Corollary 14.3.7 follows: the coupled tilted average is the
+tilted average of that ordinary cascade, so (14.27) applies to it and rewrites the right-hand
+side of Theorem 14.3.5 as a cascade Gibbs average. That is the entry point of §14.5. The exponent has to be free because at the higher levels of the cascade the
+sub-partition functions enter with the power `m_p`. The proof is an induction on the number of
+levels from a new **one-level identity with two insertions**,
+`𝔼 (∑ u A)² (∑ u V)^{a-2} = K₀(a) (∫ A V^{m-1})² + K₂(a) ∫ A² V^{m-2}`, whose two constants are,
+relative to the moment `𝔼 (∑ u V)^a`, the complementary weights `(m-a)/(1-a)` and `(1-m)/(1-a)`.
+That identity in turn needed two general tools, both new: the **bivariate Mecke equation**
+(second-order Palm formula) for a Poisson point process, splitting a double sum over the points
+into its off-diagonal and diagonal parts, derived from the one-point formula applied twice — in a
+form stated at the level of the sample, which needs no measurability hypothesis beyond that of the
+integrand, because the inner integrals are taken against counting measures (at the level of
+`Measure E` the corresponding hypothesis is not available at all, the identity kernel not being
+s-finite); and
+the first-order **Palm–Campbell transform** of the Poisson–Dirichlet intensity, which converts
+each of the two inserted points of the off-diagonal term into a first-order factor. The
+off-diagonal term is proved for a general function of the *pair* of inserted marks, where it is
+an integral against the product of two copies of the first-order Palm measure — the form Theorem
+14.3.5 will need.
+
 Still to discharge (there is no statement layer of undischarged `Prop`s): the **lower half** of
 the Parisi formula. Talagrand's route to it stays inside Chapter 14 — Theorem 14.3.5 and
 Corollary 14.3.7 (the §14.3 identity with a general function of the coupled marks, of which the
 formalized Proposition 14.3.3 is the case `U ≡ 1`), the splitting `J_p = F_p¹ + F_p²` of
-Lemma 14.3.6, then §14.5–§14.10; with (14.27) in place the next steps there are the random-sign
-trick (14.33), giving Proposition 14.3.2, and the coupled construction giving Theorem 14.3.5. The
+Lemma 14.3.6, then §14.5–§14.10. Section 14.3 is complete through Corollary 14.3.7, and of §14.6
+Lemma 14.6.1 / (14.129) — the Guerra bound for **coupled copies** on `(Fin 2 → Σ_N) × A`, the
+constraint `R_{1,2} = u` imposed by zero weights, integrated into
+`𝔼 F_w(U+c) − 𝔼 F_w(V+c) ≤ ∫₀¹ b(t) dt` — and the interpolating field of (14.135) with the kernel
+of (14.127) and Talagrand's coupling (14.150)–(14.151), all built through one constructor — the
+image of a Gaussian field under a linear map (`GaussianField.mapCLM`), of which pullbacks,
+fields from independent coordinates and the pair field `H_N(σ¹)+H_N(σ²)` are instances; for its
+endpoint `s = 0`, the `λ`-trick, the site factorization (14.142) and Talagrand's `Y₀ = 2X₀`, the
+latter being Lemma 14.3.6(a) in raw coordinates (the cascade recursion commutes with a change of
+marks); the Gibbs marginalization to the branches, the pair fractions with their `M → ∞` limit,
+the level decomposition and Proposition 14.3.3 for the pair fraction are now generic in the
+configuration space, a constraint factor and the mark type, with the one-dimensional scheme as
+their instance. Next: the coupled branch weight and the assembly of Proposition 14.6.3 /
+(14.147), then §14.7–§14.10. The
 route does *not* need Chapter 15; Panchenko's ultrametricity
 (§15.6) and the Dovbysh–Sudakov representation (§15.9) are needed for the structure theory of
 Chapter 15 and give an alternative route via Aizenman–Sims–Starr (§15.8). Also open: Theorem
 14.4.4 (`ξ` convex on `ℝ⁺` only), the extension of (14.90) to `0 ≤ m₁ ≤ ⋯ ≤ m_k ≤ 1`, the Parisi
-measures of §14.11, the two-point identities (13.15)–(13.16), Gardner, and the Hopfield
-localization theorems and limits.
+measures of §14.11, Gardner, and the Hopfield localization theorems and limits.
 
 ## Build
 

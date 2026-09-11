@@ -238,6 +238,125 @@ theorem lintegral_cascadeSum_mul_rpow (k : ℕ) :
     rw [hnum]
     ring
 
+/-- **The `(m₀ - 1)`-moment of the marked weights of a cascade**: over the product of the first
+mark law and the law of the remaining levels,
+
+`∫ vA vG^{m₀-1} dη = 𝔼(W₁ ⋯ W_k (A/G)) · ∫ vG^{m₀} dη`,
+
+where `vA(z, ω) = ∑_α u*_α A(z, z_α)` and `vG(z, ω) = ∑_α u*_α G(z, z_α)`. This is the step of
+the induction in `lintegral_cascadeSum_mul_rpow` that converts the numerator produced by the
+one-level identity into the tilted average, isolated for reuse in the second-order identities. -/
+theorem lintegral_prod_cascadeSum_mul_rpow (k : ℕ) (ms : Fin (k + 1) → ℝ)
+    (μs : Fin (k + 1) → Measure T) [∀ i, IsProbabilityMeasure (μs i)]
+    {A G : (Fin (k + 1) → T) → ℝ≥0∞} (hA : Measurable A) (hG : Measurable G)
+    (hGpos : ∀ zs, 0 < G zs) (hfin : ∫⁻ zs, G zs ∂Measure.pi μs ≠ ∞)
+    (hsm : StrictMono ms) (hlt : ∀ i, ms i < 1) (hpos : ∀ i, 0 < ms i) :
+    ∫⁻ p : T × CascadeSpace T k, cascadeSum k (fun zs => A (Fin.cons p.1 zs)) p.2
+        * cascadeSum k (fun zs => G (Fin.cons p.1 zs)) p.2 ^ (ms 0 - 1)
+        ∂(μs 0).prod (cascadeLaw k (Fin.tail ms) (Fin.tail μs))
+      = cascadeTilt (k + 1) ms μs G (fun zs => A zs / G zs)
+        * ∫⁻ p : T × CascadeSpace T k, cascadeSum k (fun zs => G (Fin.cons p.1 zs)) p.2 ^ ms 0
+          ∂(μs 0).prod (cascadeLaw k (Fin.tail ms) (Fin.tail μs)) := by
+  have hm : 0 < ms 0 := hpos 0
+  have hm1 : ms 0 < 1 := hlt 0
+  have hsm' : StrictMono (Fin.cons (ms 0) (Fin.tail ms) : Fin (k + 1) → ℝ) := by
+    rw [Fin.cons_self_tail]
+    exact hsm
+  have hfinTail : ∀ᵐ z ∂μs 0,
+      ∫⁻ zs, G (Fin.cons z zs) ∂Measure.pi (Fin.tail μs) ≠ ∞ :=
+    ae_lintegral_pi_cons_ne_top k μs hG hfin
+  have hvA : Measurable fun p : T × CascadeSpace T k =>
+      cascadeSum k (fun zs => A (Fin.cons p.1 zs)) p.2 :=
+    measurable_cascadeSum_prod k (α := T) (G := fun z zs => A (Fin.cons z zs))
+      (hA.comp measurable_fin_cons)
+  have hvG : Measurable fun p : T × CascadeSpace T k =>
+      cascadeSum k (fun zs => G (Fin.cons p.1 zs)) p.2 :=
+    measurable_cascadeSum_prod k (α := T) (G := fun z zs => G (Fin.cons z zs))
+      (hG.comp measurable_fin_cons)
+  have hR : Measurable fun z => cascadeRec k (Fin.tail ms) (Fin.tail μs)
+      (fun zs => G (Fin.cons z zs)) := measurable_cascadeRec_cons k _ _ hG
+  have hQ : ∀ z, ∫⁻ ω', cascadeSum k (fun zs => G (Fin.cons z zs)) ω' ^ ms 0
+      ∂cascadeLaw k (Fin.tail ms) (Fin.tail μs)
+      = cascadeRec k (Fin.tail ms) (Fin.tail μs) (fun zs => G (Fin.cons z zs)) ^ ms 0
+        * cascadeConst k (ms 0) (Fin.tail ms) := fun z =>
+    lintegral_cascadeSum_rpow k (Fin.tail ms) (Fin.tail μs)
+      (hG.comp (measurable_fin_cons.comp (measurable_const.prodMk measurable_id)))
+      hm hsm' (fun i => hlt i.succ)
+  set R := cascadeRec (k + 1) ms μs G with hRdef
+  have hR0 : R ≠ 0 := (cascadeRec_pos (k + 1) ms μs hG hGpos hpos).ne'
+  have hRtop : R ≠ ∞ := cascadeRec_ne_top (k + 1) ms μs hG hpos (fun i => (hlt i).le) hfin
+  have hRm0 : R ^ ms 0 ≠ 0 := by
+    simpa using (ENNReal.rpow_pos_of_nonneg (pos_iff_ne_zero.2 hR0) hm.le).ne'
+  have hRmtop : R ^ ms 0 ≠ ∞ := ENNReal.rpow_ne_top_of_nonneg hm.le hRtop
+  have hκ : ∫⁻ p : T × CascadeSpace T k, cascadeSum k (fun zs => G (Fin.cons p.1 zs)) p.2 ^ ms 0
+        ∂(μs 0).prod (cascadeLaw k (Fin.tail ms) (Fin.tail μs))
+      = cascadeConst k (ms 0) (Fin.tail ms) * R ^ ms 0 := by
+    rw [lintegral_prod (fun p : T × CascadeSpace T k =>
+      cascadeSum k (fun zs => G (Fin.cons p.1 zs)) p.2 ^ ms 0) (hvG.pow_const _).aemeasurable]
+    simp_rw [hQ]
+    rw [lintegral_mul_const _ (hR.pow_const _), hRdef, cascadeRec_succ, ← ENNReal.rpow_mul,
+      one_div_mul_cancel hm.ne', ENNReal.rpow_one, mul_comm]
+  have hin : ∀ᵐ z ∂μs 0, ∫⁻ ω', cascadeSum k (fun zs => A (Fin.cons z zs)) ω'
+        * cascadeSum k (fun zs => G (Fin.cons z zs)) ω' ^ (ms 0 - 1)
+        ∂cascadeLaw k (Fin.tail ms) (Fin.tail μs)
+      = cascadeTilt k (Fin.tail ms) (Fin.tail μs) (fun zs => G (Fin.cons z zs))
+          (fun zs => A (Fin.cons z zs) / G (Fin.cons z zs))
+        * (cascadeRec k (Fin.tail ms) (Fin.tail μs) (fun zs => G (Fin.cons z zs)) ^ ms 0
+          * cascadeConst k (ms 0) (Fin.tail ms)) := by
+    filter_upwards [hfinTail] with z hz
+    have h := lintegral_cascadeSum_mul_rpow k (Fin.tail ms) (Fin.tail μs)
+      (A := fun zs => A (Fin.cons z zs)) (G := fun zs => G (Fin.cons z zs))
+      (hA.comp (measurable_fin_cons.comp (measurable_const.prodMk measurable_id)))
+      (hG.comp (measurable_fin_cons.comp (measurable_const.prodMk measurable_id)))
+      (fun zs => hGpos _) hz hm hsm' (fun i => hlt i.succ)
+    rw [hQ z] at h
+    exact h
+  have hTm : Measurable fun z => cascadeTilt k (Fin.tail ms) (Fin.tail μs)
+      (fun zs => G (Fin.cons z zs)) (fun zs => A (Fin.cons z zs) / G (Fin.cons z zs)) :=
+    measurable_cascadeTilt_prod k (Fin.tail ms) (Fin.tail μs)
+      (Gs := fun z zs => G (Fin.cons z zs))
+      (As := fun z zs => A (Fin.cons z zs) / G (Fin.cons z zs))
+      (hG.comp measurable_fin_cons)
+      ((hA.comp measurable_fin_cons).div (hG.comp measurable_fin_cons))
+  have hI : Measurable fun z => cascadeRec k (Fin.tail ms) (Fin.tail μs)
+      (fun zs => G (Fin.cons z zs)) ^ ms 0
+    * cascadeTilt k (Fin.tail ms) (Fin.tail μs) (fun zs => G (Fin.cons z zs))
+        (fun zs => A (Fin.cons z zs) / G (Fin.cons z zs)) := (hR.pow_const _).mul hTm
+  rw [lintegral_prod (fun p : T × CascadeSpace T k =>
+    cascadeSum k (fun zs => A (Fin.cons p.1 zs)) p.2
+      * cascadeSum k (fun zs => G (Fin.cons p.1 zs)) p.2 ^ (ms 0 - 1))
+    (hvA.mul (hvG.pow_const _)).aemeasurable]
+  rw [lintegral_congr_ae hin, cascadeTilt_succ, hκ]
+  have hW : ∀ z : T, cascadeW k ms μs G z
+        * cascadeTilt k (Fin.tail ms) (Fin.tail μs) (fun zs => G (Fin.cons z zs))
+            (fun zs => A (Fin.cons z zs) / G (Fin.cons z zs))
+      = (R ^ ms 0)⁻¹ * (cascadeRec k (Fin.tail ms) (Fin.tail μs)
+          (fun zs => G (Fin.cons z zs)) ^ ms 0
+        * cascadeTilt k (Fin.tail ms) (Fin.tail μs) (fun zs => G (Fin.cons z zs))
+            (fun zs => A (Fin.cons z zs) / G (Fin.cons z zs))) := by
+    intro z
+    rw [cascadeW, ENNReal.div_rpow_of_nonneg _ _ hm.le, div_eq_mul_inv]
+    ring
+  simp_rw [hW]
+  rw [lintegral_const_mul _ hI]
+  have hL : ∫⁻ z, cascadeTilt k (Fin.tail ms) (Fin.tail μs) (fun zs => G (Fin.cons z zs))
+          (fun zs => A (Fin.cons z zs) / G (Fin.cons z zs))
+        * (cascadeRec k (Fin.tail ms) (Fin.tail μs) (fun zs => G (Fin.cons z zs)) ^ ms 0
+          * cascadeConst k (ms 0) (Fin.tail ms)) ∂μs 0
+      = (∫⁻ z, cascadeRec k (Fin.tail ms) (Fin.tail μs) (fun zs => G (Fin.cons z zs)) ^ ms 0
+          * cascadeTilt k (Fin.tail ms) (Fin.tail μs) (fun zs => G (Fin.cons z zs))
+              (fun zs => A (Fin.cons z zs) / G (Fin.cons z zs)) ∂μs 0)
+        * cascadeConst k (ms 0) (Fin.tail ms) := by
+    rw [← lintegral_mul_const _ hI]
+    exact lintegral_congr fun z => by ring
+  rw [hL]
+  have halg : ∀ I : ℝ≥0∞,
+      ((R ^ ms 0)⁻¹ * I) * (cascadeConst k (ms 0) (Fin.tail ms) * R ^ ms 0)
+        = (I * cascadeConst k (ms 0) (Fin.tail ms)) * ((R ^ ms 0)⁻¹ * R ^ ms 0) := by
+    intro I
+    ring
+  rw [halg, ENNReal.inv_mul_cancel hRm0 hRmtop, mul_one]
+
 /-- **Talagrand's identity (14.26)–(14.27)**: for weights `u*_α G(z_α)`, the cascade Gibbs average
 of `A/G` is the tilted average `𝔼(W₁ ⋯ W_k (A/G))`. -/
 theorem lintegral_cascadeSum_div_cascadeSum : ∀ (k : ℕ) (ms : Fin k → ℝ) (μs : Fin k → Measure T)
@@ -400,5 +519,23 @@ theorem lintegral_cascadeSum_div_cascadeSum_const (k : ℕ) (ms : Fin k → ℝ)
     (fun _ => pos_iff_ne_zero.2 hc0) hfin hsm hpos hlt,
     cascadeTilt_const k ms μs hc0 hctop hpos (A := fun zs => A zs / c)
       (hA.div measurable_const)]
+
+/-- **`𝔼⟨U²⟩ = 𝔼(W₁ ⋯ W_k U²)`**, the identity Talagrand uses just after (14.30): for `k ≤ r` the
+tilted square is the cascade Gibbs average of `U²`, which is the term `p = k+1` of (14.32). -/
+theorem cascadeTiltSq_eq_lintegral_cascadeSum_div (k : ℕ) (ms : Fin k → ℝ)
+    (μs : Fin k → Measure T) [∀ i, IsProbabilityMeasure (μs i)] {A G : (Fin k → T) → ℝ≥0∞}
+    (hA : Measurable A) (hG : Measurable G) (hGpos : ∀ zs, 0 < G zs)
+    (hfin : ∫⁻ zs, G zs ∂Measure.pi μs ≠ ∞) (hsm : StrictMono ms) (hpos : ∀ i, 0 < ms i)
+    (hlt : ∀ i, ms i < 1) {r : ℕ} (hr : k ≤ r) :
+    cascadeTiltSq k r ms μs G (fun zs => A zs / G zs)
+      = ∫⁻ ω, cascadeSum k (fun zs => A zs ^ 2 / G zs) ω / cascadeSum k G ω
+          ∂cascadeLaw k ms μs := by
+  have hfun : (fun zs => (A zs / G zs) ^ 2) = fun zs => (A zs ^ 2 / G zs) / G zs := by
+    funext zs
+    simp only [div_eq_mul_inv, mul_pow]
+    ring
+  rw [cascadeTiltSq_of_le k r hr ms μs G (fun zs => A zs / G zs),
+    lintegral_cascadeSum_div_cascadeSum k ms μs (A := fun zs => A zs ^ 2 / G zs) (G := G)
+      ((hA.pow_const 2).div hG) hG hGpos hfin hsm hpos hlt, hfun]
 
 end ProbabilityTheory

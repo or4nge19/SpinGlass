@@ -32,6 +32,7 @@ open FiniteGibbs
 noncomputable section
 
 variable (N k : ℕ)
+variable {T : Type*} [MeasurableSpace T]
 
 /-! ### The prefix indicator on the truncated branches -/
 
@@ -101,24 +102,24 @@ lemma sum_theta_levels (θ : ℕ → ℝ) {L : ℕ} (hL : L ≤ k) :
 
 /-- The cascade pair fraction `Q_r / S²` of the sample `(w, z)` for the function `G` of the marks
 along the branches: `⟨1_{(α,γ) ≥ r}⟩` for the weights `u*_α G(z_α)`. -/
-def gibbsPair (r : ℕ) (G : (Fin k → Fin N → ℝ) → ℝ≥0∞) (w : CascadeWeights k)
-    (z : CascadeMarks (Fin N → ℝ) k) : ℝ :=
+def gibbsPair (r : ℕ) (G : (Fin k → T) → ℝ≥0∞) (w : CascadeWeights k)
+    (z : CascadeMarks T k) : ℝ :=
   (cascadeSq k r G (cascadeZip k (w, z)) * (cascadeSum k G (cascadeZip k (w, z)))⁻¹ ^ 2).toReal
 
-lemma gibbsPair_nonneg (r : ℕ) (G : (Fin k → Fin N → ℝ) → ℝ≥0∞) (w : CascadeWeights k)
-    (z : CascadeMarks (Fin N → ℝ) k) : 0 ≤ gibbsPair N k r G w z :=
+lemma gibbsPair_nonneg (r : ℕ) (G : (Fin k → T) → ℝ≥0∞) (w : CascadeWeights k)
+    (z : CascadeMarks T k) : 0 ≤ gibbsPair k r G w z :=
   ENNReal.toReal_nonneg
 
-lemma gibbsPair_le_one (r : ℕ) {G : (Fin k → Fin N → ℝ) → ℝ≥0∞} (hG : Measurable G)
-    (w : CascadeWeights k) (z : CascadeMarks (Fin N → ℝ) k) : gibbsPair N k r G w z ≤ 1 := by
+lemma gibbsPair_le_one (r : ℕ) {G : (Fin k → T) → ℝ≥0∞} (hG : Measurable G)
+    (w : CascadeWeights k) (z : CascadeMarks T k) : gibbsPair k r G w z ≤ 1 := by
   unfold gibbsPair
   have := ENNReal.toReal_mono ENNReal.one_ne_top
     (cascadeSq_mul_inv_sq_le_one k r hG (cascadeZip k (w, z)))
   rwa [ENNReal.toReal_one] at this
 
 /-- The pair fraction restricted to the branches of the tree truncated at `M`. -/
-def truncPair (M r : ℕ) (G : (Fin k → Fin N → ℝ) → ℝ≥0∞) (w : CascadeWeights k)
-    (z : CascadeMarks (Fin N → ℝ) k) : ℝ :=
+def truncPair (M r : ℕ) (G : (Fin k → T) → ℝ≥0∞) (w : CascadeWeights k)
+    (z : CascadeMarks T k) : ℝ :=
   ((∑ α : TruncBranch k M, ∑ γ : TruncBranch k M,
       prefixEq k r (truncBranchCoe k M α) (truncBranchCoe k M γ)
         * (branchWeight k w (truncBranchCoe k M α) * branchWeight k w (truncBranchCoe k M γ)
@@ -126,12 +127,14 @@ def truncPair (M r : ℕ) (G : (Fin k → Fin N → ℝ) → ℝ≥0∞) (w : Ca
     * (∑ α : TruncBranch k M,
         branchWeight k w (truncBranchCoe k M α) * G (branchMarks k z (truncBranchCoe k M α)))⁻¹ ^ 2).toReal
 
-lemma truncPair_nonneg (M r : ℕ) (G : (Fin k → Fin N → ℝ) → ℝ≥0∞) (w : CascadeWeights k)
-    (z : CascadeMarks (Fin N → ℝ) k) : 0 ≤ truncPair N k M r G w z :=
+omit [MeasurableSpace T] in
+lemma truncPair_nonneg (M r : ℕ) (G : (Fin k → T) → ℝ≥0∞) (w : CascadeWeights k)
+    (z : CascadeMarks T k) : 0 ≤ truncPair k M r G w z :=
   ENNReal.toReal_nonneg
 
-lemma truncPair_le_one (M r : ℕ) (G : (Fin k → Fin N → ℝ) → ℝ≥0∞) (w : CascadeWeights k)
-    (z : CascadeMarks (Fin N → ℝ) k) : truncPair N k M r G w z ≤ 1 := by
+omit [MeasurableSpace T] in
+lemma truncPair_le_one (M r : ℕ) (G : (Fin k → T) → ℝ≥0∞) (w : CascadeWeights k)
+    (z : CascadeMarks T k) : truncPair k M r G w z ≤ 1 := by
   unfold truncPair
   set S := ∑ α : TruncBranch k M,
     branchWeight k w (truncBranchCoe k M α) * G (branchMarks k z (truncBranchCoe k M α)) with hS
@@ -191,11 +194,11 @@ lemma tendsto_sum_sum_truncBranch (f : (Fin k → ℕ × ℕ) → (Fin k → ℕ
 
 /-- **The truncated pair fractions converge to the pair fraction of the cascade** whenever
 `0 < S < ∞`. -/
-theorem tendsto_truncPair (r : ℕ) {G : (Fin k → Fin N → ℝ) → ℝ≥0∞} (hG : Measurable G)
-    (w : CascadeWeights k) (z : CascadeMarks (Fin N → ℝ) k)
+theorem tendsto_truncPair (r : ℕ) {G : (Fin k → T) → ℝ≥0∞} (hG : Measurable G)
+    (w : CascadeWeights k) (z : CascadeMarks T k)
     (hS0 : cascadeSum k G (cascadeZip k (w, z)) ≠ 0)
     (hS : cascadeSum k G (cascadeZip k (w, z)) ≠ ∞) :
-    Tendsto (fun M => truncPair N k M r G w z) atTop (𝓝 (gibbsPair N k r G w z)) := by
+    Tendsto (fun M => truncPair k M r G w z) atTop (𝓝 (gibbsPair k r G w z)) := by
   have hQ := tendsto_sum_sum_truncBranch k fun α γ => prefixEq k r α γ
     * (branchWeight k w α * branchWeight k w γ * (G (branchMarks k z α) * G (branchMarks k z γ)))
   have hSM := tendsto_sum_truncBranch k fun α => branchWeight k w α * G (branchMarks k z α)
@@ -217,6 +220,33 @@ theorem tendsto_truncPair (r : ℕ) {G : (Fin k → Fin N → ℝ) → ℝ≥0�
   have hfin : cascadeSq k r G (cascadeZip k (w, z)) * (cascadeSum k G (cascadeZip k (w, z)))⁻¹ ^ 2
       ≠ ∞ := ENNReal.mul_ne_top hQfin hinv
   exact (ENNReal.tendsto_toReal hfin).comp hmul
+
+/-- **Proposition 14.3.3 for the pair fraction**, under the product of the weights law and the
+marks law: `𝔼 ⟨1_{(α,γ) ≥ r}⟩ = 1 - m_r` for every branch weight `G` with `𝔼 G < ∞` in the sense
+of (14.4). This is the generic core of Talagrand's (14.76) and of its coupled version (14.137). -/
+theorem integral_gibbsPair_eq [Nonempty T] (ms : Fin k → ℝ) (μs : Fin k → Measure T)
+    [∀ i, IsProbabilityMeasure (μs i)] {G : (Fin k → T) → ℝ≥0∞} (hG : Measurable G)
+    (hGpos : ∀ zs, 0 < G zs) (hsm : StrictMono ms) (hpos : ∀ i, 0 < ms i) (hlt : ∀ i, ms i < 1)
+    (hfin : cascadeRec k ms μs G ≠ ∞) (r : ℕ) :
+    ∫ q, gibbsPair k r G q.1 q.2 ∂(cascadeWeightsLaw k ms).prod (cascadeMarksLaw k μs)
+      = 1 - mExt ms r := by
+  have hQm : Measurable fun ω : CascadeSpace T k =>
+      cascadeSq k r G ω * (cascadeSum k G ω)⁻¹ ^ 2 :=
+    (measurable_cascadeSq k r hG).mul ((measurable_cascadeSum k hG).inv.pow_const 2)
+  have hae : ∀ᵐ ω ∂cascadeLaw k ms μs, cascadeSq k r G ω * (cascadeSum k G ω)⁻¹ ^ 2 < ∞ :=
+    Filter.Eventually.of_forall fun ω =>
+      lt_of_le_of_lt (cascadeSq_mul_inv_sq_le_one k r hG ω) ENNReal.one_lt_top
+  have e1 : (∫ ω, (cascadeSq k r G ω * (cascadeSum k G ω)⁻¹ ^ 2).toReal ∂cascadeLaw k ms μs)
+      = ∫ q, gibbsPair k r G q.1 q.2 ∂(cascadeWeightsLaw k ms).prod (cascadeMarksLaw k μs) := by
+    rw [cascadeLaw_eq_map_cascadeZip]
+    exact integral_map (measurable_cascadeZip k).aemeasurable
+      (ENNReal.measurable_toReal.comp hQm).aestronglyMeasurable
+  have hnn : (0 : ℝ) ≤ 1 - mExt ms r := by
+    have := mExt_le_one (ms := ms) (fun i => (hlt i).le) r
+    linarith
+  rw [← e1, integral_toReal hQm.aemeasurable hae,
+    lintegral_cascadeSq_mul_inv_sq k ms μs hG hGpos hsm hpos hlt hfin r,
+    ENNReal.toReal_ofReal hnn]
 
 /-! ### The bound by levels -/
 
@@ -269,41 +299,42 @@ lemma sum_pair_levels_div {A : Type*} [Fintype A] (X : A → A → ℝ) (L : A �
   conv_lhs => enter [2, α]; rw [Finset.sum_comm]
   exact Finset.sum_comm
 
-/-- **Talagrand's reduction of `⟨θ(q_{(α,γ)})⟩_t` to the cascade pair fractions** (the computation
-leading to (14.76)), for the truncated tree: the integrand of the bound is `levelBound` evaluated
-at the truncated pair fractions of `exp F_t`. -/
-theorem treeBoundIntegrand_eq_levelBound (M : ℕ) (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (c₀ t h : ℝ)
-    (w : CascadeWeights k) (hw : ∀ α, branchWeight k w α ≠ ∞)
-    (ω : EnergySpace N × MarksSpace N k) :
-    treeBoundIntegrand (branchWt (N := N) (truncWt k M w)) c₀
-        (fun x y => parisiTheta ξ (treeOverlap qs x.2 y.2)) (truncHam N k M t h ω)
-      = levelBound k c₀ (fun r => parisiTheta ξ (qExt qs (r + 1)))
-          (fun r => truncPair N k M r (hamG N k t h ω.1 ω.2.1) w ω.2.2) := by
+omit [MeasurableSpace T] in
+/-- **The trace-bound integrand by levels, for weights `u_α c_x` on `X × A_M`**: if the branch
+weight `G` restricted to the truncated branches is the partial partition function
+`Z_α(c) = ∑_x c_x e^{-H(x,α)}` and `u_α` is the truncated cascade weight, then for any function
+`θ` of the level `(α, γ)`,
+
+`(1/2) c₀ + (1/2) ⟨θ((α,γ))⟩_H = levelBound c₀ θ (r ↦ truncPair_r)`.
+
+The one-dimensional scheme is the case `c = 1` (`treeBoundIntegrand_eq_levelBound`); the coupled
+copies take `c = 1_{R_{1,2} = u}`. -/
+theorem treeBoundIntegrand_prod_eq_levelBound {X : Type*} [Fintype X] (M : ℕ)
+    (c : X → ℝ) (H : FiniteGibbs.EnergySpace (X × TruncBranch k M)) (c₀ : ℝ) (θ : ℕ → ℝ)
+    (w : CascadeWeights k) (hw : ∀ α, branchWeight k w α ≠ ∞) (z : CascadeMarks T k)
+    (G : (Fin k → T) → ℝ≥0∞)
+    (hG : ∀ α : TruncBranch k M, G (branchMarks k z (truncBranchCoe k M α))
+      = ENNReal.ofReal (wCondZ c H α))
+    (hZnn : ∀ α : TruncBranch k M, 0 ≤ wCondZ c H α) :
+    treeBoundIntegrand (fun p : X × TruncBranch k M => truncWt k M w p.2 * c p.1) c₀
+        (fun x y => θ (branchLevel x.2 y.2)) H
+      = levelBound k c₀ θ (fun r => truncPair k M r G w z) := by
   classical
   unfold treeBoundIntegrand levelBound
   congr 1
-  have hpair := sum_wGibbs_pair_eq N k (truncWt k M w) t h ω
-    (fun a b => parisiTheta ξ (treeOverlap qs a b))
+  have hpair := sum_wGibbs_prod_pair (truncWt k M w) c H (fun a b => θ (branchLevel a b))
   beta_reduce at hpair ⊢
   rw [hpair]
   congr 1
   set u : TruncBranch k M → ℝ := truncWt k M w with hu
-  set Z : TruncBranch k M → ℝ := fun α => branchZ N k t h ω.1 ω.2 (truncBranchCoe k M α) with hZ
+  set Z : TruncBranch k M → ℝ := fun α => wCondZ c H α with hZ
   set D : ℝ := ∑ α, u α * Z α with hD
-  set θ : ℕ → ℝ := fun r => parisiTheta ξ (qExt qs (r + 1)) with hθ
   set pe : ℕ → TruncBranch k M → TruncBranch k M → ℝ :=
     fun r α γ => if r ≤ branchLevel α γ then (1 : ℝ) else 0 with hpe
   have hwfin : ∀ α : TruncBranch k M, branchWeight k w (truncBranchCoe k M α) ≠ ∞ :=
     fun α => hw _
-  have hGZ : ∀ α : TruncBranch k M,
-      hamG N k t h ω.1 ω.2.1 (branchMarks k ω.2.2 (truncBranchCoe k M α)) = ENNReal.ofReal (Z α) := by
-    intro α
-    show ENNReal.ofReal (branchZX N k t h ω.1 ω.2.1 (branchMarks k ω.2.2 (truncBranchCoe k M α)))
-      = ENNReal.ofReal (branchZ N k t h ω.1 ω.2 (truncBranchCoe k M α))
-    rw [branchZ_eq]
   have hu' : ∀ α : TruncBranch k M, (branchWeight k w (truncBranchCoe k M α)).toReal = u α :=
     fun α => rfl
-  have hZnn : ∀ α, 0 ≤ Z α := fun α => (branchZ_pos N k t h ω.1 ω.2 _).le
   have hDeq : (∑ α : TruncBranch k M,
       branchWeight k w (truncBranchCoe k M α) * ENNReal.ofReal (Z α)).toReal = D := by
     rw [hD, ENNReal.toReal_sum fun α _ => ENNReal.mul_ne_top (hwfin α) ENNReal.ofReal_ne_top]
@@ -332,16 +363,36 @@ theorem treeBoundIntegrand_eq_levelBound (M : ℕ) (ξ : ℝ → ℝ) (qs : Fin 
       beta_reduce
       split_ifs <;> simp
     · ring
-  have htp : ∀ r, truncPair N k M r (hamG N k t h ω.1 ω.2.1) w ω.2.2
+  have htp : ∀ r, truncPair k M r G w z
       = (∑ α, ∑ γ, pe r α γ * (u α * Z α * (u γ * Z γ))) / D ^ 2 := by
     intro r
     unfold truncPair
-    simp_rw [hGZ, prefixEq_truncBranchCoe]
+    simp_rw [hG, prefixEq_truncBranchCoe]
     rw [ENNReal.toReal_mul, ENNReal.toReal_pow, ENNReal.toReal_inv, hQeq, hDeq, div_eq_mul_inv,
       inv_pow]
   simp_rw [htp]
   exact sum_pair_levels_div k (fun α γ => u α * Z α * (u γ * Z γ)) (fun α γ => branchLevel α γ)
     (fun α γ => branchLevel_le α γ) θ D
+
+/-- **Talagrand's reduction of `⟨θ(q_{(α,γ)})⟩_t` to the cascade pair fractions** (the computation
+leading to (14.76)), for the truncated tree: the integrand of the bound is `levelBound` evaluated
+at the truncated pair fractions of `exp F_t`. -/
+theorem treeBoundIntegrand_eq_levelBound (M : ℕ) (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (c₀ t h : ℝ)
+    (w : CascadeWeights k) (hw : ∀ α, branchWeight k w α ≠ ∞)
+    (ω : EnergySpace N × MarksSpace N k) :
+    treeBoundIntegrand (branchWt (N := N) (truncWt k M w)) c₀
+        (fun x y => parisiTheta ξ (treeOverlap qs x.2 y.2)) (truncHam N k M t h ω)
+      = levelBound k c₀ (fun r => parisiTheta ξ (qExt qs (r + 1)))
+          (fun r => truncPair k M r (hamG N k t h ω.1 ω.2.1) w ω.2.2) := by
+  rw [branchWt_eq]
+  refine (treeBoundIntegrand_prod_eq_levelBound k M (fun _ : Config N => (1 : ℝ))
+    (truncHam N k M t h ω) c₀ (fun r => parisiTheta ξ (qExt qs (r + 1))) w hw ω.2.2
+    (hamG N k t h ω.1 ω.2.1) (fun α => ?_) (fun α => ?_)).symm.symm
+  · show ENNReal.ofReal (branchZX N k t h ω.1 ω.2.1 (branchMarks k ω.2.2 (truncBranchCoe k M α)))
+      = _
+    rw [wCondZ_truncHam, branchZ_eq]
+  · rw [wCondZ_truncHam]
+    exact (branchZ_pos N k t h ω.1 ω.2 _).le
 
 /-! ### The bound for the whole cascade -/
 
@@ -350,7 +401,7 @@ theorem treeBoundIntegrand_eq_levelBound (M : ℕ) (ξ : ℝ → ℝ) (qs : Fin 
 the expectation being over the disorder `H_N` and the marks, at fixed weights `w`. -/
 def guerraBound (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (h : ℝ) (w : CascadeWeights k) (t : ℝ) : ℝ :=
   ∫ ω, levelBound k (ξ 1 - deriv ξ (qs (Fin.last k))) (fun r => parisiTheta ξ (qExt qs (r + 1)))
-      (fun r => gibbsPair N k r (hamG N k t h ω.1 ω.2.1) w ω.2.2)
+      (fun r => gibbsPair k r (hamG N k t h ω.1 ω.2.1) w ω.2.2)
     ∂(gaussField N (overlapCovMatrix N ξ)).prod
       (marksLaw N k (parisiVar ξ qs 0) fun p => parisiVar ξ qs (p.val + 1))
 
@@ -378,7 +429,7 @@ lemma measurable_cascadeSq_hamG (r : ℕ) (h : ℝ) :
 /-- Joint measurability of the pair fraction in `(t, H, z₀, w, z)`. -/
 lemma measurable_gibbsPair_hamG (r : ℕ) (h : ℝ) :
     Measurable fun q : (ℝ × EnergySpace N × (Fin N → ℝ)) × (CascadeWeights k × CascadeMarks (Fin N → ℝ) k) =>
-      gibbsPair N k r (hamG N k q.1.1 h q.1.2.1 q.1.2.2) q.2.1 q.2.2 := by
+      gibbsPair k r (hamG N k q.1.1 h q.1.2.1 q.1.2.2) q.2.1 q.2.2 := by
   unfold gibbsPair
   have hm : Measurable fun q : (ℝ × EnergySpace N × (Fin N → ℝ))
       × (CascadeWeights k × CascadeMarks (Fin N → ℝ) k) => (q.1, cascadeZip k q.2) :=
@@ -390,7 +441,7 @@ lemma measurable_gibbsPair_hamG (r : ℕ) (h : ℝ) :
 
 lemma measurable_gibbsPair_hamG' (r : ℕ) (t h : ℝ) (w : CascadeWeights k) :
     Measurable fun ω : EnergySpace N × MarksSpace N k =>
-      gibbsPair N k r (hamG N k t h ω.1 ω.2.1) w ω.2.2 := by
+      gibbsPair k r (hamG N k t h ω.1 ω.2.1) w ω.2.2 := by
   have hm : Measurable fun ω : EnergySpace N × MarksSpace N k =>
       ((t, ω.1, ω.2.1), (w, ω.2.2)) :=
     (measurable_const.prodMk (measurable_fst.prodMk (measurable_fst.comp measurable_snd))).prodMk
@@ -485,7 +536,7 @@ theorem tendsto_guerraTruncBound (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (
   have hF : ∀ M (ω : EnergySpace N × MarksSpace N k),
       treeBoundIntegrand (branchWt (N := N) (truncWt k M w)) c₀
         (fun x y => parisiTheta ξ (treeOverlap qs x.2 y.2)) (truncHam N k M t h ω)
-      = levelBound k c₀ θ (fun r => truncPair N k M r (hamG N k t h ω.1 ω.2.1) w ω.2.2) :=
+      = levelBound k c₀ θ (fun r => truncPair k M r (hamG N k t h ω.1 ω.2.1) w ω.2.2) :=
     fun M ω => treeBoundIntegrand_eq_levelBound N k M ξ qs c₀ t h w hw ω
   unfold guerraTruncBound guerraBound
   refine tendsto_integral_filter_of_dominated_convergence
@@ -501,10 +552,10 @@ theorem tendsto_guerraTruncBound (ξ : ℝ → ℝ) (qs : Fin (k + 1) → ℝ) (
     exact hm.aestronglyMeasurable
   · refine Filter.Eventually.of_forall fun M => Filter.Eventually.of_forall fun ω => ?_
     rw [hF M ω, Real.norm_eq_abs]
-    exact abs_levelBound_le k c₀ θ _ (fun r => truncPair_nonneg N k M r _ w _)
-      (fun r => truncPair_le_one N k M r _ w _)
+    exact abs_levelBound_le k c₀ θ _ (fun r => truncPair_nonneg k M r _ w _)
+      (fun r => truncPair_le_one k M r _ w _)
   · filter_upwards [ae_cascadeSum_hamG_lt_top N k ξ qs t h w hW] with ω hω
-    refine (tendsto_levelBound k c₀ θ fun r => tendsto_truncPair N k r
+    refine (tendsto_levelBound k c₀ θ fun r => tendsto_truncPair k r
       (measurable_hamG' N k t h ω.1 ω.2.1) w ω.2.2
       (cascadeSum_hamG_ne_zero N k t h ω.1 ω.2.1 w hW0 ω.2.2) hω.ne).congr fun M => ?_
     exact (hF M ω).symm
@@ -530,8 +581,8 @@ theorem tendsto_integral_guerraTruncBound (ξ : ℝ → ℝ) (qs : Fin (k + 1) �
     refine (norm_integral_le_of_norm_le_const (Filter.Eventually.of_forall fun ω => ?_)).trans
       (by rw [probReal_univ, mul_one])
     rw [treeBoundIntegrand_eq_levelBound N k M ξ qs c₀ t h w hw ω, Real.norm_eq_abs]
-    exact abs_levelBound_le k c₀ θ _ (fun r => truncPair_nonneg N k M r _ w _)
-      (fun r => truncPair_le_one N k M r _ w _)
+    exact abs_levelBound_le k c₀ θ _ (fun r => truncPair_nonneg k M r _ w _)
+      (fun r => truncPair_le_one k M r _ w _)
   · exact Filter.Eventually.of_forall fun t _ => tendsto_guerraTruncBound N k ξ qs h w hW0 hW t
 
 end

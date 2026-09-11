@@ -68,6 +68,7 @@ def GaussianField.prodRight (P : Measure Ω) [IsProbabilityMeasure P] {K' : α �
     (G : GaussianField (α := α) Q K') : GaussianField (α := α) (P.prod Q) K' :=
   G.compMeasurable Prod.snd measurable_snd (by rw [Measure.map_snd_prod, measure_univ, one_smul])
 
+omit [IsProbabilityMeasure P] in
 @[simp] lemma GaussianField.prodLeft_U (G : GaussianField (α := α) P K) (ω : Ω × Ω') :
     (G.prodLeft Q).U ω = G.U ω.1 := rfl
 
@@ -117,7 +118,8 @@ def GaussianField.neg (G : GaussianField (α := α) P K) : GaussianField (α := 
         measurable_id.aestronglyMeasurable,
         ContinuousLinearMap.integral_comp_comm (-ContinuousLinearMap.id ℝ _)
           (φ := fun x : EnergySpace α => x) (hmem.integrable (by norm_num)), G.mean0, map_zero]
-    have hadj : ∀ v : EnergySpace α, (-ContinuousLinearMap.id ℝ (EnergySpace α)).adjoint v = -v := by
+    have hadj : ∀ v : EnergySpace α,
+        (-ContinuousLinearMap.id ℝ (EnergySpace α)).adjoint v = -v := by
       intro v
       refine ext_inner_right ℝ fun u => ?_
       rw [ContinuousLinearMap.adjoint_inner_left]
@@ -134,12 +136,12 @@ def GaussianField.neg (G : GaussianField (α := α) P K) : GaussianField (α := 
 
 omit [IsProbabilityMeasure P] [IsProbabilityMeasure Q] in
 /-- The bilinear form of a matrix on Dirac vectors is its entry. -/
-lemma dotProduct_std_basis_mulVec [DecidableEq α] (S : Matrix α α ℝ) (x y : α) :
+lemma dotProduct_std_basis_mulVec (S : Matrix α α ℝ) (x y : α) :
     (WithLp.ofLp (std_basis (α := α) x)) ⬝ᵥ S *ᵥ (WithLp.ofLp (std_basis (α := α) y)) = S x y := by
   classical
   simp only [dotProduct, mulVec, std_basis, WithLp.ofLp_toLp]
   rw [Finset.sum_eq_single x]
-  · simp only [if_true, one_mul]
+  · simp only [ite_true, one_mul]
     rw [Finset.sum_eq_single y]
     · simp
     · intro τ _ hτ
