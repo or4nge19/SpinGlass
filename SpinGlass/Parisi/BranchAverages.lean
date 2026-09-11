@@ -236,28 +236,13 @@ lemma ofReal_prod_two_cosh_treeMark {M : ℕ} (h : ℝ) (z : MarksSpace N k) (α
 
 /-! ### Gaussian finiteness -/
 
-/-- Exponential moments of affine forms of the marks are finite. -/
+/-- Exponential moments of affine forms of the marks are finite: the case `S = Fin N` of
+`lintegral_sum_ofReal_exp_siteGaussianMarks`. -/
 lemma lintegral_sum_ofReal_exp_gaussianMarks (vs : Fin k → ℝ≥0) (A : Config N → ℝ)
     (B : Config N → Fin k → Fin N → ℝ) :
     ∫⁻ x, ∑ σ : Config N, ENNReal.ofReal (Real.exp (A σ + ∑ p, ∑ i, B σ p i * x p i))
-        ∂Measure.pi (gaussianMarks N k vs) ≠ ∞ := by
-  have hm : ∀ σ : Config N, Measurable fun x : Fin k → Fin N → ℝ =>
-      ENNReal.ofReal (Real.exp (∑ p, ∑ i, B σ p i * x p i)) := fun σ =>
-    ENNReal.measurable_ofReal.comp (Real.measurable_exp.comp (Finset.measurable_sum _ fun p _ =>
-      Finset.measurable_sum _ fun i _ => measurable_const.mul
-        ((measurable_pi_apply i).comp (measurable_pi_apply p))))
-  have hm' : ∀ σ : Config N, Measurable fun x : Fin k → Fin N → ℝ =>
-      ENNReal.ofReal (Real.exp (A σ + ∑ p, ∑ i, B σ p i * x p i)) := fun σ =>
-    ENNReal.measurable_ofReal.comp (Real.measurable_exp.comp (measurable_const.add
-      (Finset.measurable_sum _ fun p _ => Finset.measurable_sum _ fun i _ => measurable_const.mul
-        ((measurable_pi_apply i).comp (measurable_pi_apply p)))))
-  rw [lintegral_finsetSum _ fun σ _ => hm' σ]
-  refine ENNReal.sum_ne_top.2 fun σ _ => ?_
-  simp_rw [Real.exp_add, ENNReal.ofReal_mul (Real.exp_pos _).le]
-  rw [lintegral_const_mul _ (hm σ)]
-  unfold gaussianMarks
-  rw [lintegral_ofReal_exp_sum_mul_pi_pi_gaussianReal]
-  exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top
+        ∂Measure.pi (gaussianMarks N k vs) ≠ ∞ :=
+  lintegral_sum_ofReal_exp_siteGaussianMarks (Fin N) k vs A B
 
 lemma branchZX_eq_sum (t h : ℝ) (H : EnergySpace N) (z₀ : Fin N → ℝ) (x : Fin k → Fin N → ℝ) :
     branchZX N k t h H z₀ x

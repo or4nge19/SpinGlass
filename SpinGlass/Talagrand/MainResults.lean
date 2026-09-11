@@ -1528,11 +1528,52 @@ the **`λ`-trick** (14.140), `∑_{R=u} ≤ e^{-λu} ∑_{all}(⋯ e^{λR})` (`w
 any weighted partition function), and the sites decouple (`Fintype.sum_exp_sum_pi`:
 `∑_σ e^{∑ᵢ fᵢ(σᵢ)} = ∏ᵢ ∑_s e^{fᵢ(s)}`, `Common/…/ExpPiSum`) with the site partition function
 (14.142) `∑_{ε₁,ε₂} e^{ε₁x₁+ε₂x₂+ε₁ε₂λ} = 4(ch x₁ ch x₂ ch λ + sh x₁ sh x₂ sh λ)`
-(`sum_exp_pairSpin`, `sum_pairConfig_exp`). Talagrand's `Y₀ = 2X₀` (Proposition 14.6.3) is
-Lemma 14.3.6(a) in raw coordinates: `cascadeRec_coupling`, from the pushforward lemma
-`cascadeRec_map` (the recursion commutes with a change of marks, `Cascade`) and
-`cascadeRec_pairMarkLaw`, the product laws pushed along the coupling maps being the coupled
-mark laws (`map_couplingMap_prod_eq_pairMarkLaw`).
+(`sum_exp_pairSpin`, `sum_pairConfig_exp`). Talagrand's `Y₀ = 2X₀` is Lemma 14.3.6(a) in raw
+coordinates: `cascadeRec_coupling`, from the pushforward lemma `cascadeRec_map` (the recursion
+commutes with a change of marks, `Cascade`) and `cascadeRec_pairMarkLaw`, the product laws pushed
+along the coupling maps being the coupled mark laws (`map_couplingMap_prod_eq_pairMarkLaw`).
+
+`Parisi/PairTreeFieldIndep`, `Parisi/CoupledInterpolation`, `Parisi/CoupledLevels`,
+`Parisi/LevelBoundLaw`, `Parisi/CoupledBoundLaw`, `Parisi/CascadeLogIntegrable`,
+`Parisi/CoupledFixedWeights`, `Parisi/CoupledParisi`: **Talagrand's (14.147)**, the bound for
+coupled copies integrated over the cascade (`coupled_bound`, `coupled_bound'`,
+`coupled_bound_of_top`). The two-dimensional scheme runs on one site-tree cascade over
+`Fin N × J` with per-level `2 × J` factors, the interpolating field on the columns `J₁` and the
+external field `H⁰` of (14.136) on the complementary columns, independent by the block
+independence of `Measure.pi` (`indepFun_pairTreeField_of_disjoint`,
+`Probability/Independence/PiBlocks`); Lemma 14.6.1 holds with an *independent random external
+field* (`wFreeEnergy_sub_le_of_le_treeBoundIntegrand_indep`, Fubini over its law), with the
+diagonal constant `pairDiagConst ξ u (ρ_{κ+1})` for free top values `ρ_{κ+1}` (`−2θ(1) − 2θ(u)`
+under (14.132)). The level bound is the generic level-bound law `levelBoundLaw` — Proposition
+14.3.3 integrated, `∫₀¹ 𝔼 b_w dt = (1/2)c₀ + (1/2)∑_{r≤κ} θ_r(m_{r+1} − m_r)`
+(`integral_intervalIntegral_levelBoundLaw`) — shared with Guerra's bound, with the truncation
+limits by dominated convergence; the tree is untruncated at fixed weights of positive finite mass
+(`coupled_fixed_weights`, with the `λ`-trick at the endpoint), using the exponential moments of
+the disorder (`GaussianField.integrable_exp_neg_smul_add`, `FiniteGibbs/GaussianFieldExpMoment`)
+and an integrable affine lower bound on the branch weights; and both endpoints are evaluated by
+Theorem 14.2.1 conditionally on the disorder and the root marks
+(`integral_log_cascadeSum_div_prod_eq`), from the **joint integrability of
+`log ∑_α v_α G_θ(z_α)`** in the weights, the parameter and the marks
+(`integrable_log_cascadeSum_div_prod`: `|log(S/W)| ≤ S/W + T/W`, `T` the cascade sum of
+`|log G|`, by Jensen along the branch chosen by the weights, `tsum_mul_log_le_log_tsum_mul`).
+Two remarks: Talagrand's (14.137) omits the diagonal term `α = γ`, and the bound proved here is
+stronger than his (14.147) by `(θ(1) + θ(u))(1 − n_κ) ≥ 0` (`pairDiagDefect`); and leaving
+`ρ_{κ+1}` free absorbs exactly the last level `n_{κ+1} = 1` of Proposition 14.6.3, so no
+continuity argument in the `n_p` is needed. `Parisi/CoupledSite`: the endpoint `Y₁` factorizes
+over the sites along the currying `(Fin N × J → ℝ) ≃ (Fin N → J → ℝ)` (`parisiRec_pairCoshF`,
+from `parisiRec_sum` and `MeasureTheory.map_curry_pi`), and with the same field at every site
+`𝔼_{z₀} Y₁ = N Y₀` for Talagrand's one-site `Y₀` (`pairSiteY₀`, `integral_parisiRec_pairCoshF`).
+`Parisi/CoupledProp`: **Proposition 14.6.3** (`coupled_bound_coupling`,
+`coupled_bound_coupling_of_top`, `coupled_bound_coupling_zero`): Talagrand's coupling
+(14.155)–(14.158) with a sign `η = ±1` (`couplingFactorSgn`, `couplingRhoSgn`), the covariance
+identities (14.133), the level sum (14.152) (`coupledLevelSum_couplingRhoSgn`), the extra field of
+(14.160) on further columns, and the constrained free energy (14.149) as the left-hand side
+(`constrainedPairZ`). `Parisi/CoupledLambdaZero`: at `λ = 0` the right-hand side is exactly
+`2𝒫_k(m, q)` (`coupling_rhs_zero_eq`: `Y₀(0) = 2X₀` from `cascadeRec_coupling`
+(`pairSiteY₀_coupling_zero`), the level sum with the halved exponents, and the diagonal defect at
+`q_{k+1}` against the absorbed level (14.84)), hence the constrained free energy is at most
+`2𝒫_k(m, q)` (`constrainedFreeEnergy_le_two_parisiFunctional`); the functional is even in `h`
+(`parisiFunctional_neg`).
 
 `FiniteGibbs/WeightedInterpolation`, product state spaces: for weights `u_α c_x` on `X × A`, the
 partition function is `∑_α u_α Z_α(c)` with `Z_α(c) = ∑_x c_x e^{-H(x,α)}` (`wCondZ`, `wZ_prod_eq`)
@@ -1887,15 +1928,12 @@ Not formalized (and not recorded as `Prop`-valued definitions): the **lower half
 formula** (14.93), `inf 𝒫_k(m,q) ≤ lim_N p_N`. Talagrand's route stays inside Chapter 14 and does
 not need Panchenko's ultrametricity (§15.6) or the Dovbysh–Sudakov representation (§15.9), which
 are Chapter 15 structure theory and give an alternative route via Aizenman–Sims–Starr (§15.8).
-Done on that route: Theorem 13.1.6, all of §14.3 through Corollary 14.3.7, and of §14.6
-Lemma 14.6.1 with the interpolating field of (14.135) and Talagrand's coupling (14.150)–(14.151),
-i.e. (14.139), with the `λ`-trick, the site factorization (14.142) and `Y₀ = 2X₀` for its
-endpoint `s = 0`, and with the marginalization, the pair fractions, their `M → ∞` limit, the
-level decomposition and Proposition 14.3.3 all available generically (in the configuration space,
-a constraint factor and the mark type). Next: the coupled branch weight
-`G(α) = ∑_{R=u} e^{-H_s(σ¹,σ²,α)}` as a function of the marks (measurability, positivity, (14.4)),
-its `M → ∞` limit, and the assembly of Proposition 14.6.3 / (14.147); then Theorem 14.5.7, the
-operators of §14.7 and the main estimate of §14.8–§14.10. Also outstanding: Theorem 14.4.4 (`ξ` convex on `ℝ⁺` only, needing the
+Done on that route: Theorem 13.1.6, all of §14.3 through Corollary 14.3.7, and all of §14.6
+through Proposition 14.6.3 — Talagrand's (14.147) for `0 < n₁ < ⋯ < n_κ < 1` with free top values
+`ρ_{κ+1}`, its specialization to the coupling (14.155)–(14.158) with the extra field of (14.160),
+and the identification of its right-hand side at `λ = 0` with `2𝒫_k(m, q)`. Next: the
+`λ`-dependence of `Y₀` (Proposition 14.6.4), Theorem 14.5.7, the operators of §14.7 and the main
+estimate of §14.8–§14.10. Also outstanding: Theorem 14.4.4 (`ξ` convex on `ℝ⁺` only, needing the
 perturbation (12.32) and Theorem 12.3.1), the extension of (14.90) to `0 ≤ m₁ ≤ ⋯ ≤ m_k ≤ 1`
 (Lemma 14.2.3), Guerra's Lipschitz bound (14.402), the Parisi measures of §14.11, the Gardner
 formula, the Hopfield localization theorems (Vol. I Thm. 4.3.2, Vol. II Thm. 10.3.1) and limits,

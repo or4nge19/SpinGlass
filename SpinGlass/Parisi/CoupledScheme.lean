@@ -190,9 +190,10 @@ theorem wFreeEnergy_coupled_sub_le {M : ℕ} (hN : 0 < N) (ξ : ℝ → ℝ) (hc
           ((couplingTreeField N M ξ qs τ).prodRight Pm) wt
           (-2 * parisiTheta ξ 1 - 2 * parisiTheta ξ (qExt qs τ))
           (fun x y => ∑ l : Fin 2, ∑ l' : Fin 2,
-            parisiTheta ξ (couplingRho qs τ l l' (branchLevel x.2 y.2 + 1))) c t :=
-  wFreeEnergy_pair_sub_le hN ξ (fun α γ l l' => couplingRho qs τ l l' (branchLevel α γ + 1))
-    (qExt qs τ) (fun α l l' => by rw [branchLevel_self, couplingRho_diag qs hτ]) (S := univ)
+            parisiTheta ξ (couplingRho qs τ l l' (branchLevel x.2 y.2 + 1))) c t := by
+  rw [← pairDiagConst_diag ξ (qExt qs τ)]
+  exact wFreeEnergy_pair_sub_le hN ξ (fun α γ l l' => couplingRho qs τ l l' (branchLevel α γ + 1))
+    (qExt qs τ) _ (fun α l l' => by rw [branchLevel_self, couplingRho_diag qs hτ]) (S := univ)
     (fun _ _ _ _ => mem_univ _) (fun x _ q _ => by
       have := hconv.add_deriv_mul_sub_le_univ hdiff q x
       linarith [mul_comm (x - q) (deriv ξ q)])

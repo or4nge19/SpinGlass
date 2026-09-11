@@ -305,6 +305,33 @@ for the SK model included (`skFreeEnergyLimit_le_parisiInf`). Talagrand's second
 functional (14.403) is also available (`parisiFunctional_eq_theta_sum`), from a new general
 telescoped **summation by parts** valid in any ring.
 
+**§14.6, the bound for coupled copies, is complete through Proposition 14.6.3.** Talagrand's
+(14.147) — the constrained free energy `(1/N) 𝔼 log ∑_{R_{1,2}=u} e^{-H_N(σ¹)-H_N(σ²)-H⁰}`, or
+rather its recursion in the marks of `H⁰`, is at most
+`2 log 2 + Y₀(λ) − λu − (1/2)∑_{ℓ,ℓ'}∑_p n_p(θ(ρ^{ℓ,ℓ'}_{p+1}) − θ(ρ^{ℓ,ℓ'}_p))` — is proved for
+every `0 < n₁ < ⋯ < n_κ < 1` and *free* top values `ρ_{κ+1}` (`Parisi/CoupledParisi`,
+`coupled_bound'`). The two-dimensional scheme runs on one site-tree cascade over `Fin N × J` with
+per-level factors, the interpolating field on some columns and the external field `H⁰` on the
+complementary ones, independent by the block independence of `Measure.pi`
+(`Parisi/PairTreeFieldIndep`); Lemma 14.6.1 holds with an independent random external field
+(`Parisi/CoupledInterpolation`); the level bound is the generic level-bound law of
+Proposition 14.3.3 shared with Guerra's bound (`Parisi/LevelBoundLaw`); the tree is untruncated at
+fixed weights of positive finite mass (`Parisi/CoupledFixedWeights`, with the exponential moments
+of the disorder, `FiniteGibbs/GaussianFieldExpMoment`); and both endpoints are evaluated by
+Theorem 14.2.1 conditionally on the disorder and the root marks, from the joint integrability of
+`log ∑_α v_α G_θ(z_α)` in the weights, the parameter and the marks — Jensen along the branch chosen
+by the weights (`Parisi/CascadeLogIntegrable`). Talagrand's diagonal (14.137) omits the term
+`α = γ`: the bound proved is the correct one, stronger by `(θ(1) + θ(u))(1 − n_κ)`, and leaving
+`ρ_{κ+1}` free absorbs exactly the level `n_{κ+1} = 1` of his Proposition 14.6.3, with no
+continuity argument in the `n_p`. The endpoint `Y₀` factorizes over the sites along the currying
+`(Fin N × J → ℝ) ≃ (Fin N → J → ℝ)` (`Parisi/CoupledSite`), Proposition 14.6.3 is the
+specialization to Talagrand's coupling (14.155)–(14.158) with a sign `η = ±1`, with the level sum
+(14.152) and the constrained free energy (14.149) as the left-hand side (`Parisi/CoupledProp`), and
+at `λ = 0` its right-hand side is exactly `2𝒫_k(m, q)`: `Y₀(0) = 2X₀` from the raw-coordinate
+identity of Lemma 14.3.6(a), while the diagonal defect at `q_{k+1}` and the absorbed level (14.84)
+combine into the last term of the functional (`Parisi/CoupledLambdaZero`,
+`constrainedFreeEnergy_le_two_parisiFunctional`).
+
 The weights `W_p = (R_{p+1}/R_p)^{m_p}` of (14.22) through which all of §14.3 is expressed, their
 defining property `𝔼_p W_p = 1`, and the tilted averages `𝔼(W₁ ⋯ W_k A)` of (14.24)–(14.26) are in
 place (`CascadeTilt`), an average against a probability measure that reduces to the plain product

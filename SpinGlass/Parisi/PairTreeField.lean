@@ -19,7 +19,7 @@ is attached to every site and every node; the Hamiltonian of the pair `(σ¹, σ
 
 A centered Gaussian pair with covariance `C` is `L g` for independent standard Gaussians `g` and
 any `L` with `L Lᵀ = C`, so the field is the linear image (`GaussianField.ofCoords`) of the
-independent coordinates of a cascade with site type `Fin N × Fin 2` (`SiteTreeFieldLaw`), with
+independent coordinates of a cascade with site type `Fin N × J` (`SiteTreeFieldLaw`), with
 per-level factors `L₀`, `L_p` (`pairTreeCoeff`), and its kernel is
 `∑_{ℓ,ℓ'} (∑_i σ_i^ℓ τ_i^{ℓ'}) · pairTreeCov ℓ ℓ' α γ` with
 `pairTreeCov ℓ ℓ' α γ = v₀ (L₀L₀ᵀ)_{ℓℓ'} + ∑_{p : α|_{p+1} = γ|_{p+1}} v_p (L_pL_pᵀ)_{ℓℓ'}`
@@ -37,7 +37,7 @@ open FiniteGibbs
 
 noncomputable section
 
-variable (N k M : ℕ)
+variable (N k M : ℕ) {J : Type*} [Fintype J]
 
 /-! ### An algebraic identity -/
 
@@ -76,8 +76,8 @@ lemma sum_prod_mul_sum_mul_sum {ι J : Type*} [Fintype ι] [Fintype J] (v : ℝ)
 /-- The coefficients of the coupled field with per-level factors `L₀`, `L`: at a level-`0`
 coordinate `(i, j)` the value `∑_ℓ σ_i^ℓ (L₀)_{ℓj}`, at a node coordinate `(v, (i, j))` the value
 `∑_ℓ σ_i^ℓ (L_{v.1})_{ℓj}` if `v` is the node of `α` at its depth and `0` otherwise. -/
-def pairTreeCoeff (L₀ : Fin 2 → Fin 2 → ℝ) (L : Fin k → Fin 2 → Fin 2 → ℝ)
-    (x : PairConfig N (TruncBranch k M)) : SiteTreeCoord (Fin N × Fin 2) k M → ℝ :=
+def pairTreeCoeff (L₀ : Fin 2 → J → ℝ) (L : Fin k → Fin 2 → J → ℝ)
+    (x : PairConfig N (TruncBranch k M)) : SiteTreeCoord (Fin N × J) k M → ℝ :=
   Sum.elim (fun c => ∑ l : Fin 2, isingSpin (x.1 l c.1) * L₀ l c.2)
     fun c => if c.1 = branchNode k M x.2 c.1.1
       then ∑ l : Fin 2, isingSpin (x.1 l c.2.1) * L c.1.1 l c.2.2 else 0
@@ -85,25 +85,25 @@ def pairTreeCoeff (L₀ : Fin 2 → Fin 2 → ℝ) (L : Fin k → Fin 2 → Fin 
 omit N in
 /-- The covariance of two branches for the copies `ℓ, ℓ'`:
 `v₀ (L₀L₀ᵀ)_{ℓℓ'} + ∑_{p : α|_{p+1} = γ|_{p+1}} v_p (L_pL_pᵀ)_{ℓℓ'}`. -/
-def pairTreeCov (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (L₀ : Fin 2 → Fin 2 → ℝ)
-    (L : Fin k → Fin 2 → Fin 2 → ℝ) (l l' : Fin 2) (α γ : TruncBranch k M) : ℝ :=
+def pairTreeCov (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (L₀ : Fin 2 → J → ℝ)
+    (L : Fin k → Fin 2 → J → ℝ) (l l' : Fin 2) (α γ : TruncBranch k M) : ℝ :=
   (v₀ : ℝ) * gram L₀ l l'
     + ∑ p : Fin k, if branchNode k M α p = branchNode k M γ p then (vs p : ℝ) * gram (L p) l l'
         else 0
 
 /-- **The covariance of the coupled field**:
 `∑_c var_c A x c A y c = ∑_{ℓ,ℓ'} (∑_i σ_i^ℓ τ_i^{ℓ'}) · pairTreeCov ℓ ℓ' α γ`. -/
-theorem sum_coordVar_pairTreeCoeff (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (L₀ : Fin 2 → Fin 2 → ℝ)
-    (L : Fin k → Fin 2 → Fin 2 → ℝ) (x y : PairConfig N (TruncBranch k M)) :
-    ∑ c, (siteCoordVar (Fin N × Fin 2) k M v₀ vs c : ℝ) * pairTreeCoeff N k M L₀ L x c
+theorem sum_coordVar_pairTreeCoeff (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (L₀ : Fin 2 → J → ℝ)
+    (L : Fin k → Fin 2 → J → ℝ) (x y : PairConfig N (TruncBranch k M)) :
+    ∑ c, (siteCoordVar (Fin N × J) k M v₀ vs c : ℝ) * pairTreeCoeff N k M L₀ L x c
         * pairTreeCoeff N k M L₀ L y c
       = ∑ l : Fin 2, ∑ l' : Fin 2, (∑ i, isingSpin (x.1 l i) * isingSpin (y.1 l' i))
           * pairTreeCov k M v₀ vs L₀ L l l' x.2 y.2 := by
   classical
-  rw [Fintype.sum_sum_type (f := fun c => (siteCoordVar (Fin N × Fin 2) k M v₀ vs c : ℝ)
+  rw [Fintype.sum_sum_type (f := fun c => (siteCoordVar (Fin N × J) k M v₀ vs c : ℝ)
     * pairTreeCoeff N k M L₀ L x c * pairTreeCoeff N k M L₀ L y c)]
-  rw [Fintype.sum_prod_type (f := fun c : TruncNode k M × (Fin N × Fin 2) =>
-    (siteCoordVar (Fin N × Fin 2) k M v₀ vs (Sum.inr c) : ℝ)
+  rw [Fintype.sum_prod_type (f := fun c : TruncNode k M × (Fin N × J) =>
+    (siteCoordVar (Fin N × J) k M v₀ vs (Sum.inr c) : ℝ)
       * pairTreeCoeff N k M L₀ L x (Sum.inr c) * pairTreeCoeff N k M L₀ L y (Sum.inr c))]
   simp only [siteCoordVar, pairTreeCoeff, Sum.elim_inl, Sum.elim_inr]
   -- the level-`0` block
@@ -111,7 +111,7 @@ theorem sum_coordVar_pairTreeCoeff (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (L�
     (fun l i => isingSpin (y.1 l i)) L₀]
   -- the node blocks
   have hinner : ∀ v : TruncNode k M,
-      (∑ c : Fin N × Fin 2, (vs v.1 : ℝ)
+      (∑ c : Fin N × J, (vs v.1 : ℝ)
         * (if v = branchNode k M x.2 v.1 then ∑ l : Fin 2, isingSpin (x.1 l c.1) * L v.1 l c.2
             else 0)
         * (if v = branchNode k M y.2 v.1 then ∑ l : Fin 2, isingSpin (y.1 l c.1) * L v.1 l c.2
@@ -155,21 +155,27 @@ theorem sum_coordVar_pairTreeCoeff (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (L�
 /-! ### The Gaussian field -/
 
 /-- The kernel of the coupled marks field. -/
-def pairTreeFieldKernel (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (L₀ : Fin 2 → Fin 2 → ℝ)
-    (L : Fin k → Fin 2 → Fin 2 → ℝ) (x y : PairConfig N (TruncBranch k M)) : ℝ :=
+def pairTreeFieldKernel (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (L₀ : Fin 2 → J → ℝ)
+    (L : Fin k → Fin 2 → J → ℝ) (x y : PairConfig N (TruncBranch k M)) : ℝ :=
   ∑ l : Fin 2, ∑ l' : Fin 2, (∑ i, isingSpin (x.1 l i) * isingSpin (y.1 l' i))
     * pairTreeCov k M v₀ vs L₀ L l l' x.2 y.2
 
 /-- **The interpolating Hamiltonian of the coupled copies** (Talagrand's (14.135)), as a centered
 Gaussian field on the pairs with kernel `pairTreeFieldKernel`. -/
-def pairTreeField (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (L₀ : Fin 2 → Fin 2 → ℝ)
-    (L : Fin k → Fin 2 → Fin 2 → ℝ) :
-    GaussianField (α := PairConfig N (TruncBranch k M)) (siteMarksLaw (Fin N × Fin 2) k v₀ vs)
+def pairTreeField [DecidableEq J] (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (L₀ : Fin 2 → J → ℝ)
+    (L : Fin k → Fin 2 → J → ℝ) :
+    GaussianField (α := PairConfig N (TruncBranch k M)) (siteMarksLaw (Fin N × J) k v₀ vs)
       (pairTreeFieldKernel N k M v₀ vs L₀ L) :=
-  (GaussianField.ofCoords (pairTreeCoeff N k M L₀ L) (siteCoordVar (Fin N × Fin 2) k M v₀ vs)
-    (siteTreeCoords (Fin N × Fin 2) k M) (measurable_siteTreeCoords _ k M)
+  (GaussianField.ofCoords (pairTreeCoeff N k M L₀ L) (siteCoordVar (Fin N × J) k M v₀ vs)
+    (siteTreeCoords (Fin N × J) k M) (measurable_siteTreeCoords _ k M)
     (siteTreeCoords_law _ k M v₀ vs)).copy _
     fun x y => (sum_coordVar_pairTreeCoeff N k M v₀ vs L₀ L x y).symm
+
+@[simp] lemma pairTreeField_U [DecidableEq J] (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0)
+    (L₀ : Fin 2 → J → ℝ) (L : Fin k → Fin 2 → J → ℝ) (ω : SiteMarksSpace (Fin N × J) k) :
+    (pairTreeField N k M v₀ vs L₀ L).U ω
+      = coordLin (pairTreeCoeff N k M L₀ L) (siteTreeCoords (Fin N × J) k M ω) := by
+  exact congrFun (GaussianField.copy_U _ _ _) ω
 
 /-! ### The telescoping identity and the kernel of (14.127) -/
 
@@ -177,7 +183,7 @@ omit N in
 /-- When the per-level covariances are the increments of `ξ' ∘ ρ^{ℓ,ℓ'}` (Talagrand's (14.130)),
 the branch covariance telescopes: `pairTreeCov ℓ ℓ' α γ = ξ'(ρ^{ℓ,ℓ'}_{(α,γ)}) - ξ'(ρ^{ℓ,ℓ'}_0)`. -/
 theorem pairTreeCov_eq_deriv (ξ : ℝ → ℝ) (ρ : Fin 2 → Fin 2 → ℕ → ℝ) (v₀ : ℝ≥0)
-    (vs : Fin k → ℝ≥0) (L₀ : Fin 2 → Fin 2 → ℝ) (L : Fin k → Fin 2 → Fin 2 → ℝ)
+    (vs : Fin k → ℝ≥0) (L₀ : Fin 2 → J → ℝ) (L : Fin k → Fin 2 → J → ℝ)
     (hC0 : ∀ l l', (v₀ : ℝ) * gram L₀ l l' = deriv ξ (ρ l l' 1) - deriv ξ (ρ l l' 0))
     (hC : ∀ (p : Fin k) l l', (vs p : ℝ) * gram (L p) l l'
       = deriv ξ (ρ l l' (p.val + 2)) - deriv ξ (ρ l l' (p.val + 1)))
@@ -208,8 +214,8 @@ theorem pairTreeCov_eq_deriv (ξ : ℝ → ℝ) (ρ : Fin 2 → Fin 2 → ℕ �
 `N ∑_{ℓ,ℓ'} R^{ℓ,ℓ'} ξ'(ρ^{ℓ,ℓ'}_{(α,γ)})`, when `ρ^{ℓ,ℓ'}_0 = 0`, `ξ'(0) = 0` and the per-level
 covariances are the increments of `ξ' ∘ ρ`. -/
 theorem pairTreeFieldKernel_eq_pairTreeKernel (hN : 0 < N) (ξ : ℝ → ℝ)
-    (ρ : Fin 2 → Fin 2 → ℕ → ℝ) (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (L₀ : Fin 2 → Fin 2 → ℝ)
-    (L : Fin k → Fin 2 → Fin 2 → ℝ) (hρ0 : ∀ l l', ρ l l' 0 = 0) (h0 : deriv ξ 0 = 0)
+    (ρ : Fin 2 → Fin 2 → ℕ → ℝ) (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (L₀ : Fin 2 → J → ℝ)
+    (L : Fin k → Fin 2 → J → ℝ) (hρ0 : ∀ l l', ρ l l' 0 = 0) (h0 : deriv ξ 0 = 0)
     (hC0 : ∀ l l', (v₀ : ℝ) * gram L₀ l l' = deriv ξ (ρ l l' 1) - deriv ξ (ρ l l' 0))
     (hC : ∀ (p : Fin k) l l', (vs p : ℝ) * gram (L p) l l'
       = deriv ξ (ρ l l' (p.val + 2)) - deriv ξ (ρ l l' (p.val + 1))) :

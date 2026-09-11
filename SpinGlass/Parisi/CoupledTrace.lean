@@ -23,11 +23,17 @@ and the interpolating Hamiltonian of (14.127) has kernel
 The point of the construction (Talagrand's own emphasis) is the diagonal. The term created by the
 interaction of `H_N(σ¹)` with `H_N(σ²)` is `⟨ξ(R_{1,2}) - R_{1,2} ξ'(u)⟩`, which has the *wrong
 sign* to be bounded above by the tangent-line inequality; it is exactly the restriction of the sum
-to the pairs with `R_{1,2} = u` that turns it into the constant `-θ(u)` and saves the day. Under
-(14.128), `q^{ℓ,ℓ}_{α,α} = 1` and `q^{1,2}_{α,α} = q^{2,1}_{α,α} = u`, the whole diagonal is the
-constant `-2θ(1) - 2θ(u)`, and the off-diagonal is controlled by convexity, giving **(14.129)**
+to the pairs with `R_{1,2} = u` that turns it into a constant and saves the day. If the diagonal
+values `q^{ℓ,ℓ'}_{α,α} = d^{ℓ,ℓ'}` do not depend on `α`, the whole diagonal is the constant
+`pairDiagConst ξ u d = ∑_{ℓ,ℓ'} (ξ(R^{ℓ,ℓ'}) - R^{ℓ,ℓ'} ξ'(d^{ℓ,ℓ'}))`, `R^{ℓ,ℓ} = 1`, `R^{1,2} = u`
+— under Talagrand's (14.128), `d = (1, u; u, 1)`, this is `-2θ(1) - 2θ(u)` — and the off-diagonal
+is controlled by convexity, giving **(14.129)**
 
-`φ*'(s) ≤ -θ(1) - θ(u) + (1/2) ∑_{ℓ,ℓ'} 𝔼⟨θ(q^{ℓ,ℓ'}_{α,γ})⟩`.
+`φ*'(s) ≤ (1/2) pairDiagConst ξ u d + (1/2) ∑_{ℓ,ℓ'} 𝔼⟨θ(q^{ℓ,ℓ'}_{α,γ})⟩`.
+
+Leaving `d` free is what allows the last level of the tree to carry an arbitrary parameter
+`ρ_{κ+1}` (the level `n_{κ+1} = 1` of Proposition 14.6.3 is then absorbed exactly, with no
+continuity argument in the `n_p`).
 
 ## Main statements
 
@@ -35,7 +41,7 @@ constant `-2θ(1) - 2θ(u)`, and the off-diagonal is controlled by convexity, gi
 - `SpinGlass.wGuerraTrace_pair_le`: **Lemma 14.6.1 / (14.129)**.
 - `SpinGlass.wFreeEnergy_pair_sub_le`: Lemma 14.6.1 integrated over the interpolation — the
   free-energy comparison for coupled copies, `𝔼 F_w(U + c) - 𝔼 F_w(V + c) ≤ ∫₀¹ b(t) dt` with
-  `b(t) = -θ(1) - θ(u) + (1/2) ∑_{ℓ,ℓ'} 𝔼⟨θ(q^{ℓ,ℓ'}_{α,γ})⟩_t`.
+  `b(t) = (1/2) pairDiagConst ξ u d + (1/2) ∑_{ℓ,ℓ'} 𝔼⟨θ(q^{ℓ,ℓ'}_{α,γ})⟩_t`.
 
 The restriction `R_{1,2} = u` is imposed by giving weight `0` to every other pair
 (`hu`), which is why the whole development runs in the *weighted* interpolation framework of
@@ -91,34 +97,48 @@ lemma pairOverlap_diag (hN : 0 < N) {u : ℝ} (x : PairConfig N A)
     overlap_self (N := N) hN _
   fin_cases l <;> fin_cases l' <;> simp [pairOverlap, hdd, hx, h10]
 
-/-- **The Guerra trace of the coupled system, exactly.** With the diagonal conditions (14.128) on
-`q` and the constraint `R_{1,2} = u` on the support of the weights, the diagonal contributes the
-constant `-2θ(1) - 2θ(u)` and the trace is
+/-- **The diagonal constant of the coupled Guerra trace**: for the self-overlaps `R^{ℓ,ℓ} = 1`,
+`R^{1,2} = R^{2,1} = u` of a constrained pair and the diagonal values `d^{ℓ,ℓ'}` of the
+interpolation parameters, `∑_{ℓ,ℓ'} (ξ(R^{ℓ,ℓ'}) - R^{ℓ,ℓ'} ξ'(d^{ℓ,ℓ'}))`. -/
+def pairDiagConst (ξ : ℝ → ℝ) (u : ℝ) (d : Fin 2 → Fin 2 → ℝ) : ℝ :=
+  ∑ l : Fin 2, ∑ l' : Fin 2,
+    (ξ (if l = l' then 1 else u) - (if l = l' then 1 else u) * deriv ξ (d l l'))
 
-`(1/2)(-2θ(1) - 2θ(u)) - (1/2) ⟨∑_{ℓ,ℓ'} (ξ(R^{ℓ,ℓ'}) - R^{ℓ,ℓ'} ξ'(q^{ℓ,ℓ'}_{α,γ}))⟩`. -/
+/-- Under Talagrand's (14.128), `d = (1, u; u, 1)`, the diagonal constant is `-2θ(1) - 2θ(u)`. -/
+lemma pairDiagConst_diag (ξ : ℝ → ℝ) (u : ℝ) :
+    pairDiagConst ξ u (fun l l' => if l = l' then 1 else u)
+      = -2 * parisiTheta ξ 1 - 2 * parisiTheta ξ u := by
+  simp only [pairDiagConst, Fin.sum_univ_two, parisiTheta]
+  norm_num
+  ring
+
+/-- **The Guerra trace of the coupled system, exactly.** If the diagonal values `q^{ℓ,ℓ'}_{α,α}`
+do not depend on `α` and the weights carry the constraint `R_{1,2} = u`, the diagonal contributes
+the constant `pairDiagConst ξ u d` and the trace is
+
+`(1/2) pairDiagConst ξ u d - (1/2) ⟨∑_{ℓ,ℓ'} (ξ(R^{ℓ,ℓ'}) - R^{ℓ,ℓ'} ξ'(q^{ℓ,ℓ'}_{α,γ}))⟩`. -/
 theorem wGuerraTrace_pair_eq (hN : 0 < N) (ξ : ℝ → ℝ) (qt : A → A → Fin 2 → Fin 2 → ℝ) (u : ℝ)
-    (hq : ∀ α l l', qt α α l l' = if l = l' then 1 else u)
+    (d : Fin 2 → Fin 2 → ℝ) (hq : ∀ α l l', qt α α l l' = d l l')
     (wt : PairConfig N A → ℝ) (hwt : ∀ x, 0 ≤ wt x) (hne : ∃ x, wt x ≠ 0)
     (hu : ∀ x, wt x ≠ 0 → overlap N (x.1 0) (x.1 1) = u)
     (H : FiniteGibbs.EnergySpace (PairConfig N A)) :
     wGuerraTrace wt (pairModelKernel N ξ) (pairTreeKernel N ξ qt) N H
-      = (1 / 2) * (-2 * parisiTheta ξ 1 - 2 * parisiTheta ξ u)
+      = (1 / 2) * pairDiagConst ξ u d
         - (1 / 2) * ∑ x, ∑ y, wGibbs wt H x * wGibbs wt H y
             * ∑ l : Fin 2, ∑ l' : Fin 2, (ξ (pairOverlap N x y l l')
                 - pairOverlap N x y l l' * deriv ξ (qt x.2 y.2 l l')) := by
   unfold wGuerraTrace
   -- the diagonal, on the support of the weights
   have hdiag : ∀ x : PairConfig N A, wt x ≠ 0 →
-      pairModelKernel N ξ x x - pairTreeKernel N ξ qt x x
-        = (N : ℝ) * (-2 * parisiTheta ξ 1 - 2 * parisiTheta ξ u) := by
+      pairModelKernel N ξ x x - pairTreeKernel N ξ qt x x = (N : ℝ) * pairDiagConst ξ u d := by
     intro x hx
     simp only [pairModelKernel, pairTreeKernel, pairOverlap_diag hN x (hu x hx), hq,
-      Fin.sum_univ_two, parisiTheta]
+      pairDiagConst, Fin.sum_univ_two]
     norm_num
     ring
   have hd : ∀ x : PairConfig N A,
       (pairModelKernel N ξ x x - pairTreeKernel N ξ qt x x) * wGibbs wt H x
-        = ((N : ℝ) * (-2 * parisiTheta ξ 1 - 2 * parisiTheta ξ u)) * wGibbs wt H x := by
+        = ((N : ℝ) * pairDiagConst ξ u d) * wGibbs wt H x := by
     intro x
     by_cases hx : wt x = 0
     · rw [wGibbs_of_eq_zero wt H hx, mul_zero, mul_zero]
@@ -149,22 +169,23 @@ theorem wGuerraTrace_pair_eq (hN : 0 < N) (ξ : ℝ → ℝ) (qt : A → A → F
 values `q^{ℓ,ℓ'}_{α,γ}` that occur (a set `S`; for a convex `ξ` any set will do, and in particular
 `u` may be negative), then the Guerra trace of the coupled system is at most
 
-`-θ(1) - θ(u) + (1/2) ⟨∑_{ℓ,ℓ'} θ(q^{ℓ,ℓ'}_{α,γ})⟩`,   `θ(x) = x ξ'(x) - ξ(x)`.
+`(1/2) pairDiagConst ξ u d + (1/2) ⟨∑_{ℓ,ℓ'} θ(q^{ℓ,ℓ'}_{α,γ})⟩`,   `θ(x) = x ξ'(x) - ξ(x)`,
 
-Composed with `FiniteGibbs.wFreeEnergy_sub_le` this is the two-dimensional version of Guerra's
-Lemma 14.4.1, the basic tool of §14.6. -/
+which is `-θ(1) - θ(u) + (1/2) ⟨∑_{ℓ,ℓ'} θ(q^{ℓ,ℓ'}_{α,γ})⟩` under (14.128). Composed with
+`FiniteGibbs.wFreeEnergy_sub_le` this is the two-dimensional version of Guerra's Lemma 14.4.1,
+the basic tool of §14.6. -/
 theorem wGuerraTrace_pair_le (hN : 0 < N) (ξ : ℝ → ℝ) (qt : A → A → Fin 2 → Fin 2 → ℝ) (u : ℝ)
-    (hq : ∀ α l l', qt α α l l' = if l = l' then 1 else u)
+    (d : Fin 2 → Fin 2 → ℝ) (hq : ∀ α l l', qt α α l l' = d l l')
     {S : Set ℝ} (hqS : ∀ α γ l l', qt α γ l l' ∈ S)
     (htan : ∀ x ∈ Icc (-1 : ℝ) 1, ∀ q ∈ S, ξ q + (x - q) * deriv ξ q ≤ ξ x)
     (wt : PairConfig N A → ℝ) (hwt : ∀ x, 0 ≤ wt x) (hne : ∃ x, wt x ≠ 0)
     (hu : ∀ x, wt x ≠ 0 → overlap N (x.1 0) (x.1 1) = u)
     (H : FiniteGibbs.EnergySpace (PairConfig N A)) :
     wGuerraTrace wt (pairModelKernel N ξ) (pairTreeKernel N ξ qt) N H
-      ≤ -parisiTheta ξ 1 - parisiTheta ξ u
+      ≤ (1 / 2) * pairDiagConst ξ u d
         + (1 / 2) * ∑ x, ∑ y, wGibbs wt H x * wGibbs wt H y
             * ∑ l : Fin 2, ∑ l' : Fin 2, parisiTheta ξ (qt x.2 y.2 l l') := by
-  rw [wGuerraTrace_pair_eq hN ξ qt u hq wt hwt hne hu H]
+  rw [wGuerraTrace_pair_eq hN ξ qt u d hq wt hwt hne hu H]
   have hkey : ∀ x y : PairConfig N A,
       -(wGibbs wt H x * wGibbs wt H y * ∑ l : Fin 2, ∑ l' : Fin 2,
             (ξ (pairOverlap N x y l l')
@@ -207,12 +228,13 @@ variable {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω}
 centered Gaussian fields on the pairs whose kernels are the model kernel and the interpolating
 kernel of (14.127), and weights carrying the constraint `R_{1,2} = u`,
 
-`𝔼 F_w(U + c) - 𝔼 F_w(V + c) ≤ ∫₀¹ (-θ(1) - θ(u) + (1/2) ∑_{ℓ,ℓ'} 𝔼⟨θ(q^{ℓ,ℓ'}_{α,γ})⟩_t) dt`,
+`𝔼 F_w(U + c) - 𝔼 F_w(V + c)
+  ≤ ∫₀¹ ((1/2) pairDiagConst ξ u d + (1/2) ∑_{ℓ,ℓ'} 𝔼⟨θ(q^{ℓ,ℓ'}_{α,γ})⟩_t) dt`,
 
 where `F_w(H) = (1/N) log ∑_{R_{1,2} = u, α} w_α e^{-H(σ¹,σ²,α)}` is the free energy of the coupled
 copies. This is the basic tool of §14.6. -/
 theorem wFreeEnergy_pair_sub_le (hN : 0 < N) (ξ : ℝ → ℝ) (qt : A → A → Fin 2 → Fin 2 → ℝ)
-    (u : ℝ) (hq : ∀ α l l', qt α α l l' = if l = l' then 1 else u)
+    (u : ℝ) (d : Fin 2 → Fin 2 → ℝ) (hq : ∀ α l l', qt α α l l' = d l l')
     {S : Set ℝ} (hqS : ∀ α γ l l', qt α γ l l' ∈ S)
     (htan : ∀ x ∈ Icc (-1 : ℝ) 1, ∀ q ∈ S, ξ q + (x - q) * deriv ξ q ≤ ξ x)
     {K₁ K₂ : PairConfig N A → PairConfig N A → ℝ}
@@ -222,14 +244,11 @@ theorem wFreeEnergy_pair_sub_le (hN : 0 < N) (ξ : ℝ → ℝ) (qt : A → A �
     (hne : ∃ x, wt x ≠ 0) (hu : ∀ x, wt x ≠ 0 → overlap N (x.1 0) (x.1 1) = u)
     (c : FiniteGibbs.EnergySpace (PairConfig N A)) :
     (∫ ω, wFreeEnergy wt N (G₁.U ω + c) ∂P) - (∫ ω, wFreeEnergy wt N (G₂.U ω + c) ∂P)
-      ≤ ∫ t in (0 : ℝ)..1, guerraBoundFn G₁ G₂ wt
-          (-2 * parisiTheta ξ 1 - 2 * parisiTheta ξ u)
+      ≤ ∫ t in (0 : ℝ)..1, guerraBoundFn G₁ G₂ wt (pairDiagConst ξ u d)
           (fun x y => ∑ l : Fin 2, ∑ l' : Fin 2, parisiTheta ξ (qt x.2 y.2 l l')) c t :=
   wFreeEnergy_sub_le_of_le_treeBoundIntegrand G₁ G₂ hindep wt hwt hne N c _ _ fun H => by
     rw [hK₁, hK₂]
-    exact (wGuerraTrace_pair_le hN ξ qt u hq hqS htan wt hwt hne hu H).trans (le_of_eq (by
-      unfold treeBoundIntegrand
-      ring))
+    exact (wGuerraTrace_pair_le hN ξ qt u d hq hqS htan wt hwt hne hu H).trans (le_of_eq rfl)
 
 end
 

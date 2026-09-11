@@ -212,13 +212,16 @@ lemma mExt'_succ {k : ℕ} (ms : Fin (k + 1) → ℝ) (a : ℝ) (r : ℕ) :
   · simp [mExt', mExt_one]
   · rw [mExt'_succ_eq, mExt'_succ_eq, mExt_succ_tail]
 
+@[simp] lemma mExt_val_succ {k : ℕ} (ms : Fin k → ℝ) (p : Fin k) : mExt ms (p.val + 1) = ms p := by
+  simp [mExt, p.isLt]
+
 lemma mExt_of_zero_lt {ms : Fin 0 → ℝ} {r : ℕ} (hr : r ≠ 0) : mExt ms r = 1 := by
   simp [mExt, hr]
 
 /-- `m_r = 1` for `r ≥ k + 1`: the extended sequence ends at `1`. -/
 lemma mExt_eq_one_of_le {k : ℕ} (ms : Fin k → ℝ) {r : ℕ} (hr : k + 1 ≤ r) : mExt ms r = 1 := by
   unfold mExt
-  rw [if_neg (by omega), dif_neg (by omega)]
+  rw [ite_eq_right (by omega), dite_eq_right (by omega)]
 
 lemma mExt_le_one {k : ℕ} {ms : Fin k → ℝ} (hlt : ∀ i, ms i ≤ 1) (r : ℕ) : mExt ms r ≤ 1 := by
   unfold mExt

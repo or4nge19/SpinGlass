@@ -117,6 +117,58 @@ theorem siteTreeCoords_law (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) :
   rw [hmp']
   rfl
 
+/-! ### Exponential moments of affine forms of the marks -/
+
+omit M in
+lemma measurable_ofReal_exp_add_sum_mul (a : ℝ) (B : Fin k → S → ℝ) :
+    Measurable fun z : Fin k → S → ℝ =>
+      ENNReal.ofReal (Real.exp (a + ∑ p, ∑ s, B p s * z p s)) :=
+  ENNReal.measurable_ofReal.comp (Real.measurable_exp.comp (measurable_const.add
+    (Finset.measurable_sum _ fun p _ => Finset.measurable_sum _ fun s _ => measurable_const.mul
+      ((measurable_pi_apply s).comp (measurable_pi_apply p)))))
+
+omit M in
+/-- **The exponential moment of an affine form of Gaussian marks**:
+`∫ exp (a + ∑_p ∑_s B p s · z_p(s)) d⊗ N(0, v_p) = e^a exp (∑_p ∑_s v_p B p s² / 2)`. -/
+lemma lintegral_ofReal_exp_add_siteGaussianMarks (vs : Fin k → ℝ≥0) (a : ℝ) (B : Fin k → S → ℝ) :
+    ∫⁻ z, ENNReal.ofReal (Real.exp (a + ∑ p, ∑ s, B p s * z p s))
+        ∂Measure.pi (siteGaussianMarks S k vs)
+      = ENNReal.ofReal (Real.exp a)
+        * ENNReal.ofReal (Real.exp (∑ p, ∑ s, (vs p : ℝ) * B p s ^ 2 / 2)) := by
+  have hm : Measurable fun z : Fin k → S → ℝ =>
+      ENNReal.ofReal (Real.exp (∑ p, ∑ s, B p s * z p s)) := by
+    simpa using measurable_ofReal_exp_add_sum_mul S k 0 B
+  simp_rw [Real.exp_add, ENNReal.ofReal_mul (Real.exp_pos _).le]
+  rw [lintegral_const_mul _ hm]
+  unfold siteGaussianMarks
+  rw [lintegral_ofReal_exp_sum_mul_pi_pi_gaussianReal]
+
+omit M in
+/-- **Exponential moments of affine forms of Gaussian marks are finite**, for any finite family of
+affine forms with nonnegative coefficients:
+`∫ ∑_x C x exp (A x + ∑_p ∑_s B x p s · z_p(s)) d⊗ N(0, v_p) < ∞`. This is Talagrand's
+hypothesis (14.4) for every (constrained) branch partition function of a Gaussian marks field. -/
+lemma lintegral_sum_ofReal_mul_ofReal_exp_siteGaussianMarks {X : Type*} [Fintype X]
+    (vs : Fin k → ℝ≥0) (C A : X → ℝ) (B : X → Fin k → S → ℝ) :
+    ∫⁻ z, ∑ x : X, ENNReal.ofReal (C x)
+        * ENNReal.ofReal (Real.exp (A x + ∑ p, ∑ s, B x p s * z p s))
+        ∂Measure.pi (siteGaussianMarks S k vs) ≠ ∞ := by
+  rw [lintegral_finsetSum _ fun x _ => (measurable_ofReal_exp_add_sum_mul S k (A x) (B x)).const_mul _]
+  refine ENNReal.sum_ne_top.2 fun x _ => ?_
+  rw [lintegral_const_mul _ (measurable_ofReal_exp_add_sum_mul S k (A x) (B x)),
+    lintegral_ofReal_exp_add_siteGaussianMarks]
+  exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+    (ENNReal.mul_ne_top ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top)
+
+omit M in
+/-- The case of unit coefficients. -/
+lemma lintegral_sum_ofReal_exp_siteGaussianMarks {X : Type*} [Fintype X] (vs : Fin k → ℝ≥0)
+    (A : X → ℝ) (B : X → Fin k → S → ℝ) :
+    ∫⁻ z, ∑ x : X, ENNReal.ofReal (Real.exp (A x + ∑ p, ∑ s, B x p s * z p s))
+        ∂Measure.pi (siteGaussianMarks S k vs) ≠ ∞ := by
+  have := lintegral_sum_ofReal_mul_ofReal_exp_siteGaussianMarks S k vs (fun _ => 1) A B
+  simpa only [ENNReal.ofReal_one, one_mul] using this
+
 end
 
 end SpinGlass

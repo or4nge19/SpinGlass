@@ -3,7 +3,7 @@ Copyright (c) 2026 Matteo Cipollina. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Matteo Cipollina
 -/
-import SpinGlass.Parisi.PairLevels
+import SpinGlass.Parisi.LevelBoundLaw
 
 /-!
 # Guerra's interpolation for the whole cascade, at fixed weights
@@ -139,32 +139,6 @@ lemma lintegral_cascadeSum_coshG (v₀ : ℝ≥0) (vs : Fin k → ℝ≥0) (h : 
 
 /-! ### The truncated cascade sums -/
 
-/-- `S^M = ∑_{α ∈ A_M} u*_α G(z_α)`: the cascade sum restricted to the truncated tree. -/
-def truncSum (M : ℕ) (w : CascadeWeights k) (G : (Fin k → Fin N → ℝ) → ℝ≥0∞)
-    (z : CascadeMarks (Fin N → ℝ) k) : ℝ≥0∞ :=
-  ∑ α : TruncBranch k M, branchWeight k w (truncBranchCoe k M α)
-    * G (branchMarks k z (truncBranchCoe k M α))
-
-lemma truncSum_le_cascadeSum (M : ℕ) (w : CascadeWeights k) {G : (Fin k → Fin N → ℝ) → ℝ≥0∞}
-    (hG : Measurable G) (z : CascadeMarks (Fin N → ℝ) k) :
-    truncSum N k M w G z ≤ cascadeSum k G (cascadeZip k (w, z)) := by
-  rw [cascadeSum_cascadeZip k hG, truncSum,
-    sum_truncBranch_eq k M fun α => branchWeight k w α * G (branchMarks k z α)]
-  exact ENNReal.sum_le_tsum _
-
-lemma le_truncSum_of_mem (M : ℕ) (w : CascadeWeights k) (G : (Fin k → Fin N → ℝ) → ℝ≥0∞)
-    (z : CascadeMarks (Fin N → ℝ) k) {α₀ : Fin k → ℕ × ℕ} (hmem : α₀ ∈ truncFinset k M) :
-    branchWeight k w α₀ * G (branchMarks k z α₀) ≤ truncSum N k M w G z := by
-  rw [truncSum, sum_truncBranch_eq k M fun α => branchWeight k w α * G (branchMarks k z α)]
-  exact Finset.single_le_sum (f := fun α => branchWeight k w α * G (branchMarks k z α))
-    (fun _ _ => bot_le) hmem
-
-lemma le_cascadeSum_cascadeZip (w : CascadeWeights k) {G : (Fin k → Fin N → ℝ) → ℝ≥0∞}
-    (hG : Measurable G) (z : CascadeMarks (Fin N → ℝ) k) (α₀ : Fin k → ℕ × ℕ) :
-    branchWeight k w α₀ * G (branchMarks k z α₀) ≤ cascadeSum k G (cascadeZip k (w, z)) := by
-  rw [cascadeSum_cascadeZip k hG]
-  exact ENNReal.le_tsum α₀
-
 lemma one_le_coshG (h : ℝ) (z₀ : Fin N → ℝ) (x : Fin k → Fin N → ℝ) : 1 ≤ coshG N k h z₀ x := by
   rw [coshG_eq]
   refine ENNReal.one_le_ofReal.2 ?_
@@ -178,33 +152,13 @@ of `exp F_{k+1}`. -/
 lemma sum_truncWt_mul_prod_eq (M : ℕ) (w : CascadeWeights k) (hw : ∀ α, branchWeight k w α ≠ ∞)
     (h : ℝ) (z : MarksSpace N k) :
     ∑ α, truncWt k M w α * ∏ i, (2 * Real.cosh (h + treeMark N k M z α i))
-      = (truncSum N k M w (coshG N k h z.1) z.2).toReal := by
+      = (truncSum k M w (coshG N k h z.1) z.2).toReal := by
   unfold truncSum
   rw [ENNReal.toReal_sum fun α _ => ENNReal.mul_ne_top (hw _) (by rw [coshG]; exact ENNReal.ofReal_ne_top)]
   refine Finset.sum_congr rfl fun α _ => ?_
   rw [ENNReal.toReal_mul, ← ofReal_prod_two_cosh_treeMark, ENNReal.toReal_ofReal
     (Finset.prod_nonneg fun i _ => by positivity)]
   rfl
-
-omit N in
-/-- A branch of positive weight lies in all sufficiently large truncated trees. -/
-lemma exists_mem_truncFinset (w : CascadeWeights k) (hW0 : weightSum k w ≠ 0) :
-    ∃ α₀ : Fin k → ℕ × ℕ, branchWeight k w α₀ ≠ 0 ∧ ∃ M₀, ∀ M, M₀ ≤ M → α₀ ∈ truncFinset k M := by
-  obtain ⟨α₀, hα₀⟩ : ∃ α₀, branchWeight k w α₀ ≠ 0 := by
-    by_contra hcon
-    exact hW0 (ENNReal.tsum_eq_zero.2 fun α => by simpa using fun h => hcon ⟨α, h⟩)
-  obtain ⟨M₀, hM₀⟩ := exists_subset_truncFinset k {α₀}
-  exact ⟨α₀, hα₀, M₀, fun M hM => truncFinset_mono k hM (hM₀ (Finset.mem_singleton_self _))⟩
-
-omit N in
-lemma truncWt_ne_zero_of_mem {M : ℕ} (w : CascadeWeights k) (hW : weightSum k w ≠ ∞)
-    {α₀ : Fin k → ℕ × ℕ} (hα₀ : branchWeight k w α₀ ≠ 0) (hmem : α₀ ∈ truncFinset k M) :
-    ∃ β : TruncBranch k M, truncWt k M w β ≠ 0 := by
-  obtain ⟨β, _, hβ⟩ := Finset.mem_map.1 hmem
-  refine ⟨β, ?_⟩
-  unfold truncWt
-  rw [show truncBranchCoe k M β = α₀ from hβ]
-  exact ENNReal.toReal_ne_zero.2 ⟨hα₀, ne_top_of_le_ne_top hW (branchWeight_le_weightSum k w α₀)⟩
 
 omit N k in
 /-- `|log x| ≤ x + |log c|` for `0 < c ≤ x`. -/
@@ -236,7 +190,7 @@ theorem guerra_fixed_weights (hN : 0 < N) (ξ : ℝ → ℝ) (hS : (overlapCovMa
   set S : MarksSpace N k → ℝ :=
     fun z => (cascadeSum k (coshG N k h z.1) (cascadeZip k (w, z.2))).toReal with hSdef
   set SM : ℕ → MarksSpace N k → ℝ :=
-    fun M z => (truncSum N k M w (coshG N k h z.1) z.2).toReal with hSMdef
+    fun M z => (truncSum k M w (coshG N k h z.1) z.2).toReal with hSMdef
   set W : ℝ := (weightSum k w).toReal with hWdef
   have hWpos : 0 < W := ENNReal.toReal_pos hW0 hW
   have hw : ∀ α, branchWeight k w α ≠ ∞ :=
@@ -261,19 +215,19 @@ theorem guerra_fixed_weights (hN : 0 < N) (ξ : ℝ → ℝ) (hS : (overlapCovMa
     calc branchWeight k w α₀ = branchWeight k w α₀ * 1 := (mul_one _).symm
       _ ≤ branchWeight k w α₀ * coshG N k h z.1 (branchMarks k z.2 α₀) :=
         mul_le_mul' le_rfl (one_le_coshG N k h z.1 _)
-      _ ≤ _ := le_cascadeSum_cascadeZip N k w (measurable_coshG' N k h z.1) z.2 α₀
+      _ ≤ _ := le_cascadeSum_cascadeZip k w (measurable_coshG' N k h z.1) z.2 α₀
   have hcSM : ∀ M, M₀ ≤ M → ∀ z : MarksSpace N k,
       cascadeSum k (coshG N k h z.1) (cascadeZip k (w, z.2)) < ∞ → c ≤ SM M z := by
     intro M hM z hz
     refine ENNReal.toReal_mono (ne_top_of_le_ne_top hz.ne
-      (truncSum_le_cascadeSum N k M w (measurable_coshG' N k h z.1) z.2)) ?_
+      (truncSum_le_cascadeSum k M w (measurable_coshG' N k h z.1) z.2)) ?_
     calc branchWeight k w α₀ = branchWeight k w α₀ * 1 := (mul_one _).symm
       _ ≤ branchWeight k w α₀ * coshG N k h z.1 (branchMarks k z.2 α₀) :=
         mul_le_mul' le_rfl (one_le_coshG N k h z.1 _)
-      _ ≤ _ := le_truncSum_of_mem N k M w _ z.2 (hM₀ M hM)
+      _ ≤ _ := le_truncSum_of_mem k M w _ z.2 (hM₀ M hM)
   have hSMS : ∀ M (z : MarksSpace N k),
       cascadeSum k (coshG N k h z.1) (cascadeZip k (w, z.2)) < ∞ → SM M z ≤ S z := fun M z hz =>
-    ENNReal.toReal_mono hz.ne (truncSum_le_cascadeSum N k M w (measurable_coshG' N k h z.1) z.2)
+    ENNReal.toReal_mono hz.ne (truncSum_le_cascadeSum k M w (measurable_coshG' N k h z.1) z.2)
   -- integrability of the logarithms
   have hmeasSM : ∀ M, Measurable (SM M) := by
     intro M
