@@ -1575,6 +1575,59 @@ identities (14.133), the level sum (14.152) (`coupledLevelSum_couplingRhoSgn`), 
 `2𝒫_k(m, q)` (`constrainedFreeEnergy_le_two_parisiFunctional`); the functional is even in `h`
 (`parisiFunctional_neg`).
 
+`Common/Mathlib/Probability/PointProcess/CascadeTiltMeasure`: **Talagrand's tilted probability
+measure**. The tilted averages `𝔼(W₁ ⋯ W_k A)` of §14.3 (`cascadeTilt`) are the integrals against
+`cascadeTiltMeasure k ms μs G := (Measure.pi μs).withDensity (cascadeTiltDensity …)`, the product
+law of the marks with density `W₁(z₁) ⋯ W_k(z₁, …, z_k)` (`lintegral_cascadeTiltMeasure`), a
+probability measure under (14.4) (`isProbabilityMeasure_cascadeTiltMeasure`); Bochner integrals
+against it average signed functions (`integral_cascadeTiltMeasure`), and Talagrand's nesting
+`𝔼(W₁ ⋯ W_{k+1} f) = 𝔼₁(W₁ 𝔼(W₂ ⋯ W_{k+1} f))` is `integral_cascadeTiltMeasure_succ`, from Fubini
+for `Measure.pi` over `Fin (n + 1)` in Bochner form (`integral_pi_fin_succ`).
+`Common/…/CascadeDeriv`: **the derivative of the Parisi recursion in a parameter is the tilted
+average of the derivative**, `d/dλ parisiRec k ms μs (F_λ) = 𝔼(W₁ ⋯ W_k ∂_λ F_λ)`
+(`hasDerivAt_parisiRec`) for jointly measurable `F_λ` with `|∂_λ F_λ| ≤ C` satisfying (14.4) at
+the point — Talagrand's `Y'_p = 𝔼_p(W_p Y'_{p+1})`, (14.185) and (14.215), iterated over the
+levels; the proof is an induction with `hasDerivAt_integral_of_dominated_loc_of_deriv_le` at each
+level, the bound on the derivative propagating (14.4) to a neighbourhood
+(`lintegral_ofReal_exp_le_of_le`). `Parisi/CoupledDeriv`: the `λ`-derivative of the one-site
+function, `∂_λ Y_{κ+1} = (ch A ch B sh λ + sh A sh B ch λ)/(ch A ch B ch λ + sh A sh B sh λ)`
+(`pairSiteY'`), bounded by `1` (`abs_pairSiteY'_le_one`, Talagrand's inequality in the proof of
+Lemma 14.6.5), (14.4) for the one-site branch function (`lintegral_ofReal_exp_pairSiteF_ne_top`,
+the four Gaussian integrals of (14.142)), hence `Y₁(λ, y₀)` and `Y₀(λ)` are differentiable with
+`Y₀'(λ) = 𝔼_{y₀} 𝔼(W₁ ⋯ W_κ ∂_λ Y_{κ+1})` and `|Y₀'(λ)| ≤ 1` (`hasDerivAt_parisiRec_pairSiteF`,
+`hasDerivAt_pairSiteY₀`, `abs_pairSiteY₀'_le_one`). Proposition 14.6.3 takes only
+`ξ'(η x) = η ξ'(x)` and `θ(η x) = θ(x)` (automatic for `η = 1`, from evenness for `η = −1`), so
+odd `p`-spin models at `u ≥ 0` are covered.
+
+The **recursion as a function of the exponents** (`Common/…/PointProcess/CascadeExponent`,
+`CascadeJensenLower`): `cascadeRec_mono_exponent` (nondecreasing in each `m_p`, Lyapunov's
+inequality `lintegral_rpow_rpow_inv_le_of_le` level by level), `continuousOn_cascadeRec` and
+`continuousOn_parisiRec` (continuity on `(0,1]^k` under (14.4), by dominated convergence with
+Jensen's bound `cascadeRec_le_lintegral_pi` as the dominating function and the joint continuity
+`ENNReal.continuousAt_rpow` of `x^y` on `ℝ≥0∞ × ℝ`, a Mathlib gap), `integral_le_parisiRec`
+(the lower Jensen bound `𝔼F ≤ F₁`, from `integral_log_le_log_integral`, Jensen for `log`, another
+gap), the uniform bound `ae_norm_log_cascadeRec_le` giving `integrable_log_cascadeRec` and
+`continuousOn_integral_log_cascadeRec` with no strict monotonicity of the exponents, and
+Talagrand's density argument `le_of_forall_strictMono_le` (strictly increasing tuples in `(0,1)^k`
+approximate nondecreasing tuples in `(0,1]^k`, `strictApprox`). Consequences:
+`coupled_bound'_of_monotone`, `coupled_bound_coupling`, `coupled_bound_coupling_zero`,
+`constrainedFreeEnergy_le_two_parisiFunctional` and `continuousOn_parisiFunctional`,
+`mixedPSpinFreeEnergy_le_parisiFunctional_of_monotone`, `skFreeEnergy_le_parisiFunctional_of_monotone`
+hold for nondecreasing `0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1`.
+
+**Lemma 14.6.5** (`Parisi/CoupledSecondDeriv`): `pairSiteY₀_eq_integral` (`Y₀(λ)` as the
+expectation over root marks and cascade of `log ∑_α v_α exp Y_{κ+1}(λ, ζ_α)`, from Theorem 14.2.1
+and the joint (14.4) `lintegral_lintegral_ofReal_exp_pairSiteF_ne_top` computed from the four
+exponentials `ofReal_exp_pairSiteF_eq_sum`), `cascadeSum_pairSiteG` (the `λ`-structure
+`∑_α v_α exp Y_{κ+1}(λ) = (e^λ P + e^{−λ} M)/2`, by the new linearity of the cascade sum
+`cascadeSum_add`, `cascadeSum_const_mul`, `cascadeSum_mono` of `PointProcess/CascadeLinear`),
+`hasDerivAt_pairSiteY₀_cascade`, `pairSiteY₀'_eq_cascade` (the tilted-average and cascade forms of
+`Y₀'` agree), `hasDerivAt_pairSiteY₀'` with `pairSiteY₀'' = 1 − 𝔼(S'/S)²`, `pairSiteY₀''_nonneg`,
+`pairSiteY₀''_le_one`, `convexOn_pairSiteY₀`, `concaveOn_pairSiteY₀_sub_sq` (for all nondecreasing
+`0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1`, by `convexOn_of_tendsto` of `Analysis/Convex/Limit` and
+`continuousOn_pairSiteY₀`), and the tangent bounds `taylor_le_pairSiteY₀`, `pairSiteY₀_le_taylor`.
+Talagrand's statement reads `0 ≤ Y₀'(λ) ≤ 1`; his proof concerns `Y₀''`.
+
 `FiniteGibbs/WeightedInterpolation`, product state spaces: for weights `u_α c_x` on `X × A`, the
 partition function is `∑_α u_α Z_α(c)` with `Z_α(c) = ∑_x c_x e^{-H(x,α)}` (`wCondZ`, `wZ_prod_eq`)
 and the pair average of a function of the `A`-components is the pair average over `A` with the
@@ -1757,7 +1810,9 @@ Talagrand's: only the tangent-line inequality for `ξ` on the range actually use
 (`x ∈ [-1,1]`, `q ∈ [0,1]`) and the monotonicity of `ξ'` along `q₀ ≤ ⋯ ≤ q_{k+2}`, rather than
 convexity of `ξ` on all of `ℝ` and monotonicity of `q`; the textbook form is the corollary
 `mixedPSpinFreeEnergy_le_parisiFunctional_of_convexOn` (`ξ` convex and differentiable with
-`ξ'(0) = 0`, `q` nondecreasing in `[0,1]`, `0 < m₁ < ⋯ < m_k < 1`). For the SK profile it reads
+`ξ'(0) = 0`, `q` nondecreasing in `[0,1]`, `0 < m₁ < ⋯ < m_k < 1`; both extend to nondecreasing
+`0 < m₁ ≤ ⋯ ≤ m_k ≤ 1` by the continuity of `𝒫_k` in the exponents,
+`mixedPSpinFreeEnergy_le_parisiFunctional_of_monotone`). For the SK profile it reads
 `p_N(β, h) ≤ 𝒫_k(m, q)` at every level `k` (`skFreeEnergy_le_parisiFunctional`); at `k = 0` it is
 Guerra's replica-symmetric bound of Vol. I, Theorem 1.3.7, now at finite `N`
 (`skFreeEnergy_le_rs_bound`). The Abel summation of the proof is Mathlib's telescoping identity
@@ -1929,13 +1984,14 @@ formula** (14.93), `inf 𝒫_k(m,q) ≤ lim_N p_N`. Talagrand's route stays insi
 not need Panchenko's ultrametricity (§15.6) or the Dovbysh–Sudakov representation (§15.9), which
 are Chapter 15 structure theory and give an alternative route via Aizenman–Sims–Starr (§15.8).
 Done on that route: Theorem 13.1.6, all of §14.3 through Corollary 14.3.7, and all of §14.6
-through Proposition 14.6.3 — Talagrand's (14.147) for `0 < n₁ < ⋯ < n_κ < 1` with free top values
-`ρ_{κ+1}`, its specialization to the coupling (14.155)–(14.158) with the extra field of (14.160),
-and the identification of its right-hand side at `λ = 0` with `2𝒫_k(m, q)`. Next: the
-`λ`-dependence of `Y₀` (Proposition 14.6.4), Theorem 14.5.7, the operators of §14.7 and the main
-estimate of §14.8–§14.10. Also outstanding: Theorem 14.4.4 (`ξ` convex on `ℝ⁺` only, needing the
-perturbation (12.32) and Theorem 12.3.1), the extension of (14.90) to `0 ≤ m₁ ≤ ⋯ ≤ m_k ≤ 1`
-(Lemma 14.2.3), Guerra's Lipschitz bound (14.402), the Parisi measures of §14.11, the Gardner
+through Proposition 14.6.3 — Talagrand's (14.147) for nondecreasing `0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1` with
+free top values `ρ_{κ+1}`, its specialization to the coupling (14.155)–(14.158) with the extra field of (14.160),
+and the identification of its right-hand side at `λ = 0` with `2𝒫_k(m, q)`, plus the derivative
+of the recursion in a parameter, `|Y₀'(λ)| ≤ 1` and Lemma 14.6.5 (`0 ≤ Y₀'' ≤ 1`, the tangent
+bounds on `Y₀`). Next: the formula `Y₀'(0) = 𝔼(W₁ ⋯ W_{τ-1} D'_τ(ζ_τ)²)` of Proposition 14.6.4,
+Theorem 14.5.7, the operators of §14.7 and the main estimate of §14.8–§14.10. Also outstanding: Theorem 14.4.4 (`ξ` convex on `ℝ⁺` only, needing the
+perturbation (12.32) and Theorem 12.3.1), the extension of (14.90) to `m₁ = 0` (a level with
+exponent `0` is a plain expectation; `0 < m₁ ≤ ⋯ ≤ m_k ≤ 1` is done), Guerra's Lipschitz bound (14.402), the Parisi measures of §14.11, the Gardner
 formula, the Hopfield localization theorems (Vol. I Thm. 4.3.2, Vol. II Thm. 10.3.1) and limits,
 and the thermodynamic limit for non-convex profiles.
 -/

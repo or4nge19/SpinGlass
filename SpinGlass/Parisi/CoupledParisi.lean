@@ -12,7 +12,8 @@ Integrating the fixed-weights inequality `coupled_fixed_weights` over the law of
 weights and evaluating both endpoints by Theorem 14.2.1 conditionally on the disorder and the root
 marks (`integral_log_cascadeSum_div_prod_eq`) gives Talagrand's **(14.147)** for the
 two-dimensional scheme (14.130)–(14.136) with `0 < n₁ < ⋯ < n_κ < 1` (`coupled_bound`,
-`coupled_bound'`):
+`coupled_bound'`), extended to nondecreasing `0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1` by continuity of both sides
+in the exponents (`coupled_bound'_of_monotone`, Talagrand's remark after (14.145)):
 
 `(1/N) 𝔼 G₁ ≤ 2 log 2 + Y₀(λ) − λu
     − (1/2) ∑_{ℓ,ℓ'} ∑_{1 ≤ p ≤ κ} n_p (θ(ρ^{ℓ,ℓ'}_{p+1}) − θ(ρ^{ℓ,ℓ'}_p)) + D(ρ_{κ+1})`.
@@ -135,13 +136,12 @@ omit [DecidableEq J] in
 /-- `Y₁(z₀) = parisiRec(Y_{κ+1}(z₀, ·))` is integrable in the root marks: it is
 `log cascadeRec(F₂) − N log 4` for the endpoint branch functions `F₂`, whose logarithm is
 integrable by `integrable_log_cascadeRec`. -/
-theorem integrable_parisiRec_pairCoshF (ns : Fin κ → ℝ) (hsm : StrictMono ns)
-    (hpos : ∀ i, 0 < ns i) (hlt : ∀ i, ns i < 1) (lam : ℝ) (a : Fin N × Fin 2 → ℝ)
+theorem integrable_parisiRec_pairCoshF (ns : Fin κ → ℝ) (hpos : ∀ i, 0 < ns i)
+    (hle : ∀ i, ns i ≤ 1) (lam : ℝ) (a : Fin N × Fin 2 → ℝ)
     (K₀ : Fin 2 → J → ℝ) (K : Fin κ → Fin 2 → J → ℝ) (v₀ : ℝ≥0) (vs : Fin κ → ℝ≥0) :
     Integrable (fun θ : Ω × (Fin N × J → ℝ) => parisiRec κ ns
       (siteGaussianMarks (Fin N × J) κ vs) (pairCoshF N κ lam a K₀ K θ.2))
       (Pm.prod (rootMarksLaw N v₀)) := by
-  have hle1 : ∀ i, ns i ≤ 1 := fun i => (hlt i).le
   set G₂ : Ω × (Fin N × J → ℝ) → (Fin κ → Fin N × J → ℝ) → ℝ≥0∞ :=
     fun θ x => pairHamG N κ (fun _ => 1) 0 lam a K₀ K θ.2 x with hG₂
   -- pointwise: `log cascadeRec(F₂) = N log 4 + Y₁`
@@ -156,7 +156,7 @@ theorem integrable_parisiRec_pairCoshF (ns : Fin κ → ℝ) (hsm : StrictMono n
       simp only
       rw [pairHamG, pairBranchZX_one_zero_eq_exp]
     rw [he, ← parisiRec_const_add κ ns _ (measurable_pairCoshF' N κ lam a K₀ K θ.2) hpos
-      (cascadeRec_ofReal_exp_pairCoshF_ne_top N κ ns vs hpos hle1 lam a K₀ K θ.2)
+      (cascadeRec_ofReal_exp_pairCoshF_ne_top N κ ns vs hpos hle lam a K₀ K θ.2)
       ((N : ℝ) * Real.log 4)]
     rfl
   have hHf0 : Measurable fun _ : Ω => (0 : EnergySpace N) := measurable_const
@@ -173,10 +173,8 @@ theorem integrable_parisiRec_pairCoshF (ns : Fin κ → ℝ) (hsm : StrictMono n
       ∂Measure.pi (siteGaussianMarks (Fin N × J) κ vs) ∂Pm.prod (rootMarksLaw N v₀) ≠ ∞ :=
     lintegral_lintegral_enorm_log_pairHamG_ne_top N (fun _ => zero_le_one) (fun _ => le_refl 1)
       (σ₀ := fun _ _ => true) rfl hHf0 (fun τ => by simp) lam a K₀ K v₀ vs
-  have hfin₂ : ∀ θ, cascadeRec κ ns (siteGaussianMarks (Fin N × J) κ vs) (G₂ θ) ≠ ∞ := fun θ =>
-    cascadeRec_pairHamG_ne_top N κ ns vs hpos hle1 (fun _ => zero_le_one) _ _ _ _ _ _
   have hI := integrable_log_cascadeRec κ (Pm.prod (rootMarksLaw N v₀)) ns
-    (siteGaussianMarks (Fin N × J) κ vs) G₂ hsm hpos hlt hGm₂ hGpos₂ hGfin₂ hint₂ hlog₂ hfin₂
+    (siteGaussianMarks (Fin N × J) κ vs) G₂ hpos hle hGm₂ hGpos₂ hGfin₂ hint₂ hlog₂
   refine (hI.sub (integrable_const ((N : ℝ) * Real.log 4))).congr
     (Filter.Eventually.of_forall fun θ => ?_)
   change Real.log (cascadeRec κ ns (siteGaussianMarks (Fin N × J) κ vs) (G₂ θ)).toReal
@@ -188,14 +186,13 @@ omit [DecidableEq J] in
 /-- **The endpoint `Y₀` (14.143)–(14.145)**: the expectation of the logarithm of the recursion of
 the unconstrained branch functions is `N log 4 + 𝔼_{y₀} Y₁(y₀)`, `Y₁` the recursion of
 `Y_{κ+1} = ∑ᵢ log (ch Aᵢ ch Bᵢ ch λ + sh Aᵢ sh Bᵢ sh λ)` over the marks along a branch. -/
-theorem integral_log_cascadeRec_coupledEndG (ns : Fin κ → ℝ) (hsm : StrictMono ns)
-    (hpos : ∀ i, 0 < ns i) (hlt : ∀ i, ns i < 1) (lam : ℝ) (a : Fin N × Fin 2 → ℝ)
+theorem integral_log_cascadeRec_coupledEndG (ns : Fin κ → ℝ) (hpos : ∀ i, 0 < ns i)
+    (hle : ∀ i, ns i ≤ 1) (lam : ℝ) (a : Fin N × Fin 2 → ℝ)
     (L₀ L₀' : Fin 2 → J → ℝ) (L L' : Fin κ → Fin 2 → J → ℝ) (v₀ : ℝ≥0) (vs : Fin κ → ℝ≥0) :
     ∫ θ, Real.log (cascadeRec κ ns (siteGaussianMarks (Fin N × J) κ vs)
         (coupledEndG N lam a L₀ L₀' L L' θ)).toReal ∂Pm.prod (rootMarksLaw N v₀)
       = (N : ℝ) * Real.log 4 + ∫ z₀, parisiRec κ ns (siteGaussianMarks (Fin N × J) κ vs)
           (pairCoshF N κ lam a (L₀ + L₀') (fun p => L p + L' p) z₀) ∂rootMarksLaw N v₀ := by
-  have hle1 : ∀ i, ns i ≤ 1 := fun i => (hlt i).le
   -- pointwise: `parisiRec_const_add`
   have hpt : ∀ θ : Ω × (Fin N × J → ℝ),
       Real.log (cascadeRec κ ns (siteGaussianMarks (Fin N × J) κ vs)
@@ -208,10 +205,10 @@ theorem integral_log_cascadeRec_coupledEndG (ns : Fin κ → ℝ) (hsm : StrictM
       funext fun x => coupledEndG_eq N lam a L₀ L₀' L L' θ x
     rw [he, ← parisiRec_const_add κ ns _
       (measurable_pairCoshF' N κ lam a (L₀ + L₀') (fun p => L p + L' p) θ.2) hpos
-      (cascadeRec_ofReal_exp_pairCoshF_ne_top N κ ns vs hpos hle1 lam a (L₀ + L₀')
+      (cascadeRec_ofReal_exp_pairCoshF_ne_top N κ ns vs hpos hle lam a (L₀ + L₀')
         (fun p => L p + L' p) θ.2) ((N : ℝ) * Real.log 4)]
     rfl
-  have hY := integrable_parisiRec_pairCoshF N ns hsm hpos hlt lam a (L₀ + L₀')
+  have hY := integrable_parisiRec_pairCoshF N ns hpos hle lam a (L₀ + L₀')
     (fun p => L p + L' p) v₀ vs (Pm := Pm)
   -- measurability of `Y₁` in the root marks
   have hYm : Measurable fun z₀ : Fin N × J → ℝ => parisiRec κ ns
@@ -455,7 +452,7 @@ theorem coupled_bound' (hN : 0 < N) (ξ : ℝ → ℝ) (ρ : Fin 2 → Fin 2 →
           + pairDiagDefect ξ u (fun l l' => ρ l l' (κ + 1)) := by
   refine (coupled_bound N hN ξ ρ u hρ0 hρS htan h0 G₀ v₀ vs hC0 hC hL0 hL hL0' hL' a lam ns hsm
     hpos hlt hu).trans (le_of_eq ?_)
-  rw [integral_log_cascadeRec_coupledEndG N ns hsm hpos hlt lam a L₀ L₀' L L' v₀ vs,
+  rw [integral_log_cascadeRec_coupledEndG N ns hpos (fun i => (hlt i).le) lam a L₀ L₀' L L' v₀ vs,
     sum_range_mul_mExt_sub, coupledLevelSum_eq, pairDiagDefect_eq]
   have hN' : (N : ℝ) ≠ 0 := by exact_mod_cast hN.ne'
   have hlog4 : Real.log 4 = 2 * Real.log 2 := by
@@ -494,6 +491,137 @@ theorem coupled_bound_of_top (hN : 0 < N) (ξ : ℝ → ℝ) (ρ : Fin 2 → Fin
     funext fun l => funext fun l' => hρtop l l'
   rw [hd, pairDiagDefect_diag, add_zero] at h
   exact h
+
+/-! ### Nondecreasing exponents `0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1` -/
+
+/-- The left-hand side of (14.147) is continuous in the exponents on `(0, 1]^κ`
+(`continuousOn_integral_log_cascadeRec` with the branch functions at `t = 1`). -/
+theorem continuousOn_integral_log_cascadeRec_coupledG (ξ : ℝ → ℝ) (u : ℝ)
+    (hu : ∃ σ : Fin 2 → Config N, overlap N (σ 0) (σ 1) = u)
+    (G₀ : GaussianField (α := Config N) Pm (fun σ τ => overlapCovMatrix N ξ σ τ))
+    (v₀ : ℝ≥0) (vs : Fin κ → ℝ≥0) (L₀ L₀' : Fin 2 → J → ℝ) (L L' : Fin κ → Fin 2 → J → ℝ)
+    (a : Fin N × Fin 2 → ℝ) :
+    ContinuousOn (fun ns : Fin κ → ℝ => ∫ θ, Real.log (cascadeRec κ ns
+        (siteGaussianMarks (Fin N × J) κ vs) (coupledG N u a L₀ L₀' L L' ξ G₀ 1 θ)).toReal
+        ∂Pm.prod (rootMarksLaw N v₀)) (Set.pi Set.univ fun _ => Set.Ioc (0 : ℝ) 1) := by
+  classical
+  obtain ⟨σ₀, hσ₀⟩ := hu
+  have hcσ₀ : constraintR N u σ₀ = 1 := by
+    unfold constraintR
+    rw [ite_eq_left hσ₀]
+  have hHf1 : Measurable fun ω => Real.sqrt 1 • G₀.U ω := by
+    have h := G₀.measU.const_smul (Real.sqrt 1)
+    exact h
+  have hGm₁ : Measurable (Function.uncurry (coupledG N u a L₀ L₀' L L' ξ G₀ 1)) :=
+    measurable_pairHamG_branchParam N κ (constraintR N u) hHf1 0 a
+      (Real.sqrt (1 - 1) • L₀ + L₀') (fun p => Real.sqrt (1 - 1) • L p + L' p)
+  have hGpos₁ : ∀ θ x, 0 < coupledG N u a L₀ L₀' L L' ξ G₀ 1 θ x :=
+    fun θ x => coupledG_pos N u ⟨σ₀, hσ₀⟩ a L₀ L₀' L L' ξ G₀ 1 θ x
+  have hGfin₁ : ∀ θ x, coupledG N u a L₀ L₀' L L' ξ G₀ 1 θ x ≠ ∞ :=
+    fun θ x => ENNReal.ofReal_ne_top
+  have hint₁ : ∫⁻ θ, ∫⁻ x, coupledG N u a L₀ L₀' L L' ξ G₀ 1 θ x
+      ∂Measure.pi (siteGaussianMarks (Fin N × J) κ vs) ∂Pm.prod (rootMarksLaw N v₀) ≠ ∞ :=
+    lintegral_lintegral_pairHamG_ne_top N (constraintR_nonneg N u) (fun ω => Real.sqrt 1 • G₀.U ω)
+      hHf1 (fun σ => G₀.lintegral_ofReal_exp_neg_smul_add_ne_top (Real.sqrt 1) (σ 0) (σ 1)) 0 a
+      (Real.sqrt (1 - 1) • L₀ + L₀') (fun p => Real.sqrt (1 - 1) • L p + L' p) v₀ vs
+  have hlog₁ : ∫⁻ θ, ∫⁻ x, ‖Real.log (coupledG N u a L₀ L₀' L L' ξ G₀ 1 θ x).toReal‖ₑ
+      ∂Measure.pi (siteGaussianMarks (Fin N × J) κ vs) ∂Pm.prod (rootMarksLaw N v₀) ≠ ∞ :=
+    lintegral_lintegral_enorm_log_pairHamG_ne_top N (constraintR_nonneg N u)
+      (constraintR_le_one N u) hcσ₀ hHf1
+      (fun τ => integrable_smul_apply_disorder N ξ G₀ (Real.sqrt 1) τ) 0 a
+      (Real.sqrt (1 - 1) • L₀ + L₀') (fun p => Real.sqrt (1 - 1) • L p + L' p) v₀ vs
+  exact continuousOn_integral_log_cascadeRec κ (Pm.prod (rootMarksLaw N v₀))
+    (siteGaussianMarks (Fin N × J) κ vs) _ hGm₁ hGpos₁ hGfin₁ hint₁ hlog₁
+
+omit [DecidableEq J] in
+/-- The endpoint `𝔼_{z₀} Y₁` of (14.147) is continuous in the exponents on `(0, 1]^κ`. -/
+theorem continuousOn_integral_parisiRec_pairCoshF (lam : ℝ) (a : Fin N × Fin 2 → ℝ)
+    (K₀ : Fin 2 → J → ℝ) (K : Fin κ → Fin 2 → J → ℝ) (v₀ : ℝ≥0) (vs : Fin κ → ℝ≥0) :
+    ContinuousOn (fun ns : Fin κ → ℝ => ∫ z₀, parisiRec κ ns (siteGaussianMarks (Fin N × J) κ vs)
+        (pairCoshF N κ lam a K₀ K z₀) ∂rootMarksLaw N v₀)
+      (Set.pi Set.univ fun _ => Set.Ioc (0 : ℝ) 1) := by
+  set P0 : Measure PUnit.{u + 1} := Measure.dirac PUnit.unit with hP0
+  have hHf0 : Measurable fun _ : PUnit.{u + 1} => (0 : EnergySpace N) := measurable_const
+  have hGm₂ : Measurable (Function.uncurry
+      (coupledEndG N lam a K₀ 0 K 0 (Ω := PUnit.{u + 1}))) :=
+    measurable_pairHamG_branchParam N κ (fun _ => 1) hHf0 lam a (K₀ + 0)
+      (fun p => K p + (0 : Fin κ → Fin 2 → J → ℝ) p)
+  have hGpos₂ : ∀ (θ : PUnit.{u + 1} × (Fin N × J → ℝ)) x,
+      0 < coupledEndG N lam a K₀ 0 K 0 θ x :=
+    fun θ x => pairHamG_pos N κ (fun _ => zero_le_one) ⟨fun _ _ => true, one_pos⟩ _ _ _ _ _ _ _
+  have hGfin₂ : ∀ (θ : PUnit.{u + 1} × (Fin N × J → ℝ)) x,
+      coupledEndG N lam a K₀ 0 K 0 θ x ≠ ∞ :=
+    fun θ x => ENNReal.ofReal_ne_top
+  have hint₂ : ∫⁻ θ, ∫⁻ x, coupledEndG N lam a K₀ 0 K 0 θ x
+      ∂Measure.pi (siteGaussianMarks (Fin N × J) κ vs) ∂P0.prod (rootMarksLaw N v₀) ≠ ∞ :=
+    lintegral_lintegral_pairHamG_ne_top N (fun _ => zero_le_one) (fun _ => (0 : EnergySpace N))
+      hHf0 (fun σ => by simp) lam a (K₀ + 0) (fun p => K p + (0 : Fin κ → Fin 2 → J → ℝ) p) v₀ vs
+  have hlog₂ : ∫⁻ θ, ∫⁻ x, ‖Real.log (coupledEndG N lam a K₀ 0 K 0 θ x).toReal‖ₑ
+      ∂Measure.pi (siteGaussianMarks (Fin N × J) κ vs) ∂P0.prod (rootMarksLaw N v₀) ≠ ∞ :=
+    lintegral_lintegral_enorm_log_pairHamG_ne_top N (fun _ => zero_le_one) (fun _ => le_refl 1)
+      (σ₀ := fun _ _ => true) rfl hHf0 (fun τ => by simp) lam a (K₀ + 0)
+      (fun p => K p + (0 : Fin κ → Fin 2 → J → ℝ) p) v₀ vs
+  have hc := continuousOn_integral_log_cascadeRec κ (P0.prod (rootMarksLaw N v₀))
+    (siteGaussianMarks (Fin N × J) κ vs) _ hGm₂ hGpos₂ hGfin₂ hint₂ hlog₂
+  have hK : (fun p => K p + (0 : Fin κ → Fin 2 → J → ℝ) p) = K := by
+    funext p
+    simp
+  refine (hc.sub (continuousOn_const (c := (N : ℝ) * Real.log 4))).congr fun ns hns => ?_
+  simp only [Set.mem_univ_pi, Set.mem_Ioc] at hns
+  simp only [Pi.sub_apply]
+  rw [integral_log_cascadeRec_coupledEndG N ns (fun i => (hns i).1) (fun i => (hns i).2) lam a K₀
+    0 K 0 v₀ vs (Pm := P0), add_zero, hK]
+  ring
+
+omit [IsProbabilityMeasure Pm] [Fintype J] [DecidableEq J] in
+/-- The level sum is linear, hence continuous, in the exponents. -/
+lemma continuous_coupledLevelSum (ξ : ℝ → ℝ) (ρ : Fin 2 → Fin 2 → ℕ → ℝ) :
+    Continuous fun ns : Fin κ → ℝ => coupledLevelSum ξ ρ ns := by
+  unfold coupledLevelSum
+  refine continuous_finsetSum _ fun l _ => continuous_finsetSum _ fun l' _ =>
+    continuous_finsetSum _ fun p _ => (continuous_apply p).mul continuous_const
+
+/-- **(14.147) for nondecreasing exponents `0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1`** (Talagrand's remark after
+(14.145)): both sides of `coupled_bound'` are continuous in the exponents on `(0, 1]^κ`, and the
+strictly increasing tuples are dense (`ProbabilityTheory.le_of_forall_strictMono_le`). -/
+theorem coupled_bound'_of_monotone (hN : 0 < N) (ξ : ℝ → ℝ) (ρ : Fin 2 → Fin 2 → ℕ → ℝ) (u : ℝ)
+    (hρ0 : ∀ l l', ρ l l' 0 = 0) {S : Set ℝ} (hρS : ∀ l l' r, ρ l l' r ∈ S)
+    (htan : ∀ x ∈ Icc (-1 : ℝ) 1, ∀ q ∈ S, ξ q + (x - q) * deriv ξ q ≤ ξ x) (h0 : deriv ξ 0 = 0)
+    (G₀ : GaussianField (α := Config N) Pm (fun σ τ => overlapCovMatrix N ξ σ τ))
+    (v₀ : ℝ≥0) (vs : Fin κ → ℝ≥0) {J₁ : Finset J} {L₀ L₀' : Fin 2 → J → ℝ}
+    {L L' : Fin κ → Fin 2 → J → ℝ}
+    (hC0 : ∀ l l', (v₀ : ℝ) * gram L₀ l l' = deriv ξ (ρ l l' 1) - deriv ξ (ρ l l' 0))
+    (hC : ∀ (p : Fin κ) l l', (vs p : ℝ) * gram (L p) l l'
+      = deriv ξ (ρ l l' (p.val + 2)) - deriv ξ (ρ l l' (p.val + 1)))
+    (hL0 : ∀ l j, j ∉ J₁ → L₀ l j = 0) (hL : ∀ p l j, j ∉ J₁ → L p l j = 0)
+    (hL0' : ∀ l j, j ∈ J₁ → L₀' l j = 0) (hL' : ∀ p l j, j ∈ J₁ → L' p l j = 0)
+    (a : Fin N × Fin 2 → ℝ) (lam : ℝ) (ns : Fin κ → ℝ) (hnsm : Monotone ns)
+    (hpos : ∀ i, 0 < ns i) (hle : ∀ i, ns i ≤ 1)
+    (hu : ∃ σ : Fin 2 → Config N, overlap N (σ 0) (σ 1) = u) :
+    (1 / (N : ℝ)) * ∫ θ, Real.log (cascadeRec κ ns (siteGaussianMarks (Fin N × J) κ vs)
+        (coupledG N u a L₀ L₀' L L' ξ G₀ 1 θ)).toReal ∂Pm.prod (rootMarksLaw N v₀)
+      ≤ 2 * Real.log 2 + (1 / (N : ℝ)) * (∫ z₀, parisiRec κ ns (siteGaussianMarks (Fin N × J) κ vs)
+            (pairCoshF N κ lam a (L₀ + L₀') (fun p => L p + L' p) z₀) ∂rootMarksLaw N v₀)
+          - lam * u - (1 / 2) * coupledLevelSum ξ ρ ns
+          + pairDiagDefect ξ u (fun l l' => ρ l l' (κ + 1)) := by
+  refine le_of_forall_strictMono_le
+    (f := fun ns : Fin κ → ℝ => (1 / (N : ℝ)) * ∫ θ, Real.log (cascadeRec κ ns
+      (siteGaussianMarks (Fin N × J) κ vs) (coupledG N u a L₀ L₀' L L' ξ G₀ 1 θ)).toReal
+      ∂Pm.prod (rootMarksLaw N v₀))
+    (g := fun ns : Fin κ → ℝ => 2 * Real.log 2 + (1 / (N : ℝ)) * (∫ z₀, parisiRec κ ns
+      (siteGaussianMarks (Fin N × J) κ vs)
+      (pairCoshF N κ lam a (L₀ + L₀') (fun p => L p + L' p) z₀) ∂rootMarksLaw N v₀)
+      - lam * u - (1 / 2) * coupledLevelSum ξ ρ ns
+      + pairDiagDefect ξ u (fun l l' => ρ l l' (κ + 1)))
+    ?_ ?_ (fun ns hsm hpos hlt => coupled_bound' N hN ξ ρ u hρ0 hρS htan h0 G₀ v₀ vs hC0 hC hL0 hL
+      hL0' hL' a lam ns hsm hpos hlt hu) hnsm hpos hle
+  · exact continuousOn_const.mul
+      (continuousOn_integral_log_cascadeRec_coupledG N ξ u hu G₀ v₀ vs L₀ L₀' L L' a)
+  · exact (((continuousOn_const.add (continuousOn_const.mul
+      (continuousOn_integral_parisiRec_pairCoshF N lam a (L₀ + L₀') (fun p => L p + L' p) v₀
+        vs))).sub continuousOn_const).sub
+      (continuousOn_const.mul (continuous_coupledLevelSum ξ ρ).continuousOn)).add
+      continuousOn_const
 
 end
 

@@ -21,7 +21,9 @@ arbitrary factors. The level sum becomes (14.152)
 
 (`coupledLevelSum_couplingRhoSgn`), and with the same field at every site the endpoint is
 Talagrand's one-site `Y₀(λ)` (`pairSiteY₀`). This is **Proposition 14.6.3**
-(`coupled_bound_coupling`), for `0 < n₁ < ⋯ < n_κ < 1` and a free top value `ρ_{κ+1}`; under
+(`coupled_bound_coupling`), for nondecreasing `0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1` (from the strict case by
+continuity of both sides in the exponents, `coupled_bound'_of_monotone`) and a free top value
+`ρ_{κ+1}`; under
 `ρ_{κ+1} = 1`, `τ ≤ κ`, `u = η ρ_τ` the diagonal defect vanishes (`coupled_bound_coupling_of_top`).
 Without the extra field the left-hand side is the constrained free energy (14.149)
 (`constrainedPairZ`, `coupled_bound_coupling_zero`).
@@ -136,16 +138,17 @@ def couplingLevelSum (ξ : ℝ → ℝ) (ρ : ℕ → ℝ) (τ : ℕ) (ns : Fin 
   ∑ p : Fin κ, (if p.val + 1 < τ then (2 : ℝ) else 1)
     * (ns p * (parisiTheta ξ (ρ (p.val + 2)) - parisiTheta ξ (ρ (p.val + 1))))
 
-/-- **(14.152)**: for the coupling, the level sum of (14.147) is twice `couplingLevelSum`. -/
-theorem coupledLevelSum_couplingRhoSgn {ξ : ℝ → ℝ} (heven : ∀ x, ξ (-x) = ξ x) {η : ℝ}
-    (hη : η = 1 ∨ η = -1) (ρ : ℕ → ℝ) (τ : ℕ) (ns : Fin κ → ℝ) :
+/-- **(14.152)**: for the coupling, the level sum of (14.147) is twice `couplingLevelSum`, as
+soon as `θ(η x) = θ(x)` (automatic for `η = 1`, and for `η = -1` when `ξ` is even). -/
+theorem coupledLevelSum_couplingRhoSgn {ξ : ℝ → ℝ} {η : ℝ}
+    (hθ : ∀ x, parisiTheta ξ (η * x) = parisiTheta ξ x) (ρ : ℕ → ℝ) (τ : ℕ) (ns : Fin κ → ℝ) :
     coupledLevelSum ξ (couplingRhoSgn ρ η τ) ns = 2 * couplingLevelSum ξ ρ τ ns := by
   unfold coupledLevelSum couplingLevelSum
   rw [Finset.mul_sum]
   refine (Finset.sum_comm.trans (Finset.sum_congr rfl fun l _ => Finset.sum_comm)).symm.trans ?_
   refine Finset.sum_congr rfl fun p _ => ?_
   simp only [Fin.sum_univ_two, couplingRhoSgn, Fin.isValue, ↓reduceIte, Fin.zero_eq_one_iff,
-    OfNat.ofNat_ne_one, one_ne_zero, parisiTheta_sgn_mul_of_even heven hη]
+    OfNat.ofNat_ne_one, one_ne_zero, hθ]
   by_cases hp : p.val + 1 < τ
   · rw [ite_eq_left hp, min_eq_left (by omega : p.val + 2 ≤ τ),
       min_eq_left (by omega : p.val + 1 ≤ τ)]
@@ -173,12 +176,11 @@ lemma coe_couplingVar {ξ : ℝ → ℝ} {ρ : ℕ → ℝ} {p : ℕ}
 omit [DecidableEq J''] in
 /-- **The covariance identities (14.133) for the coupling**: with the variances (14.156) and the
 factors (14.157), `𝔼 y^ℓ_p y^{ℓ'}_p = ξ'(ρ^{ℓ,ℓ'}_{p+1}) − ξ'(ρ^{ℓ,ℓ'}_p)`. -/
-lemma couplingVar_mul_gram {ξ : ℝ → ℝ} (heven : ∀ x, ξ (-x) = ξ x) {η : ℝ}
-    (hη : η = 1 ∨ η = -1) {ρ : ℕ → ℝ} {τ : ℕ}
+lemma couplingVar_mul_gram {ξ : ℝ → ℝ} {η : ℝ} (hη2 : η ^ 2 = 1)
+    (hodd : ∀ x, deriv ξ (η * x) = η * deriv ξ x) {ρ : ℕ → ℝ} {τ : ℕ}
     {p : ℕ} (hmono : deriv ξ (ρ p) ≤ deriv ξ (ρ (p + 1))) (l l' : Fin 2) :
     (couplingVar ξ ρ p : ℝ) * gram (sumL (J' := J'') (couplingFactorSgn η τ p)) l l'
       = deriv ξ (couplingRhoSgn ρ η τ l l' (p + 1)) - deriv ξ (couplingRhoSgn ρ η τ l l' p) := by
-  have hη2 : η ^ 2 = 1 := by rcases hη with rfl | rfl <;> norm_num
   rw [coe_couplingVar hmono, gram_sumL]
   unfold couplingRhoSgn
   by_cases hll : l = l'
@@ -189,14 +191,16 @@ lemma couplingVar_mul_gram {ξ : ℝ → ℝ} (heven : ∀ x, ξ (-x) = ξ x) {�
   · simp only [hll, ite_false]
     rcases lt_or_ge p τ with hpτ | hpτ
     · rw [gram_couplingFactorSgn_of_lt hη2 hpτ, ite_eq_right hll,
-        min_eq_left (by omega : p + 1 ≤ τ), min_eq_left hpτ.le,
-        deriv_sgn_mul_of_even heven hη, deriv_sgn_mul_of_even heven hη]
+        min_eq_left (by omega : p + 1 ≤ τ), min_eq_left hpτ.le, hodd, hodd]
       ring
     · rw [gram_couplingFactorSgn_of_le hpτ, ite_eq_right hll, mul_zero,
         min_eq_right (by omega : τ ≤ p + 1), min_eq_right hpτ, sub_self]
 
-/-- **Proposition 14.6.3** (Talagrand Vol. II, §14.6), for `0 < n₁ < ⋯ < n_κ < 1` and a free top
-value `ρ_{κ+1}`: for an even `ξ` lying above its tangent lines, parameters
+/-- **Proposition 14.6.3** (Talagrand Vol. II, §14.6), for nondecreasing exponents
+`0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1` and a free top value `ρ_{κ+1}`: for `ξ` lying above its tangent lines at
+the values `ρ_r`, `η ρ_r` — with
+`ξ'(η x) = η ξ'(x)` and `θ(η x) = θ(x)`, automatic for `η = 1` and given by evenness for
+`η = -1` (`deriv_sgn_mul_of_even`, `parisiTheta_sgn_mul_of_even`) — parameters
 `0 = ρ₀ ≤ ρ₁ ≤ ⋯ ≤ ρ_{κ+1}` along which `ξ'` is nondecreasing, Talagrand's coupling at the level
 `τ` with the sign `η`, an extra field with arbitrary factors `M₀, M` on further columns, the
 field `h` at every site and any `λ`,
@@ -207,14 +211,16 @@ field `h` at every site and any `λ`,
 where `G₁` is the recursion (14.160) of `∑_{R_{1,2}=u} e^{-H_N(σ¹)-H_N(σ²)-H⁰}` in the marks of
 `H⁰`, `Y₀(λ)` is the one-site recursion (14.168)–(14.169) with `g_p = y_p + Z_p`, and `D` is the
 diagonal defect at `ρ_{κ+1}`, which vanishes when `ρ_{κ+1} = 1`, `τ ≤ κ` and `u = η ρ_τ`. -/
-theorem coupled_bound_coupling (hN : 0 < N) (ξ : ℝ → ℝ) (heven : ∀ x, ξ (-x) = ξ x)
-    (htan : ∀ x ∈ Icc (-1 : ℝ) 1, ∀ q : ℝ, ξ q + (x - q) * deriv ξ q ≤ ξ x) (h0 : deriv ξ 0 = 0)
+theorem coupled_bound_coupling (hN : 0 < N) (ξ : ℝ → ℝ) {S : Set ℝ}
+    (htan : ∀ x ∈ Icc (-1 : ℝ) 1, ∀ q ∈ S, ξ q + (x - q) * deriv ξ q ≤ ξ x) (h0 : deriv ξ 0 = 0)
     (ρ : ℕ → ℝ) (hρ0 : ρ 0 = 0) (hmono : ∀ r, r ≤ κ → deriv ξ (ρ r) ≤ deriv ξ (ρ (r + 1)))
-    {η : ℝ} (hη : η = 1 ∨ η = -1) (τ : ℕ) (u : ℝ)
+    {η : ℝ} (hη2 : η ^ 2 = 1) (hodd : ∀ x, deriv ξ (η * x) = η * deriv ξ x)
+    (hθ : ∀ x, parisiTheta ξ (η * x) = parisiTheta ξ x) (hS : ∀ r, ρ r ∈ S)
+    (hS' : ∀ r, η * ρ r ∈ S) (τ : ℕ) (u : ℝ)
     (hu : ∃ σ : Fin 2 → Config N, overlap N (σ 0) (σ 1) = u)
     (G₀ : GaussianField (α := Config N) Pm (fun σ τ => overlapCovMatrix N ξ σ τ))
     (M₀ : Fin 2 → J'' → ℝ) (M : Fin κ → Fin 2 → J'' → ℝ) (h : Fin 2 → ℝ) (lam : ℝ)
-    (ns : Fin κ → ℝ) (hsm : StrictMono ns) (hpos : ∀ i, 0 < ns i) (hlt : ∀ i, ns i < 1) :
+    (ns : Fin κ → ℝ) (hnsm : Monotone ns) (hpos : ∀ i, 0 < ns i) (hle : ∀ i, ns i ≤ 1) :
     (1 / (N : ℝ)) * ∫ θ, Real.log (cascadeRec κ ns
         (siteGaussianMarks (Fin N × (Fin 2 ⊕ J'')) κ fun p => couplingVar ξ ρ (p.val + 1))
         (coupledG N u (fun s => h s.2) (sumL (couplingFactorSgn η τ 0)) (sumR M₀)
@@ -227,33 +233,40 @@ theorem coupled_bound_coupling (hN : 0 < N) (ξ : ℝ → ℝ) (heven : ∀ x, �
           - lam * u - couplingLevelSum ξ ρ τ ns
           + pairDiagDefect ξ u (fun l l' => couplingRhoSgn ρ η τ l l' (κ + 1)) := by
   have hN' : (N : ℝ) ≠ 0 := by exact_mod_cast hN.ne'
-  have hb := coupled_bound' N hN ξ (couplingRhoSgn ρ η τ) u
-    (couplingRhoSgn_zero ρ hρ0 η τ) (S := univ) (fun _ _ _ => mem_univ _)
-    (fun x hx q _ => htan x hx q) h0 G₀ (couplingVar ξ ρ 0) (fun p => couplingVar ξ ρ (p.val + 1))
+  have hρS : ∀ l l' r, couplingRhoSgn ρ η τ l l' r ∈ S := fun l l' r => by
+    unfold couplingRhoSgn
+    split_ifs
+    · exact hS r
+    · exact hS' _
+  have hb := coupled_bound'_of_monotone N hN ξ (couplingRhoSgn ρ η τ) u
+    (couplingRhoSgn_zero ρ hρ0 η τ) (S := S) hρS htan h0 G₀ (couplingVar ξ ρ 0)
+    (fun p => couplingVar ξ ρ (p.val + 1))
     (J₁ := leftCols J'') (L₀ := sumL (couplingFactorSgn η τ 0)) (L₀' := sumR M₀)
     (L := fun p => sumL (couplingFactorSgn η τ (p.val + 1))) (L' := fun p => sumR (M p))
-    (fun l l' => couplingVar_mul_gram heven hη (hmono 0 (Nat.zero_le _)) l l')
-    (fun p l l' => couplingVar_mul_gram heven hη (hmono (p.val + 1) (by omega)) l l')
+    (fun l l' => couplingVar_mul_gram hη2 hodd (hmono 0 (Nat.zero_le _)) l l')
+    (fun p l l' => couplingVar_mul_gram hη2 hodd (hmono (p.val + 1) (by omega)) l l')
     (fun l j hj => sumL_of_not_mem_leftCols _ l hj)
     (fun p l j hj => sumL_of_not_mem_leftCols _ l hj)
     (fun l j hj => sumR_of_mem_leftCols _ l hj)
     (fun p l j hj => sumR_of_mem_leftCols _ l hj)
-    (fun s => h s.2) lam ns hsm hpos hlt hu
-  rw [integral_parisiRec_pairCoshF N ns hsm hpos hlt _ _ lam h _ _,
-    coupledLevelSum_couplingRhoSgn heven hη ρ τ ns] at hb
+    (fun s => h s.2) lam ns hnsm hpos hle hu
+  rw [integral_parisiRec_pairCoshF N ns hpos hle _ _ lam h _ _,
+    coupledLevelSum_couplingRhoSgn hθ ρ τ ns] at hb
   refine hb.trans (le_of_eq ?_)
   field_simp
 
 /-- **Proposition 14.6.3 under Talagrand's normalization** `ρ_{κ+1} = 1`, `τ ≤ κ`, `u = η ρ_τ`:
 the diagonal defect vanishes. -/
-theorem coupled_bound_coupling_of_top (hN : 0 < N) (ξ : ℝ → ℝ) (heven : ∀ x, ξ (-x) = ξ x)
-    (htan : ∀ x ∈ Icc (-1 : ℝ) 1, ∀ q : ℝ, ξ q + (x - q) * deriv ξ q ≤ ξ x) (h0 : deriv ξ 0 = 0)
+theorem coupled_bound_coupling_of_top (hN : 0 < N) (ξ : ℝ → ℝ) {S : Set ℝ}
+    (htan : ∀ x ∈ Icc (-1 : ℝ) 1, ∀ q ∈ S, ξ q + (x - q) * deriv ξ q ≤ ξ x) (h0 : deriv ξ 0 = 0)
     (ρ : ℕ → ℝ) (hρ0 : ρ 0 = 0) (hmono : ∀ r, r ≤ κ → deriv ξ (ρ r) ≤ deriv ξ (ρ (r + 1)))
-    (htop : ρ (κ + 1) = 1) {η : ℝ} (hη : η = 1 ∨ η = -1) {τ : ℕ} (hτκ : τ ≤ κ)
+    (htop : ρ (κ + 1) = 1) {η : ℝ} (hη2 : η ^ 2 = 1) (hodd : ∀ x, deriv ξ (η * x) = η * deriv ξ x)
+    (hθ : ∀ x, parisiTheta ξ (η * x) = parisiTheta ξ x) (hS : ∀ r, ρ r ∈ S)
+    (hS' : ∀ r, η * ρ r ∈ S) {τ : ℕ} (hτκ : τ ≤ κ)
     (hu : ∃ σ : Fin 2 → Config N, overlap N (σ 0) (σ 1) = η * ρ τ)
     (G₀ : GaussianField (α := Config N) Pm (fun σ τ => overlapCovMatrix N ξ σ τ))
     (M₀ : Fin 2 → J'' → ℝ) (M : Fin κ → Fin 2 → J'' → ℝ) (h : Fin 2 → ℝ) (lam : ℝ)
-    (ns : Fin κ → ℝ) (hsm : StrictMono ns) (hpos : ∀ i, 0 < ns i) (hlt : ∀ i, ns i < 1) :
+    (ns : Fin κ → ℝ) (hnsm : Monotone ns) (hpos : ∀ i, 0 < ns i) (hle : ∀ i, ns i ≤ 1) :
     (1 / (N : ℝ)) * ∫ θ, Real.log (cascadeRec κ ns
         (siteGaussianMarks (Fin N × (Fin 2 ⊕ J'')) κ fun p => couplingVar ξ ρ (p.val + 1))
         (coupledG N (η * ρ τ) (fun s => h s.2) (sumL (couplingFactorSgn η τ 0)) (sumR M₀)
@@ -264,8 +277,8 @@ theorem coupled_bound_coupling_of_top (hN : 0 < N) (ξ : ℝ → ℝ) (heven : �
             (sumL (couplingFactorSgn η τ 0) + sumR M₀)
             (fun p => sumL (couplingFactorSgn η τ (p.val + 1)) + sumR (M p))
           - lam * (η * ρ τ) - couplingLevelSum ξ ρ τ ns := by
-  have hb := coupled_bound_coupling N hN ξ heven htan h0 ρ hρ0 hmono hη τ (η * ρ τ) hu G₀ M₀ M h
-    lam ns hsm hpos hlt
+  have hb := coupled_bound_coupling N hN ξ htan h0 ρ hρ0 hmono hη2 hodd hθ hS hS' τ (η * ρ τ) hu
+    G₀ M₀ M h lam ns hnsm hpos hle
   have hd : (fun l l' => couplingRhoSgn ρ η τ l l' (κ + 1))
       = fun l l' => if l = l' then (1 : ℝ) else η * ρ τ :=
     funext fun l => funext fun l' => couplingRhoSgn_top ρ η hτκ htop l l'
@@ -371,22 +384,24 @@ free energy `(1/N) 𝔼 log ∑_{R_{1,2}=u} e^{−H_N(σ¹) − H_N(σ²) − �
     − ∑_{τ ≤ p ≤ κ} n_p (θ(ρ_{p+1}) − θ(ρ_p)) + D`,
 
 with the one-site `Y₀(λ)` of the coupling on two columns. -/
-theorem coupled_bound_coupling_zero (hN : 0 < N) (ξ : ℝ → ℝ) (heven : ∀ x, ξ (-x) = ξ x)
-    (htan : ∀ x ∈ Icc (-1 : ℝ) 1, ∀ q : ℝ, ξ q + (x - q) * deriv ξ q ≤ ξ x) (h0 : deriv ξ 0 = 0)
+theorem coupled_bound_coupling_zero (hN : 0 < N) (ξ : ℝ → ℝ) {S : Set ℝ}
+    (htan : ∀ x ∈ Icc (-1 : ℝ) 1, ∀ q ∈ S, ξ q + (x - q) * deriv ξ q ≤ ξ x) (h0 : deriv ξ 0 = 0)
     (ρ : ℕ → ℝ) (hρ0 : ρ 0 = 0) (hmono : ∀ r, r ≤ κ → deriv ξ (ρ r) ≤ deriv ξ (ρ (r + 1)))
-    {η : ℝ} (hη : η = 1 ∨ η = -1) (τ : ℕ) (u : ℝ)
+    {η : ℝ} (hη2 : η ^ 2 = 1) (hodd : ∀ x, deriv ξ (η * x) = η * deriv ξ x)
+    (hθ : ∀ x, parisiTheta ξ (η * x) = parisiTheta ξ x) (hS : ∀ r, ρ r ∈ S)
+    (hS' : ∀ r, η * ρ r ∈ S) (τ : ℕ) (u : ℝ)
     (hu : ∃ σ : Fin 2 → Config N, overlap N (σ 0) (σ 1) = u)
     (G₀ : GaussianField (α := Config N) Pm (fun σ τ => overlapCovMatrix N ξ σ τ))
-    (h : Fin 2 → ℝ) (lam : ℝ) (ns : Fin κ → ℝ) (hsm : StrictMono ns) (hpos : ∀ i, 0 < ns i)
-    (hlt : ∀ i, ns i < 1) :
+    (h : Fin 2 → ℝ) (lam : ℝ) (ns : Fin κ → ℝ) (hnsm : Monotone ns) (hpos : ∀ i, 0 < ns i)
+    (hle : ∀ i, ns i ≤ 1) :
     (1 / (N : ℝ)) * ∫ ω, Real.log (constrainedPairZ N u (G₀.U ω) (fun s => h s.2)) ∂Pm
       ≤ 2 * Real.log 2
           + pairSiteY₀ (J := Fin 2) ns (couplingVar ξ ρ 0) (fun p => couplingVar ξ ρ (p.val + 1))
             lam h (couplingFactorSgn η τ 0) (fun p => couplingFactorSgn η τ (p.val + 1))
           - lam * u - couplingLevelSum ξ ρ τ ns
           + pairDiagDefect ξ u (fun l l' => couplingRhoSgn ρ η τ l l' (κ + 1)) := by
-  have hb := coupled_bound_coupling N hN ξ heven htan h0 ρ hρ0 hmono hη τ u hu G₀
-    (J'' := PEmpty.{u + 1}) 0 0 h lam ns hsm hpos hlt
+  have hb := coupled_bound_coupling N hN ξ htan h0 ρ hρ0 hmono hη2 hodd hθ hS hS' τ u hu G₀
+    (J'' := PEmpty.{u + 1}) 0 0 h lam ns hnsm hpos hle
   simp only [Pi.zero_apply, sumR_zero, add_zero] at hb
   rw [pairSiteY₀_sumL] at hb
   -- the left-hand side: the branch functions are constant, and the recursion of a constant is

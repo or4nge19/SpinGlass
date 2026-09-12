@@ -4,6 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Matteo Cipollina
 -/
 import SpinGlass.Parisi.LevelBoundLaw
+import Common.Mathlib.Probability.PointProcess.CascadeJensenLower
+import Common.Mathlib.Probability.PointProcess.CascadeExponent
 
 /-!
 # Integrability of the logarithm of a cascade sum, jointly in a parameter
@@ -393,18 +395,192 @@ theorem integral_log_cascadeSum_div_eq_of (hsm : StrictMono ms) (hpos : ∀ i, 0
     cascadeLaw_eq_map_cascadeZip,
     integral_map (measurable_cascadeZip k).aemeasurable hmeasF.aestronglyMeasurable]
 
-/-- **`log cascadeRec(G_θ)` is integrable in the parameter** when `∫∫ G` and `∫∫ |log G|` are
-finite: it is the conditional expectation of the integrable `log (∑_α v_α G_θ(z_α) / ∑_α v_α)`. -/
-theorem integrable_log_cascadeRec (hsm : StrictMono ms) (hpos : ∀ i, 0 < ms i)
-    (hlt : ∀ i, ms i < 1) (hGm : Measurable (Function.uncurry G)) (hGpos : ∀ θ x, 0 < G θ x)
+/-- **The uniform bound**: for any exponents `0 < m_p ≤ 1`, at a.e. `θ`,
+`|log cascadeRec(G_θ)| ≤ |∫ log G_θ| + ∫ G_θ` — the two-sided Jensen bound
+`∫ log G_θ ≤ log cascadeRec(G_θ) ≤ log ∫ G_θ ≤ ∫ G_θ` (`integral_le_parisiRec`,
+`parisiRec_le_log_integral_exp`), whose right-hand side does not depend on the exponents. -/
+theorem ae_norm_log_cascadeRec_le (hpos : ∀ i, 0 < ms i) (hle : ∀ i, ms i ≤ 1)
+    (hGm : Measurable (Function.uncurry G)) (hGpos : ∀ θ x, 0 < G θ x)
     (hGfin : ∀ θ x, G θ x ≠ ∞) (hint : ∫⁻ θ, ∫⁻ x, G θ x ∂Measure.pi μs ∂Pθ ≠ ∞)
-    (hlog : ∫⁻ θ, ∫⁻ x, ‖Real.log (G θ x).toReal‖ₑ ∂Measure.pi μs ∂Pθ ≠ ∞)
-    (hfin : ∀ θ, cascadeRec k ms μs (G θ) ≠ ∞) :
-    Integrable (fun θ => Real.log (cascadeRec k ms μs (G θ)).toReal) Pθ := by
-  have hI' := integrable_log_cascadeSum_div_prod' k Pθ ms μs G hsm hpos hlt hGm hGpos hGfin hint
-    hlog
-  refine hI'.integral_prod_left.congr (Filter.Eventually.of_forall fun θ => ?_)
-  exact integral_log_cascadeSum_div_eq_of k ms μs G hsm hpos hlt hGm hGpos hfin θ
+    (hlog : ∫⁻ θ, ∫⁻ x, ‖Real.log (G θ x).toReal‖ₑ ∂Measure.pi μs ∂Pθ ≠ ∞) :
+    ∀ᵐ θ ∂Pθ, ‖Real.log (cascadeRec k ms μs (G θ)).toReal‖
+      ≤ |∫ x, Real.log (G θ x).toReal ∂Measure.pi μs| + (∫⁻ x, G θ x ∂Measure.pi μs).toReal := by
+  have hGθ : ∀ θ, Measurable (G θ) := fun θ =>
+    hGm.comp (measurable_const.prodMk measurable_id)
+  have hIm : Measurable fun θ => ∫⁻ x, G θ x ∂Measure.pi μs :=
+    Measurable.lintegral_prod_right' hGm
+  have hlogI : Integrable (fun p : Θ × (Fin k → T') => Real.log (G p.1 p.2).toReal)
+      (Pθ.prod (Measure.pi μs)) := by
+    refine ⟨hGm.ennreal_toReal.log.aestronglyMeasurable, ?_⟩
+    have hm : AEMeasurable (fun p : Θ × (Fin k → T') => ‖Real.log (G p.1 p.2).toReal‖ₑ)
+        (Pθ.prod (Measure.pi μs)) := hGm.ennreal_toReal.log.enorm.aemeasurable
+    rw [hasFiniteIntegral_iff_enorm, lintegral_prod _ hm]
+    exact hlog.lt_top
+  filter_upwards [ae_lt_top hIm hint, hlogI.prod_right_ae] with θ hθ hθi
+  -- `G θ = exp F` for `F = log G θ`
+  set F : (Fin k → T') → ℝ := fun x => Real.log (G θ x).toReal with hF
+  have hGeq : (fun x => ENNReal.ofReal (Real.exp (F x))) = G θ := by
+    funext x
+    rw [hF]
+    simp only
+    rw [Real.exp_log (ENNReal.toReal_pos (hGpos θ x).ne' (hGfin θ x)),
+      ENNReal.ofReal_toReal (hGfin θ x)]
+  have hFm : Measurable F := (hGθ θ).ennreal_toReal.log
+  have hθi' : Integrable F (Measure.pi μs) := hθi
+  have hfin' : ∫⁻ x, ENNReal.ofReal (Real.exp (F x)) ∂Measure.pi μs ≠ ∞ := by
+    rw [hGeq]
+    exact hθ.ne
+  have hlow := integral_le_parisiRec k ms μs hFm hpos hle hfin' hθi'
+  have hup := parisiRec_le_log_integral_exp k ms μs hFm hpos hle hfin'
+  unfold parisiRec at hlow hup
+  rw [hGeq] at hlow hup
+  have hup' : Real.log (cascadeRec k ms μs (G θ)).toReal
+      ≤ (∫⁻ x, G θ x ∂Measure.pi μs).toReal :=
+    hup.trans (Real.log_le_self ENNReal.toReal_nonneg)
+  rw [Real.norm_eq_abs]
+  have h0 := ENNReal.toReal_nonneg (a := ∫⁻ x, G θ x ∂Measure.pi μs)
+  have h1 := abs_nonneg (∫ x, F x ∂Measure.pi μs)
+  refine abs_le.2 ⟨?_, ?_⟩
+  · linarith [neg_abs_le (∫ x, F x ∂Measure.pi μs)]
+  · linarith
+
+/-- `|∫ log G_θ| + ∫ G_θ` is integrable in `θ` (Fubini). -/
+theorem integrable_abs_integral_log_add_toReal_lintegral (hGm : Measurable (Function.uncurry G))
+    (hint : ∫⁻ θ, ∫⁻ x, G θ x ∂Measure.pi μs ∂Pθ ≠ ∞)
+    (hlog : ∫⁻ θ, ∫⁻ x, ‖Real.log (G θ x).toReal‖ₑ ∂Measure.pi μs ∂Pθ ≠ ∞) :
+    Integrable (fun θ => |∫ x, Real.log (G θ x).toReal ∂Measure.pi μs|
+      + (∫⁻ x, G θ x ∂Measure.pi μs).toReal) Pθ := by
+  have hIm : Measurable fun θ => ∫⁻ x, G θ x ∂Measure.pi μs :=
+    Measurable.lintegral_prod_right' hGm
+  have hGI : Integrable (fun θ => (∫⁻ x, G θ x ∂Measure.pi μs).toReal) Pθ :=
+    integrable_toReal_of_lintegral_ne_top hIm.aemeasurable hint
+  have hlogI : Integrable (fun p : Θ × (Fin k → T') => Real.log (G p.1 p.2).toReal)
+      (Pθ.prod (Measure.pi μs)) := by
+    refine ⟨hGm.ennreal_toReal.log.aestronglyMeasurable, ?_⟩
+    have hm : AEMeasurable (fun p : Θ × (Fin k → T') => ‖Real.log (G p.1 p.2).toReal‖ₑ)
+        (Pθ.prod (Measure.pi μs)) := hGm.ennreal_toReal.log.enorm.aemeasurable
+    rw [hasFiniteIntegral_iff_enorm, lintegral_prod _ hm]
+    exact hlog.lt_top
+  exact hlogI.integral_prod_left.abs.add hGI
+
+/-- **`log cascadeRec(G_θ)` is integrable in the parameter** when `∫∫ G` and `∫∫ |log G|` are
+finite, for any exponents `0 < m_p ≤ 1` (the uniform bound `ae_norm_log_cascadeRec_le`). -/
+theorem integrable_log_cascadeRec (hpos : ∀ i, 0 < ms i) (hle : ∀ i, ms i ≤ 1)
+    (hGm : Measurable (Function.uncurry G)) (hGpos : ∀ θ x, 0 < G θ x)
+    (hGfin : ∀ θ x, G θ x ≠ ∞) (hint : ∫⁻ θ, ∫⁻ x, G θ x ∂Measure.pi μs ∂Pθ ≠ ∞)
+    (hlog : ∫⁻ θ, ∫⁻ x, ‖Real.log (G θ x).toReal‖ₑ ∂Measure.pi μs ∂Pθ ≠ ∞) :
+    Integrable (fun θ => Real.log (cascadeRec k ms μs (G θ)).toReal) Pθ :=
+  Integrable.mono' (integrable_abs_integral_log_add_toReal_lintegral k Pθ μs G hGm hint hlog)
+    ((measurable_cascadeRec_prod k ms μs hGm).ennreal_toReal.log).aestronglyMeasurable
+    (ae_norm_log_cascadeRec_le k Pθ ms μs G hpos hle hGm hGpos hGfin hint hlog)
+
+/-- **`∫ log cascadeRec(G_θ) dθ` is continuous in the exponents on `(0, 1]^k`**: dominated
+convergence with the uniform bound `ae_norm_log_cascadeRec_le` and `continuousOn_cascadeRec`. -/
+theorem continuousOn_integral_log_cascadeRec (hGm : Measurable (Function.uncurry G))
+    (hGpos : ∀ θ x, 0 < G θ x) (hGfin : ∀ θ x, G θ x ≠ ∞)
+    (hint : ∫⁻ θ, ∫⁻ x, G θ x ∂Measure.pi μs ∂Pθ ≠ ∞)
+    (hlog : ∫⁻ θ, ∫⁻ x, ‖Real.log (G θ x).toReal‖ₑ ∂Measure.pi μs ∂Pθ ≠ ∞) :
+    ContinuousOn (fun ms => ∫ θ, Real.log (cascadeRec k ms μs (G θ)).toReal ∂Pθ)
+      (Set.pi Set.univ fun _ => Set.Ioc (0 : ℝ) 1) := by
+  intro ms₀ hmem
+  have hms₀ := hmem
+  simp only [Set.mem_univ_pi, Set.mem_Ioc] at hms₀
+  have hGθ : ∀ θ, Measurable (G θ) := fun θ =>
+    hGm.comp (measurable_const.prodMk measurable_id)
+  have hIm : Measurable fun θ => ∫⁻ x, G θ x ∂Measure.pi μs :=
+    Measurable.lintegral_prod_right' hGm
+  refine tendsto_integral_filter_of_dominated_convergence
+    (fun θ => |∫ x, Real.log (G θ x).toReal ∂Measure.pi μs|
+      + (∫⁻ x, G θ x ∂Measure.pi μs).toReal)
+    (Filter.Eventually.of_forall fun ms =>
+      ((measurable_cascadeRec_prod k ms μs hGm).ennreal_toReal.log).aestronglyMeasurable)
+    (eventually_nhdsWithin_of_forall fun ms hms => ?_)
+    (integrable_abs_integral_log_add_toReal_lintegral k Pθ μs G hGm hint hlog) ?_
+  · simp only [Set.mem_univ_pi, Set.mem_Ioc] at hms
+    exact ae_norm_log_cascadeRec_le k Pθ ms μs G (fun i => (hms i).1) (fun i => (hms i).2) hGm
+      hGpos hGfin hint hlog
+  · filter_upwards [ae_lt_top hIm hint] with θ hθ
+    have hc := continuousOn_cascadeRec k μs (hGθ θ) hθ.ne ms₀ hmem
+    have hne : cascadeRec k ms₀ μs (G θ) ≠ ∞ := ne_top_of_le_ne_top hθ.ne
+      (cascadeRec_le_lintegral_pi k ms₀ μs (hGθ θ) (fun i => (hms₀ i).1) (fun i => (hms₀ i).2))
+    have hpos' : 0 < cascadeRec k ms₀ μs (G θ) :=
+      cascadeRec_pos k ms₀ μs (hGθ θ) (hGpos θ) (fun i => (hms₀ i).1)
+    have h1 : Tendsto (fun ms => (cascadeRec k ms μs (G θ)).toReal)
+        (𝓝[Set.pi Set.univ fun _ => Set.Ioc (0 : ℝ) 1] ms₀)
+        (𝓝 (cascadeRec k ms₀ μs (G θ)).toReal) :=
+      (ENNReal.tendsto_toReal hne).comp hc.tendsto
+    exact (Real.continuousAt_log (ENNReal.toReal_pos hpos'.ne' hne).ne').tendsto.comp h1
+
+/-- **`∫ F₁(θ) dθ` is continuous in the exponents on `(0, 1]^k`**, Talagrand's form: for
+`F₁ = parisiRec k ms μs (F θ)` with `∫∫ exp F < ∞` and `∫∫ |F| < ∞`. -/
+theorem continuousOn_integral_parisiRec {F : Θ → (Fin k → T') → ℝ}
+    (hFm : Measurable (Function.uncurry F))
+    (hint : ∫⁻ θ, ∫⁻ x, ENNReal.ofReal (Real.exp (F θ x)) ∂Measure.pi μs ∂Pθ ≠ ∞)
+    (habs : ∫⁻ θ, ∫⁻ x, ‖F θ x‖ₑ ∂Measure.pi μs ∂Pθ ≠ ∞) :
+    ContinuousOn (fun ms => ∫ θ, parisiRec k ms μs (F θ) ∂Pθ)
+      (Set.pi Set.univ fun _ => Set.Ioc (0 : ℝ) 1) := by
+  have h1 : ∀ x : ℝ, (ENNReal.ofReal (Real.exp x)).toReal = Real.exp x := fun x =>
+    ENNReal.toReal_ofReal (Real.exp_pos x).le
+  refine continuousOn_integral_log_cascadeRec k Pθ μs
+    (fun θ x => ENNReal.ofReal (Real.exp (F θ x)))
+    (ENNReal.measurable_ofReal.comp (Real.measurable_exp.comp hFm))
+    (fun θ x => ENNReal.ofReal_pos.2 (Real.exp_pos _)) (fun θ x => ENNReal.ofReal_ne_top) hint ?_
+  simp only [h1, Real.log_exp]
+  exact habs
+
+omit [Nonempty T'] [IsProbabilityMeasure Pθ] in
+/-- **The cascade sums are almost surely finite**, jointly in the parameter, the weights and the
+marks, when `∫ G_θ d(μ₁ ⊗ ⋯ ⊗ μ_k) < ∞` for every `θ`: by the branch-law identity
+`lintegral_cascadeSum_cascadeZip` and the almost-sure finiteness of the total weight. -/
+theorem ae_cascadeSum_cascadeZip_lt_top (hsm : StrictMono ms) (hpos : ∀ i, 0 < ms i)
+    (hlt : ∀ i, ms i < 1) (hGm : Measurable (Function.uncurry G))
+    (hint : ∀ θ, ∫⁻ x, G θ x ∂Measure.pi μs ≠ ∞) :
+    ∀ᵐ q ∂Pθ.prod ((cascadeWeightsLaw k ms).prod (cascadeMarksLaw k μs)),
+      cascadeSum k (G q.1) (cascadeZip k (q.2.1, q.2.2)) < ∞ := by
+  have hGθ : ∀ θ, Measurable (G θ) := fun θ =>
+    hGm.comp (measurable_const.prodMk measurable_id)
+  have hmeas : Measurable fun q : Θ × (CascadeWeights k × CascadeMarks T' k) =>
+      cascadeSum k (G q.1) (cascadeZip k (q.2.1, q.2.2)) :=
+    (measurable_cascadeSum_prod k (G := G) hGm).comp
+      (measurable_fst.prodMk ((measurable_cascadeZip k).comp measurable_snd))
+  rw [Measure.ae_prod_iff_ae_ae (measurableSet_lt hmeas measurable_const)]
+  refine Filter.Eventually.of_forall fun θ => ?_
+  have hmeas' : Measurable fun r : CascadeWeights k × CascadeMarks T' k =>
+      cascadeSum k (G θ) (cascadeZip k (r.1, r.2)) :=
+    (measurable_cascadeSum k (hGθ θ)).comp (measurable_cascadeZip k)
+  show ∀ᵐ r ∂(cascadeWeightsLaw k ms).prod (cascadeMarksLaw k μs),
+    cascadeSum k (G θ) (cascadeZip k (r.1, r.2)) < ∞
+  rw [Measure.ae_prod_iff_ae_ae (measurableSet_lt hmeas' measurable_const)]
+  filter_upwards [ae_weightSum_ne_zero_ne_top k ms hsm hpos hlt] with w hw
+  show ∀ᵐ z ∂cascadeMarksLaw k μs, cascadeSum k (G θ) (cascadeZip k (w, z)) < ∞
+  refine ae_lt_top ((measurable_cascadeSum k (hGθ θ)).comp
+    ((measurable_cascadeZip k).comp (measurable_const.prodMk measurable_id))) ?_
+  rw [lintegral_cascadeSum_cascadeZip k μs w (hGθ θ)]
+  exact ENNReal.mul_ne_top hw.2 (hint θ)
+
+omit [Nonempty T'] [IsProbabilityMeasure Pθ] in
+/-- The total weight is almost surely positive and finite, jointly in the parameter and the
+marks. -/
+theorem ae_weightSum_prod (hsm : StrictMono ms) (hpos : ∀ i, 0 < ms i) (hlt : ∀ i, ms i < 1) :
+    ∀ᵐ q ∂Pθ.prod ((cascadeWeightsLaw k ms).prod (cascadeMarksLaw k μs)),
+      weightSum k q.2.1 ≠ 0 ∧ weightSum k q.2.1 ≠ ∞ := by
+  have hset : MeasurableSet {q : Θ × (CascadeWeights k × CascadeMarks T' k) |
+      weightSum k q.2.1 ≠ 0 ∧ weightSum k q.2.1 ≠ ∞} := by
+    have h1 := (measurable_weightSum k).comp (measurable_fst.comp measurable_snd :
+      Measurable fun q : Θ × (CascadeWeights k × CascadeMarks T' k) => q.2.1)
+    exact (h1 (measurableSet_singleton 0)).compl.inter (h1 (measurableSet_singleton ∞)).compl
+  rw [Measure.ae_prod_iff_ae_ae hset]
+  refine Filter.Eventually.of_forall fun θ => ?_
+  have hset' : MeasurableSet {r : CascadeWeights k × CascadeMarks T' k |
+      weightSum k r.1 ≠ 0 ∧ weightSum k r.1 ≠ ∞} := by
+    have h1 := (measurable_weightSum k).comp (measurable_fst :
+      Measurable fun r : CascadeWeights k × CascadeMarks T' k => r.1)
+    exact (h1 (measurableSet_singleton 0)).compl.inter (h1 (measurableSet_singleton ∞)).compl
+  show ∀ᵐ r ∂(cascadeWeightsLaw k ms).prod (cascadeMarksLaw k μs),
+    weightSum k r.1 ≠ 0 ∧ weightSum k r.1 ≠ ∞
+  rw [Measure.ae_prod_iff_ae_ae hset']
+  filter_upwards [ae_weightSum_ne_zero_ne_top k ms hsm hpos hlt] with w hw
+  exact Filter.Eventually.of_forall fun _ => hw
 
 /-- **Theorem 14.2.1 conditionally on the parameter, integrated**:
 `∫ log (∑_α v_α G_θ(z_α) / ∑_α v_α) = ∫ log cascadeRec(G_θ) dθ`. -/

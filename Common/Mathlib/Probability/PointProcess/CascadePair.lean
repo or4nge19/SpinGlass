@@ -2418,6 +2418,27 @@ lemma halveBelow_lt_one {k : ℕ} {ms : Fin k → ℝ} (hlt : ∀ i, ms i < 1) (
   · exact hlt i
 
 omit [MeasurableSpace T] [Nonempty T] in
+lemma halveBelow_le_one {k : ℕ} {ms : Fin k → ℝ} (hle : ∀ i, ms i ≤ 1) (r : ℕ) (i : Fin k) :
+    halveBelow r ms i ≤ 1 := by
+  unfold halveBelow
+  split_ifs
+  · linarith [hle i]
+  · exact hle i
+
+omit [MeasurableSpace T] [Nonempty T] in
+lemma halveBelow_monotone {k : ℕ} {ms : Fin k → ℝ} (hmono : Monotone ms)
+    (hpos : ∀ i, 0 < ms i) (r : ℕ) : Monotone (halveBelow r ms) := by
+  intro i j hij
+  have hij' : (i : ℕ) ≤ j := hij
+  have h := hmono hij
+  unfold halveBelow
+  split_ifs with hi hj hj
+  · linarith
+  · linarith [hpos i]
+  · exact absurd hj (by omega)
+  · exact h
+
+omit [MeasurableSpace T] [Nonempty T] in
 lemma halveBelow_strictMono {k : ℕ} {ms : Fin k → ℝ} (hsm : StrictMono ms)
     (hpos : ∀ i, 0 < ms i) (r : ℕ) : StrictMono (halveBelow r ms) := by
   intro i j hij

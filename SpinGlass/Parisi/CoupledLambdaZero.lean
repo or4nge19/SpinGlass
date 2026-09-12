@@ -186,24 +186,6 @@ lemma pairDiagDefect_couplingRhoSgn (ξ : ℝ → ℝ) (ρ : ℕ → ℝ) (η : 
 lemma couplingVar_qExt (ξ : ℝ → ℝ) {k : ℕ} (qs : Fin (k + 1) → ℝ) (p : ℕ) :
     couplingVar ξ (qExt qs) p = parisiVar ξ qs p := rfl
 
-/-- `X₀` as the `z₀`-average of the recursion over the levels `1, …, k` plus the absorbed level
-(14.84). -/
-lemma parisiX₀_logCosh_eq (ξ : ℝ → ℝ) (h : ℝ) {k : ℕ} (ms : Fin k → ℝ) (qs : Fin (k + 1) → ℝ)
-    (hpos : ∀ i, 0 < ms i) (hle : ∀ i, ms i ≤ 1) :
-    parisiX₀ ξ ms qs (fun x => Real.log (Real.cosh (h + x)))
-      = (∫ a, logCoshRec k ms (fun p => parisiVar ξ qs (p.val + 1)) (h + a)
-          ∂gaussianReal 0 (parisiVar ξ qs 0)) + (parisiVar ξ qs (k + 1) : ℝ) / 2 := by
-  have hpt : ∀ a, parisiRecGauss ξ ms qs (fun x => Real.log (Real.cosh (h + x))) a
-      = logCoshRec k ms (fun p => parisiVar ξ qs (p.val + 1)) (h + a)
-        + (parisiVar ξ qs (k + 1) : ℝ) / 2 := by
-    intro a
-    rw [logCoshRec_eq_parisiRecGauss k ξ h ms qs hpos hle a]
-    ring
-  unfold parisiX₀
-  rw [integral_congr_ae (Filter.Eventually.of_forall hpt),
-    integral_add (integrable_logCoshRec_add k ms _ hpos hle h _) (integrable_const _),
-    integral_const, probReal_univ, one_smul]
-
 /-- **The right-hand side of Proposition 14.6.3 at `λ = 0` is `2 𝒫_k(m, q)`**: with `κ = k`,
 `ρ = q`, `η = 1`, `u = q_τ`, `1 ≤ τ ≤ k + 1`, the field `h` and the exponents `n_p = m_p/2` below
 `τ`, `m_p` from `τ` on. -/
@@ -221,7 +203,7 @@ theorem coupling_rhs_zero_eq (ξ : ℝ → ℝ) (h : ℝ) {k : ℕ} (ms : Fin k 
     pairDiagDefect_couplingRhoSgn ξ (qExt qs) 1 hτk]
   simp only [couplingVar_qExt]
   unfold parisiFunctional
-  rw [parisiX₀_logCosh_eq ξ h ms qs hpos hle, Finset.sum_range_succ, Finset.sum_range,
+  rw [parisiX₀_logCosh_eq k ξ h ms qs hpos hle, Finset.sum_range_succ, Finset.sum_range,
     mExt_eq_one_of_le ms (le_refl (k + 1)), qExt_of_le qs (by omega : k + 2 ≤ k + 1 + 1)]
   have hv : (parisiVar ξ qs (k + 1) : ℝ) = deriv ξ 1 - deriv ξ (qExt qs (k + 1)) := by
     rw [parisiVar, Real.coe_toNNReal _ (sub_nonneg.2 hmonoTop),
@@ -272,7 +254,7 @@ lemma parisiFunctional_neg (ξ : ℝ → ℝ) (h : ℝ) {k : ℕ} (ms : Fin k �
     (hpos : ∀ i, 0 < ms i) (hle : ∀ i, ms i ≤ 1) :
     parisiFunctional ξ (-h) ms qs = parisiFunctional ξ h ms qs := by
   unfold parisiFunctional
-  rw [parisiX₀_logCosh_eq ξ (-h) ms qs hpos hle, parisiX₀_logCosh_eq ξ h ms qs hpos hle,
+  rw [parisiX₀_logCosh_eq k ξ (-h) ms qs hpos hle, parisiX₀_logCosh_eq k ξ h ms qs hpos hle,
     integral_logCoshRec_neg_add]
 
 /-! ### Proposition 14.6.3 at `λ = 0` -/
@@ -283,27 +265,29 @@ variable {Ω : Type u} [MeasurableSpace Ω] {Pm : Measure Ω} [IsProbabilityMeas
 
 /-- **Proposition 14.6.3 at `λ = 0`, for `u = q_τ ≥ 0`** (Talagrand's check after (14.152)): the
 constrained free energy `(1/N) 𝔼 log ∑_{R_{1,2}=q_τ} e^{−H_N(σ¹) − H_N(σ²) + h ∑ᵢ (σ¹ᵢ + σ²ᵢ)}`
-is at most `2 𝒫_k(m, q)`, for an even convex `ξ` with `ξ'(0) = 0`,
+is at most `2 𝒫_k(m, q)`, for a convex `ξ` with `ξ'(0) = 0` (no evenness is needed for `u ≥ 0`),
 `0 = q₀ ≤ q₁ ≤ ⋯ ≤ q_{k+2} = 1` along which `ξ'` is nondecreasing, `1 ≤ τ ≤ k + 1` and
-`0 < m₁ < ⋯ < m_k < 1`. -/
+`0 < m₁ ≤ ⋯ ≤ m_k ≤ 1`. -/
 theorem constrainedFreeEnergy_le_two_parisiFunctional (N : ℕ) (hN : 0 < N) (ξ : ℝ → ℝ)
-    (heven : ∀ x, ξ (-x) = ξ x) (hconv : ConvexOn ℝ univ ξ) (hdiff : Differentiable ℝ ξ)
+    (hconv : ConvexOn ℝ univ ξ) (hdiff : Differentiable ℝ ξ)
     (h0 : deriv ξ 0 = 0) {k : ℕ} (qs : Fin (k + 1) → ℝ)
     (hmono : ∀ r, r ≤ k + 1 → deriv ξ (qExt qs r) ≤ deriv ξ (qExt qs (r + 1)))
     {τ : ℕ} (hτ : 1 ≤ τ) (hτk : τ ≤ k + 1)
     (hu : ∃ σ : Fin 2 → Config N, overlap N (σ 0) (σ 1) = qExt qs τ)
     (G₀ : GaussianField (α := Config N) Pm (fun σ τ => overlapCovMatrix N ξ σ τ)) (h : ℝ)
-    (ms : Fin k → ℝ) (hsm : StrictMono ms) (hpos : ∀ i, 0 < ms i) (hlt : ∀ i, ms i < 1) :
+    (ms : Fin k → ℝ) (hmsm : Monotone ms) (hpos : ∀ i, 0 < ms i) (hle : ∀ i, ms i ≤ 1) :
     (1 / (N : ℝ)) * ∫ ω, Real.log (constrainedPairZ N (qExt qs τ) (G₀.U ω) (fun _ => -h)) ∂Pm
       ≤ 2 * parisiFunctional ξ h ms qs := by
-  have htan : ∀ x ∈ Icc (-1 : ℝ) 1, ∀ q : ℝ, ξ q + (x - q) * deriv ξ q ≤ ξ x := fun x _ q => by
-    have := hconv.add_deriv_mul_sub_le_univ hdiff q x
-    linarith [mul_comm (x - q) (deriv ξ q)]
-  have hb := coupled_bound_coupling_zero N hN ξ heven htan h0 (qExt qs) (qExt_zero qs)
-    (fun r hr => hmono r (by omega)) (Or.inl rfl) τ (qExt qs τ) hu G₀ (fun _ => -h) 0
-    (halveBelow (τ - 1) ms) (halveBelow_strictMono hsm hpos _) (halveBelow_pos hpos _)
-    (halveBelow_lt_one hlt _)
-  have hle : ∀ i, ms i ≤ 1 := fun i => (hlt i).le
+  have htan : ∀ x ∈ Icc (-1 : ℝ) 1, ∀ q ∈ (univ : Set ℝ), ξ q + (x - q) * deriv ξ q ≤ ξ x :=
+    fun x _ q _ => by
+      have := hconv.add_deriv_mul_sub_le_univ hdiff q x
+      linarith [mul_comm (x - q) (deriv ξ q)]
+  have hb := coupled_bound_coupling_zero N hN ξ htan h0 (qExt qs) (qExt_zero qs)
+    (fun r hr => hmono r (by omega)) (η := 1) (by norm_num) (fun x => by rw [one_mul, one_mul])
+    (fun x => by rw [one_mul]) (fun _ => mem_univ _) (fun _ => mem_univ _) τ (qExt qs τ) hu G₀
+    (fun _ => -h) 0
+    (halveBelow (τ - 1) ms) (halveBelow_monotone hmsm hpos _) (halveBelow_pos hpos _)
+    (halveBelow_le_one hle _)
   have hq : (1 : ℝ) * qExt qs τ = qExt qs τ := one_mul _
   rw [← hq] at hb
   rw [coupling_rhs_zero_eq ξ (-h) ms qs hpos hle hτ hτk (hmono (k + 1) (le_refl _)),

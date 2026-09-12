@@ -187,12 +187,12 @@ universe u
 variable {J' : Type u} [Fintype J']
 
 /-- `Y₁` is integrable in the root marks. -/
-theorem integrable_parisiRec_pairCoshF_rootMarksLaw (ns : Fin κ → ℝ) (hsm : StrictMono ns)
-    (hpos : ∀ i, 0 < ns i) (hlt : ∀ i, ns i < 1) (lam : ℝ) (a : Fin N × Fin 2 → ℝ)
+theorem integrable_parisiRec_pairCoshF_rootMarksLaw (ns : Fin κ → ℝ) (hpos : ∀ i, 0 < ns i)
+    (hle : ∀ i, ns i ≤ 1) (lam : ℝ) (a : Fin N × Fin 2 → ℝ)
     (K₀ : Fin 2 → J' → ℝ) (K : Fin κ → Fin 2 → J' → ℝ) (v₀ : ℝ≥0) (vs : Fin κ → ℝ≥0) :
     Integrable (fun z₀ => parisiRec κ ns (siteGaussianMarks (Fin N × J') κ vs)
       (pairCoshF N κ lam a K₀ K z₀)) (rootMarksLaw N v₀) := by
-  have hI := integrable_parisiRec_pairCoshF N ns hsm hpos hlt lam a K₀ K v₀ vs
+  have hI := integrable_parisiRec_pairCoshF N ns hpos hle lam a K₀ K v₀ vs
     (Pm := (Measure.dirac PUnit.unit : Measure PUnit.{u + 1}))
   have hmeas : AEStronglyMeasurable (fun z₀ => parisiRec κ ns (siteGaussianMarks (Fin N × J') κ vs)
       (pairCoshF N κ lam a K₀ K z₀)) (rootMarksLaw N v₀) := by
@@ -215,14 +215,13 @@ theorem integrable_parisiRec_pairCoshF_rootMarksLaw (ns : Fin κ → ℝ) (hsm :
 
 /-- **`𝔼_{z₀} Y₁(z₀) = N · Y₀`** when the field is the same `h` at every site (Talagrand's
 (14.143)–(14.145)): the sites are independent and identically distributed. -/
-theorem integral_parisiRec_pairCoshF (ns : Fin κ → ℝ) (hsm : StrictMono ns)
-    (hpos : ∀ i, 0 < ns i) (hlt : ∀ i, ns i < 1) (v₀ : ℝ≥0) (vs : Fin κ → ℝ≥0) (lam : ℝ)
+theorem integral_parisiRec_pairCoshF (ns : Fin κ → ℝ) (hpos : ∀ i, 0 < ns i)
+    (hle : ∀ i, ns i ≤ 1) (v₀ : ℝ≥0) (vs : Fin κ → ℝ≥0) (lam : ℝ)
     (h : Fin 2 → ℝ) (K₀ : Fin 2 → J' → ℝ) (K : Fin κ → Fin 2 → J' → ℝ) :
     ∫ z₀, parisiRec κ ns (siteGaussianMarks (Fin N × J') κ vs)
         (pairCoshF N κ lam (fun s => h s.2) K₀ K z₀) ∂rootMarksLaw N v₀
       = N * pairSiteY₀ ns v₀ vs lam h K₀ K := by
   classical
-  have hle : ∀ i, ns i ≤ 1 := fun i => (hlt i).le
   -- the one-site recursion at site `i`, as a function of the root marks
   set f : (J' → ℝ) → ℝ := fun y₀ => parisiRec κ ns (siteGaussianMarks J' κ vs)
     (pairSiteF lam h K₀ K y₀) with hf
@@ -243,7 +242,7 @@ theorem integral_parisiRec_pairCoshF (ns : Fin κ → ℝ) (hsm : StrictMono ns)
       (pairCoshF N κ lam (fun s => h s.2) K₀ K z₀) = ∑ i, f (fun j => z₀ (i, j)) := fun z₀ =>
     parisiRec_pairCoshF N ns hpos hle vs lam (fun s => h s.2) K₀ K z₀
   -- each site term is dominated by the (integrable) sum
-  have hY := integrable_parisiRec_pairCoshF_rootMarksLaw N ns hsm hpos hlt lam (fun s => h s.2)
+  have hY := integrable_parisiRec_pairCoshF_rootMarksLaw N ns hpos hle lam (fun s => h s.2)
     K₀ K v₀ vs
   have hcoord : ∀ i : Fin N, Measurable fun z₀ : Fin N × J' → ℝ => fun j => z₀ (i, j) :=
     fun i => measurable_pi_lambda _ fun j => measurable_pi_apply (i, j)

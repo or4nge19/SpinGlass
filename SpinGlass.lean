@@ -96,6 +96,8 @@ import SpinGlass.Parisi.CoupledParisi
 import SpinGlass.Parisi.CoupledSite
 import SpinGlass.Parisi.CoupledProp
 import SpinGlass.Parisi.CoupledLambdaZero
+import SpinGlass.Parisi.CoupledDeriv
+import SpinGlass.Parisi.CoupledSecondDeriv
 import SpinGlass.FiniteGibbs.GaussianFieldExpMoment
 import SpinGlass.Parisi.GuerraRSB
 import SpinGlass.Parisi.BranchLimit
@@ -109,6 +111,7 @@ import Common.Mathlib.Algebra.BigOperators.SummationByParts
 import Common.Mathlib.Algebra.Polynomial.EvalBound
 import Common.Mathlib.Analysis.Convex.GriffithsLemma
 import Common.Mathlib.Analysis.SpecialFunctions.ExpPiSum
+import Common.Mathlib.Analysis.SpecialFunctions.Pow.ENNRealContinuity
 import Common.Mathlib.Analysis.Convex.TangentLine
 import Common.Mathlib.Data.Fin.InsertNthUpdate
 import Common.Mathlib.Analysis.InnerProductSpace.PositiveRange
@@ -123,6 +126,7 @@ import Common.Mathlib.MeasureTheory.Integral.CauchySchwarz
 import Common.Mathlib.MeasureTheory.Integral.IntervalMarkov
 import Common.Mathlib.MeasureTheory.Integral.MonotoneShift
 import Common.Mathlib.MeasureTheory.ParametricDominatedConvergence
+import Common.Mathlib.MeasureTheory.Integral.LogJensen
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinAPI
 import Common.Mathlib.Probability.Distributions.Gaussian_IBP_LinearImage
 import Common.Mathlib.Probability.Distributions.Gaussian_IBP_HilbertAPI
@@ -147,6 +151,15 @@ import Common.Mathlib.Probability.PointProcess.CascadeGibbs
 import Common.Mathlib.Probability.PointProcess.CascadeSecondMoment
 import Common.Mathlib.Probability.PointProcess.CascadePair
 import Common.Mathlib.Probability.PointProcess.CascadeBranchLaw
+import Common.Mathlib.Probability.PointProcess.CascadeTiltMeasure
+import Common.Mathlib.Probability.PointProcess.CascadeDeriv
+import Common.Mathlib.Probability.PointProcess.CascadeExponent
+import Common.Mathlib.Probability.PointProcess.CascadeJensenLower
+import Common.Mathlib.Probability.PointProcess.CascadeLinear
+import Common.Mathlib.Analysis.Convex.Limit
+import Common.Mathlib.Probability.Distributions.Gaussian.ExpGrowth
+import Common.Mathlib.Probability.Distributions.Gaussian.HeatSemigroup
+import Common.Mathlib.Probability.Distributions.Gaussian.ColeHopf
 import Common.Mathlib.Probability.ProductMeasureProd
 import Common.Mathlib.Probability.Independence.PiBlocks
 import Common.Mathlib.Data.ENNReal.ProdNeTop

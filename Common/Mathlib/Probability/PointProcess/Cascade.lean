@@ -665,6 +665,28 @@ theorem lintegral_rpow_le_rpow_lintegral {Ω : Type*} [MeasurableSpace Ω] (μ :
   rw [← ENNReal.rpow_mul, mul_inv_cancel₀ hm0.ne', ENNReal.rpow_one]
 
 omit [Nonempty T] in
+/-- **Lyapunov's inequality**: the power means `(∫ f^p)^{1/p}` are nondecreasing in `p > 0` on a
+probability space, in `ℝ≥0∞`. -/
+theorem lintegral_rpow_rpow_inv_le_of_le {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω)
+    [IsProbabilityMeasure μ] {f : Ω → ℝ≥0∞} (hf : AEMeasurable f μ) {p q : ℝ} (hp : 0 < p)
+    (hpq : p ≤ q) :
+    (∫⁻ ω, f ω ^ p ∂μ) ^ (1 / p) ≤ (∫⁻ ω, f ω ^ q ∂μ) ^ (1 / q) := by
+  have hq : 0 < q := hp.trans_le hpq
+  have h1 : ∫⁻ ω, f ω ^ p ∂μ ≤ (∫⁻ ω, f ω ^ q ∂μ) ^ (p / q) := by
+    have := lintegral_rpow_le_rpow_lintegral μ (hf.pow_const q) (m := p / q) (by positivity)
+      ((div_le_one hq).2 hpq)
+    refine le_of_eq_of_le (lintegral_congr fun ω => ?_) this
+    rw [← ENNReal.rpow_mul]
+    congr 1
+    field_simp
+  calc (∫⁻ ω, f ω ^ p ∂μ) ^ (1 / p) ≤ ((∫⁻ ω, f ω ^ q ∂μ) ^ (p / q)) ^ (1 / p) :=
+        ENNReal.rpow_le_rpow h1 (by positivity)
+    _ = (∫⁻ ω, f ω ^ q ∂μ) ^ (1 / q) := by
+        rw [← ENNReal.rpow_mul]
+        congr 1
+        field_simp
+
+omit [Nonempty T] in
 /-- The product measure on `Fin (n+1) → T` splits off its first coordinate. -/
 lemma lintegral_pi_fin_succ {n : ℕ} (μs : Fin (n + 1) → Measure T)
     [∀ i, IsProbabilityMeasure (μs i)] {G : (Fin (n + 1) → T) → ℝ≥0∞} (hG : Measurable G) :
