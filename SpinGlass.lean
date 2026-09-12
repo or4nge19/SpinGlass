@@ -159,6 +159,7 @@ import Common.Mathlib.Probability.PointProcess.CascadeLinear
 import Common.Mathlib.Analysis.Convex.Limit
 import Common.Mathlib.Probability.Distributions.Gaussian.ExpGrowth
 import Common.Mathlib.Analysis.Calculus.MeasurableParamDeriv
+import Common.Mathlib.MeasureTheory.Integral.FTCBounded
 import Common.Mathlib.Probability.Distributions.Gaussian.HeatSemigroup
 import Common.Mathlib.Probability.Distributions.Gaussian.ColeHopf
 import Common.Mathlib.Probability.PointProcess.CascadeColeHopf

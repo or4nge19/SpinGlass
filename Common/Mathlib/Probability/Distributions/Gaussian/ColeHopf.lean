@@ -791,6 +791,25 @@ theorem abs_coleHopf_sub_coleHopf_le {L : ℝ} (hAm : Measurable A)
       (abs_coleHopf_sub_le_of_lipschitz m hAm hA (v - v'))).continuous.measurable
   · exact fun z => abs_coleHopf_sub_self_le hAm hA m (v - v') z
 
+/-- **Uniform continuity in the variance**, symmetric form: the increment is measured in `ℝ`. -/
+theorem abs_coleHopf_sub_coleHopf_le' {L : ℝ} (hAm : Measurable A)
+    (hA : ∀ x y, |A y - A x| ≤ L * |y - x|) (m : ℝ) (v v' : ℝ≥0) (y : ℝ) :
+    |coleHopf m v A y - coleHopf m v' A y|
+      ≤ max (coleHopf m (Real.toNNReal (|(v : ℝ) - (v' : ℝ)|)) (fun t => L * |t|) 0)
+        (-coleHopf m (Real.toNNReal (|(v : ℝ) - (v' : ℝ)|)) (fun t => -L * |t|) 0) := by
+  have key : ∀ w w' : ℝ≥0, w' ≤ w → Real.toNNReal (|(w : ℝ) - (w' : ℝ)|) = w - w' := by
+    intro w w' hle
+    have h1 : (0 : ℝ) ≤ (w : ℝ) - (w' : ℝ) := by
+      have : (w' : ℝ) ≤ (w : ℝ) := by exact_mod_cast hle
+      linarith
+    refine NNReal.coe_injective ?_
+    rw [abs_of_nonneg h1, Real.coe_toNNReal _ h1, NNReal.coe_sub hle]
+  rcases le_total v' v with hle | hle
+  · rw [key v v' hle]
+    exact abs_coleHopf_sub_coleHopf_le hAm hA m hle y
+  · rw [abs_sub_comm ((v : ℝ)) ((v' : ℝ)), key v' v hle, abs_sub_comm]
+    exact abs_coleHopf_sub_coleHopf_le hAm hA m hle y
+
 section Lipschitz
 
 variable (hA : ∀ y, HasDerivAt A (A' y) y) (hAg : HasLinearGrowth A)
