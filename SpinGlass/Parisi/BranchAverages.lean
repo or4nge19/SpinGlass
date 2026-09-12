@@ -61,20 +61,26 @@ lemma branchZ_pos (t h : ℝ) (H : EnergySpace N) (z : MarksSpace N k) (α : Fin
     0 < branchZ N k t h H z α :=
   Finset.sum_pos (fun _ _ => Real.exp_pos _) Finset.univ_nonempty
 
+/-- The branch partition function is the partial partition function of `truncHam`. -/
+lemma wCondZ_truncHam {M : ℕ} (t h : ℝ) (ω : EnergySpace N × MarksSpace N k)
+    (α : TruncBranch k M) :
+    wCondZ (fun _ : Config N => (1 : ℝ)) (truncHam N k M t h ω) α
+      = branchZ N k t h ω.1 ω.2 (truncBranchCoe k M α) := by
+  unfold wCondZ branchZ
+  refine Finset.sum_congr rfl fun σ _ => ?_
+  rw [one_mul, truncHam_apply]
+
 /-- The weighted partition function on `Σ_N × A` is the weighted sum of the branch partition
 functions. -/
 lemma wZ_truncHam {M : ℕ} (u : TruncBranch k M → ℝ) (t h : ℝ) (ω : EnergySpace N × MarksSpace N k) :
     wZ (branchWt (N := N) u) (truncHam N k M t h ω)
       = ∑ α, u α * branchZ N k t h ω.1 ω.2 (truncBranchCoe k M α) := by
-  unfold wZ branchWt branchZ
-  rw [Fintype.sum_prod_type, Finset.sum_comm]
-  refine Finset.sum_congr rfl fun α _ => ?_
-  rw [Finset.mul_sum]
-  refine Finset.sum_congr rfl fun σ _ => ?_
-  rw [truncHam_apply]
+  rw [branchWt_eq]
+  refine (wZ_prod_eq u (fun _ : Config N => (1 : ℝ)) (truncHam N k M t h ω)).trans ?_
+  exact Finset.sum_congr rfl fun α _ => by rw [wCondZ_truncHam]
 
 /-- **The Gibbs pair average of a function of the branches** reduces to a pair average over the
-branches with the weights `u_α exp F_t(α)`. -/
+branches with the weights `u_α exp F_t(α)`: the case of `sum_wGibbs_prod_pair`. -/
 theorem sum_wGibbs_pair_eq {M : ℕ} (u : TruncBranch k M → ℝ) (t h : ℝ)
     (ω : EnergySpace N × MarksSpace N k)
     (φ : TruncBranch k M → TruncBranch k M → ℝ) :
@@ -83,25 +89,9 @@ theorem sum_wGibbs_pair_eq {M : ℕ} (u : TruncBranch k M → ℝ) (t h : ℝ)
       = (∑ α, ∑ γ, u α * branchZ N k t h ω.1 ω.2 (truncBranchCoe k M α)
           * (u γ * branchZ N k t h ω.1 ω.2 (truncBranchCoe k M γ)) * φ α γ)
         / (∑ α, u α * branchZ N k t h ω.1 ω.2 (truncBranchCoe k M α)) ^ 2 := by
-  have hZ : ∀ x : Config N × TruncBranch k M, wGibbs (branchWt (N := N) u) (truncHam N k M t h ω) x
-      = u x.2 * Real.exp (-branchHam N k t h ω.1 ω.2 (truncBranchCoe k M x.2) x.1)
-        / ∑ α, u α * branchZ N k t h ω.1 ω.2 (truncBranchCoe k M α) := by
-    intro x
-    rw [wGibbs, wZ_truncHam, truncHam_apply]
-    rfl
-  have hsplit : ∀ g : Config N × TruncBranch k M → ℝ, ∑ x, g x = ∑ α, ∑ σ, g (σ, α) := by
-    intro g
-    rw [Fintype.sum_prod_type (f := g), Finset.sum_comm]
-  simp_rw [hZ, hsplit]
-  rw [Finset.sum_div]
-  refine Finset.sum_congr rfl fun α _ => ?_
-  rw [Finset.sum_comm, Finset.sum_div]
-  refine Finset.sum_congr rfl fun γ _ => ?_
-  simp only [branchZ, Finset.sum_mul, Finset.mul_sum, Finset.sum_div]
-  rw [Finset.sum_comm]
-  refine Finset.sum_congr rfl fun σ _ => Finset.sum_congr rfl fun τ _ => ?_
-  ring
-
+  rw [branchWt_eq]
+  refine (sum_wGibbs_prod_pair u (fun _ : Config N => (1 : ℝ)) (truncHam N k M t h ω) φ).trans ?_
+  simp_rw [wCondZ_truncHam]
 
 /-! ### The marks along a branch, and the branch objects as functions of the marks -/
 
@@ -246,28 +236,13 @@ lemma ofReal_prod_two_cosh_treeMark {M : ℕ} (h : ℝ) (z : MarksSpace N k) (α
 
 /-! ### Gaussian finiteness -/
 
-/-- Exponential moments of affine forms of the marks are finite. -/
+/-- Exponential moments of affine forms of the marks are finite: the case `S = Fin N` of
+`lintegral_sum_ofReal_exp_siteGaussianMarks`. -/
 lemma lintegral_sum_ofReal_exp_gaussianMarks (vs : Fin k → ℝ≥0) (A : Config N → ℝ)
     (B : Config N → Fin k → Fin N → ℝ) :
     ∫⁻ x, ∑ σ : Config N, ENNReal.ofReal (Real.exp (A σ + ∑ p, ∑ i, B σ p i * x p i))
-        ∂Measure.pi (gaussianMarks N k vs) ≠ ∞ := by
-  have hm : ∀ σ : Config N, Measurable fun x : Fin k → Fin N → ℝ =>
-      ENNReal.ofReal (Real.exp (∑ p, ∑ i, B σ p i * x p i)) := fun σ =>
-    ENNReal.measurable_ofReal.comp (Real.measurable_exp.comp (Finset.measurable_sum _ fun p _ =>
-      Finset.measurable_sum _ fun i _ => measurable_const.mul
-        ((measurable_pi_apply i).comp (measurable_pi_apply p))))
-  have hm' : ∀ σ : Config N, Measurable fun x : Fin k → Fin N → ℝ =>
-      ENNReal.ofReal (Real.exp (A σ + ∑ p, ∑ i, B σ p i * x p i)) := fun σ =>
-    ENNReal.measurable_ofReal.comp (Real.measurable_exp.comp (measurable_const.add
-      (Finset.measurable_sum _ fun p _ => Finset.measurable_sum _ fun i _ => measurable_const.mul
-        ((measurable_pi_apply i).comp (measurable_pi_apply p)))))
-  rw [lintegral_finsetSum _ fun σ _ => hm' σ]
-  refine ENNReal.sum_ne_top.2 fun σ _ => ?_
-  simp_rw [Real.exp_add, ENNReal.ofReal_mul (Real.exp_pos _).le]
-  rw [lintegral_const_mul _ (hm σ)]
-  unfold gaussianMarks
-  rw [lintegral_ofReal_exp_sum_mul_pi_pi_gaussianReal]
-  exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top
+        ∂Measure.pi (gaussianMarks N k vs) ≠ ∞ :=
+  lintegral_sum_ofReal_exp_siteGaussianMarks (Fin N) k vs A B
 
 lemma branchZX_eq_sum (t h : ℝ) (H : EnergySpace N) (z₀ : Fin N → ℝ) (x : Fin k → Fin N → ℝ) :
     branchZX N k t h H z₀ x

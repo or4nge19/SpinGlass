@@ -7,6 +7,7 @@ import Common.Mathlib.Probability.Distributions.Gaussian.IntegrationByParts
 import Common.Mathlib.Probability.Distributions.Gaussian.CameronMartinFernique
 import Mathlib.Probability.Distributions.Gaussian.Real
 import Mathlib.Analysis.Calculus.Deriv.Basic
+import Common.Mathlib.Probability.Distributions.Gaussian.ExpGrowth
 
 /-!
 # Gaussian IBP for `gaussianReal`
@@ -215,6 +216,92 @@ lemma gaussianReal_integration_by_parts
     ∫ x, x * F x ∂(gaussianReal 0 v)
       = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal 0 v) :=
   stein_lemma_gaussianReal (v := v) (F := F) hF_meas hF_c1 hC hF_growth hF'_growth
+
+/-- **Stein's lemma for functions of exponential growth**: `∫ x F(x) dγ_v = v ∫ F'(x) dγ_v` for
+`F ∈ C¹` with `F` and `F'` of exponential growth. -/
+theorem stein_lemma_gaussianReal_of_expGrowth {v : ℝ≥0} {F : ℝ → ℝ} (hF_meas : Measurable F)
+    (hF_c1 : ContDiff ℝ 1 F) (hF : HasExpGrowth F) (hF' : HasExpGrowth (deriv F)) :
+    ∫ x, x * F x ∂(gaussianReal 0 v) = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal 0 v) := by
+  have : IsGaussian (gaussianReal (0 : ℝ) v) := by infer_instance
+  have hF_int : Integrable F (gaussianReal 0 v) :=
+    hF.integrable_gaussianReal hF_meas.aestronglyMeasurable
+  obtain ⟨C, c, hc, hFb⟩ := hF
+  obtain ⟨C', c', hc', hF'b⟩ := hF'
+  have hC := HasExpGrowth.nonneg_of_bound hFb
+  have hC' := HasExpGrowth.nonneg_of_bound hF'b
+  have hcm : cmCoe (μ := gaussianReal 0 v) (cmOfDual (μ := gaussianReal 0 v) idDual) = (v : ℝ) :=
+    cmCoe_cmOfDual_idDual_gaussianReal 0 v
+  have hv0 : (0 : ℝ) ≤ v := NNReal.coe_nonneg v
+  -- the bound on the derivative along the Cameron–Martin shift
+  have hbound_int : Integrable (fun y : ℝ => ((v : ℝ) * C' * Real.exp (c' * v))
+      * Real.exp (c' * |y|)) (gaussianReal 0 v) :=
+    (integrable_exp_mul_abs_gaussianReal 0 v c').const_mul _
+  have hIBP : (∫ y, (cmOfDual (μ := gaussianReal 0 v) idDual) y * F y ∂(gaussianReal 0 v))
+      = ∫ y, (fderiv ℝ F y) (cmCoe (μ := gaussianReal 0 v)
+          (cmOfDual (μ := gaussianReal 0 v) idDual)) ∂(gaussianReal 0 v) := by
+    refine cameronMartin_integral_by_parts_of_integrable_bound (μ := gaussianReal 0 v)
+      (cmOfDual (μ := gaussianReal 0 v) idDual) F hF_meas hF_c1 one_pos hF_int _ hbound_int ?_ ?_
+    · refine Filter.Eventually.of_forall fun y t ht => ?_
+      rw [hcm, fderiv_eq_smul_deriv, smul_eq_mul, smul_eq_mul, Real.norm_eq_abs, abs_mul,
+        abs_of_nonneg hv0]
+      have ht' : |t| < 1 := by simpa [Real.dist_eq] using ht
+      have h1 : |y + t * v| ≤ |y| + v := by
+        calc |y + t * v| ≤ |y| + |t * v| := abs_add_le _ _
+          _ ≤ |y| + v := by
+              rw [abs_mul, abs_of_nonneg hv0]
+              nlinarith [abs_nonneg t]
+      calc (v : ℝ) * |deriv F (y + t * v)|
+          ≤ v * (C' * Real.exp (c' * |y + t * v|)) :=
+            mul_le_mul_of_nonneg_left (hF'b _) hv0
+        _ ≤ v * (C' * Real.exp (c' * (|y| + v))) := by
+            gcongr
+        _ = (v : ℝ) * C' * Real.exp (c' * v) * Real.exp (c' * |y|) := by
+            rw [mul_add, Real.exp_add]; ring
+    · -- the tilt integrability: `|F y| (|y| + 1) e^{|y|}` is Gaussian-integrable
+      set K : ℝ := 1 * ((‖cmOfDual (μ := gaussianReal 0 v) idDual‖₊ : ℝ) ^ 2) + 1 with hK
+      have hK0 : 0 ≤ K := by positivity
+      have hg : Integrable (fun y : ℝ => |F y| * K * ((|y| + 1) * Real.exp (1 * |y|)))
+          (gaussianReal 0 v) := by
+        refine ((integrable_exp_mul_abs_gaussianReal 0 v (c + 2)).const_mul (C * K)).mono'
+          (((continuous_abs.measurable.comp hF_meas).mul_const K).mul
+            ((continuous_abs.add continuous_const).mul
+            (Real.continuous_exp.comp (continuous_const.mul continuous_abs))).measurable
+            |>.aestronglyMeasurable) (Filter.Eventually.of_forall fun y => ?_)
+        rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+        have e1 : |y| + 1 ≤ Real.exp |y| := by linarith [Real.add_one_le_exp |y|]
+        have e2 : Real.exp (1 * |y|) = Real.exp |y| := by rw [one_mul]
+        rw [e2]
+        calc |F y| * K * ((|y| + 1) * Real.exp |y|)
+            ≤ (C * Real.exp (c * |y|)) * K * (Real.exp |y| * Real.exp |y|) := by
+              gcongr
+              exact hFb y
+          _ = C * K * Real.exp ((c + 2) * |y|) := by
+              rw [show (c + 2) * |y| = c * |y| + |y| + |y| by ring, Real.exp_add, Real.exp_add]
+              ring
+      refine hg.congr ?_
+      filter_upwards [gaussianReal_cmOfDual_idDual_ae (μ := 0) (v := v)] with y hy
+      rw [hy, sub_zero]
+  calc ∫ x, x * F x ∂(gaussianReal 0 v)
+      = ∫ x, ((cmOfDual (μ := gaussianReal 0 v) idDual) x) * F x ∂(gaussianReal 0 v) := by
+        simpa using (gaussianReal_integral_cmOfDual_idDual_mul (μ := 0) (v := v) (F := F)).symm
+    _ = ∫ x, (fderiv ℝ F x) (cmCoe (μ := gaussianReal 0 v)
+          (cmOfDual (μ := gaussianReal 0 v) idDual)) ∂(gaussianReal 0 v) := hIBP
+    _ = (v : ℝ) * ∫ x, deriv F x ∂(gaussianReal 0 v) :=
+        gaussianReal_integral_fderiv_cmCoe_idDual (μ := 0) (v := v) (F := F)
+
+/-- Stein's lemma for functions of exponential growth, with an explicit derivative. -/
+theorem stein_lemma_gaussianReal_of_expGrowth' {v : ℝ≥0} {F F' : ℝ → ℝ}
+    (hF : ∀ x, HasDerivAt F (F' x) x) (hF'c : Continuous F') (hFg : HasExpGrowth F)
+    (hF'g : HasExpGrowth F') :
+    ∫ x, x * F x ∂(gaussianReal 0 v) = (v : ℝ) * ∫ x, F' x ∂(gaussianReal 0 v) := by
+  have hderiv : deriv F = F' := funext fun x => (hF x).deriv
+  have hF_meas : Measurable F :=
+    (continuous_iff_continuousAt.2 fun y => (hF y).continuousAt).measurable
+  have hF_c1 : ContDiff ℝ 1 F := by
+    rw [contDiff_one_iff_deriv]
+    exact ⟨fun x => (hF x).differentiableAt, hderiv ▸ hF'c⟩
+  have := stein_lemma_gaussianReal_of_expGrowth (v := v) hF_meas hF_c1 hFg (hderiv ▸ hF'g)
+  rwa [hderiv] at this
 
 /-- Random-variable version of `stein_lemma_gaussianReal`, transported via `HasLaw`. -/
 theorem gaussianRV_integration_by_parts

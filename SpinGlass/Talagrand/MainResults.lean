@@ -1394,7 +1394,8 @@ positions, recorded as the `Measure`-valued random variable `countingMeasure`
 sample space plus the Poisson series. `PoissonSuperposition`: countably many independent finite
 pieces on `Measure.infinitePi` give the process of **any s-finite intensity**, through Mathlib's
 canonical decomposition `sfiniteSeq`: `poissonPointProcess (Λ) [SFinite Λ]` is a probability
-measure on `Measure E`, with the Laplace functional (`integral_negExp_lintegral_poissonPointProcess`,
+measure on `Measure E`, with the Laplace functional
+(`integral_negExp_lintegral_poissonPointProcess`,
 by dominated convergence) and the **void probabilities** `P(N B = 0) = e^{-Λ B}`
 (`measureReal_poissonPointProcess_eq_zero`), both transported to any random measure with this law
 (`HasLaw.integral_negExp_lintegral`, `HasLaw.measureReal_eq_zero`), and all of it stated as well
@@ -1406,11 +1407,13 @@ Talagrand's `μ_m` with density `u^{-m-1}` on `(0,∞)` (s-finite, of infinite m
 **scaling identity** `∫(1-e^{-au})u^{-m-1} du = a^m c_m` with `0 < c_m < ∞`
 (`integral_one_sub_exp_mul_rpow`, Lemma 13.1.1 in Laplace form), the moment integral
 `∫(1-e^{-a u^m})u^{-m'-1} du = a^{m'/m} c_{m'/m}/m` (`integral_one_sub_exp_mul_rpow_rpow`), and
-`μ_m(c,∞) = c^{-m}/m`, and the **explicit decomposition** `μ_m = ∑ₙ μ_m|_{(1/(n+2),1/(n+1)] ∪ (n+1,n+2]}`
+`μ_m(c,∞) = c^{-m}/m`, and the **explicit decomposition**
+`μ_m = ∑ₙ μ_m|_{(1/(n+2),1/(n+1)] ∪ (n+1,n+2]}`
 into nonzero finite pieces for every `m` (`stableSeq`, `sum_stableSeq`). `PoissonDirichlet`: the
 marked process `(u_α, g_α)` with intensity `μ_m ⊗ η` (`pdProcess`, a measure on
 `Measure (ℝ × M)`), built as the superposition of the **product** pieces `(stableSeq m n) ⊗ η`
-(`pdSeq`) so that the marks are i.i.d. and independent of the weights by construction, the weighted sums
+(`pdSeq`) so that the marks are i.i.d. and independent of the weights by construction, the weighted
+sums
 `S_v = ∑ u_α v(g_α)` for `ℝ≥0∞`-valued weights (`pdSum`), their **Laplace transform**
 `𝔼 e^{-sS_v} = exp(-s^m c_m ∫v^m dη)` (`integral_negExp_pdSum`, unconditional in `ℝ≥0∞`), the
 **moments** `𝔼 S_v^{m'} = (c_m ∫v^m dη)^{m'/m} c_{m'/m}/(m c_{m'})` for `0 < m' < m`
@@ -1437,23 +1440,39 @@ moments of the sub-cascade, under the single hypothesis `cascadeRec < ∞` — i
 (14.4) `𝔼 exp F < ∞` through Jensen (`cascadeRec_le_lintegral_pi`), with no need for
 `𝔼|F| < ∞` nor for the limit `m₀ → 0` of Lemma 14.2.3.
 
-`Mecke`: **the Mecke formula** `𝔼 ∑_{x ∈ N} f(x, N) = ∫ 𝔼 f(x, N + δ_x) dΛ(x)` for the Poisson
-process of any s-finite intensity (`lintegral_lintegral_poissonPointProcess`, `HasLaw` form
-`HasLaw.lintegral_lintegral`, Campbell's formula as the special case), proved from the structure
-of the sample space: resampling one coordinate of an infinite product leaves it invariant
-(`Measure.infinitePi_prod_map_update`, `lintegral_infinitePi_update`, new for Mathlib), an i.i.d.
-product is exchangeable (`lintegral_infinitePi_comp_equiv`), and `(n+1) P(n+1) = Λ(E) P(n)` for
-the Poisson weights. `PoissonDirichletIdentities`: **Theorem 13.1.6** — the identities (13.13)
-`𝔼 (∑ u_α U_α)/(∑ u_α V_α) = 𝔼[U V^{m-1}]/𝔼 V^m` (`lintegral_pdSum_mul_inv_pdSum`, real form
-`integral_pdSum_div_pdSum`), (13.14) `𝔼 (∑ u_α² U_α W_α)/(∑ u_α V_α)² = (1-m) 𝔼[U W V^{m-2}]/𝔼 V^m`
-(`lintegral_pdSumSq_mul_inv_pdSum_sq`) and (13.17) `𝔼 ∑ v_α² = 1 - m`
-(`lintegral_pdSumSq_mul_inv_pdSum_one_sq`). Talagrand differentiates Theorem 13.1.5 and calls the
-justification "tedious"; here they are direct consequences of the Mecke formula, the Laplace
-representations `x⁻¹ = ∫₀^∞ e^{-sx} ds`, `x⁻² = ∫₀^∞ s e^{-sx} ds` valid in all of `ℝ≥0∞`
-(`ENNReal.inv_eq_lintegral_negExp`), the Gamma integrals, and `m c_m = Γ(1 - m)`
-(`mul_stableConst_eq_Gamma`, by integration by parts on `(0, ∞)`). The same route gives (13.14)
-with a general exponent, `𝔼 (∑ u_α² A_α)(∑ u_α V_α)^{a-2} = K₂(a) ∫ A V^{m-2} dη` for `a < m`
-(`lintegral_pdSumSq_mul_rpow_pdSum`), with `K₂(a) κ = (1-m)/(1-a) · 𝔼 S_V^a`.
+`Mecke`: the **Mecke equation** `𝔼 ∑_{x∈N} f(x,N) = ∫ 𝔼 f(x, N+δ_x) dΛ(x)` for a Poisson process
+of any s-finite intensity (`lintegral_lintegral_poissonPointProcess`, `HasLaw.lintegral_lintegral`;
+Campbell's formula as the special case), from the sample space: resampling one coordinate of an
+infinite product is invariant (`Measure.infinitePi_prod_map_update`), an i.i.d. product is
+exchangeable (`lintegral_infinitePi_comp_equiv`), and `(n+1)P(n+1) = Λ(E)P(n)`. The fundamental
+form is the **reduced equation** (Palm formula) `𝔼 ∑_{x∈N} g(x, N∖x) = ∫ 𝔼 g(x,N) dΛ(x)`
+(`lintegral_sum_countingMeasureErase`, `lintegral_tsum_sum_superCountingErase`): deleting a point
+of a sample is again a sample (`sampleErase`, `countingMeasure_sampleErase`), so it needs the same
+single measurability hypothesis, and the ordinary equation is its case `g(x,M) = f(x, M+δ_x)`.
+Iterated: the **off-diagonal bivariate equation** `𝔼 ∑_{x≠y∈N} f(x,y,N) = ∫∫ 𝔼 f(x,y,N+δ_x+δ_y)`
+(`lintegral_superOffDiagSum_superCounting`, over pairs of distinct *indices*, `superOffDiagSum`,
+no simplicity assumed), the full bivariate equation with its diagonal
+(`lintegral_lintegral_lintegral_superCounting`), and for the **second factorial measure**
+`N^{(2)} = ∑_{α≠γ} δ_{(x_α,x_γ)}` (`superFactorialTwo`) the classical `𝔼 N^{(2)} = Λ ⊗ Λ`
+(`lintegral_superFactorialTwo_apply`).
+
+`PoissonDirichletIdentities`: **Theorem 13.1.6** in full, in `ℝ≥0∞`: (13.13)
+`lintegral_pdSum_mul_inv_pdSum` (real form `integral_pdSum_div_pdSum`), (13.14)
+`lintegral_pdSumSq_mul_inv_pdSum_sq`, (13.15) `lintegral_superOffDiagSum_mul_inv_pdSum_sq` — over
+pairs of distinct points, with **no** finiteness hypothesis on `U, W`, since it comes from the
+off-diagonal Mecke equation rather than from Talagrand's cancellation of (13.14) against (13.16),
+which needs `𝔼U² + 𝔼W² < ∞` — (13.16) `lintegral_pdSum_mul_pdSum_mul_inv_pdSum_sq`, (13.17)
+`lintegral_pdSumSq_mul_inv_pdSum_one_sq` and its complement `𝔼 ∑_{α≠γ} v_α v_γ = m`. Talagrand
+differentiates Theorem 13.1.5 and calls the justification "tedious"; here the denominators are
+the Laplace representations `x⁻¹ = ∫₀^∞ e^{-sx} ds`, `x⁻² = ∫₀^∞ s e^{-sx} ds` (valid in all of
+`ℝ≥0∞`), the `u`- and `s`-integrals are Gamma integrals, and `m c_m = Γ(1-m)`
+(`mul_stableConst_eq_Gamma`). Every identity is proved with a free exponent `a < m` in place of
+the normalizer's `-1`, `-2` — `lintegral_pdSum_mul_rpow_pdSum` (one insertion, (14.27)),
+`lintegral_pdSumSq_mul_rpow_pdSum`, `lintegral_pdSum_mul_pdSum_mul_rpow_pdSum`,
+`lintegral_pdSumPair_mul_rpow_pdSum` (pair function),
+`lintegral_superOffDiagSumPair_mul_rpow_pdSum` (off-diagonal, pair function) — the form the
+levels of a cascade need, with constants `K₀(a)`, `K₂(a)` whose ratios to `𝔼 S_V^a` are
+`(m-a)/(1-a)`, `(1-m)/(1-a)`.
 
 `CascadeIdentities`: **Proposition 14.3.3** (Vol. II (14.38)), the fundamental identity of the
 cascade Gibbs average `𝔼⟨1_{(α,γ)=r}⟩ = m_r - m_{r-1}` for every weight `exp F`
@@ -1464,27 +1483,206 @@ the squared partial sums (`cascadeSq`, built by the cascade recursion), and the 
 `𝔼 Q_r S^{a-2} = (1-m_r)/(1-a) · 𝔼 S^a` (`lintegral_cascadeSq_mul_rpow`) follow by induction on
 the levels from the general-exponent (13.14) and Proposition 14.2.2, with no differentiation.
 
-`FiniteGibbs/GaussianInterpolation`: **Guerra's interpolation on an arbitrary finite state
-space** — for independent centered Gaussian fields `U, V` with kernels `K₁, K₂` and any fixed
-vector `c`, `φ(t) = 𝔼 F_n(√t U + √(1-t) V + c)` is continuous on `[0,1]`, differentiable on
-`(0,1)` with derivative the averaged **Guerra trace** `(1/2)∑(K₁-K₂)(x,y) D²F_n(H_t)(e_y,e_x)`
-in Gibbs form (`hasDerivAt_guerraPhi`, `guerraTrace_eq`), and `φ(1) ≤ φ(0) + C` from
-`φ' ≤ C` (`integral_free_energy_density_le`). This is the form of Lemma 14.4.1 that the broken
-replica-symmetry bound needs (state space `Σ_N × branches`, `c` carrying the field and the cascade
-weights); it is a direct instance of the Hilbert-space interpolation identity in
-`Common/Mathlib/Probability/Distributions/Gaussian_Interpolation`. The comparison bound also holds
-with a `t`-dependent bound on the derivative, `φ(1) - φ(0) ≤ ∫₀¹ b(t) dt` for `b` interval
-integrable (`guerraPhi_one_sub_zero_le`, by the fundamental theorem of calculus: the averaged
-trace is continuous in `t`, `continuous_integral_guerraTrace`). `FiniteGibbs/GaussianFieldPullback`:
-a Gaussian field pulls back along any map `f` of finite state spaces to a field with kernel
-`K (f x) (f y)` (`GaussianField.comp`, through the adjoint of the pullback of Hamiltonians) — the
-lift of the model's Hamiltonian to `Σ_N × branches`, and the restriction of a field to a subset.
-`FiniteGibbs/WeightedInterpolation`: **Guerra's comparison bound for a weighted free energy**
-`(1/n) log ∑_x w_x e^{-H x}`, `w ≥ 0` not all zero, with the derivative controlled by the
-**weighted Guerra trace** in Gibbs form (`wFreeEnergy_sub_le`) — the weighted free energy is the
-free energy of `H - log w` on the support of `w`, to which the fields are restricted. This is
-Lemma 14.4.1 for the weights `w_α` of a finite family of branches, zero weights allowed: the form
-needed for a truncated Poisson–Dirichlet cascade, some of whose branches do not exist.
+`FiniteGibbs/GaussianInterpolation`: **Guerra's interpolation on an arbitrary finite state space**:
+for independent centered Gaussian fields `U, V` with kernels `K₁, K₂` and a fixed vector `c`,
+`φ(t) = 𝔼 F_n(√t U + √(1-t) V + c)` is continuous on `[0,1]`, differentiable on `(0,1)` with
+derivative the averaged **Guerra trace**, in Gibbs form
+`(1/(2n))[∑_x (K₁-K₂)(x,x) g_x - ∑_{x,y} (K₁-K₂)(x,y) g_x g_y]` (`hasDerivAt_guerraPhi`,
+`guerraTrace_eq`), and `φ(1) - φ(0) ≤ ∫₀¹ b` for any interval-integrable `b ≥ φ'`
+(`guerraPhi_one_sub_zero_le`). A diagonal upper bound `D` and an off-diagonal lower bound `L` give
+`guerraTrace ≤ (D - ⟨L⟩)/(2n)` (`guerraTrace_le_of_diag_le`), the skeleton of Lemmas 14.4.1 and
+14.6.1. `FiniteGibbs/GaussianFieldPullback`: **the image of a Gaussian field under a continuous
+linear map** `T` has kernel `⟪Cov (T†e_x), T†e_y⟫ = ∑_{a,b} (T†e_x)_a (T†e_y)_b K(a,b)`
+(`GaussianField.mapCLM`); the pullback along a map of state spaces (`GaussianField.comp`, kernel
+`K (f x) (f y)`), the linear image `U(x) = ∑_c A x c Z_c` of independent coordinates
+`Z_c ~ N(0, v_c)` (`GaussianField.ofCoords`, kernel `∑_c v_c A x c A y c`,
+`FiniteGibbs/GaussianFieldCoords`) and the sum of two pullbacks `H(σ¹) + H(σ²)`
+(`GaussianField.pairModel`, `Parisi/CoupledScheme`) are its instances.
+`FiniteGibbs/WeightedInterpolation`: the comparison bound for the
+**weighted** free energy `(1/n) log ∑_x w_x e^{-H x}`, `w ≥ 0` (`wFreeEnergy_sub_le`): a family of
+branches some of which carry weight `0`. `Parisi/GuerraBound`: from a pointwise trace bound
+`(1/2) c₀ + (1/2)⟨θ⟩_H` to `𝔼 F_w(U+c) - 𝔼 F_w(V+c) ≤ ∫₀¹ b(t) dt`, `b` continuous by dominated
+convergence (`wFreeEnergy_sub_le_of_le_treeBoundIntegrand`), shared by the one- and the
+two-dimensional schemes.
+
+`Parisi/CoupledTrace`: **Lemma 14.6.1 / (14.129)**, the Guerra bound for **coupled copies**. On
+`(Fin 2 → Σ_N) × A` the model kernel is `N ∑_{ℓ,ℓ'} ξ(R^{ℓ,ℓ'})` and the interpolating kernel of
+(14.127) is `N ∑_{ℓ,ℓ'} R^{ℓ,ℓ'} ξ'(q^{ℓ,ℓ'}_{α,γ})`; the constraint `R_{1,2} = u` is imposed by
+zero weights, and under (14.128) the diagonal is the constant `-2θ(1) - 2θ(u)` — without the
+constraint the interaction term `⟨ξ(R_{1,2}) - R_{1,2} ξ'(u)⟩` has the wrong sign for the tangent
+inequality — so the trace is at most `-θ(1) - θ(u) + (1/2)⟨∑_{ℓ,ℓ'} θ(q^{ℓ,ℓ'})⟩`
+(`wGuerraTrace_pair_le`, tangent-line hypothesis over an arbitrary set of `q`-values, so `u < 0`
+is allowed), integrated: `wFreeEnergy_pair_sub_le`. `Parisi/SiteTreeFieldLaw`: the Gaussian
+coordinates of a truncated cascade over any finite site type `S` (`siteTreeCoords_law`);
+`Parisi/TreeFieldLaw`, `Parisi/TreeField`: the case `S = Fin N`, the marks field
+`H(σ,α) = ∑_i σ_i ∑_p z_{i,p,α}` of (14.73) (`treeField`); `Parisi/PairTreeField`:
+`S = Fin N × Fin 2` with per-level `2×2` factors `L_p` (`L_p L_pᵀ` the covariance of the pair
+`(y_p^1, y_p^2)`), the field `H(σ¹,σ²,α)` of (14.135) (`pairTreeField`), whose kernel telescopes to
+the kernel of (14.127) when `𝔼 y_p^ℓ y_p^{ℓ'} = ξ'(ρ^{ℓ,ℓ'}_{p+1}) - ξ'(ρ^{ℓ,ℓ'}_p)`
+(`pairTreeFieldKernel_eq_pairTreeKernel`). `Parisi/CoupledScheme`: Talagrand's choice
+(14.150)–(14.151) — one shared Gaussian per level below `τ`, independent ones from `τ` on
+(`couplingFactor`), so `ρ^{ℓ,ℓ}_p = q_p`, `ρ^{1,2}_p = q_{min(p,τ)}` (`couplingRho`) — with the
+Parisi variances gives the kernel of (14.127) (`pairTreeFieldKernel_coupling`) and (14.128) with
+`u = q_τ` (`couplingRho_diag`); **Lemma 14.6.1 for the coupled scheme**
+(`wFreeEnergy_coupled_sub_le`): the model field `H_N(σ¹) + H_N(σ²)` on the model law against
+the marks field on the marks law, `𝔼 F_w(U + c) - 𝔼 F_w(V + c) ≤ ∫₀¹ b(t) dt` with
+`b(t) = -θ(1) - θ(q_τ) + (1/2) ∑_{ℓ,ℓ'} 𝔼⟨θ(ρ^{ℓ,ℓ'}_{(α,γ)})⟩_t`, the two-dimensional
+`guerra_truncated`. `Parisi/CoupledEndpoint`: at the endpoint `s = 0` the constraint is dropped by
+the **`λ`-trick** (14.140), `∑_{R=u} ≤ e^{-λu} ∑_{all}(⋯ e^{λR})` (`wZ_mul_le_exp_mul_wZ_sub`, for
+any weighted partition function), and the sites decouple (`Fintype.sum_exp_sum_pi`:
+`∑_σ e^{∑ᵢ fᵢ(σᵢ)} = ∏ᵢ ∑_s e^{fᵢ(s)}`, `Common/…/ExpPiSum`) with the site partition function
+(14.142) `∑_{ε₁,ε₂} e^{ε₁x₁+ε₂x₂+ε₁ε₂λ} = 4(ch x₁ ch x₂ ch λ + sh x₁ sh x₂ sh λ)`
+(`sum_exp_pairSpin`, `sum_pairConfig_exp`). Talagrand's `Y₀ = 2X₀` is Lemma 14.3.6(a) in raw
+coordinates: `cascadeRec_coupling`, from the pushforward lemma `cascadeRec_map` (the recursion
+commutes with a change of marks, `Cascade`) and `cascadeRec_pairMarkLaw`, the product laws pushed
+along the coupling maps being the coupled mark laws (`map_couplingMap_prod_eq_pairMarkLaw`).
+
+`Parisi/PairTreeFieldIndep`, `Parisi/CoupledInterpolation`, `Parisi/CoupledLevels`,
+`Parisi/LevelBoundLaw`, `Parisi/CoupledBoundLaw`, `Parisi/CascadeLogIntegrable`,
+`Parisi/CoupledFixedWeights`, `Parisi/CoupledParisi`: **Talagrand's (14.147)**, the bound for
+coupled copies integrated over the cascade (`coupled_bound`, `coupled_bound'`,
+`coupled_bound_of_top`). The two-dimensional scheme runs on one site-tree cascade over
+`Fin N × J` with per-level `2 × J` factors, the interpolating field on the columns `J₁` and the
+external field `H⁰` of (14.136) on the complementary columns, independent by the block
+independence of `Measure.pi` (`indepFun_pairTreeField_of_disjoint`,
+`Probability/Independence/PiBlocks`); Lemma 14.6.1 holds with an *independent random external
+field* (`wFreeEnergy_sub_le_of_le_treeBoundIntegrand_indep`, Fubini over its law), with the
+diagonal constant `pairDiagConst ξ u (ρ_{κ+1})` for free top values `ρ_{κ+1}` (`−2θ(1) − 2θ(u)`
+under (14.132)). The level bound is the generic level-bound law `levelBoundLaw` — Proposition
+14.3.3 integrated, `∫₀¹ 𝔼 b_w dt = (1/2)c₀ + (1/2)∑_{r≤κ} θ_r(m_{r+1} − m_r)`
+(`integral_intervalIntegral_levelBoundLaw`) — shared with Guerra's bound, with the truncation
+limits by dominated convergence; the tree is untruncated at fixed weights of positive finite mass
+(`coupled_fixed_weights`, with the `λ`-trick at the endpoint), using the exponential moments of
+the disorder (`GaussianField.integrable_exp_neg_smul_add`, `FiniteGibbs/GaussianFieldExpMoment`)
+and an integrable affine lower bound on the branch weights; and both endpoints are evaluated by
+Theorem 14.2.1 conditionally on the disorder and the root marks
+(`integral_log_cascadeSum_div_prod_eq`), from the **joint integrability of
+`log ∑_α v_α G_θ(z_α)`** in the weights, the parameter and the marks
+(`integrable_log_cascadeSum_div_prod`: `|log(S/W)| ≤ S/W + T/W`, `T` the cascade sum of
+`|log G|`, by Jensen along the branch chosen by the weights, `tsum_mul_log_le_log_tsum_mul`).
+Two remarks: Talagrand's (14.137) omits the diagonal term `α = γ`, and the bound proved here is
+stronger than his (14.147) by `(θ(1) + θ(u))(1 − n_κ) ≥ 0` (`pairDiagDefect`); and leaving
+`ρ_{κ+1}` free absorbs exactly the last level `n_{κ+1} = 1` of Proposition 14.6.3, so no
+continuity argument in the `n_p` is needed. `Parisi/CoupledSite`: the endpoint `Y₁` factorizes
+over the sites along the currying `(Fin N × J → ℝ) ≃ (Fin N → J → ℝ)` (`parisiRec_pairCoshF`,
+from `parisiRec_sum` and `MeasureTheory.map_curry_pi`), and with the same field at every site
+`𝔼_{z₀} Y₁ = N Y₀` for Talagrand's one-site `Y₀` (`pairSiteY₀`, `integral_parisiRec_pairCoshF`).
+`Parisi/CoupledProp`: **Proposition 14.6.3** (`coupled_bound_coupling`,
+`coupled_bound_coupling_of_top`, `coupled_bound_coupling_zero`): Talagrand's coupling
+(14.155)–(14.158) with a sign `η = ±1` (`couplingFactorSgn`, `couplingRhoSgn`), the covariance
+identities (14.133), the level sum (14.152) (`coupledLevelSum_couplingRhoSgn`), the extra field of
+(14.160) on further columns, and the constrained free energy (14.149) as the left-hand side
+(`constrainedPairZ`). `Parisi/CoupledLambdaZero`: at `λ = 0` the right-hand side is exactly
+`2𝒫_k(m, q)` (`coupling_rhs_zero_eq`: `Y₀(0) = 2X₀` from `cascadeRec_coupling`
+(`pairSiteY₀_coupling_zero`), the level sum with the halved exponents, and the diagonal defect at
+`q_{k+1}` against the absorbed level (14.84)), hence the constrained free energy is at most
+`2𝒫_k(m, q)` (`constrainedFreeEnergy_le_two_parisiFunctional`); the functional is even in `h`
+(`parisiFunctional_neg`).
+
+`Common/Mathlib/Probability/PointProcess/CascadeTiltMeasure`: **Talagrand's tilted probability
+measure**. The tilted averages `𝔼(W₁ ⋯ W_k A)` of §14.3 (`cascadeTilt`) are the integrals against
+`cascadeTiltMeasure k ms μs G := (Measure.pi μs).withDensity (cascadeTiltDensity …)`, the product
+law of the marks with density `W₁(z₁) ⋯ W_k(z₁, …, z_k)` (`lintegral_cascadeTiltMeasure`), a
+probability measure under (14.4) (`isProbabilityMeasure_cascadeTiltMeasure`); Bochner integrals
+against it average signed functions (`integral_cascadeTiltMeasure`), and Talagrand's nesting
+`𝔼(W₁ ⋯ W_{k+1} f) = 𝔼₁(W₁ 𝔼(W₂ ⋯ W_{k+1} f))` is `integral_cascadeTiltMeasure_succ`, from Fubini
+for `Measure.pi` over `Fin (n + 1)` in Bochner form (`integral_pi_fin_succ`).
+`Common/…/CascadeDeriv`: **the derivative of the Parisi recursion in a parameter is the tilted
+average of the derivative**, `d/dλ parisiRec k ms μs (F_λ) = 𝔼(W₁ ⋯ W_k ∂_λ F_λ)`
+(`hasDerivAt_parisiRec`) for jointly measurable `F_λ` with `|∂_λ F_λ| ≤ C` satisfying (14.4) at
+the point — Talagrand's `Y'_p = 𝔼_p(W_p Y'_{p+1})`, (14.185) and (14.215), iterated over the
+levels; the proof is an induction with `hasDerivAt_integral_of_dominated_loc_of_deriv_le` at each
+level, the bound on the derivative propagating (14.4) to a neighbourhood
+(`lintegral_ofReal_exp_le_of_le`). `Parisi/CoupledDeriv`: the `λ`-derivative of the one-site
+function, `∂_λ Y_{κ+1} = (ch A ch B sh λ + sh A sh B ch λ)/(ch A ch B ch λ + sh A sh B sh λ)`
+(`pairSiteY'`), bounded by `1` (`abs_pairSiteY'_le_one`, Talagrand's inequality in the proof of
+Lemma 14.6.5), (14.4) for the one-site branch function (`lintegral_ofReal_exp_pairSiteF_ne_top`,
+the four Gaussian integrals of (14.142)), hence `Y₁(λ, y₀)` and `Y₀(λ)` are differentiable with
+`Y₀'(λ) = 𝔼_{y₀} 𝔼(W₁ ⋯ W_κ ∂_λ Y_{κ+1})` and `|Y₀'(λ)| ≤ 1` (`hasDerivAt_parisiRec_pairSiteF`,
+`hasDerivAt_pairSiteY₀`, `abs_pairSiteY₀'_le_one`). Proposition 14.6.3 takes only
+`ξ'(η x) = η ξ'(x)` and `θ(η x) = θ(x)` (automatic for `η = 1`, from evenness for `η = −1`), so
+odd `p`-spin models at `u ≥ 0` are covered.
+
+The **recursion as a function of the exponents** (`Common/…/PointProcess/CascadeExponent`,
+`CascadeJensenLower`): `cascadeRec_mono_exponent` (nondecreasing in each `m_p`, Lyapunov's
+inequality `lintegral_rpow_rpow_inv_le_of_le` level by level), `continuousOn_cascadeRec` and
+`continuousOn_parisiRec` (continuity on `(0,1]^k` under (14.4), by dominated convergence with
+Jensen's bound `cascadeRec_le_lintegral_pi` as the dominating function and the joint continuity
+`ENNReal.continuousAt_rpow` of `x^y` on `ℝ≥0∞ × ℝ`, a Mathlib gap), `integral_le_parisiRec`
+(the lower Jensen bound `𝔼F ≤ F₁`, from `integral_log_le_log_integral`, Jensen for `log`, another
+gap), the uniform bound `ae_norm_log_cascadeRec_le` giving `integrable_log_cascadeRec` and
+`continuousOn_integral_log_cascadeRec` with no strict monotonicity of the exponents, and
+Talagrand's density argument `le_of_forall_strictMono_le` (strictly increasing tuples in `(0,1)^k`
+approximate nondecreasing tuples in `(0,1]^k`, `strictApprox`). Consequences:
+`coupled_bound'_of_monotone`, `coupled_bound_coupling`, `coupled_bound_coupling_zero`,
+`constrainedFreeEnergy_le_two_parisiFunctional` and `continuousOn_parisiFunctional`,
+`mixedPSpinFreeEnergy_le_parisiFunctional_of_monotone`,
+`skFreeEnergy_le_parisiFunctional_of_monotone`
+hold for nondecreasing `0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1`.
+
+**Lemma 14.6.5** (`Parisi/CoupledSecondDeriv`): `pairSiteY₀_eq_integral` (`Y₀(λ)` as the
+expectation over root marks and cascade of `log ∑_α v_α exp Y_{κ+1}(λ, ζ_α)`, from Theorem 14.2.1
+and the joint (14.4) `lintegral_lintegral_ofReal_exp_pairSiteF_ne_top` computed from the four
+exponentials `ofReal_exp_pairSiteF_eq_sum`), `cascadeSum_pairSiteG` (the `λ`-structure
+`∑_α v_α exp Y_{κ+1}(λ) = (e^λ P + e^{−λ} M)/2`, by the new linearity of the cascade sum
+`cascadeSum_add`, `cascadeSum_const_mul`, `cascadeSum_mono` of `PointProcess/CascadeLinear`),
+`hasDerivAt_pairSiteY₀_cascade`, `pairSiteY₀'_eq_cascade` (the tilted-average and cascade forms of
+`Y₀'` agree), `hasDerivAt_pairSiteY₀'` with `pairSiteY₀'' = 1 − 𝔼(S'/S)²`, `pairSiteY₀''_nonneg`,
+`pairSiteY₀''_le_one`, `convexOn_pairSiteY₀`, `concaveOn_pairSiteY₀_sub_sq` (for all nondecreasing
+`0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1`, by `convexOn_of_tendsto` of `Analysis/Convex/Limit` and
+`continuousOn_pairSiteY₀`), and the tangent bounds `taylor_le_pairSiteY₀`, `pairSiteY₀_le_taylor`.
+Talagrand's statement reads `0 ≤ Y₀'(λ) ≤ 1`; his proof concerns `Y₀''`.
+
+**The operators `T_{m,v}` of §14.7.** `Common/…/Gaussian/ExpGrowth`: the class `HasExpGrowth`
+(`|F| ≤ C e^{c|x|}`) and `HasLinearGrowth`, closed under the usual operations, integrable against
+every real Gaussian, with `hasDerivAt_integral_comp_add_gaussianReal` (differentiation of
+`x ↦ 𝔼 F(x + g√v)`); `GaussianIntegrationByParts` gains Stein's lemma for functions of
+exponential growth (`stein_lemma_gaussianReal_of_expGrowth`). `Gaussian/HeatSemigroup`: the
+Gaussian heat semigroup `P_v H(x) = 𝔼 H(x + g√v)` — `P_0 = id`, exponential growth is preserved,
+`(x, v) ↦ P_v H(x)` is jointly continuous, `P_v` preserves `Cⁿ` and commutes with `d/dx`
+(`contDiff_integral_comp_add_gaussianReal`, `iteratedDeriv_integral_comp_add_gaussianReal`), the
+heat equation `∂_v P_v H = ½ P_v H''` holds for `v > 0` and one-sidedly at `v = 0`, and *every*
+`x`-derivative solves it (`hasDerivAt_iteratedDeriv_integral_comp_add_gaussianReal_var`), so the
+mixed partials need no Clairaut argument. The master statement is the chain rule along a curve
+`v ↦ (y(v), σ(v))` for a time-dependent integrand (`hasDerivAt_integral_curve_gaussianReal`):
+dominated differentiation under the integral sign, then Gaussian integration by parts to turn the
+factor `g/(2√σ)` into `½ ∂_x`. `Gaussian/ColeHopf`: `coleHopf m v A = T_{m,v}A` with
+`coleHopfQ` the tilt `Q = exp m(A(Y) − B(x))` of (14.201) — (14.195) `T_{m,a} ∘ T_{m,b} =
+T_{m,a+b}` (`coleHopf_coleHopf`), (14.197) (`coleHopf_le_log_integral_exp`), (14.202) `B' =
+𝔼(A'(Y)Q)`, (14.203) `B'' = 𝔼(A''Q) + m𝔼(A'²Q) − mB'²`, (14.199) `∂_v B = ½B'' + (m/2)B'²` and
+its curve form (a corollary of the heat-semigroup chain rule applied to `exp mA`), the Lipschitz
+bound of (14.271) for `m > 0` with no differentiability
+(`abs_coleHopf_sub_le_of_lipschitz`, by monotonicity of exponential averages), the exponent
+derivative `∂_m T_{m,v}A = (1/m)(𝔼(A(Y)Q) − B)`, and **Lemma 14.7.3**
+`∂_v (T_{m',a−v} ∘ T_{m,v})A = ((m − m')/2) 𝔼(B'(Z)²R)` for every `m'` — the case `m' = 0`
+(`R = 1`) from the time-dependent chain rule, the case `m' ≠ 0` the same computation inside the
+tilt. `PointProcess/CascadeColeHopf`: the two sides meet — `coleHopfIterate` is Talagrand's
+(14.190) `A_p = T_{m_p,v_p}(A_{p+1})`, it preserves Lipschitz constants
+(`abs_coleHopfIterate_sub_le`, his `|A_p'| ≤ 1`), the Parisi recursion with Gaussian marks *is*
+that iterate (`cascadeRec_gaussian_comp_add_sum`, `parisiRec_gaussian_comp_add_sum`, (14.191)),
+and hence (14.215)/(14.217) `∂_λ A₁ = 𝔼(W₁ ⋯ W_k ∂_λ G_λ)` (`hasDerivAt_coleHopfIterate`) is
+`hasDerivAt_parisiRec` read through that identification. Both are proved in local form
+(`hasDerivAt_parisiRec_ball`, `hasDerivAt_coleHopfIterate_ball`) — the parameter ranging over a
+ball, with measurability required only at each fixed parameter — since Talagrand's parameters
+(an overlap, a variance split) range over intervals. Composed with Lemma 14.7.3 this gives
+**(14.219)–(14.220)** in operator form, `hasDerivAt_coleHopfIterate_split`. The level structure
+is packaged associatively as an iterate along a list of levels (`coleHopfIterateList`,
+`coleHopfIterateList_append`, `coleHopfIterateList_split`), which turns Talagrand's merging
+mechanisms into one-liners: a zero-variance level drops (`coleHopfIterateList_zero_var`,
+`T_{m,0} = id`) and two adjacent levels with equal exponents merge
+(`coleHopfIterateList_merge`), his (14.233) and (14.237).
+
+`FiniteGibbs/WeightedInterpolation`, product state spaces: for weights `u_α c_x` on `X × A`, the
+partition function is `∑_α u_α Z_α(c)` with `Z_α(c) = ∑_x c_x e^{-H(x,α)}` (`wCondZ`, `wZ_prod_eq`)
+and the pair average of a function of the `A`-components is the pair average over `A` with the
+weights `u_α Z_α(c)` (`sum_wGibbs_prod_pair`) — the marginalization behind Talagrand's (14.76) and
+(14.137); `Parisi/BranchAverages`' `sum_wGibbs_pair_eq` is the case `c = 1`. `Parisi/PairLevels`,
+generic in the mark type: the pair fractions `gibbsPair`/`truncPair`, their monotone limit
+`M → ∞` (`tendsto_truncPair`), **Proposition 14.3.3 for the pair fraction**
+`𝔼⟨1_{(α,γ)≥r}⟩ = 1 - m_r` under the product of the weights and marks laws for every branch
+weight with (14.4) (`integral_gibbsPair_eq`), and the level decomposition of the trace-bound
+integrand for weights `u_α c_x` and any function of the level `(α,γ)`
+(`treeBoundIntegrand_prod_eq_levelBound`); the one-dimensional statements are their instances.
 
 `Parisi/TreeTrace`: on `Σ_N × A`, the weighted Guerra trace of the model kernel `N ξ(R_{στ})`
 against a **tree kernel** `N R_{στ} ξ'(q_{α,γ})` with `q_{α,α} = q̄` (Talagrand's (14.63)) is
@@ -1592,25 +1790,264 @@ functional (whose last level has `m_{k+1} = 1`) to the cascades (which need `m_p
 the functional is explicit (`parisiFunctional_zero`), and **for the SK profile `ξ = β²x²/2` it is
 exactly the replica-symmetric expression** `𝔼 log(2cosh(β√q z + h)) + (β²/4)(1-q)²`
 (`parisiFunctional_skCovXi_zero`, `0 ≤ q ≤ 1`): Guerra's replica-symmetric bound of Vol. I,
-Theorem 1.3.7, is the case `k = 0` of the Parisi bound (`skFreeEnergyLimit_le_parisiFunctional_zero`).
+Theorem 1.3.7, is the case `k = 0` of the Parisi bound
+(`skFreeEnergyLimit_le_parisiFunctional_zero`).
+
+`CascadeBranchLaw`: **the marks along a fixed branch are the product `μ₁ ⊗ ⋯ ⊗ μ_k`**
+(`cascadeMarksLaw_map_branchMarks`) — they are the marks of the `k` distinct nodes `α|1, …, α|k`,
+and the marginal of an infinite product along an injective finite family of coordinates is the
+finite product (the new general `MeasureTheory.Measure.infinitePi_map_comp_injective`). Hence at
+fixed weights `𝔼_z ∑_α u*_α g(z_α) = (∑_α u*_α) 𝔼 g` (`lintegral_cascadeSum_cascadeZip`), and for
+the normalized weights `𝔼 ∑_α v_α g(z_α) = 𝔼 g`: the marks of a branch chosen according to the
+cascade weights have the law of the marks. The total weight `W = ∑_α u*_α` is almost surely
+positive and finite (`ae_weightSum_ne_zero_ne_top`), from Proposition 14.2.2 at the exponent
+`m₁/2` together with the almost-sure positivity of the cascade sum.
+
+`LintegralCounting`: the general inequality behind `Q_r ≤ S²`. In `ℝ≥0∞` a product of sums is
+unconditionally a double sum (`ENNReal.tsum_mul_tsum`), so the diagonal is dominated,
+`∑ᵢ aᵢbᵢ ≤ (∑ᵢ aᵢ)(∑ⱼ bⱼ)`; measure-theoretically, for a *counting* measure — a countable sum of
+Dirac measures — `∫ fg dN ≤ (∫ f dN)(∫ g dN)`, that is `‖·‖₂ ≤ ‖·‖₁`
+(`MeasureTheory.lintegral_mul_le_mul_lintegral_sum_dirac`; this fails for general measures, for
+`c·δ_x` it is exactly `c ≤ c²`). Applied at every layer of a cascade it gives **`Q_r ≤ S²`
+pointwise on every sample** (`cascadeSq_le_sq`) and `Q_r/S² ≤ 1` (`cascadeSq_mul_inv_sq_le_one`):
+the bound that makes the cascade Gibbs pair averages of Proposition 14.3.3 genuine averages of an
+indicator, and lets them be integrated as real-valued functions.
+
+`Convex/TangentLine`: **the supporting-line inequality** `f q + f'(q)(x - q) ≤ f x` for a convex
+function differentiable on a set (`ConvexOn.add_deriv_mul_sub_le`), with its concave counterpart —
+Mathlib had only the two secant-slope halves. This is the form in which the convexity of `ξ` is
+used in (14.79).
+
+`Parisi/BranchAverages`, `Parisi/PairLevels`: at a general address `α` of the tree, the
+interpolating Hamiltonian `√t H_N(σ) + √(1−t) ∑ᵢ σᵢ z_{i,α} + h ∑ᵢ σᵢ` (`branchHam`, Talagrand's
+(14.77)) and its partition function `exp F_t(α)` (`branchZ`, (14.78)) restrict on a truncated tree
+to `truncHam`, and the Gibbs pair average on `Σ_N × A_M` is a pair average over the branches with
+the weights `u*_α exp F_t(α)` (`sum_wGibbs_pair_eq`) — Talagrand's reduction in the proof of
+(14.76). Talagrand's hypothesis (14.4) holds for both `F` and `F_{k+1}`
+(`cascadeRec_hamG_ne_top`, `cascadeRec_coshG_ne_top`), from the Gaussian exponential moments
+`∫ exp(∑ᵢ cᵢxᵢ) d⊗ᵢN(0,vᵢ) = exp(∑ᵢ vᵢcᵢ²/2)` (`Gaussian/PiGaussian`). Decomposing `θ` along the
+levels, `θ(q_{(α,γ)}) = ∑_{r ≤ k} θ(q_{r+1})(1_{(α,γ) ≥ r} − 1_{(α,γ) ≥ r+1})`
+(`sum_theta_levels`), the bound of the interpolation becomes a combination of the truncated pair
+fractions `Q_r^M/(S^M)²` (`treeBoundIntegrand_eq_levelBound`), which increase to the cascade pair
+fractions `Q_r/S²` (`tendsto_truncPair`); by dominated convergence the truncated bounds converge
+to the bound `guerraBound` for the whole cascade (`tendsto_integral_guerraTruncBound`).
+
+`Parisi/GuerraFixedWeights`: **the interpolation for the whole cascade at fixed weights**
+(`guerra_fixed_weights`): for every sample of the cascade weights with `0 < W < ∞`,
+`p_N ≤ (1/N) 𝔼_z log (∑_α u*_α exp F(z_α) / W) + ∫₀¹ b_w(t) dt`, by letting `M → ∞` in the
+truncated bound — the truncated partition functions increase to the cascade sum, and both
+logarithms are integrable because they lie between a single branch `u*_{α₀} ≥ c > 0` and the
+integrable cascade sum.
+
+`Parisi/GuerraParisi`: **Guerra's broken replica-symmetry bound**, Vol. II Theorem 14.4.3 and
+(14.90), `p_N ≤ 𝒫_k(m, q)` (`mixedPSpinFreeEnergy_le_parisiFunctional`), obtained by integrating
+the fixed-weights bound over the cascade weights. The first term is `φ(0)`: Theorem 14.2.1
+conditionally on the root marks turns `𝔼 log ∑_α v_α exp F(α)` into `F₁`; the site factorization
+(14.82) together with the constant `log 2` gives `F₁ = N log 2 + ∑ᵢ F₁(z_{i,0})`
+(`parisiRec_coshF`); and the absorption (14.84) identifies the one-site recursion with `X₀`,
+whence `φ(0) = log 2 + X₀ − (ξ'(1) − ξ'(q_{k+1}))/2` (`integral_logRatio_eq`, Talagrand's (14.85)).
+The bound is computed by Proposition 14.3.3 conditionally on `(t, H_N, z₀)`:
+`𝔼⟨1_{(α,γ) ≥ r}⟩_t = 1 − m_r` (`integral_pairAvg`, (14.76)), so the averaged bound is
+`(1/2)(ξ(1) − ξ'(q_{k+1})) + (1/2)∑_{r ≤ k} θ(q_{r+1})(m_{r+1} − m_r)`, the same for every `t`
+(`integral_guerraBound`); Abel summation (`sum_abel`) with `m₀ = 0`, `m_{k+1} = 1`, `q_{k+2} = 1`
+and `θ(1) = ξ'(1) − ξ(1)` collapses the two into `𝒫_k(m, q)`. The hypotheses are weaker than
+Talagrand's: only the tangent-line inequality for `ξ` on the range actually used
+(`x ∈ [-1,1]`, `q ∈ [0,1]`) and the monotonicity of `ξ'` along `q₀ ≤ ⋯ ≤ q_{k+2}`, rather than
+convexity of `ξ` on all of `ℝ` and monotonicity of `q`; the textbook form is the corollary
+`mixedPSpinFreeEnergy_le_parisiFunctional_of_convexOn` (`ξ` convex and differentiable with
+`ξ'(0) = 0`, `q` nondecreasing in `[0,1]`, `0 < m₁ < ⋯ < m_k < 1`; both extend to nondecreasing
+`0 < m₁ ≤ ⋯ ≤ m_k ≤ 1` by the continuity of `𝒫_k` in the exponents,
+`mixedPSpinFreeEnergy_le_parisiFunctional_of_monotone`). For the SK profile it reads
+`p_N(β, h) ≤ 𝒫_k(m, q)` at every level `k` (`skFreeEnergy_le_parisiFunctional`); at `k = 0` it is
+Guerra's replica-symmetric bound of Vol. I, Theorem 1.3.7, now at finite `N`
+(`skFreeEnergy_le_rs_bound`). The Abel summation of the proof is Mathlib's telescoping identity
+applied to the general **summation by parts in telescoped form**
+`∑_{i<n} (f(i+1)(g(i+1) − g i) + (f(i+1) − f i) g i) = f n g n − f 0 g 0`
+(`Finset.sum_range_mul_sub_add_sub_mul`, valid in any ring), which also gives Talagrand's second
+form of the functional (14.403), `𝒫_k = log 2 + X₀ + (1/2)∑_{p ≤ k+1} θ(q_p)(m_p − m_{p−1})
+− θ(1)/2` (`parisiFunctional_eq_theta_sum`) — the form in which `𝒫_k` visibly depends only on the
+measure `∑_p (m_p − m_{p−1}) δ_{q_p}` of §14.11.
+
+`CascadeTilt`: **the tilting weights of the recursion**, `W_p = (R_{p+1}/R_p)^{m_p}` (Talagrand's
+(14.22)), through which every identity of §14.3 is expressed. Their defining property `𝔼_p W_p = 1`
+(14.23) is immediate from the recursion, since `R_p^{m_p} = ∫ R_{p+1}^{m_p} dμ_p`
+(`cascadeRec_rpow_eq_lintegral`, `lintegral_cascadeW`); nesting them gives the **tilted average**
+`𝔼(W₁ ⋯ W_k A)` of (14.24)–(14.26) (`cascadeTilt`), which is an average against a probability
+measure (`cascadeTilt_one`) and reduces to the plain product average when the recursion is run on
+a constant (`cascadeTilt_const`) — the case `F = 0` of §14.3, matching
+`lintegral_cascadeSum_div_cascadeSum_one_prod`. The hypotheses are exactly Talagrand's: `G = exp F`
+positive and **(14.4)**, `∫ G d(μ₁ ⊗ ⋯ ⊗ μ_k) < ∞` — positivity makes every `R_p` nonzero and
+(14.4) makes it finite by Jensen (`cascadeRec_ne_top`), while along a branch (14.4) is inherited
+only almost everywhere (`ae_lintegral_pi_cons_ne_top`), which is what the recursive proofs carry.
+Joint measurability of the weights and of the tilted average in a parameter
+(`measurable_cascadeW_prod`, `measurable_cascadeTilt_prod`) is what lets them be integrated over
+the levels. The recursion of a constant is that constant and is monotone in its argument
+(`cascadeRec_const`, `cascadeRec_mono`, `cascadeRec_le_of_le`).
+
+`CascadeGibbs`: **Talagrand's identity (14.26)–(14.27)**,
+`𝔼⟨A/G⟩ = 𝔼(W₁ ⋯ W_k (A/G))` (`lintegral_cascadeSum_div_cascadeSum`): the cascade Gibbs average of
+a function of the marks, for the weights `u*_α G(z_α)`, is the tilted average. Talagrand derives it
+by differentiating (14.8) in the direction of `A`; this development instead proves the
+**one-insertion moment of a cascade**,
+`𝔼 (∑_α u*_α A(z_α))(∑_α u*_α G(z_α))^{a-1} = 𝔼(W₁ ⋯ W_k (A/G)) · 𝔼(∑_α u*_α G(z_α))^a`
+(`lintegral_cascadeSum_mul_rpow`) — the companion with a numerator of Proposition 14.2.2, of which
+that proposition is the case `A = G`, and whose hypotheses are again just positivity and (14.4) —
+by induction on the levels from the new one-level identity
+`𝔼 (∑ u_α A(g_α))(∑ u_α V(g_α))^{a-1} = K₁(a) ∫ A V^{m-1} dη`
+(`lintegral_pdSum_mul_rpow_pdSum`, whose constant `pdOneConst` specializes at `a = 0` to that of
+`lintegral_pdSum_mul_inv_pdSum` and at `A = V` to the moment formula, both of which it therefore
+generalizes). The case `G` constant recovers the plain product average
+(`lintegral_cascadeSum_div_cascadeSum_const`).
+
+`Mecke`: **the bivariate Mecke equation** (the second-order Palm formula) for a Poisson point
+process with intensity `Λ`, in two forms. The form at the level of the *sample*
+(`lintegral_lintegral_lintegral_superCounting`, and its Poisson–Dirichlet specialization
+`lintegral_lintegral_lintegral_pdSampleLaw`) has no measurability hypothesis beyond `Measurable f`,
+because the inner integrals are taken against the counting measure of the sample, where joint
+measurability is automatic (`measurable_lintegral_superCounting_prod`); the whole Mecke layer takes
+its measurability hypotheses *along the sample* for this reason. That matters: for an integrand
+that is a genuine function of the *pair* of points the inner integral has no closed form, and the
+corresponding hypothesis at the level of `Measure E` — measurability of `N ↦ ∫ f (x, y, N) dN(y)`
+— is not available at all, since Mathlib's slice lemma `measurable_measure_prodMk_left` needs
+`SFinite` and the identity kernel `μ ↦ μ` is not s-finite. The form at the level of the law is
+`𝔼 ∑_{x,y ∈ N} f(x, y, N) = ∫∫ 𝔼 f(x, y, N + δ_x + δ_y) dΛ dΛ + ∫ 𝔼 f(x, x, N + δ_x) dΛ`
+(`lintegral_lintegral_lintegral_poissonPointProcessSum`, with the transported form
+`HasLaw.lintegral_lintegral_lintegral_sum`) — the diagonal and the off-diagonal of the double sum,
+the diagonal being exactly what appears when the inner integral against `N + δ_x` is split. It
+follows from the one-point formula applied twice. This is the tool that separates the two terms of
+Talagrand's (14.32), where the off-diagonal produces the square of a first-order tilted average and
+the diagonal produces the tilted average of a square.
+
+Specialized to the Poisson–Dirichlet process (`lintegral_lintegral_lintegral_pdProcess`), it
+splits a double sum over the weighted points into the two integrals against `pdIntensity` that the
+two terms of (14.32) come from. Almost every point of that intensity carries a nonzero weight when
+the marks do (`ae_stableIntensity_pos`, `ae_pdIntensity_ne_zero`), which is what makes the
+negative-power representation applicable to the shifted sum in the off-diagonal term; and the
+constant that term produces is `pdOffConst`, the exact analogue of the existing `pdSqConst` of the
+diagonal.
+
+Alongside it, the **first-order Palm–Campbell transform of the Poisson–Dirichlet intensity**,
+`∫ u U(g) e^{-s u V(g)} dΛ_m dη = s^{m-1} Γ(1-m) ∫ U V^{m-1} dη`
+(`lintegral_pdIntensity_mul_negExp`), the mark-integrated form of the stable-density Gamma
+integral, stated with no finiteness assumption on `V` (an infinite mark kills both sides). It is
+what turns the off-diagonal term of the bivariate Mecke equation into the *square* of a
+first-order quantity, which is the mechanism by which the `r = 0` term of (14.32) acquires the
+square of a tilted average.
+
+On top of these, **the object of Talagrand's second-order identity (14.32)**: the tilted average
+over the first `r` levels of the square of the tilted average over the remaining ones,
+`𝔼(W₁ ⋯ W_r (𝔼_{r+1} W_{r+1} ⋯ W_k A)²)` (`cascadeTiltSq`), whose weighted sum over `r` is `𝔼⟨A⟩²`.
+Its term `r = 0` is `(𝔼(W₁ ⋯ W_k A))²`, its terms `r ≥ k` collapse to `𝔼(W₁ ⋯ W_k A²)`
+(`cascadeTiltSq_of_le`) and hence, by (14.27), to the Gibbs average of `A²`
+(`cascadeTiltSq_eq_lintegral_cascadeSum_div`) — the identity Talagrand uses just after (14.30);
+at `A = 1` every one of them is `1` (`cascadeTiltSq_one`), which is what turns (14.32) into
+Proposition 14.3.3. They are monotone and jointly measurable in a parameter
+(`cascadeTiltSq_mono`, `measurable_cascadeTiltSq_prod`).
+
+`PoissonDirichletIdentities` (second order): **the one-level identity with two insertions**,
+`𝔼 (∑_α u_α A(g_α))² (∑_α u_α V(g_α))^{a-2} = K₀(a) (∫ A V^{m-1} dη)² + K₂(a) ∫ A² V^{m-2} dη`
+(`lintegral_pdSum_sq_mul_rpow_pdSum`), for every `a < m`. The off-diagonal half
+(`lintegral_offDiag_pdProcess`) is proved for a general function `A : M × M → ℝ≥0∞` of the *pair*
+of inserted marks, where it reads `K₀(a) ∫∫ A(g,g') V(g)^{m-1} V(g')^{m-1} dη dη`: the two
+insertions are independent, so a function of the pair is integrated against the product of two
+copies of the first-order Palm measure. It is obtained by feeding the bivariate Mecke equation
+into the negative-power representation and then applying the Palm–Campbell transform to each of
+the two inserted points; the `s`-integral that remains is a single Gamma integral
+(`lintegral_offDiag_gamma`) with constant `pdOffConst`. Relative to the moment `𝔼 S_V^a` the two
+constants are the complementary weights `(m-a)/(1-a)` and `(1-m)/(1-a)`
+(`ofReal_pdOffConst_mul_lintegral`, `ofReal_pdSqConst_mul_lintegral`), which is what makes the
+identity a convex combination and is the one-level case of (14.32).
+
+`CascadeSecondMoment`: **Talagrand's second-order identities of §14.3**, all as the case `a = 0`
+of one statement with a free exponent (`lintegral_cascadeSq_mul_rpow_num`),
+`𝔼 Q_r(A) S_G^{a-2} = (∑_{r ≤ j ≤ k} (m_{j+1} - m_j)/(1-a) · 𝔼(W₁ ⋯ W_j (𝔼_{j+1} W_{j+1} ⋯ W_k
+U)²)) · 𝔼 S_G^a`, with `U = A/G`, `Q_r(A) = ∑_{α|r = γ|r} u*_α u*_γ A(z_α) A(z_γ)` and `m_0`
+replaced by `a`. The exponent has to be free because at the higher levels of the cascade the
+sub-partition functions enter with the power `m_p`; the proof is induction on the number of levels
+from the one-level identity above, the off-diagonal contributing the term `j = r` and the diagonal
+reproducing the statement one level down. Specializations: **(14.33)**
+(`lintegral_cascadeSq_num_mul_inv_sq`), `𝔼 ⟨1_{α|r = γ|r} U(α) U(γ)⟩ = ∑_{r < p ≤ k+1}
+(m_p - m_{p-1}) 𝔼(W₁ ⋯ W_{p-1} (𝔼_p W_p ⋯ W_k U)²)`; **(14.32)**
+(`lintegral_cascadeSum_div_sq`), the case `r = 0`, `𝔼 ⟨U⟩² = ∑_{1 ≤ p ≤ k+1} (m_p - m_{p-1})
+𝔼(W₁ ⋯ W_{p-1} (𝔼_p W_p ⋯ W_k U)²)`; and **Proposition 14.3.2**, (14.37)
+(`lintegral_cascadeSq_num_succ_add`), the difference of two consecutive levels, stated additively
+because subtraction in `ℝ≥0∞` is truncated. At `A = G` they reduce to
+`lintegral_cascadeSq_mul_inv_sq` and to Proposition 14.3.3. The step of the induction that turns
+the numerator of the one-insertion moment into a tilted average is isolated as
+`lintegral_prod_cascadeSum_mul_rpow`.
+
+`CascadePair`: **Talagrand's Theorem 14.3.5** (Vol. II, (14.47)), for a general function `Ũ` of
+the *pair* of mark sequences along two branches. The file builds the two objects the statement is
+about: `cascadePairSum` / `cascadeSqPair`, the double sum over one branch of each of two cascades
+and its restriction to pairs of branches of the same cascade agreeing up to level `r`; and
+`cascadeTiltProd` / `cascadeTiltPair`, the tilted average over **two independent copies** of the
+marks — two functions `G₁`, `G₂`, since at the next level copy `ℓ` carries `G_ℓ(z_ℓ, ·)` — with a
+single copy below level `r` and two independent copies above it, which is Talagrand's coupling
+(14.40)–(14.41). The bridge between the two tilted objects is **(14.42)**
+(`cascadeTiltPair_prod`), the square of a conditional expectation as an expectation over two
+independent copies; here it is a consequence of the definitions rather than an argument, because
+the independence is built into `cascadeTiltProd`.
+
+The identity itself (`lintegral_cascadeSqPair_mul_rpow`, and its `a = 0` specializations
+`lintegral_cascadeSqPair_mul_inv_sq` and `lintegral_cascadeSqPair_succ_add`) is again proved with
+a free exponent, by induction on the number of levels: at `r = 0` the top level contributes an
+off-diagonal term, which by the one-insertion moment **for a pair of independent cascades**
+(`lintegral_cascadePairSum_mul_rpow`, and its top-level form
+`lintegral_prod_cascadePairSum_mul_rpow`) is the two-copy tilted average times the product of the
+two normalizers, and a diagonal term, which reproduces the statement one level down. Talagrand
+instead polarizes from the product case and then approximates a general `Ũ` by sums of products;
+the direct induction needs no approximation. At `Ũ = A ⊗ A` the statement reduces to (14.33), by
+`cascadeSqPair_prod` and `cascadeTiltPair_prod`.
+
+The file closes §14.3 with **Lemma 14.3.6 and Corollary 14.3.7**. The coupled construction
+(14.40) is an *ordinary* cascade on the mark space `T × T`: its mark law at level `p` is the
+diagonal image of `μ_p` for `p < r` and the product `μ_p ⊗ μ_p` for `p ≥ r` (`pairMarkLaw`), and
+its parameters are the halved sequence (14.48) (`halveBelow`). Lemma 14.3.6(a) — `J_p = F_p¹ +
+F_p²`, together with `F_p¹ = F_p² = F_p` below level `r` — is `cascadeRec_pairMarkLaw`: the
+recursion of `Ĝ = G ⊗ G` is the *square* of the recursion of `G`; its independent half is the
+factorization `cascadeRec_prod`. Lemma 14.3.6(b) is `cascadeW_prod` (`V_p = W_p¹ W_p²` for
+`p ≥ r`) and `cascadeW_pairMarkLaw_diag` (`V_p = W_p` for `p < r`). Corollary 14.3.7 is
+`cascadeTiltPair_eq_cascadeTilt`: the coupled tilted average *is* the tilted average of that
+ordinary cascade. Composing it with (14.27) turns the right-hand side of (14.47) into a cascade
+Gibbs average (`cascadeTiltPair_eq_lintegral_cascadeSum_div`, Talagrand's (14.54)), which is the
+entry point of §14.5. The hypothesis there is Talagrand's (14.4) for `F̂ = F¹ + F²`; it does not
+follow from (14.4) for `F`, because the diagonal levels square `G`.
+
+`Parisi/ParisiInf`: **the right-hand side of the Parisi formula** (Vol. II, (14.93)),
+`inf 𝒫_k(m, q)` over all `k`, `m`, `q` (`parisiInf`, the infimum of the set `parisiSet` of values
+at admissible parameters, nonempty because the replica-symmetric parameters are admissible), and
+**the half of the formula that Guerra's bound gives**: `p_N ≤ inf 𝒫` at every finite `N`
+(`mixedPSpinFreeEnergy_le_parisiInf`), hence in the thermodynamic limit
+(`mixedPSpinFreeEnergyLimit_le_parisiInf`, composing with Guerra–Toninelli superadditivity since
+the bound is uniform in `N`), and for the SK model `lim_N p_N(β, h) ≤ inf 𝒫_k(m, q)`
+(`skFreeEnergyLimit_le_parisiInf`).
 
 ## Outstanding
 
-Not yet formalized (and deliberately not recorded as `Prop`-valued definitions): the
-Dovbysh–Sudakov / Aldous–Hoover representation and Panchenko's ultrametricity theorem; the
-two-point identities (13.15)–(13.16) and the remaining identities of Vol. II §14.3 ((14.27),
-(14.37), (14.47) with general `U`); Guerra's broken replica-symmetry bound (§14.4) for `k ≥ 1`,
-now reachable from Proposition 14.3.3, the Gaussian interpolation, the site factorization, the
-Parisi functional, the marking representation and the unzipping of the cascade into weights and
-marks, the product law of the node marks, and the weighted comparison bound for a finite family
-of branches, the convexity bound (14.79) on the weighted trace, and the Gaussian field of the
-marks on `Σ_N × branches` with its tree covariance, identified with the tree kernel
-`N R ξ'(q_{(α,γ)})`, and the interpolation bound for the truncated tree at fixed weights
-(`guerra_truncated`); what remains is the integration over the cascade weights with the limit
-`M → ∞` (monotone convergence of the branch sums), Proposition 14.3.3 for the pair averages, and
-`φ(0)` via Theorem 14.2.1 with the site factorization and (14.84); the Parisi formula; Aizenman–Sims–Starr; the Gardner
-formula; the Hopfield localization theorems (Vol. I Thm. 4.3.2, Vol. II Thm. 10.3.1) and the
-Hopfield limits; the thermodynamic limit for non-convex profiles.
+Not formalized (and not recorded as `Prop`-valued definitions): the **lower half of the Parisi
+formula** (14.93), `inf 𝒫_k(m,q) ≤ lim_N p_N`. Talagrand's route stays inside Chapter 14 and does
+not need Panchenko's ultrametricity (§15.6) or the Dovbysh–Sudakov representation (§15.9), which
+are Chapter 15 structure theory and give an alternative route via Aizenman–Sims–Starr (§15.8).
+Done on that route: Theorem 13.1.6, all of §14.3 through Corollary 14.3.7, and all of §14.6
+through Proposition 14.6.3 — Talagrand's (14.147) for nondecreasing `0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1` with
+free top values `ρ_{κ+1}`, its specialization to the coupling (14.155)–(14.158) with the extra
+field of (14.160),
+and the identification of its right-hand side at `λ = 0` with `2𝒫_k(m, q)`, plus the derivative
+of the recursion in a parameter, `|Y₀'(λ)| ≤ 1` and Lemma 14.6.5 (`0 ≤ Y₀'' ≤ 1`, the tangent
+bounds on `Y₀`), and the operator layer of §14.7: the Gaussian heat semigroup with its PDE,
+`T_{m,v}` with (14.195)–(14.203), Lemma 14.7.3 for every `m'`, the identification of the Parisi
+recursion with the iterated Cole–Hopf transform (14.190)–(14.191), the differentiation formula
+(14.215)/(14.217) and its consequence (14.219)–(14.220), and the merging identities behind
+(14.233)/(14.237). Next: the formula `Y₀'(0) = 𝔼(W₁ ⋯ W_{τ-1} D'_τ(ζ_τ)²)` of
+Proposition 14.6.4, the link of (14.220) to `∂𝒫_k/∂q_r` and Proposition 14.7.5, Lemma 14.7.4
+with `Φ(m, u)`, `U(v)` and `f(u)`, Theorem 14.5.7, and the main estimate of §14.8–§14.10.
+Also outstanding:
+Theorem 14.4.4 (`ξ` convex on `ℝ⁺` only, needing the
+perturbation (12.32) and Theorem 12.3.1), the extension of (14.90) to `m₁ = 0` (a level with
+exponent `0` is a plain expectation; `0 < m₁ ≤ ⋯ ≤ m_k ≤ 1` is done), Guerra's Lipschitz bound
+(14.402), the Parisi measures of §14.11, the Gardner
+formula, the Hopfield localization theorems (Vol. I Thm. 4.3.2, Vol. II Thm. 10.3.1) and limits,
+and the thermodynamic limit for non-convex profiles.
 -/
 
 namespace SpinGlass

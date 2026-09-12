@@ -114,6 +114,12 @@ lemma measurable_cascadeSq_prod (k : ℕ) :
             (measurable_snd.comp measurable_snd)))
       exact measurable_lintegral_superCounting_prod hf
 
+lemma measurable_cascadeSq (k r : ℕ) {G : (Fin k → T) → ℝ≥0∞} (hG : Measurable G) :
+    Measurable (cascadeSq k r G) := by
+  have h := measurable_cascadeSq_prod k r (α := PUnit) (G := fun _ => G) (hG.comp measurable_snd)
+  exact h.comp (measurable_const.prodMk measurable_id :
+    Measurable fun ω : CascadeSpace T k => (PUnit.unit, ω))
+
 /-! ### `Q_r ≤ S²` -/
 
 /-- **The prefix sums of squares are dominated by the square of the cascade sum**, pointwise on
@@ -206,8 +212,16 @@ lemma mExt'_succ {k : ℕ} (ms : Fin (k + 1) → ℝ) (a : ℝ) (r : ℕ) :
   · simp [mExt', mExt_one]
   · rw [mExt'_succ_eq, mExt'_succ_eq, mExt_succ_tail]
 
+@[simp] lemma mExt_val_succ {k : ℕ} (ms : Fin k → ℝ) (p : Fin k) : mExt ms (p.val + 1) = ms p := by
+  simp [mExt, p.isLt]
+
 lemma mExt_of_zero_lt {ms : Fin 0 → ℝ} {r : ℕ} (hr : r ≠ 0) : mExt ms r = 1 := by
   simp [mExt, hr]
+
+/-- `m_r = 1` for `r ≥ k + 1`: the extended sequence ends at `1`. -/
+lemma mExt_eq_one_of_le {k : ℕ} (ms : Fin k → ℝ) {r : ℕ} (hr : k + 1 ≤ r) : mExt ms r = 1 := by
+  unfold mExt
+  rw [ite_eq_right (by omega), dite_eq_right (by omega)]
 
 lemma mExt_le_one {k : ℕ} {ms : Fin k → ℝ} (hlt : ∀ i, ms i ≤ 1) (r : ℕ) : mExt ms r ≤ 1 := by
   unfold mExt
@@ -228,6 +242,22 @@ lemma mExt'_le_one {k : ℕ} {ms : Fin k → ℝ} (hlt : ∀ i, ms i ≤ 1) {a :
   rcases r with _ | r
   · simpa using ha
   · rw [mExt'_succ_eq]; exact mExt_le_one hlt _
+
+/-- **The increments of the extended sequence telescope**: `∑_{r ≤ j ≤ k} (m_{j+1} - m_j)
+= 1 - m_r`, for `r ≤ k + 1`, since `m_{k+1} = 1`. -/
+lemma sum_Ico_mExt'_sub {k : ℕ} (ms : Fin k → ℝ) (a : ℝ) {r : ℕ} (hr : r ≤ k + 1) :
+    ∑ j ∈ Finset.Ico r (k + 1), (mExt' ms a (j + 1) - mExt' ms a j) = 1 - mExt' ms a r := by
+  rw [Finset.sum_Ico_eq_sum_range]
+  have h : ∀ i ∈ Finset.range (k + 1 - r), mExt' ms a (r + i + 1) - mExt' ms a (r + i)
+      = (fun n => mExt' ms a (r + n)) (i + 1) - (fun n => mExt' ms a (r + n)) i := by
+    intro i _
+    simp only
+    rw [show r + (i + 1) = r + i + 1 by omega]
+  rw [Finset.sum_congr rfl h, Finset.sum_range_sub (fun n => mExt' ms a (r + n))]
+  simp only [add_zero, show r + (k + 1 - r) = k + 1 by omega]
+  congr 1
+  rw [mExt'_succ_eq]
+  exact mExt_eq_one_of_le ms le_rfl
 
 /-! ### The mixed moments -/
 

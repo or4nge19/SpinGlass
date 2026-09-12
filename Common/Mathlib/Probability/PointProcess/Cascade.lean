@@ -48,37 +48,6 @@ universe u
 
 noncomputable section
 
-/-! ### Measurability of sums over the points of a superposition -/
-
-section Counting
-
-variable {α E : Type*} [MeasurableSpace α] [MeasurableSpace E]
-
-/-- `(a, ω) ↦ ∫ f (a, x) dN_ω(x)` is jointly measurable for the counting measure of a sample. -/
-lemma measurable_lintegral_superCounting_prod {f : α × E → ℝ≥0∞} (hf : Measurable f) :
-    Measurable fun q : α × SuperSample E => ∫⁻ x, f (q.1, x) ∂superCounting q.2 := by
-  classical
-  have hpt : ∀ q : α × SuperSample E, ∫⁻ x, f (q.1, x) ∂superCounting q.2
-      = ∑' n, ∑' i, if i < (q.2 n).2 then f (q.1, (q.2 n).1 i) else 0 := by
-    intro q
-    rw [lintegral_superCounting]
-    refine tsum_congr fun n => ?_
-    have hfx : Measurable fun x : E => f (q.1, x) :=
-      hf.comp (measurable_const.prodMk measurable_id)
-    rw [lintegral_countingMeasure _ hfx,
-      tsum_eq_sum (f := fun i => if i < (q.2 n).2 then f (q.1, (q.2 n).1 i) else 0)
-        (s := Finset.range (q.2 n).2) (fun i hi => by rw [Finset.mem_range] at hi; simp [hi])]
-    exact Finset.sum_congr rfl fun i hi => by rw [Finset.mem_range] at hi; simp [hi]
-  simp_rw [hpt]
-  refine Measurable.tsum fun n => Measurable.tsum fun i => ?_
-  refine Measurable.ite ?_ ?_ measurable_const
-  · exact measurableSet_lt measurable_const
-      (measurable_snd.comp ((measurable_pi_apply n).comp measurable_snd))
-  · exact hf.comp (measurable_fst.prodMk ((measurable_pi_apply i).comp
-      (measurable_fst.comp ((measurable_pi_apply n).comp measurable_snd))))
-
-end Counting
-
 /-- `(z, zs) ↦ Fin.cons z zs` is measurable. -/
 lemma measurable_fin_cons {n : ℕ} {β : Type*} [MeasurableSpace β] :
     Measurable fun p : β × (Fin n → β) => (Fin.cons p.1 p.2 : Fin (n + 1) → β) := by
@@ -613,6 +582,67 @@ theorem integral_log_cascadeSum_exp_div_eq (k : ℕ) (ms : Fin k → ℝ) (μs :
     (ENNReal.measurable_ofReal.comp (Real.measurable_exp.comp hF))
     (fun _ => ENNReal.ofReal_pos.2 (Real.exp_pos _)) hsm hpos hlt hfin
 
+/-! ### Pushing the mark laws forward -/
+
+omit [Nonempty T] in
+/-- **The cascade recursion under a change of marks**: pushing every mark law forward along a
+measurable map is the same as composing the terminal function with the maps. -/
+theorem cascadeRec_map {T' : Type*} [MeasurableSpace T'] (k : ℕ) :
+    ∀ (ms : Fin k → ℝ) (μs : Fin k → Measure T) [∀ i, IsProbabilityMeasure (μs i)]
+      (φ : Fin k → T → T'), (∀ i, Measurable (φ i)) → ∀ {G : (Fin k → T') → ℝ≥0∞},
+      Measurable G →
+      cascadeRec k ms (fun i => (μs i).map (φ i)) G
+        = cascadeRec k ms μs (fun zs => G (fun i => φ i (zs i))) := by
+  induction k with
+  | zero =>
+    intro ms μs _ φ _ G _
+    simp only [cascadeRec_zero]
+    exact congrArg G (Subsingleton.elim _ _)
+  | succ k ih =>
+    intro ms μs hμs φ hφ G hG
+    have hinst : ∀ i, IsProbabilityMeasure ((μs i).map (φ i)) := fun i =>
+      Measure.isProbabilityMeasure_map (hφ i).aemeasurable
+    have htail_inst : ∀ i : Fin k, IsProbabilityMeasure ((Fin.tail μs i).map (Fin.tail φ i)) :=
+      fun i => hinst i.succ
+    simp only [cascadeRec_succ]
+    have htail : Fin.tail (fun i => (μs i).map (φ i))
+        = fun i => (Fin.tail μs i).map (Fin.tail φ i) := rfl
+    rw [htail]
+    have hmeas : Measurable fun z : T' => cascadeRec k (Fin.tail ms)
+        (fun i => (Fin.tail μs i).map (Fin.tail φ i)) (fun zs => G (Fin.cons z zs)) ^ ms 0 :=
+      (measurable_cascadeRec_prod k (Fin.tail ms) _ (α := T')
+        (G := fun z zs => G (Fin.cons z zs)) (hG.comp measurable_fin_cons)).pow_const _
+    rw [lintegral_map hmeas (hφ 0)]
+    congr 1
+    refine lintegral_congr fun z => ?_
+    congr 1
+    have hGz : Measurable fun zs : Fin k → T' => G (Fin.cons (φ 0 z) zs) := by
+      have h2 := hG.comp (measurable_fin_cons.comp
+        ((measurable_const : Measurable fun _ : Fin k → T' => φ 0 z).prodMk measurable_id))
+      simp only [Function.comp_def] at h2
+      exact h2
+    rw [ih (Fin.tail ms) (Fin.tail μs) (Fin.tail φ) (fun i => hφ i.succ)
+      (G := fun zs => G (Fin.cons (φ 0 z) zs)) hGz]
+    congr 1
+    funext zs
+    congr 1
+    funext i
+    refine Fin.cases ?_ (fun j => ?_) i
+    · simp
+    · simp [Fin.tail]
+
+omit [Nonempty T] in
+/-- The Parisi recursion under a change of marks. -/
+theorem parisiRec_map {T' : Type*} [MeasurableSpace T'] (k : ℕ) (ms : Fin k → ℝ)
+    (μs : Fin k → Measure T) [∀ i, IsProbabilityMeasure (μs i)] (φ : Fin k → T → T')
+    (hφ : ∀ i, Measurable (φ i)) {F : (Fin k → T') → ℝ} (hF : Measurable F) :
+    parisiRec k ms (fun i => (μs i).map (φ i)) F
+      = parisiRec k ms μs (fun zs => F (fun i => φ i (zs i))) := by
+  unfold parisiRec
+  have hG : Measurable fun zs : Fin k → T' => ENNReal.ofReal (Real.exp (F zs)) :=
+    ENNReal.measurable_ofReal.comp (Real.measurable_exp.comp hF)
+  rw [cascadeRec_map k ms μs φ hφ (G := fun zs => ENNReal.ofReal (Real.exp (F zs))) hG]
+
 /-! ### Jensen: Talagrand's hypothesis `𝔼 exp F < ∞` suffices -/
 
 omit [Nonempty T] in
@@ -633,6 +663,28 @@ theorem lintegral_rpow_le_rpow_lintegral {Ω : Type*} [MeasurableSpace Ω] (μ :
   congr 1
   refine lintegral_congr fun ω => ?_
   rw [← ENNReal.rpow_mul, mul_inv_cancel₀ hm0.ne', ENNReal.rpow_one]
+
+omit [Nonempty T] in
+/-- **Lyapunov's inequality**: the power means `(∫ f^p)^{1/p}` are nondecreasing in `p > 0` on a
+probability space, in `ℝ≥0∞`. -/
+theorem lintegral_rpow_rpow_inv_le_of_le {Ω : Type*} [MeasurableSpace Ω] (μ : Measure Ω)
+    [IsProbabilityMeasure μ] {f : Ω → ℝ≥0∞} (hf : AEMeasurable f μ) {p q : ℝ} (hp : 0 < p)
+    (hpq : p ≤ q) :
+    (∫⁻ ω, f ω ^ p ∂μ) ^ (1 / p) ≤ (∫⁻ ω, f ω ^ q ∂μ) ^ (1 / q) := by
+  have hq : 0 < q := hp.trans_le hpq
+  have h1 : ∫⁻ ω, f ω ^ p ∂μ ≤ (∫⁻ ω, f ω ^ q ∂μ) ^ (p / q) := by
+    have := lintegral_rpow_le_rpow_lintegral μ (hf.pow_const q) (m := p / q) (by positivity)
+      ((div_le_one hq).2 hpq)
+    refine le_of_eq_of_le (lintegral_congr fun ω => ?_) this
+    rw [← ENNReal.rpow_mul]
+    congr 1
+    field_simp
+  calc (∫⁻ ω, f ω ^ p ∂μ) ^ (1 / p) ≤ ((∫⁻ ω, f ω ^ q ∂μ) ^ (p / q)) ^ (1 / p) :=
+        ENNReal.rpow_le_rpow h1 (by positivity)
+    _ = (∫⁻ ω, f ω ^ q ∂μ) ^ (1 / q) := by
+        rw [← ENNReal.rpow_mul]
+        congr 1
+        field_simp
 
 omit [Nonempty T] in
 /-- The product measure on `Fin (n+1) → T` splits off its first coordinate. -/
