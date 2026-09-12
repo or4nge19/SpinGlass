@@ -1670,7 +1670,19 @@ is packaged associatively as an iterate along a list of levels (`coleHopfIterate
 `coleHopfIterateList_append`, `coleHopfIterateList_split`), which turns Talagrand's merging
 mechanisms into one-liners: a zero-variance level drops (`coleHopfIterateList_zero_var`,
 `T_{m,0} = id`) and two adjacent levels with equal exponents merge
-(`coleHopfIterateList_merge`), his (14.233) and (14.237).
+(`coleHopfIterateList_merge`), his (14.233) and (14.237). The operator side is developed beyond
+the derivatives: `coleHopf_mono`, `coleHopf_add_const`, `coleHopf_comp_const_add` give, for every
+exponent and with no differentiability, Lipschitz preservation
+(`abs_coleHopf_sub_le_of_lipschitz`), the sup-norm contraction (`abs_coleHopf_sub_le_of_sup`) and
+strong continuity in the variance with modulus `coleHopfModulus m L v = T_{m,v}(L|·|)(0)`
+(`abs_coleHopf_sub_self_le`, `tendsto_coleHopfModulus`, `abs_coleHopf_sub_coleHopf_le`). The
+contraction passes to the iterate (`abs_coleHopfIterate_sub_le_of_sup`), so Talagrand's `S(v, m)`
+of (14.235) — the `X₀` of the split configuration, with `∂_v S` given by (14.219)–(14.220) after
+the outermost `z₀`-average (`hasDerivAt_integral_coleHopfIterate_split`, from the general
+`hasDerivAt_integral_gaussianReal_param` whose measurability comes from the new
+`measurable_deriv_param`) — is continuous in the split point down to the degenerate split `v = 0`
+(`continuousAt_integral_coleHopfIterate_split`): the input to recovering `U(v)` from its
+derivative by the fundamental theorem of calculus, with no Clairaut argument.
 
 `FiniteGibbs/WeightedInterpolation`, product state spaces: for weights `u_α c_x` on `X × A`, the
 partition function is `∑_α u_α Z_α(c)` with `Z_α(c) = ∑_x c_x e^{-H(x,α)}` (`wCondZ`, `wZ_prod_eq`)

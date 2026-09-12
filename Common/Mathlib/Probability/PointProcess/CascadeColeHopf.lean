@@ -26,7 +26,11 @@ Talagrand's functional form of the recursion (Vol. II, (14.189)-(14.191)): with 
 * `hasDerivAt_coleHopfIterate_split`: his (14.219)-(14.220), the derivative of `A_1` in the split
   point `v` of an innermost pair of levels `T_{m', a-v} o T_{m, v}`;
 * `hasDerivAt_integral_coleHopfIterate_split`: the same after the outermost plain average over
-  `z_0` (the level with exponent `m_0 = 0`), i.e. Talagrand's `d/dv S(v, m)` of (14.235).
+  `z_0` (the level with exponent `m_0 = 0`), i.e. Talagrand's `d/dv S(v, m)` of (14.235);
+* `abs_coleHopfIterateList_sub_le_of_sup`, `abs_coleHopfIterate_sub_le_of_sup`: the iterate is a
+  contraction for the sup norm of the terminal function, whence
+  `continuousAt_integral_coleHopfIterate_split` — his `S(v, m)` is continuous in the split point,
+  including at the degenerate split `v = 0` where `T_{m,0} = id`.
 
 This is the bridge between the cascade side of the theory (`ProbabilityTheory.parisiRec`, its
 tilted derivative `hasDerivAt_parisiRec`) and the operator side (`ProbabilityTheory.coleHopf`,
@@ -262,6 +266,130 @@ lemma lintegral_ofReal_exp_comp_add_sum_pi_gaussianReal_ne_top {k : ℕ} (vs : F
   exact ENNReal.mul_ne_top ENNReal.ofReal_ne_top
     (ENNReal.add_ne_top.2 ⟨ENNReal.ofReal_ne_top, ENNReal.ofReal_ne_top⟩)
 
+/-- **The iterate is a contraction for the sup norm of the terminal function.** -/
+lemma abs_coleHopfIterateList_sub_le_of_sup (l : List (ℝ × ℝ≥0)) {G₁ G₂ : ℝ → ℝ}
+    {L₁ L₂ ε : ℝ} (hG₁ : ∀ x y, |G₁ y - G₁ x| ≤ L₁ * |y - x|)
+    (hG₂ : ∀ x y, |G₂ y - G₂ x| ≤ L₂ * |y - x|) (h : ∀ y, |G₁ y - G₂ y| ≤ ε) (x : ℝ) :
+    |coleHopfIterateList l G₁ x - coleHopfIterateList l G₂ x| ≤ ε := by
+  induction l generalizing x with
+  | nil => exact h x
+  | cons p l ih =>
+    have h1 : ∀ x y, |coleHopfIterateList l G₁ y - coleHopfIterateList l G₁ x| ≤ L₁ * |y - x| :=
+      fun x y => abs_coleHopfIterateList_sub_le l hG₁ x y
+    have h2 : ∀ x y, |coleHopfIterateList l G₂ y - coleHopfIterateList l G₂ x| ≤ L₂ * |y - x| :=
+      fun x y => abs_coleHopfIterateList_sub_le l hG₂ x y
+    exact abs_coleHopf_sub_le_of_sup (HasLinearGrowth.of_lipschitz h1)
+      (lipschitzWith_toNNReal_of_abs_sub_le h1).continuous.measurable
+      (HasLinearGrowth.of_lipschitz h2)
+      (lipschitzWith_toNNReal_of_abs_sub_le h2).continuous.measurable ih p.1 p.2 x
+
+lemma abs_coleHopfIterate_sub_le_of_sup {k : ℕ} (ms : Fin k → ℝ) (vs : Fin k → ℝ≥0)
+    {G₁ G₂ : ℝ → ℝ} {L₁ L₂ ε : ℝ} (hG₁ : ∀ x y, |G₁ y - G₁ x| ≤ L₁ * |y - x|)
+    (hG₂ : ∀ x y, |G₂ y - G₂ x| ≤ L₂ * |y - x|) (h : ∀ y, |G₁ y - G₂ y| ≤ ε) (x : ℝ) :
+    |coleHopfIterate k ms vs G₁ x - coleHopfIterate k ms vs G₂ x| ≤ ε := by
+  rw [coleHopfIterate_eq_list, coleHopfIterate_eq_list]
+  exact abs_coleHopfIterateList_sub_le_of_sup _ hG₁ hG₂ h x
+
+/-- The same after the outermost Gaussian average over `z₀`. -/
+lemma abs_integral_coleHopfIterate_sub_le_of_sup {k : ℕ} (ms : Fin k → ℝ) (vs : Fin k → ℝ≥0)
+    {G₁ G₂ : ℝ → ℝ} {L₁ L₂ ε : ℝ} (hG₁ : ∀ x y, |G₁ y - G₁ x| ≤ L₁ * |y - x|)
+    (hG₂ : ∀ x y, |G₂ y - G₂ x| ≤ L₂ * |y - x|) (h : ∀ y, |G₁ y - G₂ y| ≤ ε) (w₀ : ℝ≥0)
+    (h₀ : ℝ) :
+    |(∫ z₀, coleHopfIterate k ms vs G₁ (h₀ + z₀) ∂gaussianReal 0 w₀)
+      - ∫ z₀, coleHopfIterate k ms vs G₂ (h₀ + z₀) ∂gaussianReal 0 w₀| ≤ ε := by
+  have hlip : ∀ (G : ℝ → ℝ) (L : ℝ), (∀ x y, |G y - G x| ≤ L * |y - x|) →
+      Integrable (fun z₀ => coleHopfIterate k ms vs G (h₀ + z₀)) (gaussianReal 0 w₀) := by
+    intro G L hG
+    have hI : ∀ x y, |coleHopfIterate k ms vs G y - coleHopfIterate k ms vs G x| ≤ L * |y - x| :=
+      fun x y => abs_coleHopfIterate_sub_le k ms vs
+        (lipschitzWith_toNNReal_of_abs_sub_le hG).continuous.measurable hG x y
+    exact ((HasLinearGrowth.of_lipschitz hI).comp_add_const h₀).toHasExpGrowth
+      |>.integrable_gaussianReal (((lipschitzWith_toNNReal_of_abs_sub_le hI).continuous.comp
+        (continuous_const.add continuous_id))).aestronglyMeasurable
+  rw [← integral_sub (hlip G₁ L₁ hG₁) (hlip G₂ L₂ hG₂)]
+  have hb := norm_integral_le_of_norm_le_const (μ := gaussianReal 0 w₀)
+    (f := fun z₀ => coleHopfIterate k ms vs G₁ (h₀ + z₀) - coleHopfIterate k ms vs G₂ (h₀ + z₀))
+    (C := ε) (Eventually.of_forall fun z₀ => by
+      rw [Real.norm_eq_abs]
+      exact abs_coleHopfIterate_sub_le_of_sup ms vs hG₁ hG₂ h _)
+  rwa [probReal_univ, mul_one, Real.norm_eq_abs] at hb
+
+/-- **`S(v, m)` is continuous in the split point `v`**: the sup-norm contraction of the iterate
+reduces it to the strong continuity of `T_{m,·}` in the variance. This is what lets the derivative
+`(14.219)–(14.220)` be integrated from the degenerate split `v = 0` (where `T_{m,0} = id`). -/
+theorem continuousAt_integral_coleHopfIterate_split {j : ℕ} (ms : Fin j → ℝ) (vs : Fin j → ℝ≥0)
+    {m m' a : ℝ} {A : ℝ → ℝ} {L : ℝ} (hAm : Measurable A)
+    (hA : ∀ x y, |A y - A x| ≤ L * |y - x|) (w₀ : ℝ≥0) (h : ℝ) (v₀ : ℝ) :
+    ContinuousAt (fun v => ∫ z₀, coleHopfIterate j ms vs
+      (fun y => coleHopf m' (Real.toNNReal (a - v)) (coleHopf m (Real.toNNReal v) A) y)
+      (h + z₀) ∂gaussianReal 0 w₀) v₀ := by
+  have hBlip : ∀ v : ℝ, ∀ x y : ℝ,
+      |coleHopf m (Real.toNNReal v) A y - coleHopf m (Real.toNNReal v) A x| ≤ L * |y - x| :=
+    fun v => abs_coleHopf_sub_le_of_lipschitz m hAm hA (Real.toNNReal v)
+  have hBm : ∀ v : ℝ, Measurable (coleHopf m (Real.toNNReal v) A) := fun v =>
+    (lipschitzWith_toNNReal_of_abs_sub_le (hBlip v)).continuous.measurable
+  have hBg : ∀ v : ℝ, HasLinearGrowth (coleHopf m (Real.toNNReal v) A) := fun v =>
+    HasLinearGrowth.of_lipschitz (hBlip v)
+  have hGlip : ∀ v : ℝ, ∀ x y : ℝ,
+      |coleHopf m' (Real.toNNReal (a - v)) (coleHopf m (Real.toNNReal v) A) y
+        - coleHopf m' (Real.toNNReal (a - v)) (coleHopf m (Real.toNNReal v) A) x|
+      ≤ L * |y - x| := fun v =>
+    abs_coleHopf_sub_le_of_lipschitz m' (hBm v) (hBlip v) (Real.toNNReal (a - v))
+  -- the two increments of the variances
+  set ι : ℝ → ℝ := fun v => |(Real.toNNReal v : ℝ) - (Real.toNNReal v₀ : ℝ)| with hι
+  set ι' : ℝ → ℝ := fun v =>
+    |(Real.toNNReal (a - v) : ℝ) - (Real.toNNReal (a - v₀) : ℝ)| with hι'
+  have hιc : Tendsto ι (𝓝 v₀) (𝓝 0) := by
+    have he : ι = fun v => |max v 0 - max v₀ 0| := by
+      funext v
+      rw [hι]
+      simp [Real.coe_toNNReal']
+    rw [he]
+    have hc : Continuous fun v : ℝ => |max v 0 - max v₀ 0| :=
+      continuous_abs.comp ((continuous_id.max continuous_const).sub continuous_const)
+    simpa using (hc.continuousAt (x := v₀)).tendsto
+  have hι'c : Tendsto ι' (𝓝 v₀) (𝓝 0) := by
+    have he : ι' = fun v => |max (a - v) 0 - max (a - v₀) 0| := by
+      funext v
+      rw [hι']
+      simp [Real.coe_toNNReal']
+    rw [he]
+    have hc : Continuous fun v : ℝ => |max (a - v) 0 - max (a - v₀) 0| :=
+      continuous_abs.comp (((continuous_const.sub continuous_id).max continuous_const).sub
+        continuous_const)
+    simpa using (hc.continuousAt (x := v₀)).tendsto
+  -- the sup bound
+  have hsup : ∀ v : ℝ, ∀ y : ℝ,
+      |coleHopf m' (Real.toNNReal (a - v)) (coleHopf m (Real.toNNReal v) A) y
+        - coleHopf m' (Real.toNNReal (a - v₀)) (coleHopf m (Real.toNNReal v₀) A) y|
+      ≤ coleHopfModulus m L (Real.toNNReal (ι v))
+        + coleHopfModulus m' L (Real.toNNReal (ι' v)) := by
+    intro v y
+    have h1 : |coleHopf m' (Real.toNNReal (a - v)) (coleHopf m (Real.toNNReal v) A) y
+        - coleHopf m' (Real.toNNReal (a - v)) (coleHopf m (Real.toNNReal v₀) A) y|
+        ≤ coleHopfModulus m L (Real.toNNReal (ι v)) :=
+      abs_coleHopf_sub_le_of_sup (hBg v) (hBm v) (hBg v₀) (hBm v₀)
+        (fun z => abs_coleHopf_sub_coleHopf_le' hAm hA m (Real.toNNReal v) (Real.toNNReal v₀) z)
+        m' (Real.toNNReal (a - v)) y
+    have h2 : |coleHopf m' (Real.toNNReal (a - v)) (coleHopf m (Real.toNNReal v₀) A) y
+        - coleHopf m' (Real.toNNReal (a - v₀)) (coleHopf m (Real.toNNReal v₀) A) y|
+        ≤ coleHopfModulus m' L (Real.toNNReal (ι' v)) :=
+      abs_coleHopf_sub_coleHopf_le' (hBm v₀) (hBlip v₀) m' (Real.toNNReal (a - v))
+        (Real.toNNReal (a - v₀)) y
+    calc |coleHopf m' (Real.toNNReal (a - v)) (coleHopf m (Real.toNNReal v) A) y
+          - coleHopf m' (Real.toNNReal (a - v₀)) (coleHopf m (Real.toNNReal v₀) A) y|
+        ≤ _ := abs_sub_le _ _ _
+      _ ≤ coleHopfModulus m L (Real.toNNReal (ι v))
+          + coleHopfModulus m' L (Real.toNNReal (ι' v)) := add_le_add h1 h2
+  -- conclude
+  rw [ContinuousAt, tendsto_iff_dist_tendsto_zero]
+  refine squeeze_zero (fun v => dist_nonneg) (fun v => ?_)
+    (by
+      have h1 := ((tendsto_coleHopfModulus m L).comp hιc).add
+        ((tendsto_coleHopfModulus m' L).comp hι'c)
+      simpa [Function.comp_def] using h1)
+  rw [Real.dist_eq]
+  exact abs_integral_coleHopfIterate_sub_le_of_sup ms vs (hGlip v) (hGlip v₀) (hsup v) w₀ h
 /-- The tilt of the iterate is a probability measure, for a Lipschitz terminal function. -/
 lemma isProbabilityMeasure_cascadeTiltMeasure_comp_add_sum {k : ℕ} (ms : Fin k → ℝ)
     (vs : Fin k → ℝ≥0) {G : ℝ → ℝ} {L : ℝ} (hpos : ∀ i, 0 < ms i) (hle : ∀ i, ms i ≤ 1)
@@ -415,6 +543,26 @@ theorem hasDerivAt_coleHopfIterate_split {j : ℕ} (ms : Fin j → ℝ) (vs : Fi
   · -- the Lipschitz bound, uniform in `v`
     intro v y z
     exact abs_coleHopf_sub_le_of_lipschitz m' (hBm v) (hBlip v) (Real.toNNReal (a - v)) y z
+
+/-- **`S(0, m)` does not depend on the exponent `m`**: at the degenerate split the inner operator
+is the identity (`T_{m,0} = id`), so Talagrand's `S(0, m)` of (14.235) is the unsplit `X₀`. This
+is what makes `U(v) = 2 ∂_m S(v, m)|_{m'}` computable from `∂_v S` by the product rule with a
+vanishing factor. -/
+lemma integral_coleHopfIterate_split_zero {j : ℕ} (ms : Fin j → ℝ) (vs : Fin j → ℝ≥0)
+    (m m' a : ℝ) (A : ℝ → ℝ) (w₀ : ℝ≥0) (h : ℝ) :
+    (∫ z₀, coleHopfIterate j ms vs
+        (fun y => coleHopf m' (Real.toNNReal (a - 0)) (coleHopf m (Real.toNNReal 0) A) y)
+        (h + z₀) ∂gaussianReal 0 w₀)
+      = ∫ z₀, coleHopfIterate j ms vs (coleHopf m' (Real.toNNReal a) A) (h + z₀)
+        ∂gaussianReal 0 w₀ := by
+  have hfun : (fun y => coleHopf m' (Real.toNNReal (a - 0)) (coleHopf m (Real.toNNReal 0) A) y)
+      = coleHopf m' (Real.toNNReal a) A := by
+    funext y
+    rw [sub_zero, Real.toNNReal_zero]
+    congr 1
+    funext t
+    exact coleHopf_zero_var m A t
+  rw [hfun]
 
 /-- **Talagrand's `∂_v S(v, m)` of (14.235)**: the `z₀`-average of (14.219)–(14.220). `S(v, m)`
 is the `X₀` of the configuration whose innermost pair of levels has been split as

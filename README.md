@@ -417,7 +417,16 @@ The level structure itself is packaged associatively as an iterate along a *list
 (`coleHopfIterateList`, `coleHopfIterateList_append`), so the levels split anywhere and
 Talagrand's two merging mechanisms are one-liners: a zero-variance level drops (`T_{m,0} = id`)
 and two adjacent levels with equal exponents merge by the semigroup property — his (14.233) and
-(14.237).
+(14.237). Beyond the derivatives, `T_{m,v}` is developed as an *operator*: monotone in the
+function, commuting with constants and translations, hence (for every exponent, with no
+differentiability) Lipschitz-preserving, a contraction for the sup norm, and strongly continuous
+in the variance with modulus `coleHopfModulus m L v = T_{m,v}(L|·|)(0)`, which vanishes with the
+variance. The same contraction passes to the iterate, so Talagrand's `S(v, m)` of (14.235) — the
+`X₀` of the split configuration, whose `v`-derivative is (14.219)–(14.220) after the outermost
+`z₀`-average (`hasDerivAt_integral_coleHopfIterate_split`) — is continuous in the split point
+right down to the degenerate split `v = 0`
+(`continuousAt_integral_coleHopfIterate_split`), which is what will let `U(v)` be recovered from
+its derivative by the fundamental theorem of calculus with no Clairaut argument.
 
 The weights `W_p = (R_{p+1}/R_p)^{m_p}` of (14.22) through which all of §14.3 is expressed, their
 defining property `𝔼_p W_p = 1`, and the tilted averages `𝔼(W₁ ⋯ W_k A)` of (14.24)–(14.26) are in
