@@ -20,7 +20,14 @@ For `A` of linear growth with a derivative `A'` of exponential growth:
 - `abs_integral_mul_coleHopfQ_le`: `|B'| ≤ sup |A'|`;
 - `hasDerivAt_integral_deriv_mul_coleHopfQ` (14.203):
   `B'' = 𝔼 (A''(Y) Q) + m 𝔼 (A'(Y)² Q) − m B'²`;
-- `integral_sq_mul_coleHopfQ_sub_sq_nonneg` (the Cauchy–Schwarz step of (14.198)).
+- `integral_sq_mul_coleHopfQ_sub_sq_nonneg` (the Cauchy–Schwarz step of (14.198));
+- `coleHopf_mono`, `coleHopf_add_const`, `coleHopf_comp_const_add`: monotone in the function,
+  commutes with adding a constant and with translations — from which, for *every* exponent and
+  with no differentiability, `T_{m,v}` preserves Lipschitz constants
+  (`abs_coleHopf_sub_le_of_lipschitz`, Talagrand's `|A_p'| ≤ 1` of (14.271)), is a contraction for
+  the sup norm (`abs_coleHopf_sub_le_of_sup`), and is strongly continuous in the variance on
+  Lipschitz functions with modulus `T_{m,v}(L|·|)(0)` (`abs_coleHopf_sub_self_le`,
+  `tendsto_coleHopfModulus`, `abs_coleHopf_sub_coleHopf_le`).
 -/
 
 open MeasureTheory Filter Topology
@@ -38,7 +45,7 @@ noncomputable def coleHopf (m : ℝ) (v : ℝ≥0) (A : ℝ → ℝ) (x : ℝ) :
 noncomputable def coleHopfQ (m : ℝ) (v : ℝ≥0) (A : ℝ → ℝ) (x z : ℝ) : ℝ :=
   Real.exp (m * (A (x + z) - coleHopf m v A x))
 
-variable {m : ℝ} {v : ℝ≥0} {A A' A'' : ℝ → ℝ}
+variable {m : ℝ} {v : ℝ≥0} {A A' A'' B : ℝ → ℝ}
 
 lemma coleHopf_of_ne (hm : m ≠ 0) (v : ℝ≥0) (A : ℝ → ℝ) (x : ℝ) :
     coleHopf m v A x = (1 / m) * Real.log (∫ z, Real.exp (m * A (x + z)) ∂gaussianReal 0 v) :=
@@ -46,6 +53,15 @@ lemma coleHopf_of_ne (hm : m ≠ 0) (v : ℝ≥0) (A : ℝ → ℝ) (x : ℝ) :
 
 @[simp] lemma coleHopf_zero (v : ℝ≥0) (A : ℝ → ℝ) (x : ℝ) :
     coleHopf 0 v A x = ∫ z, A (x + z) ∂gaussianReal 0 v := ite_eq_left rfl
+
+/-- **`T_{m,0}` is the identity**: a level with zero variance does nothing. -/
+@[simp] lemma coleHopf_zero_var (m : ℝ) (A : ℝ → ℝ) (x : ℝ) : coleHopf m 0 A x = A x := by
+  rcases eq_or_ne m 0 with rfl | hm
+  · rw [coleHopf_zero, gaussianReal_zero_var, integral_dirac]
+    simp
+  · rw [coleHopf_of_ne hm, gaussianReal_zero_var, integral_dirac]
+    simp only [add_zero, Real.log_exp]
+    field_simp
 
 @[simp] lemma coleHopfQ_zero (v : ℝ≥0) (A : ℝ → ℝ) (x z : ℝ) : coleHopfQ 0 v A x z = 1 := by
   simp [coleHopfQ]
@@ -324,32 +340,20 @@ theorem coleHopf_le_log_integral_exp (hA : HasLinearGrowth A) (hAm : Measurable 
 /-! ### The semigroup law (14.195) -/
 
 /-- **Lemma 14.7.1**: `T_{m,a} ∘ T_{m,b} = T_{m,a+b}`. -/
-theorem coleHopf_coleHopf (hA : HasLinearGrowth A) (hAm : Measurable A) (hm : m ≠ 0)
+theorem coleHopf_coleHopf (hA : HasLinearGrowth A) (hAm : Measurable A) (m : ℝ)
     (a b : ℝ≥0) (x : ℝ) :
     coleHopf m a (coleHopf m b A) x = coleHopf m (a + b) A x := by
-  have hIb : ∀ y, Real.exp (m * coleHopf m b A y)
-      = ∫ z, Real.exp (m * A (y + z)) ∂gaussianReal 0 b :=
-    fun y => exp_mul_coleHopf hA hAm hm b y
-  rw [coleHopf_of_ne hm, coleHopf_of_ne hm]
-  congr 2
-  simp_rw [hIb]
-  have hconv : gaussianReal (0 : ℝ) a ∗ gaussianReal 0 b = gaussianReal 0 (a + b) := by
-    simpa using gaussianReal_conv_gaussianReal (m₁ := 0) (m₂ := 0) (v₁ := a) (v₂ := b)
-  have hfm : Measurable fun w => Real.exp (m * A (x + w)) :=
-    Real.measurable_exp.comp (measurable_const.mul (hAm.comp (measurable_const.add measurable_id)))
-  have hadd : Measurable fun p : ℝ × ℝ => p.1 + p.2 := measurable_add
-  have hint : Integrable (fun w => Real.exp (m * A (x + w))) (gaussianReal 0 (a + b)) :=
-    integrable_exp_mul_comp_add hA hAm m _ x
-  rw [← hconv] at hint ⊢
-  unfold Measure.conv at hint ⊢
-  rw [integral_map hadd.aemeasurable hfm.aestronglyMeasurable]
-  have hint' : Integrable (fun p : ℝ × ℝ => Real.exp (m * A (x + (p.1 + p.2))))
-      ((gaussianReal 0 a).prod (gaussianReal 0 b)) :=
-    (integrable_map_measure hfm.aestronglyMeasurable hadd.aemeasurable).1 hint
-  rw [integral_prod _ hint']
-  refine integral_congr_ae (Filter.Eventually.of_forall fun z' => ?_)
-  refine integral_congr_ae (Filter.Eventually.of_forall fun z => ?_)
-  simp only [add_assoc]
+  rcases eq_or_ne m 0 with rfl | hm
+  · simp only [coleHopf_zero]
+    exact integral_integral_comp_add_gaussianReal hA.toHasExpGrowth hAm a b x
+  · have hIb : ∀ y, Real.exp (m * coleHopf m b A y)
+        = ∫ z, Real.exp (m * A (y + z)) ∂gaussianReal 0 b :=
+      fun y => exp_mul_coleHopf hA hAm hm b y
+    rw [coleHopf_of_ne hm, coleHopf_of_ne hm]
+    congr 2
+    simp_rw [hIb]
+    exact integral_integral_comp_add_gaussianReal (hA.exp_mul m)
+      (Real.measurable_exp.comp (measurable_const.mul hAm)) a b x
 
 /-! ### The variance derivative (14.199) -/
 
@@ -493,6 +497,29 @@ lemma continuous_integral_comp_add_mul_exp (hG : Continuous G) (hGg : HasExpGrow
     rw [Real.norm_eq_abs]
     exact hb x hx z
 
+/-- **`T_{m,v}A(x)` is jointly continuous in the point and the variance** (the variance being
+`max v 0`), for `A` continuous of linear growth. -/
+theorem continuous_coleHopf (hAc : Continuous A) (hAg : HasLinearGrowth A) (m : ℝ) :
+    Continuous fun p : ℝ × ℝ => coleHopf m (Real.toNNReal p.2) A p.1 := by
+  rcases eq_or_ne m 0 with rfl | hm
+  · simp only [coleHopf_zero]
+    exact continuous_integral_comp_add_gaussianReal hAc hAg.toHasExpGrowth
+  · have h1 : Continuous fun p : ℝ × ℝ =>
+        ∫ z, Real.exp (m * A (p.1 + z)) ∂gaussianReal 0 (Real.toNNReal p.2) :=
+      continuous_integral_comp_add_gaussianReal
+        (Real.continuous_exp.comp (continuous_const.mul hAc)) (hAg.exp_mul m)
+    have h2 : ∀ p : ℝ × ℝ, (∫ z, Real.exp (m * A (p.1 + z))
+        ∂gaussianReal 0 (Real.toNNReal p.2)) ≠ 0 := fun p =>
+      (integral_exp_mul_comp_add_pos hAg hAc.measurable m _ _).ne'
+    have h3 : Continuous fun p : ℝ × ℝ => 1 / m * Real.log (∫ z, Real.exp (m * A (p.1 + z))
+        ∂gaussianReal 0 (Real.toNNReal p.2)) := continuous_const.mul (h1.log h2)
+    simpa only [coleHopf_of_ne hm] using h3
+
+/-- The value at a point is continuous in the variance. -/
+lemma continuous_coleHopf_var (hAc : Continuous A) (hAg : HasLinearGrowth A) (m x : ℝ) :
+    Continuous fun v : ℝ => coleHopf m (Real.toNNReal v) A x :=
+  (continuous_coleHopf hAc hAg m).comp (continuous_const.prodMk continuous_id)
+
 /-- Continuity of a tilted average `x ↦ 𝔼 (G(Y) Q)` in `x`. -/
 lemma continuous_integral_mul_coleHopfQ (hG : Continuous G) (hGg : HasExpGrowth G)
     (hAc : Continuous A) (hAg : HasLinearGrowth A) (hm : m ≠ 0) (v : ℝ≥0) :
@@ -515,7 +542,254 @@ lemma continuous_integral_mul_coleHopfQ (hG : Continuous G) (hGg : HasExpGrowth 
   rw [hfun]
   exact h1.div h2 fun x => (hpos x).ne'
 
+/-- The bound `|𝔼(G(Y) Q)| ≤ sup |G|` for every exponent (`Q = 1` when `m = 0`). -/
+lemma abs_integral_mul_coleHopfQ_le' (hAg : HasLinearGrowth A) (hAm : Measurable A) (m : ℝ)
+    {G : ℝ → ℝ} (hGm : Measurable G) {L : ℝ} (hL : ∀ y, |G y| ≤ L) (v : ℝ≥0) (x : ℝ) :
+    |∫ z, G (x + z) * coleHopfQ m v A x z ∂gaussianReal 0 v| ≤ L := by
+  rcases eq_or_ne m 0 with rfl | hm
+  · simp only [coleHopfQ_zero, mul_one]
+    have h := norm_integral_le_of_norm_le_const (μ := gaussianReal 0 v)
+      (f := fun z => G (x + z)) (C := L)
+      (Eventually.of_forall fun z => by rw [Real.norm_eq_abs]; exact hL _)
+    rwa [probReal_univ, mul_one, Real.norm_eq_abs] at h
+  · exact abs_integral_mul_coleHopfQ_le hAg hAm hm hGm hL v x
+
+/-- Continuity in `x` of a tilted average `𝔼(G(Y) Q)`, for every exponent. -/
+lemma continuous_integral_mul_coleHopfQ' (hAc : Continuous A) (hAg : HasLinearGrowth A) (m : ℝ)
+    {G : ℝ → ℝ} (hGc : Continuous G) (hGg : HasExpGrowth G) (v : ℝ≥0) :
+    Continuous fun x => ∫ z, G (x + z) * coleHopfQ m v A x z ∂gaussianReal 0 v := by
+  rcases eq_or_ne m 0 with rfl | hm
+  · have h := (continuous_integral_comp_add_gaussianReal hGc hGg).comp
+      (continuous_id.prodMk (continuous_const (y := (v : ℝ))))
+    simp only [coleHopfQ_zero, mul_one]
+    simpa [Function.comp_def, Real.toNNReal_coe] using h
+  · exact continuous_integral_mul_coleHopfQ hGc hGg hAc hAg hm v
+
 end Continuity
+
+/-- **`T_{m,v}` is monotone in the function**, for every exponent `m`. -/
+theorem coleHopf_mono (hAg : HasLinearGrowth A) (hAm : Measurable A) (hBg : HasLinearGrowth B)
+    (hBm : Measurable B) (hAB : ∀ x, A x ≤ B x) (m : ℝ) (v : ℝ≥0) (x : ℝ) :
+    coleHopf m v A x ≤ coleHopf m v B x := by
+  rcases eq_or_ne m 0 with rfl | hm
+  · simp only [coleHopf_zero]
+    exact integral_mono
+      ((hAg.toHasExpGrowth.comp_add_const x).integrable_gaussianReal
+        (hAm.comp (measurable_const_add x)).aestronglyMeasurable)
+      ((hBg.toHasExpGrowth.comp_add_const x).integrable_gaussianReal
+        (hBm.comp (measurable_const_add x)).aestronglyMeasurable) fun z => hAB _
+  · have hpA := integral_exp_mul_comp_add_pos hAg hAm m v x
+    have hpB := integral_exp_mul_comp_add_pos hBg hBm m v x
+    rw [coleHopf_of_ne hm, coleHopf_of_ne hm]
+    rcases hm.lt_or_gt with hm' | hm'
+    · -- `m < 0`: the integrals are reversed, and `1/m < 0` reverses again
+      have hle : (∫ z, Real.exp (m * B (x + z)) ∂gaussianReal 0 v)
+          ≤ ∫ z, Real.exp (m * A (x + z)) ∂gaussianReal 0 v :=
+        integral_mono (integrable_exp_mul_comp_add hBg hBm m v x)
+          (integrable_exp_mul_comp_add hAg hAm m v x)
+          fun z => Real.exp_le_exp.2 (by nlinarith [hAB (x + z)])
+      have hlog := Real.log_le_log hpB hle
+      have h1 : 1 / m ≤ 0 := by
+        rw [one_div]
+        exact inv_nonpos.2 hm'.le
+      nlinarith [hlog]
+    · have hle : (∫ z, Real.exp (m * A (x + z)) ∂gaussianReal 0 v)
+          ≤ ∫ z, Real.exp (m * B (x + z)) ∂gaussianReal 0 v :=
+        integral_mono (integrable_exp_mul_comp_add hAg hAm m v x)
+          (integrable_exp_mul_comp_add hBg hBm m v x)
+          fun z => Real.exp_le_exp.2 (by nlinarith [hAB (x + z)])
+      have hlog := Real.log_le_log hpA hle
+      have h1 : 0 ≤ 1 / m := by positivity
+      nlinarith [hlog]
+
+/-- **`T_{m,v}` commutes with adding a constant**. -/
+theorem coleHopf_add_const (hAg : HasLinearGrowth A) (hAm : Measurable A) (c : ℝ) (m : ℝ)
+    (v : ℝ≥0) (x : ℝ) : coleHopf m v (fun y => A y + c) x = coleHopf m v A x + c := by
+  rcases eq_or_ne m 0 with rfl | hm
+  · simp only [coleHopf_zero]
+    rw [integral_add ((hAg.toHasExpGrowth.comp_add_const x).integrable_gaussianReal
+      (hAm.comp (measurable_const_add x)).aestronglyMeasurable) (integrable_const c),
+      integral_const, probReal_univ, one_smul]
+  · have hpA := integral_exp_mul_comp_add_pos hAg hAm m v x
+    have he : (∫ z, Real.exp (m * (A (x + z) + c)) ∂gaussianReal 0 v)
+        = Real.exp (m * c) * ∫ z, Real.exp (m * A (x + z)) ∂gaussianReal 0 v := by
+      rw [← integral_const_mul]
+      exact integral_congr_ae (Filter.Eventually.of_forall fun z => by
+        beta_reduce
+        rw [← Real.exp_add]
+        congr 1
+        ring)
+    rw [coleHopf_of_ne hm, coleHopf_of_ne hm, he,
+      Real.log_mul (Real.exp_ne_zero _) hpA.ne', Real.log_exp]
+    field_simp
+    ring
+
+/-- `T_{m,v}` commutes with translations of the argument. -/
+theorem coleHopf_comp_const_add (A : ℝ → ℝ) (m : ℝ) (v : ℝ≥0) (t : ℝ) :
+    coleHopf m v (fun w => A (t + w)) 0 = coleHopf m v A t := by
+  rcases eq_or_ne m 0 with rfl | hm
+  · rw [coleHopf_zero, coleHopf_zero]
+    simp only [zero_add]
+  · rw [coleHopf_of_ne hm, coleHopf_of_ne hm]
+    simp only [zero_add]
+
+/-- **`T_{m,v}` preserves Lipschitz bounds**, for every exponent `m`: a consequence of
+monotonicity and translation invariance alone (Talagrand's `|A_p'| ≤ 1` of (14.271)). -/
+theorem abs_coleHopf_sub_le_of_lipschitz (m : ℝ) {L : ℝ} (hAm : Measurable A)
+    (hA : ∀ x y, |A y - A x| ≤ L * |y - x|) (v : ℝ≥0) (x y : ℝ) :
+    |coleHopf m v A y - coleHopf m v A x| ≤ L * |y - x| := by
+  have hAg : HasLinearGrowth A := HasLinearGrowth.of_lipschitz hA
+  have hshift : ∀ t : ℝ, HasLinearGrowth (fun w => A (t + w)) := fun t => hAg.comp_add_const t
+  have hshiftm : ∀ t : ℝ, Measurable fun w => A (t + w) := fun t =>
+    hAm.comp (measurable_const_add t)
+  have key : ∀ x y : ℝ, coleHopf m v A y ≤ coleHopf m v A x + L * |y - x| := by
+    intro x y
+    have h1 : ∀ w, A (y + w) ≤ A (x + w) + L * |y - x| := by
+      intro w
+      have h0 := hA (x + w) (y + w)
+      have h2 : |y + w - (x + w)| = |y - x| := by ring_nf
+      rw [h2] at h0
+      linarith [le_abs_self (A (y + w) - A (x + w))]
+    calc coleHopf m v A y = coleHopf m v (fun w => A (y + w)) 0 :=
+          (coleHopf_comp_const_add _ _ _ _).symm
+      _ ≤ coleHopf m v (fun w => A (x + w) + L * |y - x|) 0 :=
+          coleHopf_mono (hshift y) (hshiftm y)
+            (HasLinearGrowth.add_const (hshift x) _) ((hshiftm x).add_const _) h1 m v 0
+      _ = coleHopf m v A x + L * |y - x| := by
+          rw [coleHopf_add_const (hshift x) (hshiftm x), coleHopf_comp_const_add]
+  refine abs_sub_le_iff.2 ⟨?_, ?_⟩
+  · linarith [key x y]
+  · have h3 := key y x
+    rw [show |x - y| = |y - x| from abs_sub_comm _ _] at h3
+    linarith
+
+/-! ### Monotonicity, contraction and strong continuity -/
+
+lemma hasLinearGrowth_const_mul_abs (L : ℝ) : HasLinearGrowth fun t : ℝ => L * |t| :=
+  ⟨0, |L|, abs_nonneg _, fun t => by rw [abs_mul, abs_abs, zero_add]⟩
+
+lemma measurable_const_mul_abs (L : ℝ) : Measurable fun t : ℝ => L * |t| :=
+  measurable_const.mul continuous_abs.measurable
+
+/-- **`T_{m,v}` is a contraction for the sup norm**: for every exponent `m`. -/
+theorem abs_coleHopf_sub_le_of_sup (hAg : HasLinearGrowth A) (hAm : Measurable A)
+    (hBg : HasLinearGrowth B) (hBm : Measurable B) {ε : ℝ} (hAB : ∀ y, |A y - B y| ≤ ε)
+    (m : ℝ) (v : ℝ≥0) (x : ℝ) : |coleHopf m v A x - coleHopf m v B x| ≤ ε := by
+  have key : ∀ (C D : ℝ → ℝ), HasLinearGrowth C → Measurable C → HasLinearGrowth D →
+      Measurable D → (∀ y, C y ≤ D y + ε) → coleHopf m v C x ≤ coleHopf m v D x + ε := by
+    intro C D hCg hCm hDg hDm hCD
+    calc coleHopf m v C x ≤ coleHopf m v (fun y => D y + ε) x :=
+          coleHopf_mono hCg hCm (hDg.add_const _) (hDm.add_const _) hCD m v x
+      _ = coleHopf m v D x + ε := coleHopf_add_const hDg hDm _ _ _ _
+  refine abs_sub_le_iff.2 ⟨?_, ?_⟩
+  · have h := key A B hAg hAm hBg hBm fun y => by linarith [le_abs_self (A y - B y), hAB y]
+    linarith
+  · have h := key B A hBg hBm hAg hAm fun y => by
+      have := neg_abs_le (A y - B y)
+      linarith [hAB y]
+    linarith
+
+/-- **`T_{m,v}A` differs from `A` by at most `T_{m,v}(L|·|)(0)`**, uniformly in the point, for
+`L`-Lipschitz `A`: a consequence of monotonicity and translation invariance. -/
+theorem coleHopf_sub_self_le {L : ℝ} (hAm : Measurable A)
+    (hA : ∀ x y, |A y - A x| ≤ L * |y - x|) (m : ℝ) (v : ℝ≥0) (y : ℝ) :
+    coleHopf m v A y - A y ≤ coleHopf m v (fun t => L * |t|) 0 := by
+  have hAg : HasLinearGrowth A := HasLinearGrowth.of_lipschitz hA
+  have h1 : ∀ t, A (y + t) ≤ L * |t| + A y := by
+    intro t
+    have h0 := hA y (y + t)
+    have h2 : |y + t - y| = |t| := by ring_nf
+    rw [h2] at h0
+    linarith [le_abs_self (A (y + t) - A y)]
+  have h2 : coleHopf m v A y ≤ coleHopf m v (fun t => L * |t|) 0 + A y := by
+    calc coleHopf m v A y = coleHopf m v (fun t => A (y + t)) 0 :=
+          (coleHopf_comp_const_add _ _ _ _).symm
+      _ ≤ coleHopf m v (fun t => L * |t| + A y) 0 :=
+          coleHopf_mono (hAg.comp_add_const y) (hAm.comp (measurable_const_add y))
+            (HasLinearGrowth.add_const (hasLinearGrowth_const_mul_abs L) _)
+            ((measurable_const_mul_abs L).add_const _) h1 m v 0
+      _ = coleHopf m v (fun t => L * |t|) 0 + A y :=
+          coleHopf_add_const (hasLinearGrowth_const_mul_abs L) (measurable_const_mul_abs L) _ _ _ _
+  linarith
+
+/-- The lower half of the previous bound. -/
+theorem le_coleHopf_sub_self {L : ℝ} (hAm : Measurable A)
+    (hA : ∀ x y, |A y - A x| ≤ L * |y - x|) (m : ℝ) (v : ℝ≥0) (y : ℝ) :
+    coleHopf m v (fun t => -L * |t|) 0 ≤ coleHopf m v A y - A y := by
+  have hAg : HasLinearGrowth A := HasLinearGrowth.of_lipschitz hA
+  have h1 : ∀ t, -L * |t| + A y ≤ A (y + t) := by
+    intro t
+    have h0 := hA y (y + t)
+    have h2 : |y + t - y| = |t| := by ring_nf
+    rw [h2] at h0
+    have h3 := neg_abs_le (A (y + t) - A y)
+    have h4 : -L * |t| = -(L * |t|) := by ring
+    rw [h4]
+    linarith
+  have h2 : coleHopf m v (fun t => -L * |t| + A y) 0 ≤ coleHopf m v (fun t => A (y + t)) 0 :=
+    coleHopf_mono (HasLinearGrowth.add_const (hasLinearGrowth_const_mul_abs (-L)) _)
+      ((measurable_const_mul_abs (-L)).add_const _) (hAg.comp_add_const y)
+      (hAm.comp (measurable_const_add y)) h1 m v 0
+  rw [coleHopf_add_const (hasLinearGrowth_const_mul_abs (-L)) (measurable_const_mul_abs (-L))
+    _ _ _ _, coleHopf_comp_const_add] at h2
+  linarith
+
+/-- **The modulus of continuity of `T_{m,·}` on `L`-Lipschitz functions**: the operator's own
+action on `L|·|`. It vanishes as the variance does (`tendsto_coleHopfModulus`) and controls both
+`T_{m,v}A − A` and `T_{m,v}A − T_{m,v'}A`, uniformly in the point. -/
+noncomputable def coleHopfModulus (m L : ℝ) (v : ℝ≥0) : ℝ :=
+  max (coleHopf m v (fun t => L * |t|) 0) (-coleHopf m v (fun t => -L * |t|) 0)
+
+/-- **Two-sided form**: `T_{m,v}A` differs from `A` by at most `coleHopfModulus m L v`, uniformly
+in the point. -/
+theorem abs_coleHopf_sub_self_le {L : ℝ} (hAm : Measurable A)
+    (hA : ∀ x y, |A y - A x| ≤ L * |y - x|) (m : ℝ) (v : ℝ≥0) (y : ℝ) :
+    |coleHopf m v A y - A y| ≤ coleHopfModulus m L v := by
+  rw [coleHopfModulus]
+  refine abs_le.2 ⟨?_, ?_⟩
+  · have h := le_coleHopf_sub_self hAm hA m v y
+    have h2 : -max (coleHopf m v (fun t => L * |t|) 0) (-coleHopf m v (fun t => -L * |t|) 0)
+        ≤ coleHopf m v (fun t => -L * |t|) 0 := by
+      rw [neg_le]
+      exact le_max_right _ _
+    linarith
+  · exact (coleHopf_sub_self_le hAm hA m v y).trans (le_max_left _ _)
+
+/-- **The modulus vanishes as the variance does**, so the semigroup is strongly continuous at
+`v = 0` on `L`-Lipschitz functions, *uniformly* in the point. -/
+theorem tendsto_coleHopfModulus (m L : ℝ) :
+    Tendsto (fun v : ℝ => coleHopfModulus m L (Real.toNNReal v)) (𝓝 0) (𝓝 0) := by
+  simp only [coleHopfModulus]
+  have hc : ∀ c : ℝ, Continuous fun v : ℝ => coleHopf m (Real.toNNReal v) (fun t => c * |t|) 0 :=
+    fun c => (continuous_coleHopf (continuous_const.mul continuous_abs)
+      (hasLinearGrowth_const_mul_abs c) m).comp (continuous_const.prodMk continuous_id)
+  have h0 : ∀ c : ℝ, coleHopf m (Real.toNNReal (0 : ℝ)) (fun t => c * |t|) 0 = 0 := by
+    intro c
+    rw [Real.toNNReal_zero, coleHopf_zero_var]
+    simp
+  have h1 := ((hc L).continuousAt (x := (0 : ℝ))).tendsto
+  have h2 := ((hc (-L)).continuousAt (x := (0 : ℝ))).tendsto
+  rw [h0 L] at h1
+  rw [h0 (-L)] at h2
+  have := (h1.max h2.neg)
+  simpa using this
+
+/-- **The semigroup is uniformly continuous in the variance** on `L`-Lipschitz functions: by the
+semigroup property and the sup-norm contraction, the difference is controlled by the modulus at
+the *increment* of the variance. -/
+theorem abs_coleHopf_sub_coleHopf_le {L : ℝ} (hAm : Measurable A)
+    (hA : ∀ x y, |A y - A x| ≤ L * |y - x|) (m : ℝ) {v v' : ℝ≥0} (hle : v' ≤ v) (y : ℝ) :
+    |coleHopf m v A y - coleHopf m v' A y| ≤ coleHopfModulus m L (v - v') := by
+  have hAg : HasLinearGrowth A := HasLinearGrowth.of_lipschitz hA
+  have hsplit : coleHopf m v A y = coleHopf m v' (coleHopf m (v - v') A) y := by
+    rw [coleHopf_coleHopf hAg hAm m v' (v - v') y, add_tsub_cancel_of_le hle]
+  rw [hsplit]
+  refine abs_coleHopf_sub_le_of_sup ?_ ?_ hAg hAm ?_ m v' y
+  · exact HasLinearGrowth.of_lipschitz
+      (abs_coleHopf_sub_le_of_lipschitz m hAm hA (v - v'))
+  · exact (lipschitzWith_toNNReal_of_abs_sub_le
+      (abs_coleHopf_sub_le_of_lipschitz m hAm hA (v - v'))).continuous.measurable
+  · exact fun z => abs_coleHopf_sub_self_le hAm hA m (v - v') z
 
 section Lipschitz
 

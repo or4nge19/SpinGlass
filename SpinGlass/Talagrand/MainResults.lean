@@ -1394,7 +1394,8 @@ positions, recorded as the `Measure`-valued random variable `countingMeasure`
 sample space plus the Poisson series. `PoissonSuperposition`: countably many independent finite
 pieces on `Measure.infinitePi` give the process of **any s-finite intensity**, through Mathlib's
 canonical decomposition `sfiniteSeq`: `poissonPointProcess (Λ) [SFinite Λ]` is a probability
-measure on `Measure E`, with the Laplace functional (`integral_negExp_lintegral_poissonPointProcess`,
+measure on `Measure E`, with the Laplace functional
+(`integral_negExp_lintegral_poissonPointProcess`,
 by dominated convergence) and the **void probabilities** `P(N B = 0) = e^{-Λ B}`
 (`measureReal_poissonPointProcess_eq_zero`), both transported to any random measure with this law
 (`HasLaw.integral_negExp_lintegral`, `HasLaw.measureReal_eq_zero`), and all of it stated as well
@@ -1406,11 +1407,13 @@ Talagrand's `μ_m` with density `u^{-m-1}` on `(0,∞)` (s-finite, of infinite m
 **scaling identity** `∫(1-e^{-au})u^{-m-1} du = a^m c_m` with `0 < c_m < ∞`
 (`integral_one_sub_exp_mul_rpow`, Lemma 13.1.1 in Laplace form), the moment integral
 `∫(1-e^{-a u^m})u^{-m'-1} du = a^{m'/m} c_{m'/m}/m` (`integral_one_sub_exp_mul_rpow_rpow`), and
-`μ_m(c,∞) = c^{-m}/m`, and the **explicit decomposition** `μ_m = ∑ₙ μ_m|_{(1/(n+2),1/(n+1)] ∪ (n+1,n+2]}`
+`μ_m(c,∞) = c^{-m}/m`, and the **explicit decomposition**
+`μ_m = ∑ₙ μ_m|_{(1/(n+2),1/(n+1)] ∪ (n+1,n+2]}`
 into nonzero finite pieces for every `m` (`stableSeq`, `sum_stableSeq`). `PoissonDirichlet`: the
 marked process `(u_α, g_α)` with intensity `μ_m ⊗ η` (`pdProcess`, a measure on
 `Measure (ℝ × M)`), built as the superposition of the **product** pieces `(stableSeq m n) ⊗ η`
-(`pdSeq`) so that the marks are i.i.d. and independent of the weights by construction, the weighted sums
+(`pdSeq`) so that the marks are i.i.d. and independent of the weights by construction, the weighted
+sums
 `S_v = ∑ u_α v(g_α)` for `ℝ≥0∞`-valued weights (`pdSum`), their **Laplace transform**
 `𝔼 e^{-sS_v} = exp(-s^m c_m ∫v^m dη)` (`integral_negExp_pdSum`, unconditional in `ℝ≥0∞`), the
 **moments** `𝔼 S_v^{m'} = (c_m ∫v^m dη)^{m'/m} c_{m'/m}/(m c_{m'})` for `0 < m' < m`
@@ -1494,7 +1497,8 @@ linear map** `T` has kernel `⟪Cov (T†e_x), T†e_y⟫ = ∑_{a,b} (T†e_x)_
 `K (f x) (f y)`), the linear image `U(x) = ∑_c A x c Z_c` of independent coordinates
 `Z_c ~ N(0, v_c)` (`GaussianField.ofCoords`, kernel `∑_c v_c A x c A y c`,
 `FiniteGibbs/GaussianFieldCoords`) and the sum of two pullbacks `H(σ¹) + H(σ²)`
-(`GaussianField.pairModel`, `Parisi/CoupledScheme`) are its instances. `FiniteGibbs/WeightedInterpolation`: the comparison bound for the
+(`GaussianField.pairModel`, `Parisi/CoupledScheme`) are its instances.
+`FiniteGibbs/WeightedInterpolation`: the comparison bound for the
 **weighted** free energy `(1/n) log ∑_x w_x e^{-H x}`, `w ≥ 0` (`wFreeEnergy_sub_le`): a family of
 branches some of which carry weight `0`. `Parisi/GuerraBound`: from a pointwise trace bound
 `(1/2) c₀ + (1/2)⟨θ⟩_H` to `𝔼 F_w(U+c) - 𝔼 F_w(V+c) ≤ ∫₀¹ b(t) dt`, `b` continuous by dominated
@@ -1612,7 +1616,8 @@ Talagrand's density argument `le_of_forall_strictMono_le` (strictly increasing t
 approximate nondecreasing tuples in `(0,1]^k`, `strictApprox`). Consequences:
 `coupled_bound'_of_monotone`, `coupled_bound_coupling`, `coupled_bound_coupling_zero`,
 `constrainedFreeEnergy_le_two_parisiFunctional` and `continuousOn_parisiFunctional`,
-`mixedPSpinFreeEnergy_le_parisiFunctional_of_monotone`, `skFreeEnergy_le_parisiFunctional_of_monotone`
+`mixedPSpinFreeEnergy_le_parisiFunctional_of_monotone`,
+`skFreeEnergy_le_parisiFunctional_of_monotone`
 hold for nondecreasing `0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1`.
 
 **Lemma 14.6.5** (`Parisi/CoupledSecondDeriv`): `pairSiteY₀_eq_integral` (`Y₀(λ)` as the
@@ -1627,6 +1632,45 @@ exponentials `ofReal_exp_pairSiteF_eq_sum`), `cascadeSum_pairSiteG` (the `λ`-st
 `0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1`, by `convexOn_of_tendsto` of `Analysis/Convex/Limit` and
 `continuousOn_pairSiteY₀`), and the tangent bounds `taylor_le_pairSiteY₀`, `pairSiteY₀_le_taylor`.
 Talagrand's statement reads `0 ≤ Y₀'(λ) ≤ 1`; his proof concerns `Y₀''`.
+
+**The operators `T_{m,v}` of §14.7.** `Common/…/Gaussian/ExpGrowth`: the class `HasExpGrowth`
+(`|F| ≤ C e^{c|x|}`) and `HasLinearGrowth`, closed under the usual operations, integrable against
+every real Gaussian, with `hasDerivAt_integral_comp_add_gaussianReal` (differentiation of
+`x ↦ 𝔼 F(x + g√v)`); `GaussianIntegrationByParts` gains Stein's lemma for functions of
+exponential growth (`stein_lemma_gaussianReal_of_expGrowth`). `Gaussian/HeatSemigroup`: the
+Gaussian heat semigroup `P_v H(x) = 𝔼 H(x + g√v)` — `P_0 = id`, exponential growth is preserved,
+`(x, v) ↦ P_v H(x)` is jointly continuous, `P_v` preserves `Cⁿ` and commutes with `d/dx`
+(`contDiff_integral_comp_add_gaussianReal`, `iteratedDeriv_integral_comp_add_gaussianReal`), the
+heat equation `∂_v P_v H = ½ P_v H''` holds for `v > 0` and one-sidedly at `v = 0`, and *every*
+`x`-derivative solves it (`hasDerivAt_iteratedDeriv_integral_comp_add_gaussianReal_var`), so the
+mixed partials need no Clairaut argument. The master statement is the chain rule along a curve
+`v ↦ (y(v), σ(v))` for a time-dependent integrand (`hasDerivAt_integral_curve_gaussianReal`):
+dominated differentiation under the integral sign, then Gaussian integration by parts to turn the
+factor `g/(2√σ)` into `½ ∂_x`. `Gaussian/ColeHopf`: `coleHopf m v A = T_{m,v}A` with
+`coleHopfQ` the tilt `Q = exp m(A(Y) − B(x))` of (14.201) — (14.195) `T_{m,a} ∘ T_{m,b} =
+T_{m,a+b}` (`coleHopf_coleHopf`), (14.197) (`coleHopf_le_log_integral_exp`), (14.202) `B' =
+𝔼(A'(Y)Q)`, (14.203) `B'' = 𝔼(A''Q) + m𝔼(A'²Q) − mB'²`, (14.199) `∂_v B = ½B'' + (m/2)B'²` and
+its curve form (a corollary of the heat-semigroup chain rule applied to `exp mA`), the Lipschitz
+bound of (14.271) for `m > 0` with no differentiability
+(`abs_coleHopf_sub_le_of_lipschitz`, by monotonicity of exponential averages), the exponent
+derivative `∂_m T_{m,v}A = (1/m)(𝔼(A(Y)Q) − B)`, and **Lemma 14.7.3**
+`∂_v (T_{m',a−v} ∘ T_{m,v})A = ((m − m')/2) 𝔼(B'(Z)²R)` for every `m'` — the case `m' = 0`
+(`R = 1`) from the time-dependent chain rule, the case `m' ≠ 0` the same computation inside the
+tilt. `PointProcess/CascadeColeHopf`: the two sides meet — `coleHopfIterate` is Talagrand's
+(14.190) `A_p = T_{m_p,v_p}(A_{p+1})`, it preserves Lipschitz constants
+(`abs_coleHopfIterate_sub_le`, his `|A_p'| ≤ 1`), the Parisi recursion with Gaussian marks *is*
+that iterate (`cascadeRec_gaussian_comp_add_sum`, `parisiRec_gaussian_comp_add_sum`, (14.191)),
+and hence (14.215)/(14.217) `∂_λ A₁ = 𝔼(W₁ ⋯ W_k ∂_λ G_λ)` (`hasDerivAt_coleHopfIterate`) is
+`hasDerivAt_parisiRec` read through that identification. Both are proved in local form
+(`hasDerivAt_parisiRec_ball`, `hasDerivAt_coleHopfIterate_ball`) — the parameter ranging over a
+ball, with measurability required only at each fixed parameter — since Talagrand's parameters
+(an overlap, a variance split) range over intervals. Composed with Lemma 14.7.3 this gives
+**(14.219)–(14.220)** in operator form, `hasDerivAt_coleHopfIterate_split`. The level structure
+is packaged associatively as an iterate along a list of levels (`coleHopfIterateList`,
+`coleHopfIterateList_append`, `coleHopfIterateList_split`), which turns Talagrand's merging
+mechanisms into one-liners: a zero-variance level drops (`coleHopfIterateList_zero_var`,
+`T_{m,0} = id`) and two adjacent levels with equal exponents merge
+(`coleHopfIterateList_merge`), his (14.233) and (14.237).
 
 `FiniteGibbs/WeightedInterpolation`, product state spaces: for weights `u_α c_x` on `X × A`, the
 partition function is `∑_α u_α Z_α(c)` with `Z_α(c) = ∑_x c_x e^{-H(x,α)}` (`wCondZ`, `wZ_prod_eq`)
@@ -1746,7 +1790,8 @@ functional (whose last level has `m_{k+1} = 1`) to the cascades (which need `m_p
 the functional is explicit (`parisiFunctional_zero`), and **for the SK profile `ξ = β²x²/2` it is
 exactly the replica-symmetric expression** `𝔼 log(2cosh(β√q z + h)) + (β²/4)(1-q)²`
 (`parisiFunctional_skCovXi_zero`, `0 ≤ q ≤ 1`): Guerra's replica-symmetric bound of Vol. I,
-Theorem 1.3.7, is the case `k = 0` of the Parisi bound (`skFreeEnergyLimit_le_parisiFunctional_zero`).
+Theorem 1.3.7, is the case `k = 0` of the Parisi bound
+(`skFreeEnergyLimit_le_parisiFunctional_zero`).
 
 `CascadeBranchLaw`: **the marks along a fixed branch are the product `μ₁ ⊗ ⋯ ⊗ μ_k`**
 (`cascadeMarksLaw_map_branchMarks`) — they are the marks of the `k` distinct nodes `α|1, …, α|k`,
@@ -1985,13 +2030,22 @@ not need Panchenko's ultrametricity (§15.6) or the Dovbysh–Sudakov representa
 are Chapter 15 structure theory and give an alternative route via Aizenman–Sims–Starr (§15.8).
 Done on that route: Theorem 13.1.6, all of §14.3 through Corollary 14.3.7, and all of §14.6
 through Proposition 14.6.3 — Talagrand's (14.147) for nondecreasing `0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1` with
-free top values `ρ_{κ+1}`, its specialization to the coupling (14.155)–(14.158) with the extra field of (14.160),
+free top values `ρ_{κ+1}`, its specialization to the coupling (14.155)–(14.158) with the extra
+field of (14.160),
 and the identification of its right-hand side at `λ = 0` with `2𝒫_k(m, q)`, plus the derivative
 of the recursion in a parameter, `|Y₀'(λ)| ≤ 1` and Lemma 14.6.5 (`0 ≤ Y₀'' ≤ 1`, the tangent
-bounds on `Y₀`). Next: the formula `Y₀'(0) = 𝔼(W₁ ⋯ W_{τ-1} D'_τ(ζ_τ)²)` of Proposition 14.6.4,
-Theorem 14.5.7, the operators of §14.7 and the main estimate of §14.8–§14.10. Also outstanding: Theorem 14.4.4 (`ξ` convex on `ℝ⁺` only, needing the
+bounds on `Y₀`), and the operator layer of §14.7: the Gaussian heat semigroup with its PDE,
+`T_{m,v}` with (14.195)–(14.203), Lemma 14.7.3 for every `m'`, the identification of the Parisi
+recursion with the iterated Cole–Hopf transform (14.190)–(14.191), the differentiation formula
+(14.215)/(14.217) and its consequence (14.219)–(14.220), and the merging identities behind
+(14.233)/(14.237). Next: the formula `Y₀'(0) = 𝔼(W₁ ⋯ W_{τ-1} D'_τ(ζ_τ)²)` of
+Proposition 14.6.4, the link of (14.220) to `∂𝒫_k/∂q_r` and Proposition 14.7.5, Lemma 14.7.4
+with `Φ(m, u)`, `U(v)` and `f(u)`, Theorem 14.5.7, and the main estimate of §14.8–§14.10.
+Also outstanding:
+Theorem 14.4.4 (`ξ` convex on `ℝ⁺` only, needing the
 perturbation (12.32) and Theorem 12.3.1), the extension of (14.90) to `m₁ = 0` (a level with
-exponent `0` is a plain expectation; `0 < m₁ ≤ ⋯ ≤ m_k ≤ 1` is done), Guerra's Lipschitz bound (14.402), the Parisi measures of §14.11, the Gardner
+exponent `0` is a plain expectation; `0 < m₁ ≤ ⋯ ≤ m_k ≤ 1` is done), Guerra's Lipschitz bound
+(14.402), the Parisi measures of §14.11, the Gardner
 formula, the Hopfield localization theorems (Vol. I Thm. 4.3.2, Vol. II Thm. 10.3.1) and limits,
 and the thermodynamic limit for non-convex profiles.
 -/

@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Matteo Cipollina
 -/
 import Common.Mathlib.Probability.Distributions.GaussianIntegrationByParts
+import Common.Mathlib.Analysis.Calculus.MeasurableParamDeriv
 import Mathlib.Analysis.Calculus.FDeriv.Extend
 
 /-!
@@ -13,12 +14,17 @@ import Mathlib.Analysis.Calculus.FDeriv.Extend
 exponential growth (`HasExpGrowth`):
 
 * `HasExpGrowth.integral_comp_add_gaussianReal`: `P_s H` has exponential growth;
-* `integral_comp_add_gaussianReal_zero_var`: `P_0 H = H`;
-* `continuous_integral_comp_add_gaussianReal`: `(x, s) ↦ P_s H x` is jointly continuous;
+* `integral_comp_add_gaussianReal_zero_var`: `P_0 H = H`, and
+  `integral_integral_comp_add_gaussianReal`: the semigroup property `P_a ∘ P_b = P_{a+b}`;
+* `continuous_integral_comp_add_gaussianReal`: `(x, s) ↦ P_s H x` is jointly continuous, and
+  `continuous_integral_comp_curve` is the same for a general integrand along a curve;
 * `hasDerivAt_integral_curve_gaussianReal`: **the master chain rule** for a time-dependent
   integrand along a curve `v ↦ (y v, σ v)` in the point and the variance,
   `d/dv 𝔼 H(y v + g√σ v, v) = 𝔼 (y' ∂_w H + (σ'/2) ∂²_w H + ∂_v H)(y v + g√σ v, v)`,
   by differentiation under the integral sign and Gaussian integration by parts;
+* `hasDerivAt_integral_gaussianReal_param`: differentiation under the Gaussian average of a
+  family that is Lipschitz in the point and differentiable in the parameter — no measurability
+  in the parameter needed, the derivative being measurable by `measurable_deriv_param`;
 * `hasDerivAt_integral_comp_add_gaussianReal_curve` (time-independent integrand),
   `hasDerivAt_integral_comp_add_gaussianReal_var` (the heat equation `∂_s P_s H = ½ P_s H''`)
   and `hasDerivWithinAt_integral_comp_add_gaussianReal_var_zero` (its one-sided form at `s = 0`);
@@ -31,7 +37,7 @@ exponential growth (`HasExpGrowth`):
 These are the analytic facts behind Talagrand's operators `T_{m,v}` (Vol. II, §14.7).
 -/
 
-open MeasureTheory Filter Topology Set
+open MeasureTheory Filter Topology Set Function
 open scoped ENNReal NNReal
 
 namespace ProbabilityTheory
@@ -105,6 +111,49 @@ lemma HasExpGrowth.integral_comp_add_gaussianReal (hH : HasExpGrowth H) (hHm : M
     _ = C * (∫ z, Real.exp (c * |z|) ∂gaussianReal 0 s) * Real.exp (c * |x|) := by
         rw [integral_const_mul]; ring
 
+/-- Gaussian averages preserve Lipschitz bounds: the `m = 0` case. -/
+lemma abs_integral_comp_add_sub_le_of_lipschitz {L : ℝ} (hHm : Measurable H)
+    (hH : ∀ x y, |H y - H x| ≤ L * |y - x|) (v : ℝ≥0) (x y : ℝ) :
+    |(∫ z, H (y + z) ∂gaussianReal 0 v) - ∫ z, H (x + z) ∂gaussianReal 0 v| ≤ L * |y - x| := by
+  have hHg : HasLinearGrowth H := HasLinearGrowth.of_lipschitz hH
+  have hix : Integrable (fun z => H (x + z)) (gaussianReal 0 v) :=
+    (hHg.toHasExpGrowth.comp_add_const x).integrable_gaussianReal
+      (hHm.comp (measurable_const_add x)).aestronglyMeasurable
+  have hiy : Integrable (fun z => H (y + z)) (gaussianReal 0 v) :=
+    (hHg.toHasExpGrowth.comp_add_const y).integrable_gaussianReal
+      (hHm.comp (measurable_const_add y)).aestronglyMeasurable
+  rw [← integral_sub hiy hix]
+  calc |∫ z, (H (y + z) - H (x + z)) ∂gaussianReal 0 v|
+      ≤ ∫ z, |H (y + z) - H (x + z)| ∂gaussianReal 0 v := abs_integral_le_integral_abs
+    _ ≤ ∫ _z, L * |y - x| ∂gaussianReal 0 v := by
+        refine integral_mono ((hiy.sub hix).abs) (integrable_const _) fun z => ?_
+        have h0 := hH (x + z) (y + z)
+        have h2 : |y + z - (x + z)| = |y - x| := by ring_nf
+        rwa [h2] at h0
+    _ = L * |y - x| := by simp
+/-- **The heat semigroup property** `P_a ∘ P_b = P_{a+b}`: iterated Gaussian smoothing adds
+variances (the convolution `N(0,a) ∗ N(0,b) = N(0,a+b)`). -/
+theorem integral_integral_comp_add_gaussianReal (hHg : HasExpGrowth H) (hHm : Measurable H)
+    (a b : ℝ≥0) (x : ℝ) :
+    (∫ z, ∫ w, H (x + z + w) ∂gaussianReal 0 b ∂gaussianReal 0 a)
+      = ∫ u, H (x + u) ∂gaussianReal 0 (a + b) := by
+  have hconv : gaussianReal (0 : ℝ) a ∗ gaussianReal 0 b = gaussianReal 0 (a + b) := by
+    simpa using gaussianReal_conv_gaussianReal (m₁ := 0) (m₂ := 0) (v₁ := a) (v₂ := b)
+  have hfm : Measurable fun w => H (x + w) := hHm.comp (measurable_const.add measurable_id)
+  have hadd : Measurable fun p : ℝ × ℝ => p.1 + p.2 := measurable_add
+  have hint : Integrable (fun w => H (x + w)) (gaussianReal 0 (a + b)) :=
+    (hHg.comp_add_const x).integrable_gaussianReal hfm.aestronglyMeasurable
+  rw [← hconv] at hint ⊢
+  unfold Measure.conv at hint ⊢
+  rw [integral_map hadd.aemeasurable hfm.aestronglyMeasurable]
+  have hint' : Integrable (fun p : ℝ × ℝ => H (x + (p.1 + p.2)))
+      ((gaussianReal 0 a).prod (gaussianReal 0 b)) :=
+    (integrable_map_measure hfm.aestronglyMeasurable hadd.aemeasurable).1 hint
+  rw [integral_prod _ hint']
+  refine integral_congr_ae (Eventually.of_forall fun z' => ?_)
+  refine integral_congr_ae (Eventually.of_forall fun z => ?_)
+  simp only [add_assoc]
+
 /-! ### Joint continuity in the point and the variance -/
 
 /-- **Joint continuity of `(x, s) ↦ P_s H x`** for continuous `H` of exponential growth, the
@@ -163,6 +212,64 @@ theorem continuous_integral_comp_add_gaussianReal (hHc : Continuous H) (hHg : Ha
       continuous_fst.add ((Real.continuous_sqrt.comp (NNReal.continuous_coe.comp
         (continuous_real_toNNReal.comp continuous_snd))).mul continuous_const)
     exact (hHc.comp hcont).continuousAt
+
+/-- **Joint continuity of a Gaussian average along a curve**: if `Ψ` is jointly continuous and
+its exponential growth in the second variable is locally uniform in the first, and `s ≥ 0` is
+continuous, then `(x, v) ↦ 𝔼 Ψ v (x + g s(v))` is continuous. -/
+theorem continuous_integral_comp_curve {Ψ : ℝ → ℝ → ℝ} {s : ℝ → ℝ}
+    (hΨ : Continuous (uncurry Ψ)) (hs : Continuous s) (hs0 : ∀ v, 0 ≤ s v)
+    (hb : ∀ v₀ : ℝ, ∃ δ C c : ℝ, 0 < δ ∧ 0 ≤ c ∧ ∀ v ∈ Metric.ball v₀ δ, ∀ w,
+      |Ψ v w| ≤ C * Real.exp (c * |w|)) :
+    Continuous fun p : ℝ × ℝ => ∫ g, Ψ p.2 (p.1 + s p.2 * g) ∂gaussianReal 0 1 := by
+  rw [continuous_iff_continuousAt]
+  rintro ⟨x₀, v₀⟩
+  obtain ⟨δ, C, c, hδ, hc, hbound⟩ := hb v₀
+  have hC : 0 ≤ C := by
+    have := hbound v₀ (Metric.mem_ball_self hδ) 0
+    have h0 : |Ψ v₀ 0| ≤ C * Real.exp (c * |(0 : ℝ)|) := this
+    simp only [abs_zero, mul_zero, Real.exp_zero, mul_one] at h0
+    exact (abs_nonneg _).trans h0
+  set r : ℝ := s v₀ + 1 with hr
+  have hr0 : 0 ≤ r := by have := hs0 v₀; linarith
+  refine continuousAt_of_dominated (F := fun (p : ℝ × ℝ) g => Ψ p.2 (p.1 + s p.2 * g))
+    (bound := fun g => C * Real.exp (c * (|x₀| + 1)) * Real.exp (c * r * |g|)) ?_ ?_ ?_ ?_
+  · exact Eventually.of_forall fun p =>
+      (hΨ.comp (continuous_const.prodMk (continuous_const.add
+        (continuous_const.mul continuous_id)))).aestronglyMeasurable
+  · have h1 : ∀ᶠ p : ℝ × ℝ in 𝓝 (x₀, v₀), |p.1 - x₀| < 1 ∧ p.2 ∈ Metric.ball v₀ δ
+        ∧ s p.2 ≤ r := by
+      have ha : ∀ᶠ p : ℝ × ℝ in 𝓝 (x₀, v₀), |p.1 - x₀| < 1 := by
+        have := (continuous_fst.tendsto (x₀, v₀)).eventually (Metric.ball_mem_nhds x₀ one_pos)
+        filter_upwards [this] with p hp
+        simpa [Real.dist_eq] using hp
+      have hb' : ∀ᶠ p : ℝ × ℝ in 𝓝 (x₀, v₀), p.2 ∈ Metric.ball v₀ δ :=
+        (continuous_snd.tendsto (x₀, v₀)).eventually (Metric.ball_mem_nhds v₀ hδ)
+      have hc' : ∀ᶠ p : ℝ × ℝ in 𝓝 (x₀, v₀), s p.2 ≤ r := by
+        have := ((hs.comp continuous_snd).tendsto (x₀, v₀)).eventually
+          (Metric.ball_mem_nhds (s v₀) one_pos)
+        filter_upwards [this] with p hp
+        have : |s p.2 - s v₀| < 1 := by simpa [Real.dist_eq] using hp
+        have h2 := le_abs_self (s p.2 - s v₀)
+        rw [hr]
+        linarith
+      exact (ha.and hb').and hc' |>.mono fun p hp => ⟨hp.1.1, hp.1.2, hp.2⟩
+    filter_upwards [h1] with p hp
+    refine Eventually.of_forall fun g => ?_
+    have hx : |p.1| ≤ |x₀| + 1 := by linarith [abs_sub_abs_le_abs_sub p.1 x₀, hp.1]
+    have hY : |p.1 + s p.2 * g| ≤ (|x₀| + 1) + r * |g| := by
+      calc |p.1 + s p.2 * g| ≤ |p.1| + |s p.2 * g| := abs_add_le _ _
+        _ = |p.1| + s p.2 * |g| := by rw [abs_mul, abs_of_nonneg (hs0 _)]
+        _ ≤ (|x₀| + 1) + r * |g| := by gcongr; exact hp.2.2
+    rw [Real.norm_eq_abs]
+    calc |Ψ p.2 (p.1 + s p.2 * g)| ≤ C * Real.exp (c * |p.1 + s p.2 * g|) :=
+          hbound p.2 hp.2.1 _
+      _ ≤ C * Real.exp (c * ((|x₀| + 1) + r * |g|)) := by gcongr
+      _ = C * Real.exp (c * (|x₀| + 1)) * Real.exp (c * r * |g|) := by
+          rw [mul_add, Real.exp_add, mul_assoc c r]; ring
+  · exact (integrable_exp_mul_abs_gaussianReal 0 1 (c * r)).const_mul _
+  · refine Eventually.of_forall fun g => ?_
+    exact (hΨ.comp (continuous_snd.prodMk (continuous_fst.add
+      ((hs.comp continuous_snd).mul continuous_const)))).continuousAt
 
 /-! ### The chain rule along a curve, with a time-dependent integrand -/
 
@@ -411,6 +518,34 @@ theorem hasDerivAt_integral_curve_gaussianReal {H Hw Hww Hv : ℝ → ℝ → �
       _ = _ := by
           rw [integral_add h14 hi3, integral_add h1 h4, integral_const_mul, integral_const_mul]
   rw [e1, e2, hstein]
+
+/-- **Differentiating under the outermost Gaussian average.** If `v ↦ Φ v x` is differentiable
+near `v₀` for every `x`, with derivative bounded uniformly, and every `Φ v` is `L`-Lipschitz
+(hence Gaussian-integrable), then `v ↦ 𝔼 Φ v (h + g)` is differentiable at `v₀` with derivative
+`𝔼 D v₀ (h + g)`. No measurability in `v` and no continuity of `D` are needed: the derivative is
+measurable in `x` by `measurable_deriv_param`. -/
+theorem hasDerivAt_integral_gaussianReal_param {Φ D : ℝ → ℝ → ℝ} {L C v₀ δ : ℝ} (hδ : 0 < δ)
+    (hLip : ∀ v x y, |Φ v y - Φ v x| ≤ L * |y - x|)
+    (hd : ∀ v ∈ Metric.ball v₀ δ, ∀ x, HasDerivAt (fun v => Φ v x) (D v x) v)
+    (hC : ∀ v ∈ Metric.ball v₀ δ, ∀ x, |D v x| ≤ C) (w₀ : ℝ≥0) (h : ℝ) :
+    HasDerivAt (fun v => ∫ z, Φ v (h + z) ∂gaussianReal 0 w₀)
+      (∫ z, D v₀ (h + z) ∂gaussianReal 0 w₀) v₀ := by
+  have hΦm : ∀ v, Measurable fun z => Φ v (h + z) := fun v =>
+    ((lipschitzWith_toNNReal_of_abs_sub_le (hLip v)).continuous.comp
+      (continuous_const.add continuous_id)).measurable
+  have hDm : Measurable fun z => D v₀ (h + z) :=
+    measurable_deriv_param (Φ := fun v z => Φ v (h + z)) hΦm
+      (fun z => hd v₀ (Metric.mem_ball_self hδ) (h + z))
+  have hint : Integrable (fun z => Φ v₀ (h + z)) (gaussianReal 0 w₀) :=
+    ((HasLinearGrowth.of_lipschitz (hLip v₀)).comp_add_const h).toHasExpGrowth
+      |>.integrable_gaussianReal (hΦm v₀).aestronglyMeasurable
+  refine (hasDerivAt_integral_of_dominated_loc_of_deriv_le (μ := gaussianReal 0 w₀)
+    (F := fun v z => Φ v (h + z)) (F' := fun v z => D v (h + z)) (bound := fun _ => C)
+    (Metric.ball_mem_nhds _ hδ)
+    (Eventually.of_forall fun v => (hΦm v).aestronglyMeasurable) hint
+    hDm.aestronglyMeasurable ?_ (integrable_const C) ?_).2
+  · exact Eventually.of_forall fun z v hv => by rw [Real.norm_eq_abs]; exact hC v hv _
+  · exact Eventually.of_forall fun z v hv => hd v hv _
 
 /-! ### The heat equation -/
 

@@ -158,8 +158,10 @@ import Common.Mathlib.Probability.PointProcess.CascadeJensenLower
 import Common.Mathlib.Probability.PointProcess.CascadeLinear
 import Common.Mathlib.Analysis.Convex.Limit
 import Common.Mathlib.Probability.Distributions.Gaussian.ExpGrowth
+import Common.Mathlib.Analysis.Calculus.MeasurableParamDeriv
 import Common.Mathlib.Probability.Distributions.Gaussian.HeatSemigroup
 import Common.Mathlib.Probability.Distributions.Gaussian.ColeHopf
+import Common.Mathlib.Probability.PointProcess.CascadeColeHopf
 import Common.Mathlib.Probability.ProductMeasureProd
 import Common.Mathlib.Probability.Independence.PiBlocks
 import Common.Mathlib.Data.ENNReal.ProdNeTop

@@ -44,6 +44,14 @@ lemma integrable_exp_mul_abs_gaussianReal (μ : ℝ) (v : ℝ≥0) (c : ℝ) :
   · rw [abs_of_nonpos hx, show c * -x = -c * x by ring]
     linarith [Real.exp_pos (c * x)]
 
+/-- A function with a Lipschitz bound is Lipschitz with the corresponding nonnegative constant. -/
+lemma lipschitzWith_toNNReal_of_abs_sub_le {f : ℝ → ℝ} {L : ℝ}
+    (h : ∀ x y, |f y - f x| ≤ L * |y - x|) : LipschitzWith (Real.toNNReal L) f := by
+  refine LipschitzWith.of_dist_le_mul fun x y => ?_
+  rw [Real.dist_eq, Real.dist_eq]
+  have h1 : |f x - f y| ≤ L * |x - y| := h y x
+  refine h1.trans (mul_le_mul_of_nonneg_right (Real.le_coe_toNNReal L) (abs_nonneg _))
+
 namespace HasExpGrowth
 
 variable {F G : ℝ → ℝ}
@@ -155,6 +163,20 @@ namespace HasLinearGrowth
 
 variable {A : ℝ → ℝ}
 
+/-- A Lipschitz function has linear growth. -/
+lemma of_lipschitz {L : ℝ} (h : ∀ x y, |A y - A x| ≤ L * |y - x|) : HasLinearGrowth A := by
+  have hL : 0 ≤ L := by
+    have := h 0 1
+    have h1 : |(1 : ℝ) - 0| = 1 := by norm_num
+    rw [h1, mul_one] at this
+    exact (abs_nonneg _).trans this
+  refine ⟨|A 0|, L, hL, fun x => ?_⟩
+  have h2 := h 0 x
+  rw [sub_zero] at h2
+  calc |A x| = |A 0 + (A x - A 0)| := by ring_nf
+    _ ≤ |A 0| + |A x - A 0| := abs_add_le _ _
+    _ ≤ |A 0| + L * |x| := by gcongr
+
 lemma toHasExpGrowth (hA : HasLinearGrowth A) : HasExpGrowth A := by
   obtain ⟨a, b, hb, h⟩ := hA
   refine ⟨|a| + b, b + 1, by linarith, fun x => ?_⟩
@@ -179,6 +201,14 @@ lemma exp_mul (hA : HasLinearGrowth A) (m : ℝ) : HasExpGrowth fun x => Real.ex
     _ = |m| * |A x| := abs_mul _ _
     _ ≤ |m| * (a + b * |x|) := mul_le_mul_of_nonneg_left (h x) (abs_nonneg m)
     _ = |m| * a + |m| * b * |x| := by ring
+
+/-- Adding a constant preserves linear growth. -/
+lemma add_const (hA : HasLinearGrowth A) (c : ℝ) : HasLinearGrowth fun x => A x + c := by
+  obtain ⟨a, b, hb, h⟩ := hA
+  refine ⟨a + |c|, b, hb, fun x => ?_⟩
+  calc |A x + c| ≤ |A x| + |c| := abs_add_le _ _
+    _ ≤ a + b * |x| + |c| := by linarith [h x]
+    _ = a + |c| + b * |x| := by ring
 
 lemma comp_add_const (hA : HasLinearGrowth A) (c : ℝ) : HasLinearGrowth fun x => A (c + x) := by
   obtain ⟨a, b, hb, h⟩ := hA

@@ -382,6 +382,43 @@ inequalities `Y₀(0) + λY₀'(0) ≤ Y₀(λ) ≤ Y₀(0) + λY₀'(0) + λ²/
 `pairSiteY₀_le_taylor`) hold for every `0 < n₁ ≤ ⋯ ≤ n_κ ≤ 1`; the joint (14.4)
 `𝔼_{y₀}𝔼_y exp Y_{κ+1} < ∞` is computed from the four exponentials of (14.142).
 
+**The operators `T_{m,v}` of §14.7** (`Gaussian/HeatSemigroup`, `Gaussian/ColeHopf`,
+`PointProcess/CascadeColeHopf`): Talagrand's `T_{m,v}A(x) = (1/m) log 𝔼 exp mA(x + g√v)` is the
+Cole–Hopf transform of the Gaussian heat semigroup `P_v H(x) = 𝔼 H(x + g√v)`, so the general
+object is the heat semigroup on functions of exponential growth. It is built once, in full
+generality: `P_v` preserves `Cⁿ` and commutes with `d/dx`
+(`iteratedDeriv_integral_comp_add_gaussianReal`), `(x, v) ↦ P_v H(x)` is jointly continuous, and
+*every* `x`-derivative again solves the heat equation, `∂_v ∂ₓⁱ P_v H = ½ ∂ₓ^{i+2} P_v H`
+(`hasDerivAt_iteratedDeriv_integral_comp_add_gaussianReal_var`, with its one-sided form at
+`v = 0`) — so the mixed partials of the flow need no Clairaut argument. The master statement is a
+chain rule along a curve `v ↦ (y(v), σ(v))` for a *time-dependent* integrand
+(`hasDerivAt_integral_curve_gaussianReal`), proved by dominated differentiation plus Gaussian
+integration by parts (Stein's lemma for functions of exponential growth, a new
+`GaussianIntegrationByParts` entry); Talagrand's (14.197)–(14.199), (14.202)–(14.203), the
+semigroup property (14.195), the Lipschitz bound (14.271) — proved for `m > 0` by monotonicity of
+exponential averages, with no differentiability at all (`abs_coleHopf_sub_le_of_lipschitz`) — and
+the exponent derivative `∂_m T_{m,v}A` are corollaries. **Lemma 14.7.3**, `∂_v (T_{m',a−v} ∘
+T_{m,v})A = ((m − m')/2) 𝔼(B'(Z)²R)`, holds for every `m'`, the case `m' = 0` (where `R = 1`)
+being the time-dependent chain rule applied to `v ↦ B(·, v)` and the case `m' ≠ 0` the same
+computation inside a tilt. Finally the two sides of the theory are identified: the Parisi
+recursion with Gaussian marks *is* the iterated Cole–Hopf transform,
+`parisiRec = T_{m₁,v₁} ⋯ T_{m_k,v_k}(G)` (Talagrand's (14.190)–(14.191),
+`parisiRec_gaussian_comp_add_sum`), so his (14.215)/(14.217) — the derivative of `A₁` in a
+parameter of the terminal function is the tilted average `𝔼(W₁ ⋯ W_k ∂_λ G_λ)` — is the cascade
+differentiation formula `hasDerivAt_parisiRec` read through that identification
+(`hasDerivAt_coleHopfIterate`). That formula is proved in **local** form
+(`hasDerivAt_parisiRec_ball`, `hasDerivAt_coleHopfIterate_ball`): the parameter need only range
+over a ball and no joint measurability in it is required, which is what the applications have —
+an overlap `q_r`, a variance split — since the families are differentiable only on an interval.
+Composing it with Lemma 14.7.3 gives **(14.219)–(14.220)** in operator form
+(`hasDerivAt_coleHopfIterate_split`): the derivative of `A₁` in the split point `v` of an
+innermost pair of levels `T_{m',a−v} ∘ T_{m,v}` is `𝔼(W₁ ⋯ W_{r−1} ((m − m')/2) A_r'(ζ_r)²)`.
+The level structure itself is packaged associatively as an iterate along a *list* of levels
+(`coleHopfIterateList`, `coleHopfIterateList_append`), so the levels split anywhere and
+Talagrand's two merging mechanisms are one-liners: a zero-variance level drops (`T_{m,0} = id`)
+and two adjacent levels with equal exponents merge by the semigroup property — his (14.233) and
+(14.237).
+
 The weights `W_p = (R_{p+1}/R_p)^{m_p}` of (14.22) through which all of §14.3 is expressed, their
 defining property `𝔼_p W_p = 1`, and the tilted averages `𝔼(W₁ ⋯ W_k A)` of (14.24)–(14.26) are in
 place (`CascadeTilt`), an average against a probability measure that reduces to the plain product
@@ -439,11 +476,14 @@ Corollary 14.3.7, and all of §14.6 through Proposition 14.6.3 — (14.147) for 
 at `λ = 0` with `2𝒫_k(m, q)`, so that the constrained pair pressure at `u = q_τ ≥ 0` is at most
 `2𝒫_k(m, q)` at every `N`; and, from the derivative of the recursion in a parameter, `Y₀(λ)` is
 differentiable with `|Y₀'| ≤ 1`, and Lemma 14.6.5, `0 ≤ Y₀'' ≤ 1`, gives the two-sided tangent
-bound `Y₀(0) + λY₀'(0) ≤ Y₀(λ) ≤ Y₀(0) + λY₀'(0) + λ²/2` used by the main estimate. Next: the
-formula `Y₀'(0) = 𝔼(W₁ ⋯ W_{τ-1} D'_τ(ζ_τ)²)` of Proposition 14.6.4 (for `η = −1`, i.e. `u < 0`,
-Talagrand only has `Y₀ ≤ 2X₀`, his Proposition 14.8.6) — Theorem 14.5.7 (the mass of the window
-`R_{1,2} = u`),
-then the operators of §14.7 and the main estimate of §14.8–§14.10. Also open: Theorem 14.4.4 (`ξ` convex on `ℝ⁺`
+bound `Y₀(0) + λY₀'(0) ≤ Y₀(λ) ≤ Y₀(0) + λY₀'(0) + λ²/2` used by the main estimate. Of §14.7,
+the operator layer is in place: the heat semigroup and its PDE, `T_{m,v}` with (14.195)–(14.203),
+Lemma 14.7.3 for every `m'`, the identification of the Parisi recursion with the iterated
+Cole–Hopf transform (14.190)–(14.191), and the differentiation formula (14.215)/(14.217). Next:
+the formula `Y₀'(0) = 𝔼(W₁ ⋯ W_{τ-1} D'_τ(ζ_τ)²)` of Proposition 14.6.4 (for `η = −1`, i.e.
+`u < 0`, Talagrand only has `Y₀ ≤ 2X₀`, his Proposition 14.8.6), then (14.219)–(14.222) and
+Proposition 14.7.5, Lemma 14.7.4 with `Φ(m, u)`, `U(v)` and `f(u)`, Theorem 14.5.7 (the mass of
+the window `R_{1,2} = u`), and the main estimate of §14.8–§14.10. Also open: Theorem 14.4.4 (`ξ` convex on `ℝ⁺`
 only), the extension of (14.90) to `0 ≤ m₁ ≤ ⋯ ≤ m_k ≤ 1`, the Parisi measures of §14.11, Gardner,
 and the Hopfield localization theorems and limits.
 

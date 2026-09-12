@@ -226,7 +226,9 @@ theorem hasDerivAt_parisiRec_pairSiteF (ns : Fin κ → ℝ) (hpos : ∀ i, 0 < 
       (continuous_fst.prodMk (continuous_const.prodMk continuous_snd) :
         Continuous fun q : ℝ × (Fin κ → J → ℝ) => (q.1, (y₀, q.2)))
     exact hc.measurable
-  exact hasDerivAt_parisiRec κ ns (siteGaussianMarks J κ vs) hF hF'
+  exact hasDerivAt_parisiRec κ ns (siteGaussianMarks J κ vs)
+    (fun l => hF.comp (measurable_const.prodMk measurable_id))
+    (fun l => hF'.comp (measurable_const.prodMk measurable_id))
     (fun l y => hasDerivAt_pairSiteF l h K₀ K y₀ y) (C := 1)
     (fun l y => abs_pairSiteF'_le_one l h K₀ K y₀ y) hpos hle
     (lintegral_ofReal_exp_pairSiteF_ne_top vs lam h K₀ K y₀)
